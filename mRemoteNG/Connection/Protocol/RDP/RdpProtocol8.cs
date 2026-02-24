@@ -7,6 +7,7 @@ using mRemoteNG.Messages;
 using MSTSCLib;
 using mRemoteNG.Resources.Language;
 using System.Runtime.Versioning;
+using Microsoft.Win32;
 
 namespace mRemoteNG.Connection.Protocol.RDP
 {
@@ -38,6 +39,10 @@ namespace mRemoteNG.Connection.Protocol.RDP
             _resizeDebounceTimer = new System.Timers.Timer(300);
             _resizeDebounceTimer.AutoReset = false;
             _resizeDebounceTimer.Elapsed += ResizeDebounceTimer_Elapsed;
+
+            // Subscribe to display settings changes so the inner RDP session is resized
+            // when the outer RDP session (jump-host) reconnects with a different viewport.
+            SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
         }
 
         public override bool Initialize()
@@ -153,8 +158,24 @@ namespace mRemoteNG.Connection.Protocol.RDP
             Runtime.MessageCollector?.AddMessage(MessageClass.DebugMsg,
                 $"Debounce timer fired - executing delayed resize to {_pendingResizeSize.Width}x{_pendingResizeSize.Height}");
 
-            // Execute the actual RDP session resize
-            DoResizeClient();
+            // Marshal to the UI thread because DoResizeClient() accesses WinForms and COM objects
+            if (InterfaceControl.InvokeRequired)
+            {
+                InterfaceControl.BeginInvoke(new Action(DoResizeClient));
+            }
+            else
+            {
+                DoResizeClient();
+            }
+        }
+
+        private void OnDisplaySettingsChanged(object sender, EventArgs e)
+        {
+            // When display settings change (e.g., outer RDP session reconnects with a different
+            // resolution/viewport), schedule a debounced resize so the inner RDP session is
+            // updated to match the new panel dimensions once the display has settled.
+            if (!loginComplete) return;
+            ScheduleDebouncedResize();
         }
 
         protected override AxHost CreateActiveXRdpClientControl()
@@ -278,6 +299,9 @@ namespace mRemoteNG.Connection.Protocol.RDP
 
         public override void Close()
         {
+            // Unsubscribe from display settings changes to prevent memory leaks
+            SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
+
             // Clean up debounce timer
             if (_resizeDebounceTimer != null)
             {

@@ -64,7 +64,9 @@ namespace mRemoteNG.App
                     {
                         try
                         {
-                            Process.Start(new ProcessStartInfo(fileName: downloadUrl) { UseShellExecute = true });
+                            if (!string.IsNullOrEmpty(downloadUrl) &&
+                                downloadUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                                Process.Start(new ProcessStartInfo(fileName: downloadUrl) { UseShellExecute = true });
                         }
                         catch (Exception ex)
                         {

@@ -156,19 +156,42 @@ namespace mRemoteNG.Connection.Protocol.RDP
                 return;
             }
 
+            // Guard against the window handle not yet being created or already destroyed
+            if (!InterfaceControl.IsHandleCreated)
+            {
+                _hasPendingResize = false;
+                return;
+            }
+
             _hasPendingResize = false;
 
             Runtime.MessageCollector?.AddMessage(MessageClass.DebugMsg,
                 $"Debounce timer fired - executing delayed resize to {_pendingResizeSize.Width}x{_pendingResizeSize.Height}");
 
-            // Marshal to the UI thread because DoResizeClient() accesses WinForms and COM objects
-            if (InterfaceControl.InvokeRequired)
+            // Marshal to the UI thread because DoResizeClient() accesses WinForms and COM objects.
+            // Wrap in try/catch: even after the guards above, there is a disposal race between
+            // this timer thread and the UI thread that can cause ObjectDisposedException or
+            // InvalidOperationException from BeginInvoke.
+            try
             {
-                InterfaceControl.BeginInvoke(new Action(DoResizeClient));
+                if (InterfaceControl.InvokeRequired)
+                {
+                    InterfaceControl.BeginInvoke(new Action(DoResizeClient));
+                }
+                else
+                {
+                    DoResizeClient();
+                }
             }
-            else
+            catch (ObjectDisposedException ex)
             {
-                DoResizeClient();
+                Runtime.MessageCollector?.AddMessage(MessageClass.DebugMsg,
+                    $"ResizeDebounceTimer_Elapsed: control disposed during BeginInvoke ({ex.GetType().Name})");
+            }
+            catch (InvalidOperationException ex)
+            {
+                Runtime.MessageCollector?.AddMessage(MessageClass.DebugMsg,
+                    $"ResizeDebounceTimer_Elapsed: control handle unavailable during BeginInvoke ({ex.GetType().Name})");
             }
         }
 

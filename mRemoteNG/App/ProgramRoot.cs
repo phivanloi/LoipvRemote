@@ -32,6 +32,13 @@ namespace mRemoteNG.App
         [STAThread]
         public static void Main(string[] args)
         {
+            // Must be called before any other WinForms / Application.* usage so that
+            // per-monitor font scaling and hit-testing are initialised correctly from
+            // the very first UI operation (dialogs shown in MainAsync, exception
+            // handlers, EnableVisualStyles, …).  The app manifest already declares
+            // PerMonitorV2 awareness; this call keeps the WinForms runtime in sync.
+            Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
+
             // Ensure the real entry point is definitely STA
             MainAsync(args).GetAwaiter().GetResult();
         }
@@ -151,7 +158,6 @@ namespace mRemoteNG.App
         private static void StartApplication()
         {
             CatchAllUnhandledExceptions();
-            Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 

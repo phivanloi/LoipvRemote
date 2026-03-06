@@ -33,16 +33,13 @@ namespace mRemoteNG.Connection.Protocol.RDP
 
         public RdpProtocol8()
         {
-            _frmMain.ResizeEnd += ResizeEnd;
-
-            // Initialize debounce timer (300ms delay)
+            // Initialize debounce timer (300ms delay).
+            // Keep this in the constructor because it doesn't root the instance in any
+            // external static object – it's safe for the temporary probing instances
+            // created by RdpProtocolFactory.
             _resizeDebounceTimer = new System.Timers.Timer(300);
             _resizeDebounceTimer.AutoReset = false;
             _resizeDebounceTimer.Elapsed += ResizeDebounceTimer_Elapsed;
-
-            // Subscribe to display settings changes so the inner RDP session is resized
-            // when the outer RDP session (jump-host) reconnects with a different viewport.
-            SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
         }
 
         public override bool Initialize()
@@ -51,6 +48,12 @@ namespace mRemoteNG.Connection.Protocol.RDP
                 return false;
 
             if (RdpVersion < Versions.RDC81) return false; // minimum dll version checked, loaded MSTSCLIB dll version is not capable
+
+            // Subscribe to static/external events here (not in the constructor) so that
+            // temporary probing instances created by RdpProtocolFactory.RdpVersionSupported()
+            // are not rooted and do not accumulate memory leaks or spurious callbacks.
+            _frmMain.ResizeEnd += ResizeEnd;
+            SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
 
             // https://learn.microsoft.com/en-us/windows/win32/termserv/imsrdpextendedsettings-property
             if (connectionInfo.UseRestrictedAdmin)
@@ -310,7 +313,8 @@ namespace mRemoteNG.Connection.Protocol.RDP
 
         public override void Close()
         {
-            // Unsubscribe from display settings changes to prevent memory leaks
+            // Unsubscribe from external/static events to prevent memory leaks
+            _frmMain.ResizeEnd -= ResizeEnd;
             SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
 
             // Clean up debounce timer

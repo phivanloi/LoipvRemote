@@ -197,7 +197,7 @@ public class ProtocolAnyDeskTests
             throw new Exception("IsValidAnydeskId method not found. The method may have been renamed or removed.");
         }
 
-        return (bool)method.Invoke(_protocolAnydesk, new object[] { anydeskId });
+        return (bool)method.Invoke(_protocolAnyDesk, new object[] { anydeskId });
     }
 
     #endregion

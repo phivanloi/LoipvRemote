@@ -174,8 +174,19 @@ namespace mRemoteNG.Connection.Protocol.RDP
             // When display settings change (e.g., outer RDP session reconnects with a different
             // resolution/viewport), schedule a debounced resize so the inner RDP session is
             // updated to match the new panel dimensions once the display has settled.
+            // SystemEvents.DisplaySettingsChanged can fire on a non-UI thread, so marshal
+            // ScheduleDebouncedResize() back to the UI thread before touching UI state.
             if (!loginComplete) return;
-            ScheduleDebouncedResize();
+            if (InterfaceControl == null || InterfaceControl.IsDisposed) return;
+
+            if (InterfaceControl.InvokeRequired)
+            {
+                InterfaceControl.BeginInvoke(new Action(ScheduleDebouncedResize));
+            }
+            else
+            {
+                ScheduleDebouncedResize();
+            }
         }
 
         protected override AxHost CreateActiveXRdpClientControl()

@@ -158,11 +158,6 @@ namespace mRemoteNG.App
             return null;
         }
 
-        private static void CheckLockalDB()
-        {
-            LocalDBManager settingsManager = new LocalDBManager(dbPath: "mRemoteNG.appSettings", useEncryption: false, schemaFilePath: "");
-        }
-
         private static void StartApplication()
         {
             CatchAllUnhandledExceptions();

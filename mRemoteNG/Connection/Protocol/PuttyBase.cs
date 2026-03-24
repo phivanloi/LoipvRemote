@@ -68,12 +68,11 @@ namespace mRemoteNG.Connection.Protocol
             string data = (string)oData;
             string random = data[..8];
             string password = data[8..];
-            NamedPipeServerStream server = new($"mRemoteNGSecretPipe{random}");
+            using NamedPipeServerStream server = CreatePipeServer($"mRemoteNGSecretPipe{random}");
             server.WaitForConnection();
-            StreamWriter writer = new(server);
+            using StreamWriter writer = new(server);
             writer.Write(password);
             writer.Flush();
-            server.Dispose();
         }
 
         public override bool Connect()

@@ -10,7 +10,7 @@ using System.Resources;
 
 // Compute version values
 
-//Build nr: 3427
+//Build nr: 3449
 
 // General Information
 [assembly: AssemblyTitle("mRemoteNG")]
@@ -23,7 +23,7 @@ using System.Resources;
 [assembly: AssemblyCulture("")]
 
 // Version information
-[assembly: AssemblyVersion("1.78.2.3427")]
-[assembly: AssemblyFileVersion("1.78.2.3427")]
+[assembly: AssemblyVersion("1.78.2.3449")]
+[assembly: AssemblyFileVersion("1.78.2.3449")]
 [assembly: NeutralResourcesLanguageAttribute("en-US")]
-[assembly: AssemblyInformationalVersion("1.78.2 (Nightly Build 3427) x64")]
+[assembly: AssemblyInformationalVersion("1.78.2 (Nightly Build 3449) x64")]

@@ -7359,5 +7359,41 @@ namespace mRemoteNG.Resources.Language {
                 return ResourceManager.GetString("Yes", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Password.
+        /// </summary>
+        internal static string MasterKeyProviderPassword {
+            get {
+                return ResourceManager.GetString("MasterKeyProviderPassword", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Windows User Account (DPAPI).
+        /// </summary>
+        internal static string MasterKeyProviderDpapi {
+            get {
+                return ResourceManager.GetString("MasterKeyProviderDpapi", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Set Master Password.
+        /// </summary>
+        internal static string SettingsStoreFirstRunTitle {
+            get {
+                return ResourceManager.GetString("SettingsStoreFirstRunTitle", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Unlock Settings.
+        /// </summary>
+        internal static string SettingsStoreUnlockTitle {
+            get {
+                return ResourceManager.GetString("SettingsStoreUnlockTitle", resourceCulture);
+            }
+        }
     }
 }

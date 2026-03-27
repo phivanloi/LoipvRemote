@@ -724,17 +724,19 @@ namespace mRemoteNG.Connection.Protocol.RDP
                 switch (InterfaceControl.Info.Resolution)
                 {
                     case RDPResolutions.FitToWindow:
-                        // Lock the RDP session to the current panel size.
+                        // Lock the RDP session to the current content area size.
                         // The control is undocked so it keeps this fixed size;
                         // AutoScroll on the parent panel provides scrollbars
                         // when the panel shrinks below the session resolution.
-                        _rdpClient.DesktopWidth = InterfaceControl.Size.Width;
-                        _rdpClient.DesktopHeight = InterfaceControl.Size.Height;
+                        // Use DisplayRectangle to respect Padding (connection frame border).
+                        var fitRect = InterfaceControl.DisplayRectangle;
+                        _rdpClient.DesktopWidth = fitRect.Width;
+                        _rdpClient.DesktopHeight = fitRect.Height;
                         Control.Dock = DockStyle.None;
-                        Control.Size = InterfaceControl.Size;
-                        Control.Location = new System.Drawing.Point(0, 0);
+                        Control.Location = fitRect.Location;
+                        Control.Size = fitRect.Size;
                         InterfaceControl.AutoScroll = true;
-                        InterfaceControl.AutoScrollMinSize = InterfaceControl.Size;
+                        InterfaceControl.AutoScrollMinSize = fitRect.Size;
                         break;
                     case RDPResolutions.SmartSize:
                         // Connect at the full screen resolution so the remote
@@ -743,13 +745,15 @@ namespace mRemoteNG.Connection.Protocol.RDP
                         // Use Anchor instead of Dock.Fill because the AxHost
                         // ActiveX wrapper doesn't forward Dock-triggered resizes
                         // to the COM control's internal rendering surface.
+                        // Use DisplayRectangle to respect Padding (connection frame border).
                         var screen = Screen.FromControl(_frmMain);
                         _rdpClient.DesktopWidth = screen.Bounds.Width;
                         _rdpClient.DesktopHeight = screen.Bounds.Height;
                         _rdpClient.AdvancedSettings2.SmartSizing = true;
+                        var smartRect = InterfaceControl.DisplayRectangle;
                         Control.Dock = DockStyle.None;
-                        Control.Location = new System.Drawing.Point(0, 0);
-                        Control.Size = InterfaceControl.ClientSize;
+                        Control.Location = smartRect.Location;
+                        Control.Size = smartRect.Size;
                         Control.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
                         break;
                     case RDPResolutions.Fullscreen:

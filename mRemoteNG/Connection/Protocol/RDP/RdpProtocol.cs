@@ -231,6 +231,34 @@ namespace mRemoteNG.Connection.Protocol.RDP
             }
         }
 
+        public override void Close()
+        {
+            try
+            {
+                if (_rdpClient != null)
+                {
+                    _rdpClient.OnConnecting -= RDPEvent_OnConnecting;
+                    _rdpClient.OnConnected -= RDPEvent_OnConnected;
+                    _rdpClient.OnLoginComplete -= RDPEvent_OnLoginComplete;
+                    _rdpClient.OnFatalError -= RDPEvent_OnFatalError;
+                    _rdpClient.OnDisconnected -= RDPEvent_OnDisconnected;
+                    _rdpClient.OnIdleTimeoutNotification -= RDPEvent_OnIdleTimeoutNotification;
+                    _rdpClient.OnLeaveFullScreenMode -= RDPEvent_OnLeaveFullscreenMode;
+                }
+
+                if (Control != null)
+                {
+                    Control.GotFocus -= RdpClient_GotFocus;
+                }
+            }
+            catch (Exception ex)
+            {
+                Runtime.MessageCollector.AddExceptionStackTrace("RdpProtocol: error unsubscribing event handlers", ex);
+            }
+
+            base.Close();
+        }
+
         public void ToggleFullscreen()
         {
             try
@@ -696,30 +724,39 @@ namespace mRemoteNG.Connection.Protocol.RDP
                 switch (InterfaceControl.Info.Resolution)
                 {
                     case RDPResolutions.FitToWindow:
+                        // Lock the RDP session to the current panel size.
+                        // The control is undocked so it keeps this fixed size;
+                        // AutoScroll on the parent panel provides scrollbars
+                        // when the panel shrinks below the session resolution.
+                        _rdpClient.DesktopWidth = InterfaceControl.Size.Width;
+                        _rdpClient.DesktopHeight = InterfaceControl.Size.Height;
+                        Control.Dock = DockStyle.None;
+                        Control.Size = InterfaceControl.Size;
+                        Control.Location = new System.Drawing.Point(0, 0);
+                        InterfaceControl.AutoScroll = true;
+                        InterfaceControl.AutoScrollMinSize = InterfaceControl.Size;
+                        break;
                     case RDPResolutions.SmartSize:
-                        {
-                            _rdpClient.DesktopWidth = InterfaceControl.Size.Width;
-                            _rdpClient.DesktopHeight = InterfaceControl.Size.Height;
-
-                            if (InterfaceControl.Info.Resolution == RDPResolutions.SmartSize)
-                            {
-                                _rdpClient.AdvancedSettings2.SmartSizing = true;
-                            }
-
-                            break;
-                        }
+                        // Connect at the full screen resolution so the remote
+                        // desktop is rendered at high quality, then SmartSizing
+                        // scales the image to fit whatever the panel size is.
+                        // Use Anchor instead of Dock.Fill because the AxHost
+                        // ActiveX wrapper doesn't forward Dock-triggered resizes
+                        // to the COM control's internal rendering surface.
+                        var screen = Screen.FromControl(_frmMain);
+                        _rdpClient.DesktopWidth = screen.Bounds.Width;
+                        _rdpClient.DesktopHeight = screen.Bounds.Height;
+                        _rdpClient.AdvancedSettings2.SmartSizing = true;
+                        Control.Dock = DockStyle.None;
+                        Control.Location = new System.Drawing.Point(0, 0);
+                        Control.Size = InterfaceControl.ClientSize;
+                        Control.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
+                        break;
                     case RDPResolutions.Fullscreen:
                         _rdpClient.FullScreen = true;
                         _rdpClient.DesktopWidth = Screen.FromControl(_frmMain).Bounds.Width;
                         _rdpClient.DesktopHeight = Screen.FromControl(_frmMain).Bounds.Height;
                         break;
-                    default:
-                        {
-                            System.Drawing.Rectangle resolution = connectionInfo.Resolution.GetResolutionRectangle();
-                            _rdpClient.DesktopWidth = resolution.Width;
-                            _rdpClient.DesktopHeight = resolution.Height;
-                            break;
-                        }
                 }
             }
             catch (Exception ex)
@@ -976,7 +1013,7 @@ namespace mRemoteNG.Connection.Protocol.RDP
         {
             Colors = RDPColors.Colors16Bit,
             Sounds = RDPSounds.DoNotPlay,
-            Resolution = RDPResolutions.FitToWindow,
+            Resolution = RDPResolutions.SmartSize,
             Port = 3389
         }
 

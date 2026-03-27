@@ -534,6 +534,7 @@ namespace mRemoteNG.UI.Forms
             }
 
             NativeMethods.ChangeClipboardChain(Handle, _fpChainedWindowHandle);
+            SystemEvents.DisplaySettingsChanged -= _advancedWindowMenu.OnDisplayChanged;
             Shutdown.Cleanup(_quickConnectToolStrip, _externalToolsToolStrip, _multiSshToolStrip, this);
 
             Shutdown.StartUpdate();

@@ -209,7 +209,7 @@ namespace mRemoteNG.Config.Serializers.ConnectionSerializers.Xml
                     {
                         connectionInfo.Resolution = xmlnode.GetAttributeAsBool("Fullscreen")
                             ? RDPResolutions.Fullscreen
-                            : RDPResolutions.FitToWindow;
+                            : RDPResolutions.SmartSize;
                     }
 
                     if (!Runtime.UseCredentialManager || _confVersion <= 2.6) // 0.2 - 2.6

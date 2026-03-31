@@ -435,6 +435,7 @@ namespace mRemoteNG.Config.Serializers.ConnectionSerializers.Xml
                     connectionInfo.RDGatewayUseConnectionCredentials = xmlnode.GetAttributeAsEnum<RDGatewayUseConnectionCredentials>("RDGatewayUseConnectionCredentials");
                     connectionInfo.RDGatewayUsername = xmlnode.GetAttributeAsString("RDGatewayUsername");
                     connectionInfo.RDGatewayPassword = _decryptor.Decrypt(xmlnode.GetAttributeAsString("RDGatewayPassword"));
+                    connectionInfo.RDGatewayAccessToken = _decryptor.Decrypt(xmlnode.GetAttributeAsString("RDGatewayAccessToken"));
                     connectionInfo.RDGatewayDomain = xmlnode.GetAttributeAsString("RDGatewayDomain");
 
                     // Get inheritance settings
@@ -443,6 +444,7 @@ namespace mRemoteNG.Config.Serializers.ConnectionSerializers.Xml
                     connectionInfo.Inheritance.RDGatewayUseConnectionCredentials = xmlnode.GetAttributeAsBool("InheritRDGatewayUseConnectionCredentials");
                     connectionInfo.Inheritance.RDGatewayUsername = xmlnode.GetAttributeAsBool("InheritRDGatewayUsername");
                     connectionInfo.Inheritance.RDGatewayPassword = xmlnode.GetAttributeAsBool("InheritRDGatewayPassword");
+                    connectionInfo.Inheritance.RDGatewayAccessToken = xmlnode.GetAttributeAsBool("InheritRDGatewayAccessToken");
                     connectionInfo.Inheritance.RDGatewayDomain = xmlnode.GetAttributeAsBool("InheritRDGatewayDomain");
                 }
 

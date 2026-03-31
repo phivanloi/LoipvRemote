@@ -271,6 +271,12 @@ namespace mRemoteNG.Connection
         public bool RDGatewayPassword { get; set; }
 
         [LocalizedAttributes.LocalizedCategory(nameof(Language.RDPGateway), 5),
+         LocalizedAttributes.LocalizedDisplayNameInherit(nameof(Language.RdpGatewayAccessToken)),
+         LocalizedAttributes.LocalizedDescriptionInherit(nameof(Language.PropertyDescriptionRdpGatewayAccessToken)),
+         TypeConverter(typeof(MiscTools.YesNoTypeConverter))]
+        public bool RDGatewayAccessToken { get; set; }
+
+        [LocalizedAttributes.LocalizedCategory(nameof(Language.RDPGateway), 5),
          LocalizedAttributes.LocalizedDisplayNameInherit(nameof(Language.RdpGatewayDomain)),
          LocalizedAttributes.LocalizedDescriptionInherit(nameof(Language.PropertyDescriptionRDGatewayDomain)),
          TypeConverter(typeof(MiscTools.YesNoTypeConverter))]

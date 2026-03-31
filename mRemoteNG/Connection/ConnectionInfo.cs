@@ -351,7 +351,9 @@ namespace mRemoteNG.Connection
 
         private void SetAppearanceDefaults()
         {
-            Resolution = (RDPResolutions)Enum.Parse(typeof(RDPResolutions), Settings.Default.ConDefaultResolution);
+            Resolution = Enum.TryParse(Settings.Default.ConDefaultResolution, out RDPResolutions res)
+                ? res
+                : RDPResolutions.SmartSize;
             AutomaticResize = Settings.Default.ConDefaultAutomaticResize;
             Colors = (RDPColors)Enum.Parse(typeof(RDPColors), Settings.Default.ConDefaultColors);
             CacheBitmaps = Settings.Default.ConDefaultCacheBitmaps;

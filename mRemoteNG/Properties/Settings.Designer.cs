@@ -97,7 +97,7 @@ namespace mRemoteNG.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("FitToWindow")]
+        [global::System.Configuration.DefaultSettingValueAttribute("SmartSize")]
         public string ConDefaultResolution {
             get {
                 return ((string)(this["ConDefaultResolution"]));

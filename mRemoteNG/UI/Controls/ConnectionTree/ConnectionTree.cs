@@ -36,6 +36,7 @@ namespace mRemoteNG.UI.Controls.ConnectionTree
         private bool _allowEdit;
         private ConnectionContextMenu _contextMenu;
         private ConnectionTreeModel _connectionTreeModel;
+        private SlowClickRenameHandler _slowClickRenameHandler;
 
         public ConnectionInfo SelectedNode => (ConnectionInfo)SelectedObject;
 
@@ -101,6 +102,7 @@ namespace mRemoteNG.UI.Controls.ConnectionTree
             {
                 components?.Dispose();
                 _statusImageList?.Dispose();
+                _slowClickRenameHandler?.Dispose();
 
                 _themeManager.ThemeChanged -= ThemeManagerOnThemeChanged;
             }
@@ -119,6 +121,15 @@ namespace mRemoteNG.UI.Controls.ConnectionTree
             ContextMenuStrip = _contextMenu;
             SetupDropSink();
             SetEventHandlers();
+            SetupSlowClickRename();
+        }
+
+        private void SetupSlowClickRename()
+        {
+            _slowClickRenameHandler = new SlowClickRenameHandler(
+                new SlowClickRenameTimer(SystemInformation.DoubleClickTime),
+                RenameSelectedNode,
+                () => SelectedNode);
         }
 
         private void AddColumns(ImageGetterDelegate imageGetterDelegate)
@@ -347,6 +358,7 @@ namespace mRemoteNG.UI.Controls.ConnectionTree
         public void RenameSelectedNode()
         {
             if (SelectedItem == null) return;
+            _slowClickRenameHandler.Cancel();
             _allowEdit = true;
             SelectedItem.BeginEdit();
         }
@@ -450,6 +462,7 @@ namespace mRemoteNG.UI.Controls.ConnectionTree
         {
             try
             {
+                _slowClickRenameHandler.CancelIfDifferentNode(SelectedNode);
                 AppWindows.ConfigForm.SelectedTreeNode = SelectedNode;
             }
             catch (Exception ex)
@@ -464,6 +477,7 @@ namespace mRemoteNG.UI.Controls.ConnectionTree
             // ReSharper disable once NotAccessedVariable
             OLVListItem listItem = GetItemAt(mouseEventArgs.X, mouseEventArgs.Y, out _);
             if (listItem?.RowObject is not ConnectionInfo clickedNode) return;
+            _slowClickRenameHandler.Cancel();
             DoubleClickHandler.Execute(clickedNode);
         }
 
@@ -473,6 +487,7 @@ namespace mRemoteNG.UI.Controls.ConnectionTree
             // ReSharper disable once NotAccessedVariable
             OLVListItem listItem = GetItemAt(mouseEventArgs.X, mouseEventArgs.Y, out _);
             if (listItem?.RowObject is not ConnectionInfo clickedNode) return;
+            _slowClickRenameHandler.OnNodeClick(clickedNode);
             SingleClickHandler.Execute(clickedNode);
         }
 
@@ -545,6 +560,7 @@ namespace mRemoteNG.UI.Controls.ConnectionTree
                 ConnectionTreeModel.RenameNode(SelectedNode, e.Label);
                 _nodeInEditMode = false;
                 _allowEdit = false;
+                _slowClickRenameHandler.Cancel();
                 // ensures that if we are filtering and a new item is added that doesn't match the filter, it will be filtered out
                 _connectionTreeSearchTextFilter.SpecialInclusionList.Clear();
                 UpdateFiltering();

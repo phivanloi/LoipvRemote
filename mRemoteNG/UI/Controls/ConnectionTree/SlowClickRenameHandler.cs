@@ -2,6 +2,7 @@
 using mRemoteNG.Connection;
 using mRemoteNG.Config.Putty;
 using mRemoteNG.Tree.Root;
+using mRemoteNG.Tree.ClickHandlers;
 using System.Runtime.Versioning;
 
 namespace mRemoteNG.UI.Controls.ConnectionTree
@@ -12,7 +13,7 @@ namespace mRemoteNG.UI.Controls.ConnectionTree
     /// after a short delay (Explorer-style slow-click rename).
     /// </summary>
     [SupportedOSPlatform("windows")]
-    public sealed class SlowClickRenameHandler : IDisposable
+    public sealed class SlowClickRenameHandler : ISlowClickRenameHandler
     {
         private readonly ISlowClickRenameTimer _timer;
         private readonly Action _triggerRename;
@@ -30,7 +31,8 @@ namespace mRemoteNG.UI.Controls.ConnectionTree
             _timer.Tick += OnTimerTick;
         }
 
-        public void OnNodeClick(ConnectionInfo clickedNode)
+        /// <inheritdoc />
+        public void Execute(ConnectionInfo clickedNode)
         {
             if (!IsRenameEligible(clickedNode))
             {

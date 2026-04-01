@@ -51,43 +51,43 @@ namespace mRemoteNGTests.UI.Controls.ConnectionTree
         // ── OnNodeClick ─────────────────────────────────────────────────────
 
         [Test]
-        public void OnNodeClick_FirstClick_DoesNotStartTimer()
+        public void Execute_FirstClick_DoesNotStartTimer()
         {
-            _sut.OnNodeClick(new ConnectionInfo());
+            _sut.Execute(new ConnectionInfo());
             _timer.DidNotReceive().Start();
         }
 
         [Test]
-        public void OnNodeClick_SlowSecondClickOnSameNode_StartsTimer()
+        public void Execute_SlowSecondClickOnSameNode_StartsTimer()
         {
             var node = new ConnectionInfo();
-            _sut.OnNodeClick(node);
-            _sut.OnNodeClick(node);
+            _sut.Execute(node);
+            _sut.Execute(node);
             _timer.Received(1).Start();
         }
 
         [Test]
-        public void OnNodeClick_ClickDifferentNodeOnSecondClick_DoesNotStartTimer()
+        public void Execute_ClickDifferentNodeOnSecondClick_DoesNotStartTimer()
         {
-            _sut.OnNodeClick(new ConnectionInfo());
-            _sut.OnNodeClick(new ConnectionInfo());
+            _sut.Execute(new ConnectionInfo());
+            _sut.Execute(new ConnectionInfo());
             _timer.DidNotReceive().Start();
         }
 
         [Test]
-        public void OnNodeClick_ClickDifferentNodeOnSecondClick_CancelsCalled()
+        public void Execute_ClickDifferentNodeOnSecondClick_CancelsCalled()
         {
-            _sut.OnNodeClick(new ConnectionInfo());
+            _sut.Execute(new ConnectionInfo());
             _timer.ClearReceivedCalls();
-            _sut.OnNodeClick(new ConnectionInfo());
+            _sut.Execute(new ConnectionInfo());
             _timer.Received().Stop();
         }
 
         [Test]
         public void OnNodeClick_NullNode_CancelsWithoutStartingTimer()
         {
-            _sut.OnNodeClick(new ConnectionInfo());
-            _sut.OnNodeClick(null);
+            _sut.Execute(new ConnectionInfo());
+            _sut.Execute(null);
             _timer.DidNotReceive().Start();
         }
 
@@ -96,8 +96,8 @@ namespace mRemoteNGTests.UI.Controls.ConnectionTree
         public void OnNodeClick_RootNodeInfo_IsNotEligible(RootNodeType rootNodeType)
         {
             var root = new RootNodeInfo(rootNodeType);
-            _sut.OnNodeClick(root);
-            _sut.OnNodeClick(root);
+            _sut.Execute(root);
+            _sut.Execute(root);
             _timer.DidNotReceive().Start();
         }
 
@@ -105,8 +105,8 @@ namespace mRemoteNGTests.UI.Controls.ConnectionTree
         public void OnNodeClick_PuttySessionInfo_IsNotEligible()
         {
             var puttySession = new PuttySessionInfo();
-            _sut.OnNodeClick(puttySession);
-            _sut.OnNodeClick(puttySession);
+            _sut.Execute(puttySession);
+            _sut.Execute(puttySession);
             _timer.DidNotReceive().Start();
         }
 
@@ -115,7 +115,7 @@ namespace mRemoteNGTests.UI.Controls.ConnectionTree
         [Test]
         public void Cancel_StopsTimer()
         {
-            _sut.OnNodeClick(new ConnectionInfo());
+            _sut.Execute(new ConnectionInfo());
             _sut.Cancel();
             _timer.Received().Stop();
         }
@@ -124,12 +124,12 @@ namespace mRemoteNGTests.UI.Controls.ConnectionTree
         public void Cancel_ClearsPendingNode_SoNextClickIsFirstClick()
         {
             var node = new ConnectionInfo();
-            _sut.OnNodeClick(node);
+            _sut.Execute(node);
             _sut.Cancel();
             _timer.ClearReceivedCalls();
 
             // Next click should be treated as first click — no timer
-            _sut.OnNodeClick(node);
+            _sut.Execute(node);
             _timer.DidNotReceive().Start();
         }
 
@@ -146,7 +146,7 @@ namespace mRemoteNGTests.UI.Controls.ConnectionTree
         public void CancelIfDifferentNode_SameNode_DoesNotCancel()
         {
             var node = new ConnectionInfo();
-            _sut.OnNodeClick(node);
+            _sut.Execute(node);
             _timer.ClearReceivedCalls();
             _sut.CancelIfDifferentNode(node);
             _timer.DidNotReceive().Stop();
@@ -155,7 +155,7 @@ namespace mRemoteNGTests.UI.Controls.ConnectionTree
         [Test]
         public void CancelIfDifferentNode_DifferentNode_Cancels()
         {
-            _sut.OnNodeClick(new ConnectionInfo());
+            _sut.Execute(new ConnectionInfo());
             _timer.ClearReceivedCalls();
             _sut.CancelIfDifferentNode(new ConnectionInfo());
             _timer.Received().Stop();
@@ -168,8 +168,8 @@ namespace mRemoteNGTests.UI.Controls.ConnectionTree
         {
             var node = new ConnectionInfo();
             _selectedNode = node;
-            _sut.OnNodeClick(node);
-            _sut.OnNodeClick(node);
+            _sut.Execute(node);
+            _sut.Execute(node);
 
             _timer.Tick += Raise.EventWith(new object(), EventArgs.Empty);
 
@@ -181,8 +181,8 @@ namespace mRemoteNGTests.UI.Controls.ConnectionTree
         {
             var node = new ConnectionInfo();
             _selectedNode = new ConnectionInfo(); // different node now selected
-            _sut.OnNodeClick(node);
-            _sut.OnNodeClick(node);
+            _sut.Execute(node);
+            _sut.Execute(node);
 
             _timer.Tick += Raise.EventWith(new object(), EventArgs.Empty);
 
@@ -201,8 +201,8 @@ namespace mRemoteNGTests.UI.Controls.ConnectionTree
         {
             var node = new ConnectionInfo();
             _selectedNode = node;
-            _sut.OnNodeClick(node);
-            _sut.OnNodeClick(node);
+            _sut.Execute(node);
+            _sut.Execute(node);
 
             _timer.Tick += Raise.EventWith(new object(), EventArgs.Empty);
 
@@ -223,8 +223,8 @@ namespace mRemoteNGTests.UI.Controls.ConnectionTree
         {
             var node = new ConnectionInfo();
             _selectedNode = node;
-            _sut.OnNodeClick(node);
-            _sut.OnNodeClick(node);
+            _sut.Execute(node);
+            _sut.Execute(node);
             _sut.Dispose();
 
             // Event is unsubscribed — raising tick must not invoke OnTimerTick

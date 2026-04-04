@@ -589,5 +589,6 @@
     </Setting>
     <Setting Name="SlowClickRenameEnabled" Type="System.Boolean" Scope="User">
         <Value Profile="(Default)">False</Value>
-    </Setting> </Settings>
+    </Setting>
+  </Settings>
 </SettingsFile>

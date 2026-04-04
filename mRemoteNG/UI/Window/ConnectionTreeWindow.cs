@@ -58,7 +58,7 @@ namespace mRemoteNG.UI.Window
             }
 
             if (propertyChangedEventArgs.PropertyName == nameof(Settings.SlowClickRenameEnabled))
-                ConnectionTree.SetupSlowClickRename(); // make this internal or add a public refresh method
+                ConnectionTree.SetupSlowClickRename();
 
             PlaceSearchBar(Settings.Default.PlaceSearchBarAboveConnectionTree);
             SetConnectionTreeClickHandlers();

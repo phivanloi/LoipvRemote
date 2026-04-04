@@ -57,6 +57,9 @@ namespace mRemoteNG.UI.Window
                 ApplyFiltering();
             }
 
+            if (propertyChangedEventArgs.PropertyName == nameof(Settings.SlowClickRenameEnabled))
+                ConnectionTree.SetupSlowClickRename();
+
             PlaceSearchBar(Settings.Default.PlaceSearchBarAboveConnectionTree);
             SetConnectionTreeClickHandlers();
         }

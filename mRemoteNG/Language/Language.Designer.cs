@@ -3180,6 +3180,24 @@ namespace mRemoteNG.Resources.Language {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Windows User Account (DPAPI).
+        /// </summary>
+        internal static string MasterKeyProviderDpapi {
+            get {
+                return ResourceManager.GetString("MasterKeyProviderDpapi", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Password.
+        /// </summary>
+        internal static string MasterKeyProviderPassword {
+            get {
+                return ResourceManager.GetString("MasterKeyProviderPassword", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Medium.
         /// </summary>
         internal static string Medium {
@@ -6073,6 +6091,24 @@ namespace mRemoteNG.Resources.Language {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Set Master Password.
+        /// </summary>
+        internal static string SettingsStoreFirstRunTitle {
+            get {
+                return ResourceManager.GetString("SettingsStoreFirstRunTitle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Unlock Settings.
+        /// </summary>
+        internal static string SettingsStoreUnlockTitle {
+            get {
+                return ResourceManager.GetString("SettingsStoreUnlockTitle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Show description tooltips in connection tree.
         /// </summary>
         internal static string ShowDescriptionTooltips {
@@ -6186,6 +6222,15 @@ namespace mRemoteNG.Resources.Language {
         internal static string SingleClickOnOpenConnectionSwitchesToIt {
             get {
                 return ResourceManager.GetString("SingleClickOnOpenConnectionSwitchesToIt", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Rename items using slow double-click (Explorer style).
+        /// </summary>
+        internal static string SlowClickRenameEnabled {
+            get {
+                return ResourceManager.GetString("SlowClickRenameEnabled", resourceCulture);
             }
         }
         
@@ -7357,42 +7402,6 @@ namespace mRemoteNG.Resources.Language {
         internal static string Yes {
             get {
                 return ResourceManager.GetString("Yes", resourceCulture);
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized string similar to Password.
-        /// </summary>
-        internal static string MasterKeyProviderPassword {
-            get {
-                return ResourceManager.GetString("MasterKeyProviderPassword", resourceCulture);
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized string similar to Windows User Account (DPAPI).
-        /// </summary>
-        internal static string MasterKeyProviderDpapi {
-            get {
-                return ResourceManager.GetString("MasterKeyProviderDpapi", resourceCulture);
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized string similar to Set Master Password.
-        /// </summary>
-        internal static string SettingsStoreFirstRunTitle {
-            get {
-                return ResourceManager.GetString("SettingsStoreFirstRunTitle", resourceCulture);
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized string similar to Unlock Settings.
-        /// </summary>
-        internal static string SettingsStoreUnlockTitle {
-            get {
-                return ResourceManager.GetString("SettingsStoreUnlockTitle", resourceCulture);
             }
         }
     }

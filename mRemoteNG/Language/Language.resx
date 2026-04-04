@@ -2583,4 +2583,7 @@ Nightly Channel includes Alphas, Betas &amp; Release Candidates.</value>
   <data name="SettingsStoreUnlockTitle" xml:space="preserve">
     <value>Unlock Settings</value>
   </data>
+  <data name="SlowClickRenameEnabled" xml:space="preserve">
+    <value>Rename items using slow double-click (Explorer style)</value>
+  </data>
 </root>

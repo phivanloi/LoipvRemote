@@ -22,7 +22,7 @@ namespace mRemoteNGTests.UI.Controls
 		{
 			_filter = new ConnectionTreeSearchTextFilter();
 			_connectionTree = new mRemoteNG.UI.Controls.ConnectionTree.ConnectionTree
-            {
+			{
 				UseFiltering = true
 			};
 		}

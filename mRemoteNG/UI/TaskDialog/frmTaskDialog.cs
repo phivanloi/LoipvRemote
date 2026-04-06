@@ -297,6 +297,8 @@ namespace mRemoteNG.UI.TaskDialog
                     bt3.DialogResult = DialogResult.No;
                     AcceptButton = bt2;
                     CancelButton = bt3;
+                    if (_focusControl == null)
+                        _focusControl = bt2;
                     break;
                 case ETaskDialogButtons.YesNoCancel:
                     bt1.Text = Language.Yes;
@@ -307,6 +309,8 @@ namespace mRemoteNG.UI.TaskDialog
                     bt3.DialogResult = DialogResult.Cancel;
                     AcceptButton = bt1;
                     CancelButton = bt3;
+                    if (_focusControl == null)
+                        _focusControl = bt1;
                     break;
                 case ETaskDialogButtons.OkCancel:
                     bt1.Visible = false;
@@ -316,6 +320,8 @@ namespace mRemoteNG.UI.TaskDialog
                     bt3.DialogResult = DialogResult.Cancel;
                     AcceptButton = bt2;
                     CancelButton = bt3;
+                    if (_focusControl == null)
+                        _focusControl = bt2;
                     break;
                 case ETaskDialogButtons.Ok:
                     bt1.Visible = false;
@@ -324,6 +330,8 @@ namespace mRemoteNG.UI.TaskDialog
                     bt3.DialogResult = DialogResult.OK;
                     AcceptButton = bt3;
                     CancelButton = bt3;
+                    if (_focusControl == null)
+                        _focusControl = bt3;
                     break;
                 case ETaskDialogButtons.Close:
                     bt1.Visible = false;
@@ -331,6 +339,8 @@ namespace mRemoteNG.UI.TaskDialog
                     bt3.Text = Language._Close;
                     bt3.DialogResult = DialogResult.Cancel;
                     CancelButton = bt3;
+                    if (_focusControl == null)
+                        _focusControl = bt3;
                     break;
                 case ETaskDialogButtons.Cancel:
                     bt1.Visible = false;
@@ -338,6 +348,8 @@ namespace mRemoteNG.UI.TaskDialog
                     bt3.Text = Language._Cancel;
                     bt3.DialogResult = DialogResult.Cancel;
                     CancelButton = bt3;
+                    if (_focusControl == null)
+                        _focusControl = bt3;
                     break;
                 case ETaskDialogButtons.None:
                     bt1.Visible = false;

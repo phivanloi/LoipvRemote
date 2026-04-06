@@ -50,7 +50,7 @@ namespace mRemoteNGTests.UI.Window
             }
             finally
             {
-                window.Close();
+                window.Dispose();
             }
         }
 
@@ -79,7 +79,7 @@ namespace mRemoteNGTests.UI.Window
             }
             finally
             {
-                window.Close();
+                window.Dispose();
             }
         }
 
@@ -99,7 +99,7 @@ namespace mRemoteNGTests.UI.Window
             }
             finally
             {
-                window.Close();
+                window.Dispose();
             }
         }
 
@@ -119,7 +119,7 @@ namespace mRemoteNGTests.UI.Window
             }
             finally
             {
-                window.Close();
+                window.Dispose();
             }
         }
 
@@ -145,7 +145,7 @@ namespace mRemoteNGTests.UI.Window
             }
             finally
             {
-                window.Close();
+                window.Dispose();
             }
         }
 
@@ -175,7 +175,7 @@ namespace mRemoteNGTests.UI.Window
             }
             finally
             {
-                window.Close();
+                window.Dispose();
             }
         }
 
@@ -203,7 +203,7 @@ namespace mRemoteNGTests.UI.Window
             }
             finally
             {
-                window.Close();
+                window.Dispose();
             }
         }
     }

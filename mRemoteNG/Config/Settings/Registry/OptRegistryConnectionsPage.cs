@@ -123,6 +123,7 @@ namespace mRemoteNG.Config.Settings.Registry
             ApplyPlaceSearchBarAboveConnectionTree();
             ApplyDoNotTrimUsername();
             ApplySlowClickRenameEnabled();
+            ApplyOpenMultipleConnectionsWithEnter();
             ApplyRdpReconnectionCount();
             ApplyConRDPOverallConnectionTimeout();
             ApplyAutoSaveEveryMinutes();
@@ -174,6 +175,12 @@ namespace mRemoteNG.Config.Settings.Registry
         {
             if (SlowClickRenameEnabled.IsSet)
                 Properties.Settings.Default.SlowClickRenameEnabled = SlowClickRenameEnabled.Value;
+        }
+
+        private void ApplyOpenMultipleConnectionsWithEnter()
+        {
+            if (OpenMultipleConnectionsWithEnter.IsSet)
+                Properties.Settings.Default.OpenMultipleConnectionsWithEnter = OpenMultipleConnectionsWithEnter.Value;
         }
 
         private void ApplyRdpReconnectionCount()

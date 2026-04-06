@@ -28,11 +28,9 @@ namespace mRemoteNG.UI.Controls
         public MrngButton()
         {
             ThemeManager.getInstance().ThemeChanged += OnCreateControl;
-            _hasFocus = false;
         }
 
         public MouseState _mice { get; set; }
-        private bool _hasFocus;
 
         /// <summary>
         /// Rewrite the function to allow for coloring the component depending on the mouse state
@@ -135,7 +133,7 @@ namespace mRemoteNG.UI.Controls
                                   TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
 
             // Draw focus rectangle if button has focus
-            if (_hasFocus && Enabled)
+            if (Focused && Enabled)
             {
                 Rectangle focusRect = new(2, 2, Width - 4, Height - 4);
                 ControlPaint.DrawFocusRectangle(e.Graphics, focusRect);
@@ -151,26 +149,6 @@ namespace mRemoteNG.UI.Controls
             this.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular,
                                                 System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.ResumeLayout(false);
-        }
-
-        ///<summary>
-        /// Called when the button receives focus
-        /// </summary>
-        protected override void OnGotFocus(EventArgs e)
-        {
-            _hasFocus = true;
-            Invalidate();
-            base.OnGotFocus(e);
-        }
-
-        ///<summary>
-        /// Called when the button loses focus
-        /// </summary>
-        protected override void OnLostFocus(EventArgs e)
-        {
-            _hasFocus = false;
-            Invalidate();
-            base.OnLostFocus(e);
         }
     }
 }

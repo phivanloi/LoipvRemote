@@ -31,7 +31,6 @@ namespace mRemoteNG.UI.TaskDialog
         }
 
         eButtonState m_State = eButtonState.Normal;
-        private bool _hasFocus = false;
 
         #endregion
 
@@ -249,7 +248,7 @@ namespace mRemoteNG.UI.TaskDialog
             e.Graphics.DrawImage(img, new Point(LEFT_MARGIN, TOP_MARGIN + (int)(szL.Height / 2) - img.Height / 2));
 
             // Draw focus rectangle if button has focus
-            if (_hasFocus && Enabled)
+            if (Focused && Enabled)
             {
                 Rectangle focusRect = new(newRect.X + 2, newRect.Y + 2, newRect.Width - 4, newRect.Height - 4);
                 ControlPaint.DrawFocusRectangle(e.Graphics, focusRect);
@@ -302,22 +301,6 @@ namespace mRemoteNG.UI.TaskDialog
             }
 
             base.OnSizeChanged(e);
-        }
-
-        //--------------------------------------------------------------------------------
-        protected override void OnGotFocus(EventArgs e)
-        {
-            _hasFocus = true;
-            Invalidate();
-            base.OnGotFocus(e);
-        }
-
-        //--------------------------------------------------------------------------------
-        protected override void OnLostFocus(EventArgs e)
-        {
-            _hasFocus = false;
-            Invalidate();
-            base.OnLostFocus(e);
         }
 
         #endregion

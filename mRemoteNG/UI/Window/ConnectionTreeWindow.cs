@@ -348,6 +348,13 @@ namespace mRemoteNG.UI.Window
         {
             try
             {
+                // Suppress the beep sound for Enter key
+                if (e.KeyChar == (char)Keys.Return)
+                {
+                    e.Handled = true;
+                    return;
+                }
+
                 if (!char.IsLetterOrDigit(e.KeyChar)) return;
                 txtSearch.Focus();
                 txtSearch.Text = e.KeyChar.ToString();
@@ -366,9 +373,48 @@ namespace mRemoteNG.UI.Window
                 if (e.KeyCode == Keys.Enter)
                 {
                     e.Handled = true;
-                    if (SelectedNode == null)
-                        return;
-                    Runtime.ConnectionInitiator.OpenConnection(SelectedNode);
+
+                    // Handle multiple selections if the setting is enabled
+                    if (Settings.Default.OpenMultipleConnectionsWithEnter)
+                    {
+                        // First, collect all explicitly selected connections that aren't already open
+                        List<ConnectionInfo> connectionsToOpen = ConnectionTree.SelectedObjects
+                            .OfType<ConnectionInfo>()
+                            .Where(n => n.GetTreeNodeType() == TreeNodeType.Connection
+                                     || n.GetTreeNodeType() == TreeNodeType.PuttySession)
+                            .Where(n => n.OpenConnections.Count == 0)
+                            .ToList();
+
+                        // If no explicit connections, check if we have folders selected
+                        if (connectionsToOpen.Count == 0)
+                        {
+                            var selectedFolders = ConnectionTree.SelectedObjects
+                                .OfType<ConnectionInfo>()
+                                .Where(n => n.GetTreeNodeType() == TreeNodeType.Container)
+                                .ToList();
+
+                            // Get all direct child connections from selected folders
+                            foreach (var folder in selectedFolders)
+                            {
+                                var directChildren = GetDirectChildConnections(folder)
+                                    .Where(n => n.OpenConnections.Count == 0)
+                                    .ToList();
+                                connectionsToOpen.AddRange(directChildren);
+                            }
+                        }
+
+                        foreach (var connection in connectionsToOpen)
+                        {
+                            Runtime.ConnectionInitiator.OpenConnection(connection);
+                        }
+                    }
+                    else
+                    {
+                        // Original behavior: open only the selected node
+                        if (SelectedNode == null)
+                            return;
+                        Runtime.ConnectionInitiator.OpenConnection(SelectedNode);
+                    }
                 }
                 else if (e.Control && e.KeyCode == Keys.F)
                 {
@@ -381,6 +427,36 @@ namespace mRemoteNG.UI.Window
             {
                 Runtime.MessageCollector.AddExceptionStackTrace("tvConnections_KeyDown (UI.Window.ConnectionTreeWindow) failed", ex);
             }
+        }
+
+        /// <summary>
+        /// Gets direct child connections of a folder, excluding connections in nested subfolders.
+        /// </summary>
+        private List<ConnectionInfo> GetDirectChildConnections(ConnectionInfo folder)
+        {
+            var directChildren = new List<ConnectionInfo>();
+
+            if (folder is not ContainerInfo container)
+                return directChildren;
+
+            foreach (var child in container.Children)
+            {
+                if (child.GetTreeNodeType() == TreeNodeType.Connection || 
+                    child.GetTreeNodeType() == TreeNodeType.PuttySession)
+                {
+                    directChildren.Add(child);
+                }
+            }
+
+            return directChildren;
+        }
+
+        /// <summary>
+        /// Public wrapper for testing GetDirectChildConnections method.
+        /// </summary>
+        public List<ConnectionInfo> PublicGetDirectChildConnections(ConnectionInfo folder)
+        {
+            return GetDirectChildConnections(folder);
         }
 
         #endregion

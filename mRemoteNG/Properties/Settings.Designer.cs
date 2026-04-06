@@ -2985,5 +2985,20 @@ namespace mRemoteNG.Properties
             }
         }
 
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool OpenMultipleConnectionsWithEnter
+        {
+            get
+            {
+                return ((bool)(this["OpenMultipleConnectionsWithEnter"]));
+            }
+            set
+            {
+                this["OpenMultipleConnectionsWithEnter"] = value;
+            }
+        }
+
     }
 }

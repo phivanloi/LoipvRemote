@@ -251,7 +251,8 @@ namespace mRemoteNG.UI.TaskDialog
             // Draw focus rectangle if button has focus
             if (_hasFocus && Enabled)
             {
-                ControlPaint.DrawFocusRectangle(e.Graphics, ClientRectangle);
+                Rectangle focusRect = new(newRect.X + 2, newRect.Y + 2, newRect.Width - 4, newRect.Height - 4);
+                ControlPaint.DrawFocusRectangle(e.Graphics, focusRect);
             }
         }
 

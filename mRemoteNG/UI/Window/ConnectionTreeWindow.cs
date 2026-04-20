@@ -477,7 +477,7 @@ namespace mRemoteNG.UI.Window
         /// <summary>
         /// Public wrapper for testing GetDirectChildConnections method.
         /// </summary>
-        public List<ConnectionInfo> PublicGetDirectChildConnections(ConnectionInfo folder)
+        public static List<ConnectionInfo> PublicGetDirectChildConnections(ConnectionInfo folder)
         {
             return GetDirectChildConnections(folder);
         }

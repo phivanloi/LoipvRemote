@@ -18,7 +18,7 @@
     <PackageVersion Include="envdte" Version="17.14.40260" />
     <PackageVersion Include="Gherkin" Version="39.0.0" />
     <PackageVersion Include="Google.Protobuf" Version="3.34.1" />
-    <PackageVersion Include="log4net" Version="3.3.0" />
+    <PackageVersion Include="log4net" Version="3.3.1" />
     <PackageVersion Include="Microsoft.Data.SqlClient" Version="7.0.0" />
     <PackageVersion Include="Microsoft.Data.Sqlite" Version="10.0.6" />
     <PackageVersion Include="Microsoft.Data.SqlClient.SNI" Version="6.0.2" />

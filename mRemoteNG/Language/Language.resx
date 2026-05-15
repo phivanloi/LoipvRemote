@@ -265,7 +265,7 @@
     <value>Check failed!</value>
   </data>
   <data name="CheckboxAutomaticReconnect" xml:space="preserve">
-    <value>Display reconnection dialog when disconnected from server (RDP &amp;&amp; ICA only)</value>
+    <value>Automatically try to reconnect when disconnected from server (RDP &amp;&amp; ICA only)</value>
   </data>
   <data name="CheckboxDoNotShowThisMessageAgain" xml:space="preserve">
     <value>Do not show this message again.</value>

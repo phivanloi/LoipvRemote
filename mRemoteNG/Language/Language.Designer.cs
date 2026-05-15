@@ -673,7 +673,7 @@ namespace mRemoteNG.Resources.Language {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Display reconnection dialog when disconnected from server (RDP &amp;&amp; ICA only).
+        ///   Looks up a localized string similar to Automatically try to reconnect when disconnected from server (RDP &amp;&amp; ICA only).
         /// </summary>
         internal static string CheckboxAutomaticReconnect {
             get {

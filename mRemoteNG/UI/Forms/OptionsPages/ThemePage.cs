@@ -47,6 +47,9 @@ namespace mRemoteNG.UI.Forms.OptionsPages
             btnThemeDelete.Text = Language._Delete;
             btnThemeNew.Text = Language._New;
             labelRestart.Text = Language.OptionsThemeChangeWarning;
+            keyCol.Text = Language.Element;
+            ColorCol.Text = Language.Color;
+            ColorNameCol.Text = Language.ColorName;
         }
 
         private new void ApplyTheme()

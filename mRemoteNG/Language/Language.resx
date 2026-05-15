@@ -1391,7 +1391,7 @@ If you run into such an error, please create a new connection file!</value>
     <value>16777216 Colors (24-bit)</value>
   </data>
   <data name="Rdp256Colors" xml:space="preserve">
-    <value>256 Colours (8-bit)</value>
+    <value>256 Colors (8-bit)</value>
   </data>
   <data name="Rdp32768Colors" xml:space="preserve">
     <value>32768 Colors (15-bit)</value>
@@ -2726,5 +2726,11 @@ Nightly Channel includes Alphas, Betas &amp; Release Candidates.</value>
   </data>
   <data name="UsernameLabel" xml:space="preserve">
     <value>Username:</value>
+  </data>
+  <data name="BindConnectionsAndConfigPanels" xml:space="preserve">
+    <value>Bind Connections and Config panels together when auto-hidden</value>
+  </data>
+  <data name="DisplayReconnectionDialog" xml:space="preserve">
+    <value>Display reconnection dialog when disconnected from server (RDP &amp;&amp; ICA only)</value>
   </data>
 </root>

@@ -134,7 +134,7 @@
     <value>常時</value>
   </data>
   <data name="AlwaysConnectEvenIfAuthFails" xml:space="preserve">
-    <value>認証が失敗しても常に接続する</value>
+    <value>証明書認証を無視して接続</value>
   </data>
   <data name="AlwaysShowPanelSelection" xml:space="preserve">
     <value>接続を開くときに常にパネル選択ダイアログを表示</value>
@@ -246,7 +246,7 @@
     <value>確認に失敗しました</value>
   </data>
   <data name="CheckboxAutomaticReconnect" xml:space="preserve">
-    <value>Automatically try to reconnect when disconnected from server (RDP &amp;&amp; ICA only)</value>
+    <value>サーバーから切断されたとき自動的に再接続を試行 (RDP/ICA のみ)</value>
   </data>
   <data name="CheckboxDoNotShowThisMessageAgain" xml:space="preserve">
     <value>このメッセージを再び表示しない</value>
@@ -445,7 +445,7 @@
     <value>コンソールセッションには接続しない</value>
   </data>
   <data name="DontConnectWhenAuthFails" xml:space="preserve">
-    <value>認証に失敗した場合は接続しない</value>
+    <value>証明書認証失敗で切断</value>
   </data>
   <data name="DoubleClickTabClosesIt" xml:space="preserve">
     <value>ダブルクリックでタブを閉じる</value>
@@ -827,7 +827,7 @@
     <value>文字の表示</value>
   </data>
   <data name="SmartSize" xml:space="preserve">
-    <value>SmartSize (RDP/VNC)</value>
+    <value>縦横比維持で拡縮 (RDP/VNC)</value>
   </data>
   <data name="SshFileTransfer" xml:space="preserve">
     <value>SSHによるファイル転送</value>
@@ -902,7 +902,7 @@
     <value>標準</value>
   </data>
   <data name="NoSmartSize" xml:space="preserve">
-    <value>SmartSize なし</value>
+    <value>等倍表示 (拡縮なし)</value>
   </data>
   <data name="NoUpdateAvailable" xml:space="preserve">
     <value>更新はありません</value>
@@ -1220,7 +1220,7 @@ If you run into such an error, please create a new connection file!</comment>
     <value>解像度</value>
   </data>
   <data name="SmartSizeMode" xml:space="preserve">
-    <value>スマートサイズモード</value>
+    <value>画面拡縮モード</value>
   </data>
   <data name="UseConsoleSession" xml:space="preserve">
     <value>コンソールセッションを使用</value>
@@ -1312,7 +1312,7 @@ Message:
     <value>クイック接続の作成に失敗しました</value>
   </data>
   <data name="_CloseWarnAll" xml:space="preserve">
-    <value>&amp;Warn me when closing connections</value>
+    <value>接続を閉じるときは常に警告(&amp;W)</value>
   </data>
   <data name="RadioCloseWarnExit" xml:space="preserve">
     <value>mRemoteNG 終了時のみ警告(&amp;X)</value>
@@ -1330,19 +1330,19 @@ Message:
     <value>RDP</value>
   </data>
   <data name="Rdp16777216Colors" xml:space="preserve">
-    <value>16777216 Colours (24-bit)</value>
+    <value>16777216 色 (24 bit)</value>
   </data>
   <data name="Rdp256Colors" xml:space="preserve">
     <value>256 色 (8 bit)</value>
   </data>
   <data name="Rdp32768Colors" xml:space="preserve">
-    <value>32768 Colours (15-bit)</value>
+    <value>32768 色 (15 bit)</value>
   </data>
   <data name="Rdp4294967296Colors" xml:space="preserve">
-    <value>16777216 Colours (32-bit)</value>
+    <value>16777216 色 (32 bit)</value>
   </data>
   <data name="Rdp65536Colors" xml:space="preserve">
-    <value>65536 Colours (16-bit)</value>
+    <value>65536 色 (16 bit)</value>
   </data>
   <data name="RdpControlCreationFailed" xml:space="preserve">
     <value>RDP コントロールを作成できませんでした。mRemoteNG の動作要件を確認してください。</value>
@@ -1702,7 +1702,7 @@ mRemoteNGを終了してインストールを開始します</value>
     <value>VNC ViewOnly 切替に失敗しました！</value>
   </data>
   <data name="WarnIfAuthFails" xml:space="preserve">
-    <value>認証に失敗した場合は警告する</value>
+    <value>証明書認証失敗で警告</value>
   </data>
   <data name="Warnings" xml:space="preserve">
     <value>警告</value>
@@ -2736,5 +2736,11 @@ mRemoteNGを終了してインストールを開始します</value>
   </data>
   <data name="UsernameLabel" xml:space="preserve">
     <value>ユーザー名:</value>
+  </data>
+  <data name="BindConnectionsAndConfigPanels" xml:space="preserve">
+    <value>自動非表示時に「接続」パネルと「構成」パネルを連動させる</value>
+  </data>
+  <data name="DisplayReconnectionDialog" xml:space="preserve">
+    <value>サーバーから切断されたとき再接続ダイアログを表示 (RDP/ICA のみ)</value>
   </data>
 </root>

@@ -5171,7 +5171,7 @@ namespace mRemoteNG.Resources.Language {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to 256 Colours (8-bit).
+        ///   Looks up a localized string similar to 256 Colors (8-bit).
         /// </summary>
         internal static string Rdp256Colors {
             get {
@@ -7825,6 +7825,24 @@ namespace mRemoteNG.Resources.Language {
         internal static string UsernameLabel {
             get {
                 return ResourceManager.GetString("UsernameLabel", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Bind Connections and Config panels together when auto-hidden.
+        /// </summary>
+        internal static string BindConnectionsAndConfigPanels {
+            get {
+                return ResourceManager.GetString("BindConnectionsAndConfigPanels", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Display reconnection dialog when disconnected from server (RDP &amp;&amp; ICA only).
+        /// </summary>
+        internal static string DisplayReconnectionDialog {
+            get {
+                return ResourceManager.GetString("DisplayReconnectionDialog", resourceCulture);
             }
         }
     }

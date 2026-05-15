@@ -1081,6 +1081,9 @@ If you run into such an error, please create a new connection file!</comment>
   <data name="PropertyDescriptionUseConsoleSession" xml:space="preserve">
     <value>Connect to the console session of the remote host.</value>
   </data>
+  <data name="PropertyDescriptionUseRedirectionServerName" xml:space="preserve">
+    <value>サーバーから負荷分散リダイレクトが発行された際、リダイレクト先のホスト名ではなく、元の設定どおりのサーバー名で再接続します。GNOME Remote Desktop (--system モード) のような、リダイレクト先で同じサーバーへ再接続させる必要があるサーバーで必要です。Windows RDS / Azure Virtual Desktop / Citrix では、本来のリダイレクト先で接続を続行する設計なので無効のままにしてください。</value>
+  </data>
   <data name="PropertyDescriptionUseCredSsp" xml:space="preserve">
     <value>Use the Credential Security Support Provider (CredSSP) for authentication if it is available.</value>
   </data>
@@ -1224,6 +1227,9 @@ If you run into such an error, please create a new connection file!</comment>
   </data>
   <data name="UseConsoleSession" xml:space="preserve">
     <value>コンソールセッションを使用</value>
+  </data>
+  <data name="UseRedirectionServerName" xml:space="preserve">
+    <value>リダイレクトサーバー名を使用</value>
   </data>
   <data name="UseCredSsp" xml:space="preserve">
     <value>Use CredSSP</value>

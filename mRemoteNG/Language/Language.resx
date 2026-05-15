@@ -1119,6 +1119,9 @@ If you run into such an error, please create a new connection file!</value>
   <data name="PropertyDescriptionUseRCG" xml:space="preserve">
     <value>Use Remote Credential Guard to tunnel authentication on target back to source through the RDP channel.</value>
   </data>
+  <data name="PropertyDescriptionUseRedirectionServerName" xml:space="preserve">
+    <value>On server-issued load-balance redirects, reconnect using the originally configured server name instead of the redirection target. Required for some servers such as GNOME Remote Desktop (--system mode). Leave unchecked for Windows RDS / Azure Virtual Desktop / Citrix.</value>
+  </data>
   <data name="PropertyDescriptionUser1" xml:space="preserve">
     <value>Feel free to enter any information you need here.</value>
   </data>
@@ -1283,6 +1286,9 @@ If you run into such an error, please create a new connection file!</value>
   </data>
   <data name="UseRCG" xml:space="preserve">
     <value>Use Remote Credential Guard</value>
+  </data>
+  <data name="UseRedirectionServerName" xml:space="preserve">
+    <value>Use Redirection Server Name</value>
   </data>
   <data name="UserField" xml:space="preserve">
     <value>User Field</value>

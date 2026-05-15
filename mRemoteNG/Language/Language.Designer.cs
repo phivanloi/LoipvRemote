@@ -4700,6 +4700,15 @@ namespace mRemoteNG.Resources.Language {
                 return ResourceManager.GetString("PropertyDescriptionUseRCG", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to On server-issued load-balance redirects, reconnect using the originally configured server name instead of the redirection target. Required for some servers such as GNOME Remote Desktop (--system mode). Leave unchecked for Windows RDS / Azure Virtual Desktop / Citrix..
+        /// </summary>
+        internal static string PropertyDescriptionUseRedirectionServerName {
+            get {
+                return ResourceManager.GetString("PropertyDescriptionUseRedirectionServerName", resourceCulture);
+            }
+        }
         
         /// <summary>
         ///   Looks up a localized string similar to Use restricted admin mode on the target host (local system context)..
@@ -6982,6 +6991,15 @@ namespace mRemoteNG.Resources.Language {
             }
         }
         
+        /// <summary>
+        ///   Looks up a localized string similar to Use Redirection Server Name.
+        /// </summary>
+        internal static string UseRedirectionServerName {
+            get {
+                return ResourceManager.GetString("UseRedirectionServerName", resourceCulture);
+            }
+        }
+
         /// <summary>
         ///   Looks up a localized string similar to Use Remote Credential Guard.
         /// </summary>

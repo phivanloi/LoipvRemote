@@ -4700,6 +4700,51 @@ namespace mRemoteNG.Resources.Language {
                 return ResourceManager.GetString("PropertyDescriptionUseRCG", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to If an RDP connection fails with an authentication error, Windows may be substituting a stale cached credential for the credentials configured on this connection. Use this action to delete the TERMSRV/&lt;hostname&gt; entry from the Windows Credential Manager so the credentials on this connection are sent unchanged on the next attempt..
+        /// </summary>
+        internal static string PropertyDescriptionClearCachedRdpCredentials {
+            get {
+                return ResourceManager.GetString("PropertyDescriptionClearCachedRdpCredentials", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Delete the cached credential for {0}?.
+        /// </summary>
+        internal static string ConfirmDeleteCachedRdpCredential {
+            get {
+                return ResourceManager.GetString("ConfirmDeleteCachedRdpCredential", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Cleared cached RDP credentials for {0}..
+        /// </summary>
+        internal static string ClearedCachedRdpCredentials {
+            get {
+                return ResourceManager.GetString("ClearedCachedRdpCredentials", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to No cached RDP credential was found for {0}. Nothing to delete..
+        /// </summary>
+        internal static string NoCachedRdpCredentialFound {
+            get {
+                return ResourceManager.GetString("NoCachedRdpCredentialFound", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Failed to clear cached RDP credentials for {0}. See the Messages pane for details..
+        /// </summary>
+        internal static string FailedToClearCachedRdpCredential {
+            get {
+                return ResourceManager.GetString("FailedToClearCachedRdpCredential", resourceCulture);
+            }
+        }
         
         /// <summary>
         ///   Looks up a localized string similar to Use restricted admin mode on the target host (local system context)..
@@ -6990,7 +7035,16 @@ namespace mRemoteNG.Resources.Language {
                 return ResourceManager.GetString("UseRCG", resourceCulture);
             }
         }
-        
+
+        /// <summary>
+        ///   Looks up a localized string similar to Clear Cached RDP Credentials.
+        /// </summary>
+        internal static string ClearCachedRdpCredentials {
+            get {
+                return ResourceManager.GetString("ClearCachedRdpCredentials", resourceCulture);
+            }
+        }
+
         /// <summary>
         ///   Looks up a localized string similar to Use Restricted Admin.
         /// </summary>

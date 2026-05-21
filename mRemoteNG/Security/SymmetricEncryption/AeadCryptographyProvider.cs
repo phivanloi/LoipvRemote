@@ -112,7 +112,7 @@ namespace mRemoteNG.Security.SymmetricEncryption
 
         private byte[] SimpleEncryptWithPassword(byte[] secretMessage, string password, byte[]? nonSecretPayload = null)
         {
-            nonSecretPayload ??= ""u8.ToArray();
+            nonSecretPayload ??= Array.Empty<byte>();
 
             //User Error Checks
             if (string.IsNullOrWhiteSpace(password) || password.Length < MinPasswordLength)
@@ -147,7 +147,7 @@ namespace mRemoteNG.Security.SymmetricEncryption
                 throw new ArgumentException(@"Secret Message Required!", nameof(secretMessage));
 
             //Non-secret Payload Optional
-            nonSecretPayload ??= ""u8.ToArray();
+            nonSecretPayload ??= Array.Empty<byte>();
 
             //Using random nonce large enough not to repeat
             byte[] nonce = new byte[NonceBitSize / 8];

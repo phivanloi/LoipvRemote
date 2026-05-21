@@ -29,7 +29,8 @@ namespace mRemoteNG.Credential
             Browsable(true),
             LocalizedAttributes.LocalizedDisplayName("strPropertyNamePassword"),
             LocalizedAttributes.LocalizedDescription("strPropertyDescriptionPassword"), 
-            PasswordPropertyText(true)]public string Password { get; set; } = string.Empty;
+            PasswordPropertyText(true)]
+        public string Password { get; set; } = string.Empty;
 
 	    [LocalizedAttributes.LocalizedCategory("strCategoryCredentials", 2), 
             Browsable(true),

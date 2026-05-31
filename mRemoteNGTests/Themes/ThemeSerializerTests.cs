@@ -19,6 +19,15 @@ public class ThemeSerializerTests
     }
 
     [Test]
+    public void SaveToXmlFile_WithWhitespaceBaseThemeUri_ThrowsArgumentException()
+    {
+        ThemeInfo baseTheme = new("baseTheme", new VS2015LightTheme(), "   ", VisualStudioToolStripExtender.VsVersion.Vs2015);
+        ThemeInfo themeToSave = new("newTheme", new VS2015LightTheme(), "", VisualStudioToolStripExtender.VsVersion.Vs2015);
+
+        Assert.Throws<ArgumentException>(() => ThemeSerializer.SaveToXmlFile(themeToSave, baseTheme));
+    }
+
+    [Test]
     public void SaveToXmlFile_WithBaseThemeUriWithoutDirectory_ThrowsArgumentException()
     {
         ThemeInfo baseTheme = new("baseTheme", new VS2015LightTheme(), "base.vstheme", VisualStudioToolStripExtender.VsVersion.Vs2015);

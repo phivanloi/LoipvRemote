@@ -2,7 +2,6 @@
 
 using mRemoteNG.App.Update;
 using mRemoteNG.Config.Settings;
-using mRemoteNG.DotNet.Update;
 using mRemoteNG.UI.Forms;
 using mRemoteNG.Resources.Language;
 using System;
@@ -50,48 +49,10 @@ namespace mRemoteNG.App
 #if !SELF_CONTAINED
             // Runtime checks only needed for framework-dependent deployments
             // Self-contained builds include the runtime, so no check is needed
-            string? installedVersion = DotNetRuntimeCheck.GetLatestDotNetRuntimeVersion();
-            //installedVersion = ""; // Force check for testing purposes
+            // Note: .NET runtime check is not needed here — the .NET host (apphost)
+            // natively displays a missing-runtime dialog with a download link.
 
             var checkFail = false;
-
-            // Checking .NET Runtime version
-            var (latestRuntimeVersion, downloadUrl) = DotNetRuntimeCheck.GetLatestAvailableDotNetVersionAsync().GetAwaiter().GetResult();
-            bool validDownloadUrl = Uri.TryCreate(downloadUrl, UriKind.Absolute, out var downloadUri) && downloadUri.Scheme == Uri.UriSchemeHttps;
-            if (string.IsNullOrEmpty(installedVersion))
-            {
-                try
-                {
-                    var result = ShowDownloadCancelDialog(
-                        $".NET " + DotNetRuntimeCheck.RequiredDotnetVersion + ".0 " + Language.MsgRuntimeIsRequired + "\n\n" +
-                        Language.MsgDownloadLatestRuntime + "\n" + downloadUrl + "\n\n" +
-                        Language.MsgExit + "\n\n",
-                        Language.MsgMissingRuntime + " .NET " + DotNetRuntimeCheck.RequiredDotnetVersion,
-                        validDownloadUrl);
-
-                    if (result == DialogResult.OK && InternetConnection.IsPosible())
-                    {
-                        if (validDownloadUrl)
-                        {
-                            try
-                            {
-                                Process.Start(new ProcessStartInfo(fileName: downloadUrl) { UseShellExecute = true });
-                            }
-                            catch (Exception ex)
-                            {
-                                MessageBox.Show($"Unable to open download link: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                            }
-                        }
-                        else
-                        {
-                            MessageBox.Show("The download link is unavailable. Please visit https://dotnet.microsoft.com/download to download the required runtime manually.",
-                                "Download Unavailable", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                        }
-                    }
-                }
-                catch { }
-                checkFail = true;
-            }
 
             // Checking Visual C++ Redistributable version
             if (VCppRuntimeCheck.GetInstalledVcRedistVersions() == null || VCppRuntimeCheck.GetInstalledVcRedistVersions().Count == 0)

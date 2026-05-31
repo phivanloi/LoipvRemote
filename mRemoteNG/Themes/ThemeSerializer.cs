@@ -57,7 +57,7 @@ namespace mRemoteNG.Themes
         /// <param name="filename"></param>
         /// <param name="defaultTheme"></param>
         /// <returns></returns>
-        public static ThemeInfo LoadFromXmlFile(string filename, ThemeInfo defaultTheme = null)
+        public static ThemeInfo LoadFromXmlFile(string filename, ThemeInfo? defaultTheme = null)
         {
             if (filename == null || filename.Contains("../") || filename.Contains(@"..\"))
                 throw new ArgumentException("Invalid file path");

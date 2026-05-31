@@ -17,13 +17,15 @@ namespace mRemoteNG.Themes
         /// <param name="baseTheme"></param>
         public static void SaveToXmlFile(ThemeInfo themeToSave, ThemeInfo baseTheme)
         {
-            if (string.IsNullOrEmpty(baseTheme.URI) || baseTheme.URI.Contains("../") || baseTheme.URI.Contains(@"..\"))
+            if (string.IsNullOrWhiteSpace(baseTheme.URI) || baseTheme.URI.Contains("../") || baseTheme.URI.Contains(@"..\"))
                 throw new ArgumentException("Invalid file path");
             if (themeToSave.Name == null || themeToSave.Name.Contains("../") || themeToSave.Name.Contains(@"..\"))
                 throw new ArgumentException("Invalid file path");
-            string directoryName = Path.GetDirectoryName(baseTheme.URI)
-                                   ?? throw new ArgumentException("Base theme path has no directory component");
-            string toSaveURI = Path.Combine(directoryName, themeToSave.Name + ".vstheme");
+            string oldURI = baseTheme.URI;
+            string directoryName = Path.GetDirectoryName(oldURI);
+            if (string.IsNullOrEmpty(directoryName))
+                throw new ArgumentException("Invalid file path");
+            string toSaveURI = Path.Combine(directoryName, $"{themeToSave.Name}.vstheme");
             File.Copy(baseTheme.URI, toSaveURI);
             themeToSave.URI = toSaveURI;
         }

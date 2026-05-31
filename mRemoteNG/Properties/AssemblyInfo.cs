@@ -9,7 +9,6 @@ using System.Reflection;
 using System.Resources;
 
 // Compute version values
-
 //Build nr: 3480
 
 // General Information

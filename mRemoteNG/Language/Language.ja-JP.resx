@@ -1081,6 +1081,21 @@ If you run into such an error, please create a new connection file!</comment>
   <data name="PropertyDescriptionUseConsoleSession" xml:space="preserve">
     <value>リモートホストのコンソールセッションに接続します。</value>
   </data>
+  <data name="PropertyDescriptionClearCachedRdpCredentials" xml:space="preserve">
+    <value>RDP 接続が認証エラーで失敗する場合、Windows がキャッシュされた古い資格情報をこの接続に設定された資格情報の代わりに使用している可能性があります。このアクションで Windows 資格情報マネージャーの TERMSRV/&lt;ホスト名&gt; エントリを削除し、次回接続時にこの接続の資格情報がそのまま送信されるようにします。</value>
+  </data>
+  <data name="ConfirmDeleteCachedRdpCredential" xml:space="preserve">
+    <value>{0} のキャッシュ資格情報を削除しますか？</value>
+  </data>
+  <data name="ClearedCachedRdpCredentials" xml:space="preserve">
+    <value>{0} のキャッシュ RDP 資格情報を削除しました。</value>
+  </data>
+  <data name="NoCachedRdpCredentialFound" xml:space="preserve">
+    <value>{0} のキャッシュ RDP 資格情報は見つかりませんでした。削除対象はありません。</value>
+  </data>
+  <data name="FailedToClearCachedRdpCredential" xml:space="preserve">
+    <value>{0} のキャッシュ RDP 資格情報の削除に失敗しました。詳細はメッセージペインを確認してください。</value>
+  </data>
   <data name="PropertyDescriptionUseCredSsp" xml:space="preserve">
     <value>利用可能な場合、認証に Credential Security Support Provider (CredSSP) を使用します。</value>
   </data>
@@ -1221,6 +1236,9 @@ If you run into such an error, please create a new connection file!</comment>
   </data>
   <data name="SmartSizeMode" xml:space="preserve">
     <value>画面拡縮モード</value>
+  </data>
+  <data name="ClearCachedRdpCredentials" xml:space="preserve">
+    <value>キャッシュされた RDP 資格情報を削除</value>
   </data>
   <data name="UseConsoleSession" xml:space="preserve">
     <value>コンソールセッションを使用</value>

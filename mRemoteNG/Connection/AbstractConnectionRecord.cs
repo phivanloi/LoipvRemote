@@ -1132,7 +1132,7 @@ namespace mRemoteNG.Connection
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
-        protected virtual void RaisePropertyChangedEvent(object sender, PropertyChangedEventArgs args)
+        protected virtual void RaisePropertyChangedEvent(object? sender, PropertyChangedEventArgs args)
         {
             PropertyChanged?.Invoke(sender, new PropertyChangedEventArgs(args.PropertyName));
         }

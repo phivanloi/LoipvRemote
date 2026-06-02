@@ -1299,6 +1299,8 @@ If you run into such an error, please create a new connection file!</value>
   <data name="UseRCG" xml:space="preserve">
     <value>Use Remote Credential Guard</value>
   </data>
+  <data name="UseRedirectionServerName" xml:space="preserve">
+    <value>Use Redirection Server Name</value>
   <data name="ClearCachedRdpCredentials" xml:space="preserve">
     <value>Clear Cached RDP Credentials</value>
   </data>

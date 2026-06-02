@@ -7028,6 +7028,15 @@ namespace mRemoteNG.Resources.Language {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Use Redirection Server Name.
+        /// </summary>
+        internal static string UseRedirectionServerName {
+            get {
+                return ResourceManager.GetString("UseRedirectionServerName", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   Looks up a localized string similar to Use Remote Credential Guard.
         /// </summary>
         internal static string UseRCG {

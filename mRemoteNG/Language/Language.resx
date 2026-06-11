@@ -1119,6 +1119,9 @@ If you run into such an error, please create a new connection file!</value>
   <data name="PropertyDescriptionUseRCG" xml:space="preserve">
     <value>Use Remote Credential Guard to tunnel authentication on target back to source through the RDP channel.</value>
   </data>
+  <data name="PropertyDescriptionUseRedirectionServerName" xml:space="preserve">
+    <value>Use the redirection server name instead of the connection hostname for RDP connections.</value>
+  </data>
   <data name="PropertyDescriptionClearCachedRdpCredentials" xml:space="preserve">
     <value>If an RDP connection fails with an authentication error, Windows may be substituting a stale cached credential for the credentials configured on this connection. Use this action to delete the TERMSRV/&lt;hostname&gt; entry from the Windows Credential Manager so the credentials on this connection are sent unchanged on the next attempt.</value>
   </data>
@@ -1301,6 +1304,7 @@ If you run into such an error, please create a new connection file!</value>
   </data>
   <data name="UseRedirectionServerName" xml:space="preserve">
     <value>Use Redirection Server Name</value>
+  </data>
   <data name="ClearCachedRdpCredentials" xml:space="preserve">
     <value>Clear Cached RDP Credentials</value>
   </data>
@@ -1332,8 +1336,7 @@ If you run into such an error, please create a new connection file!</value>
     <value>Protocol Event Disconnected. Host: "{1}"; Protocol: "{2}" Message: "{0}"</value>
   </data>
   <data name="ProtocolEventDisconnectFailed" xml:space="preserve">
-    <value>Protocol Event Disconnected failed.
-{0}</value>
+    <value>Protocol Event Disconnected failed.{0}</value>
   </data>
   <data name="ProtocolToImport" xml:space="preserve">
     <value>Protocol to import</value>

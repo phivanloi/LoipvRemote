@@ -51,7 +51,7 @@ jobs:
 
     steps:
       - name: (01) Checkout Repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
         # 2. Auto-detect solution file (Supports legacy .sln modern VS2026 .slnx)
       - name: (02) Find solution file
@@ -200,7 +200,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Download all artifacts
         uses: actions/download-artifact@v8

@@ -75,8 +75,6 @@ namespace mRemoteNG.UI.Forms
         {
             Logger.Instance.Log?.Debug($"[FrmOptions_Load] START - IsInitialized: {_isInitialized}, Visible: {this.Visible}, Handle: {this.Handle}");
 
-            ThemeManager.getInstance().ApplyThemeToTitleBar(this);
-
             // Only initialize once to prevent multiple event subscriptions and page reloading
             if (_isInitialized)
             {
@@ -93,8 +91,7 @@ namespace mRemoteNG.UI.Forms
             btnOK.Text = Language._Ok;
             btnCancel.Text = Language._Cancel;
             btnApply.Text = Language.Apply;
-            //ApplyTheme();
-            //ThemeManager.getInstance().ThemeChanged += ApplyTheme;
+            ApplyTheme();
             lstOptionPages.SelectedIndexChanged += LstOptionPages_SelectedIndexChanged;
             lstOptionPages.SelectedIndex = 0;
             Logger.Instance.Log?.Debug($"[FrmOptions_Load] Selected index set to 0");
@@ -128,6 +125,8 @@ namespace mRemoteNG.UI.Forms
             if (!ThemeManager.getInstance().ActiveAndExtended) return;
             BackColor = ThemeManager.getInstance().ActiveTheme.ExtendedPalette.getColor("Dialog_Background");
             ForeColor = ThemeManager.getInstance().ActiveTheme.ExtendedPalette.getColor("Dialog_Foreground");
+            pnlBottom.BackColor = ThemeManager.getInstance().ActiveTheme.ExtendedPalette.getColor("Dialog_Background");
+            pnlBottom.ForeColor = ThemeManager.getInstance().ActiveTheme.ExtendedPalette.getColor("Dialog_Foreground");
         }
 
 #if false

@@ -325,6 +325,19 @@ namespace mRemoteNG.Themes
         public bool ActiveAndExtended => ThemingActive && ActiveTheme.IsExtended;
 
         /// <summary>
+        /// True when the active theme has a dark background (derived from the
+        /// "Dialog_Background" luminance, since there is no explicit dark flag).
+        /// </summary>
+        public bool IsActiveThemeDark
+        {
+            get
+            {
+                Color background = ActiveTheme.ExtendedPalette?.getColor("Dialog_Background") ?? SystemColors.Control;
+                return background.GetBrightness() < 0.5;
+            }
+        }
+
+        /// <summary>
         /// Applies a dark or light native title bar to the given form based on the active theme's
         /// background luminance. Safe to call before the handle exists (no-op).
         /// </summary>
@@ -333,8 +346,7 @@ namespace mRemoteNG.Themes
             if (form == null || !form.IsHandleCreated)
                 return;
 
-            Color background = ActiveTheme.ExtendedPalette?.getColor("Dialog_Background") ?? SystemColors.Control;
-            NativeMethods.UseImmersiveDarkMode(form.Handle, background.GetBrightness() < 0.5);
+            NativeMethods.UseImmersiveDarkMode(form.Handle, IsActiveThemeDark);
         }
 
         public int ThemesCount => themes.Count;

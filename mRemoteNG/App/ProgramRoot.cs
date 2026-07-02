@@ -231,7 +231,7 @@ namespace mRemoteNG.App
             _wpfSplashThread.Start();
         }
 
-        private static void CloseSplash()
+        internal static void CloseSplash()
         {
             if (_wpfSplash != null)
             {

@@ -10,6 +10,8 @@ using mRemoteNG.Messages;
 using mRemoteNG.Properties;
 using WeifenLuo.WinFormsUI.Docking;
 using System.Runtime.Versioning;
+using System.Drawing;
+using System.Windows.Forms;
 
 namespace mRemoteNG.Themes
 {
@@ -321,6 +323,19 @@ namespace mRemoteNG.Themes
         }
 
         public bool ActiveAndExtended => ThemingActive && ActiveTheme.IsExtended;
+
+        /// <summary>
+        /// Applies a dark or light native title bar to the given form based on the active theme's
+        /// background luminance. Safe to call before the handle exists (no-op).
+        /// </summary>
+        public void ApplyThemeToTitleBar(Form form)
+        {
+            if (form == null || !form.IsHandleCreated)
+                return;
+
+            Color background = ActiveTheme.ExtendedPalette?.getColor("Dialog_Background") ?? SystemColors.Control;
+            NativeMethods.UseImmersiveDarkMode(form.Handle, background.GetBrightness() < 0.5);
+        }
 
         public int ThemesCount => themes.Count;
 

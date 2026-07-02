@@ -64,9 +64,18 @@ namespace mRemoteNG.UI.Forms
             InitOptionsPagesToListView();
         }
 
+        // Apply the dark/light title bar before the window is shown to avoid a white flash.
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+            ThemeManager.getInstance().ApplyThemeToTitleBar(this);
+        }
+
         private void FrmOptions_Load(object sender, EventArgs e)
         {
             Logger.Instance.Log?.Debug($"[FrmOptions_Load] START - IsInitialized: {_isInitialized}, Visible: {this.Visible}, Handle: {this.Handle}");
+
+            ThemeManager.getInstance().ApplyThemeToTitleBar(this);
 
             // Only initialize once to prevent multiple event subscriptions and page reloading
             if (_isInitialized)

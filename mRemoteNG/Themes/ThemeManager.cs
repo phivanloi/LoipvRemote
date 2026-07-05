@@ -334,22 +334,26 @@ namespace mRemoteNG.Themes
 
         public bool ActiveAndExtended => ThemingActive && ActiveTheme.IsExtended;
 
+        // Below this HSL lightness (Color.GetBrightness) the "Dialog_Background" is treated as dark.
+        private const float DarkThemeBrightnessThreshold = 0.5f;
+
         /// <summary>
-        /// True when the active theme has a dark background (derived from the
-        /// "Dialog_Background" luminance, since there is no explicit dark flag).
+        /// True when the active theme has a dark background (derived from the "Dialog_Background"
+        /// brightness (HSL lightness via <see cref="Color.GetBrightness"/>), since there is no
+        /// explicit dark flag).
         /// </summary>
         public bool IsActiveThemeDark
         {
             get
             {
                 Color background = ActiveTheme.ExtendedPalette?.getColor("Dialog_Background") ?? SystemColors.Control;
-                return background.GetBrightness() < 0.5;
+                return background.GetBrightness() < DarkThemeBrightnessThreshold;
             }
         }
 
         /// <summary>
         /// Applies a dark or light native title bar to the given form based on the active theme's
-        /// background luminance. Safe to call before the handle exists (no-op).
+        /// background brightness. Safe to call before the handle exists (no-op).
         /// </summary>
         public void ApplyThemeToTitleBar(Form form)
         {

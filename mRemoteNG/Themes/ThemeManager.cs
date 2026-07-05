@@ -58,6 +58,13 @@ namespace mRemoteNG.Themes
             }
         }
 
+        // Persist the dark/light state of the active theme so startup can read it
+        // without loading any theme from disk (see ProgramRoot.StartApplication).
+        private void PersistActiveThemeDarkFlag()
+        {
+            Properties.OptionsThemePage.Default.IsActiveThemeDark = IsActiveThemeDark;
+        }
+
         #endregion
 
         #region Public Methods
@@ -285,6 +292,7 @@ namespace mRemoteNG.Themes
                 if (themes.Count == 0) return;
                 _themeActive = value;
                 Properties.OptionsThemePage.Default.ThemingActive = value;
+                PersistActiveThemeDarkFlag();
                 NotifyThemeChanged(this, new PropertyChangedEventArgs(""));
             }
         }
@@ -308,6 +316,7 @@ namespace mRemoteNG.Themes
 
                     Properties.OptionsThemePage.Default.ThemeName = DefaultTheme.Name;
                     _activeTheme = DefaultTheme;
+                    PersistActiveThemeDarkFlag();
 
                     if (changed)
                         NotifyThemeChanged(this, new PropertyChangedEventArgs("theme"));
@@ -318,6 +327,7 @@ namespace mRemoteNG.Themes
 
                 _activeTheme = value;
                 Properties.OptionsThemePage.Default.ThemeName = value.Name;
+                PersistActiveThemeDarkFlag();
                 NotifyThemeChanged(this, new PropertyChangedEventArgs("theme"));
             }
         }

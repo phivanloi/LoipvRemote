@@ -60,9 +60,14 @@ namespace mRemoteNG.Themes
 
         // Persist the dark/light state of the active theme so startup can read it
         // without loading any theme from disk (see ProgramRoot.StartApplication).
+        // Uses the raw _activeTheme, not the ThemingActive-gated ActiveTheme: during
+        // construction ThemingActive is still false, which would otherwise persist "light".
         private void PersistActiveThemeDarkFlag()
         {
-            Properties.OptionsThemePage.Default.IsActiveThemeDark = IsActiveThemeDark;
+            bool dark = IsThemeDark(_activeTheme);
+            if (Properties.OptionsThemePage.Default.IsActiveThemeDark == dark) return;
+            Properties.OptionsThemePage.Default.IsActiveThemeDark = dark;
+            Properties.OptionsThemePage.Default.Save();
         }
 
         #endregion
@@ -337,19 +342,19 @@ namespace mRemoteNG.Themes
         // Below this HSL lightness (Color.GetBrightness) the "Dialog_Background" is treated as dark.
         private const float DarkThemeBrightnessThreshold = 0.5f;
 
+        // True when the given theme has a dark background (HSL lightness of "Dialog_Background").
+        public static bool IsThemeDark(ThemeInfo? theme)
+        {
+            Color background = theme?.ExtendedPalette?.getColor("Dialog_Background") ?? SystemColors.Control;
+            return background.GetBrightness() < DarkThemeBrightnessThreshold;
+        }
+
         /// <summary>
         /// True when the active theme has a dark background (derived from the "Dialog_Background"
         /// brightness (HSL lightness via <see cref="Color.GetBrightness"/>), since there is no
         /// explicit dark flag).
         /// </summary>
-        public bool IsActiveThemeDark
-        {
-            get
-            {
-                Color background = ActiveTheme.ExtendedPalette?.getColor("Dialog_Background") ?? SystemColors.Control;
-                return background.GetBrightness() < DarkThemeBrightnessThreshold;
-            }
-        }
+        public bool IsActiveThemeDark => IsThemeDark(ActiveTheme);
 
         /// <summary>
         /// Applies a dark or light native title bar to the given form based on the active theme's

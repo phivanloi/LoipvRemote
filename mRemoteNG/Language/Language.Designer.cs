@@ -6637,7 +6637,7 @@ namespace mRemoteNG.Resources.Language {
                 return ResourceManager.GetString("UseTerminalTitleForTabs", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to Show Text.
         /// </summary>

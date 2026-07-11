@@ -1,4 +1,4 @@
-﻿param (
+param (
     [string]
     $SolutionDir,
     [string]
@@ -10,7 +10,7 @@ $ErrorActionPreference = "Stop"
 Write-Output ""
 Write-Output "    /===== Begin rename_and_copy_installer =====/"
 
-$targetVersionedFile = "$SolutionDir\mRemoteNG\bin\x64\$BuildConfiguration\mRemoteNG.exe"
+$targetVersionedFile = "$SolutionDir\LoipvRemote\bin\x64\$BuildConfiguration\LoipvRemote.exe"
 #$fileversion = &"$SolutionDir\Tools\exes\sigcheck.exe" /accepteula -q -n $targetVersionedFile
 #$prodversion = ((Get-Item -Path $targetVersionedFile).VersionInfo | Select-Object -Property ProductVersion)."ProductVersion"
 $fileversion = ((Get-Item -Path $targetVersionedFile).VersionInfo | Select-Object -Property FileVersion)."FileVersion"
@@ -32,10 +32,10 @@ if ($env:APPVEYOR_PROJECT_NAME -match "(Nightly)") {
 
 $dstPath = "$($SolutionDir)Release"
 New-Item -Path $dstPath -ItemType Directory -Force
-$srcMsi = $SolutionDir + "mRemoteNGInstaller\Installer\bin\x64\$BuildConfiguration\en-US\mRemoteNG-Installer.msi"
-$dstMsi = $dstPath + "\mRemoteNG-Installer-" + $msiversion + ".msi"
-#$srcSymbols = $SolutionDir + "mRemoteNGInstaller\Installer\bin\x64\$BuildConfiguration\en-US\mRemoteNG-Installer-Symbols*.zip"
-#$dstSymbols = $SolutionDir + "Release\mRemoteNG-Installer-Symbols-" + $msiversion + ".zip"
+$srcMsi = $SolutionDir + "LoipvRemoteInstaller\Installer\bin\x64\$BuildConfiguration\en-US\LoipvRemote-Installer.msi"
+$dstMsi = $dstPath + "\LoipvRemote-Installer-" + $msiversion + ".msi"
+#$srcSymbols = $SolutionDir + "LoipvRemoteInstaller\Installer\bin\x64\$BuildConfiguration\en-US\LoipvRemote-Installer-Symbols*.zip"
+#$dstSymbols = $SolutionDir + "Release\LoipvRemote-Installer-Symbols-" + $msiversion + ".zip"
 
 Write-Output "        Copy Installer file:"
 Write-Output "          From: $srcMsi"

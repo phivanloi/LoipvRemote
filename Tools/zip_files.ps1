@@ -1,4 +1,4 @@
-﻿param (
+param (
     [string]
     [Parameter(Mandatory=$true)]
     $SolutionDir,
@@ -46,7 +46,7 @@ if($IsAppVeyor) {
 
 # Package debug symbols zip file
 Write-Output "Packaging debug symbols"
-$zipFilePrefix = "mRemoteNG-symbols"
+$zipFilePrefix = "LoipvRemote-symbols"
 $pdbFiles = Get-ChildItem -Path  $SolutionDir -Filter *.pdb -Recurse
 $tempPdbPath = (New-TemporaryDirectory)[0]
 foreach ($pdbFile in $pdbFiles) {
@@ -60,7 +60,7 @@ if ($IsAppVeyor) {
     $outputZipPath = Join-Path -Path $SolutionDir -ChildPath "Release\$zipFilePrefix-$($ModifiedVersion).zip"
     Write-Output "outputZipPath: $outputZipPath"
     7z a $outputZipPath "$tempPdbPath\*.pdb"
-} 
+}
 # else {
 #     # Local build
 #     $outputZipPath = "$($SolutionDir)Release\$zipFilePrefix-$($ModifiedVersion).zip"
@@ -73,7 +73,7 @@ if ($IsAppVeyor) {
 Write-Output "Packaging portable ZIP file"
 # AppVeyor build
 if ($IsAppVeyor) {
-    $outputZipPath = Join-Path -Path $SolutionDir -ChildPath "Release\mRemoteNG-Portable-$($ModifiedVersion).zip"
+    $outputZipPath = Join-Path -Path $SolutionDir -ChildPath "Release\LoipvRemote-Portable-$($ModifiedVersion).zip"
     7z a -bt -bd -bb1 -mx=9 -tzip -y -r $outputZipPath $TargetDir\*
     Write-Output "Portable ZIP: $outputZipPath"
 }
@@ -81,7 +81,7 @@ if ($IsAppVeyor) {
 else {
     if ($Source)
     {
-        $outputZipPath="$($SolutionDir)\Release\mRemoteNG-Portable-$($ModifiedVersion).zip"
+        $outputZipPath="$($SolutionDir)\Release\LoipvRemote-Portable-$($ModifiedVersion).zip"
         Compress-Archive $Source $outputZipPath -Force
     } else {
         Write-Output "Files do not exist:" $Source", nothing to compress"

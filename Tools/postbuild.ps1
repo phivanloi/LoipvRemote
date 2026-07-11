@@ -29,7 +29,7 @@ param (
 
 Write-Output ""
 Write-Output "+============================================================+"
-Write-Output "|             Beginning mRemoteNG Post Build                 |"
+Write-Output "|             Beginning LoipvRemote Post Build                 |"
 Write-Output "+============================================================+"
 Format-Table -AutoSize -Wrap -InputObject @{
     "SolutionDir" = $SolutionDir
@@ -47,8 +47,8 @@ if ( $env:APPVEYOR_PROJECT_NAME -match "(CI)" -and -not ([string]::IsNullOrEmpty
 $dstPath = "$($SolutionDir)Release"
 New-Item -Path $dstPath -ItemType Directory -Force
 
-# $RunInstaller = $TargetDir -match "\\mRemoteNGInstaller\\Installer\\bin\\"
-# $RunPortable = ( ($Targetdir -match "\\mRemoteNG\\bin\\") -and -not ($TargetDir -match "\\mRemoteNGInstaller\\Installer\\bin\\") )
+# $RunInstaller = $TargetDir -match "\\LoipvRemoteInstaller\\Installer\\bin\\"
+# $RunPortable = ( ($Targetdir -match "\\LoipvRemote\\bin\\") -and -not ($TargetDir -match "\\LoipvRemoteInstaller\\Installer\\bin\\") )
 
 if ( ($ConfigurationName -match "Release") -and ($env:APPVEYOR_PROJECT_NAME -notmatch "(CI)") -and -not ([string]::IsNullOrEmpty($env:WEBSITE_TARGET_OWNER)) -and -not ([string]::IsNullOrEmpty($env:WEBSITE_TARGET_REPOSITORY)) ) {
 
@@ -71,6 +71,6 @@ if ( ($ConfigurationName -match "Release") -and ($env:APPVEYOR_PROJECT_NAME -not
 }
 
 
-Write-Output "End mRemoteNG Post Build"
+Write-Output "End LoipvRemote Post Build"
 Write-Output ""
 

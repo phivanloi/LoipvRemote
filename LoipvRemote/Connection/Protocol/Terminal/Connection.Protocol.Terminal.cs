@@ -1,0 +1,115 @@
+using System;
+using System.Drawing;
+using System.Runtime.Versioning;
+using System.Windows.Forms;
+using LoipvRemote.App;
+using LoipvRemote.Messages;
+using LoipvRemote.Resources.Language;
+
+namespace LoipvRemote.Connection.Protocol.Terminal
+{
+    [SupportedOSPlatform("windows")]
+    public class ProtocolTerminal(ConnectionInfo connectionInfo) : ProtocolBase
+    {
+        #region Private Fields
+
+        private IntPtr _handle;
+        private readonly ConnectionInfo _connectionInfo = connectionInfo;
+        private ConsoleControl.ConsoleControl _consoleControl;
+
+        #endregion
+
+        #region Public Methods
+
+        public override bool Connect()
+        {
+            try
+            {
+                Runtime.MessageCollector?.AddMessage(MessageClass.InformationMsg, "Attempting to start Terminal session.", true);
+
+                _consoleControl = new ConsoleControl.ConsoleControl
+                {
+                    Dock = DockStyle.Fill,
+                    BackColor = ColorTranslator.FromHtml("#012456"),
+                    ForeColor = Color.White,
+                    IsInputEnabled = true,
+                    Padding = new Padding(0, 20, 0, 0)
+                };
+
+                string commandProcessor = Environment.GetEnvironmentVariable("COMSPEC") ?? @"C:\Windows\System32\cmd.exe";
+                TerminalProcessStartInfo process = TerminalProcessStartInfoBuilder.Build(
+                    _connectionInfo.Hostname, _connectionInfo.Username, _connectionInfo.Port, commandProcessor);
+                _consoleControl.StartProcess(process.FileName, process.Arguments);
+
+                // Wait for the console control to create its handle
+                int maxWaitMs = 5000; // 5 seconds timeout
+                long startTicks = Environment.TickCount64;
+                while (!_consoleControl.IsHandleCreated &&
+                       Environment.TickCount64 < startTicks + maxWaitMs)
+                {
+                    System.Threading.Thread.Sleep(50);
+                }
+
+                if (!_consoleControl.IsHandleCreated)
+                {
+                    throw new Exception("Failed to initialize terminal console within 5 seconds. This may indicate system resource constraints or permission issues.");
+                }
+
+                _handle = _consoleControl.Handle;
+                NativeMethods.SetParent(_handle, InterfaceControl.Handle);
+
+                Resize(this, new EventArgs());
+                base.Connect();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Runtime.MessageCollector?.AddExceptionMessage(Language.ConnectionFailed, ex);
+                return false;
+            }
+        }
+
+        public override void Focus()
+        {
+            try
+            {
+                NativeMethods.SetForegroundWindow(_handle);
+            }
+            catch (Exception ex)
+            {
+                Runtime.MessageCollector.AddExceptionMessage(Language.IntAppFocusFailed, ex);
+            }
+        }
+
+        protected override void Resize(object sender, EventArgs e)
+        {
+            try
+            {
+                if (InterfaceControl.Size == Size.Empty) return;
+                // Use ClientRectangle to account for padding (for connection frame color)
+                Rectangle clientRect = InterfaceControl.ClientRectangle;
+                NativeMethods.MoveWindow(_handle,
+                                         clientRect.X - SystemInformation.FrameBorderSize.Width,
+                                         clientRect.Y - (SystemInformation.CaptionHeight + SystemInformation.FrameBorderSize.Height),
+                                         clientRect.Width + SystemInformation.FrameBorderSize.Width * 2,
+                                         clientRect.Height + SystemInformation.CaptionHeight +
+                                         SystemInformation.FrameBorderSize.Height * 2, true);
+            }
+            catch (Exception ex)
+            {
+                Runtime.MessageCollector.AddExceptionMessage(Language.IntAppResizeFailed, ex);
+            }
+        }
+
+        #endregion
+
+        #region Enumerations
+
+        public enum Defaults
+        {
+            Port = 22
+        }
+
+        #endregion
+    }
+}

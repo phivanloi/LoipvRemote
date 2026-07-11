@@ -1,4 +1,4 @@
-﻿param(
+param(
     [string]
     [Parameter(Mandatory=$true)]
     # Folder path that contains the files you would like to sign. Recursive.
@@ -6,11 +6,11 @@
 
     [string]
     # The code signing certificate to use when signing the files.
-    $CertificatePath = "C:\mRemoteNG_code_signing_cert.pfx",
+    $CertificatePath = "C:\LoipvRemote_code_signing_cert.pfx",
 
     [SecureString]
     # Password to unlock the code signing certificate.
-    $CertificatePassword = (Get-Credential -Message "Enter password for the mRemoteNG code signing certificate" -UserName "USERNAME NOT NEEDED").Password,
+    $CertificatePassword = (Get-Credential -Message "Enter password for the LoipvRemote code signing certificate" -UserName "USERNAME NOT NEEDED").Password,
 
     [string[]]
     # File names to exclude from signing

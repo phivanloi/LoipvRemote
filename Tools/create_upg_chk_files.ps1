@@ -1,4 +1,4 @@
-﻿#Requires -Version 4.0
+#Requires -Version 4.0
 param (
     [string]
     [Parameter(Mandatory=$true)]
@@ -32,15 +32,15 @@ function New-MsiUpdateFileContent {
         [Parameter(Mandatory=$true)]
         $TagName
     )
-    
+
     $version = $MsiFile.BaseName -replace "[a-zA-Z-]*"
     $certThumbprint = (Get-AuthenticodeSignature -FilePath $MsiFile).SignerCertificate.Thumbprint
     $hash = Get-FileHash -Algorithm SHA512 $MsiFile | ForEach-Object { $_.Hash }
 
     $fileContents = `
 "Version: $version
-dURL: https://github.com/mRemoteNG/mRemoteNG/releases/download/$TagName/$($MsiFile.Name)
-clURL: https://raw.githubusercontent.com/mRemoteNG/mRemoteNG/$TagName/CHANGELOG.md
+dURL: https://github.com/LoipvRemote/LoipvRemote/releases/download/$TagName/$($MsiFile.Name)
+clURL: https://raw.githubusercontent.com/LoipvRemote/LoipvRemote/$TagName/CHANGELOG.md
 CertificateThumbprint: $certThumbprint
 Checksum: $hash"
     Write-Output $fileContents
@@ -57,14 +57,14 @@ function New-ZipUpdateFileContent {
         [Parameter(Mandatory=$true)]
         $TagName
     )
-    
+
     $version = $ZipFile.BaseName -replace "[a-zA-Z-]*"
     $hash = Get-FileHash -Algorithm SHA512 $ZipFile | ForEach-Object { $_.Hash }
 
     $fileContents = `
 "Version: $version
-dURL: https://github.com/mRemoteNG/mRemoteNG/releases/download/$TagName/$($ZipFile.Name)
-clURL: https://raw.githubusercontent.com/mRemoteNG/mRemoteNG/$TagName/CHANGELOG.TXT
+dURL: https://github.com/LoipvRemote/LoipvRemote/releases/download/$TagName/$($ZipFile.Name)
+clURL: https://raw.githubusercontent.com/LoipvRemote/LoipvRemote/$TagName/CHANGELOG.TXT
 Checksum: $hash"
     Write-Output $fileContents
 }
@@ -117,7 +117,7 @@ if ($env:APPVEYOR_PROJECT_NAME -match "(Nightly)") {
     $UpdateChannel = ""
 }
 
-#$buildFolder = Join-Path -Path $PSScriptRoot -ChildPath "..\mRemoteNG\bin\x64\Release" -Resolve -ErrorAction Ignore
+#$buildFolder = Join-Path -Path $PSScriptRoot -ChildPath "..\LoipvRemote\bin\x64\Release" -Resolve -ErrorAction Ignore
 $ReleaseFolder = Join-Path -Path $PSScriptRoot -ChildPath "..\Release" -Resolve
 
 if ($UpdateChannel -ne "" -and $ReleaseFolder -ne "" -and $WebsiteTargetOwner -and $WebsiteTargetRepository) {
@@ -128,7 +128,7 @@ if ($UpdateChannel -ne "" -and $ReleaseFolder -ne "" -and $WebsiteTargetOwner -a
         $msiUpdateFileName = Resolve-UpdateCheckFileName -UpdateChannel $UpdateChannel -Type Normal
         Write-Output "`n`nMSI Update Check File Contents ($msiUpdateFileName)`n------------------------------"
         Tee-Object -InputObject $msiUpdateContents -FilePath "$ReleaseFolder\$msiUpdateFileName"
-        
+
         # commit msi update txt file
         if ($env:WEBSITE_UPDATE_ENABLED.ToLower() -eq "true") {
             if ((Test-Path -Path "$ReleaseFolder\$msiUpdateFileName") -and (-not [string]::IsNullOrEmpty($WebsiteTargetRepository))) {
@@ -148,7 +148,7 @@ if ($UpdateChannel -ne "" -and $ReleaseFolder -ne "" -and $WebsiteTargetOwner -a
         $zipUpdateFileName = Resolve-UpdateCheckFileName -UpdateChannel $UpdateChannel -Type Portable
         Write-Output "`n`nZip Update Check File Contents ($zipUpdateFileName)`n------------------------------"
         Tee-Object -InputObject $zipUpdateContents -FilePath "$ReleaseFolder\$zipUpdateFileName"
-        
+
         # commit zip update txt file
         if ($env:WEBSITE_UPDATE_ENABLED.ToLower() -eq "true") {
             if ((Test-Path -Path "$ReleaseFolder\$zipUpdateFileName") -and (-not [string]::IsNullOrEmpty($WebsiteTargetRepository))) {

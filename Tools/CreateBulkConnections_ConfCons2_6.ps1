@@ -1,14 +1,14 @@
-﻿#####################################
+#####################################
 # Authors: David Sparer & Jack Denton
 # Summary:
-#   This is intended to be a template for creating connections in bulk. This uses the serializers directly from the mRemoteNG binaries.
+#   This is intended to be a template for creating connections in bulk. This uses the serializers directly from the LoipvRemote binaries.
 #   You will still need to create the connection info objects, but the library will handle serialization. It is expected that you
-#   are familiar with PowerShell. If this is not the case, reach out to the mRemoteNG community for help.
+#   are familiar with PowerShell. If this is not the case, reach out to the LoipvRemote community for help.
 # Usage:
 #   Replace or modify the examples that are shown toward the end of the script to create your own connection info objects.
 #####################################
 
-foreach ($Path in 'HKLM:\SOFTWARE\WOW6432Node\mRemoteNG', 'HKLM:\SOFTWARE\mRemoteNG') {
+foreach ($Path in 'HKLM:\SOFTWARE\WOW6432Node\LoipvRemote', 'HKLM:\SOFTWARE\LoipvRemote') {
     Try {
         $mRNGPath = (Get-ItemProperty -Path $Path -Name InstallDir -ErrorAction Stop).InstallDir
         break
@@ -20,21 +20,21 @@ foreach ($Path in 'HKLM:\SOFTWARE\WOW6432Node\mRemoteNG', 'HKLM:\SOFTWARE\mRemot
 if (!$mRNGPath) {
     Add-Type -AssemblyName System.Windows.Forms
     $FolderBrowser = [System.Windows.Forms.FolderBrowserDialog]@{
-        Description         = 'Please select the folder which contains mRemoteNG.exe'
+        Description         = 'Please select the folder which contains LoipvRemote.exe'
         ShowNewFolderButton = $false
     }
-    
+
     $Response = $FolderBrowser.ShowDialog()
-    
+
     if ($Response.value__ -eq 1) {
         $mRNGPath = $FolderBrowser.SelectedPath
     }
     elseif ($Response.value__ -eq 2) {
-        Write-Warning 'A folder containing mRemoteNG.exe has not been selected'
+        Write-Warning 'A folder containing LoipvRemote.exe has not been selected'
         return
     }
 }
-$null = [System.Reflection.Assembly]::LoadFile((Join-Path -Path $mRNGPath -ChildPath "mRemoteNG.exe"))
+$null = [System.Reflection.Assembly]::LoadFile((Join-Path -Path $mRNGPath -ChildPath "LoipvRemote.exe"))
 Add-Type -Path (Join-Path -Path $mRNGPath -ChildPath "BouncyCastle.Crypto.dll")
 
 
@@ -43,7 +43,7 @@ function ConvertTo-mRNGSerializedXml {
     [CmdletBinding()]
     Param (
         [Parameter(Mandatory)]
-        [mRemoteNG.Connection.ConnectionInfo[]]
+        [LoipvRemote.Connection.ConnectionInfo[]]
         $Xml
 )
 
@@ -52,7 +52,7 @@ function ConvertTo-mRNGSerializedXml {
 
         $Xml
 
-        if ($Xml -is [mRemoteNG.Container.ContainerInfo] -and $Xml.HasChildren()) {
+        if ($Xml -is [LoipvRemote.Container.ContainerInfo] -and $Xml.HasChildren()) {
             foreach ($Node in $Xml.Children) {
                 Get-ChildNodes -Xml $Node
             }
@@ -70,12 +70,12 @@ function ConvertTo-mRNGSerializedXml {
     else {
         $Password = [securestring]::new()
     }
-    $CryptoProvider = [mRemoteNG.Security.SymmetricEncryption.AeadCryptographyProvider]::new()
-    $SaveFilter = [mRemoteNG.Security.SaveFilter]::new()
-    $ConnectionNodeSerializer = [mRemoteNG.Config.Serializers.Xml.XmlConnectionNodeSerializer26]::new($CryptoProvider, $Password, $SaveFilter)
-    $XmlSerializer = [mRemoteNG.Config.Serializers.Xml.XmlConnectionsSerializer]::new($CryptoProvider, $ConnectionNodeSerializer)
+    $CryptoProvider = [LoipvRemote.Security.SymmetricEncryption.AeadCryptographyProvider]::new()
+    $SaveFilter = [LoipvRemote.Security.SaveFilter]::new()
+    $ConnectionNodeSerializer = [LoipvRemote.Config.Serializers.Xml.XmlConnectionNodeSerializer26]::new($CryptoProvider, $Password, $SaveFilter)
+    $XmlSerializer = [LoipvRemote.Config.Serializers.Xml.XmlConnectionsSerializer]::new($CryptoProvider, $ConnectionNodeSerializer)
 
-    $RootNode = [mRemoteNG.Tree.Root.RootNodeInfo]::new('Connection')
+    $RootNode = [LoipvRemote.Tree.Root.RootNodeInfo]::new('Connection')
     foreach ($Node in $Xml) {
         $RootNode.AddChild($Node)
     }
@@ -94,7 +94,7 @@ function New-mRNGConnection {
         $Hostname,
 
         [Parameter(Mandatory)]
-        [mRemoteNG.Connection.Protocol.ProtocolType]
+        [LoipvRemote.Connection.Protocol.ProtocolType]
         $Protocol,
 
         [Parameter(ParameterSetName = 'Credential')]
@@ -106,7 +106,7 @@ function New-mRNGConnection {
         $InheritCredential,
 
         [Parameter()]
-        [mRemoteNG.Container.ContainerInfo]
+        [LoipvRemote.Container.ContainerInfo]
         $ParentContainer,
 
         [Parameter()]
@@ -114,7 +114,7 @@ function New-mRNGConnection {
         $PassThru
     )
 
-    $Connection = [mRemoteNG.Connection.ConnectionInfo]@{
+    $Connection = [LoipvRemote.Connection.ConnectionInfo]@{
         Name     = $Name
         Hostname = $Hostname
         Protocol = $Protocol
@@ -160,11 +160,11 @@ function New-mRNGContainer {
         $InheritCredential,
 
         [Parameter()]
-        [mRemoteNG.Container.ContainerInfo]
+        [LoipvRemote.Container.ContainerInfo]
         $ParentContainer
     )
 
-    $Container = [mRemoteNG.Container.ContainerInfo]@{
+    $Container = [LoipvRemote.Container.ContainerInfo]@{
         Name = $Name
     }
 
@@ -183,7 +183,7 @@ function New-mRNGContainer {
     if ($ParentContainer) {
         $ParentContainer.AddChild($Container)
     }
-    
+
     $Container
 }
 
@@ -199,7 +199,7 @@ function Export-mRNGXml {
         $SerializedXml
     )
 
-    $FilePathProvider = [mRemoteNG.Config.DataProviders.FileDataProvider]::new($Path)
+    $FilePathProvider = [LoipvRemote.Config.DataProviders.FileDataProvider]::new($Path)
     $filePathProvider.Save($SerializedXml)
 }
 
@@ -225,10 +225,10 @@ $Connections = foreach ($i in 1..5) {
 # Serialize the connections
 $SerializedXml = ConvertTo-mRNGSerializedXml -Xml $Connections
 
-# Write the XML to a file ready to import into mRemoteNG
-Export-mRNGXml -Path "$ENV:APPDATA\mRemoteNG\PowerShellGenerated.xml" -SerializedXml $SerializedXml
+# Write the XML to a file ready to import into LoipvRemote
+Export-mRNGXml -Path "$ENV:APPDATA\LoipvRemote\PowerShellGenerated.xml" -SerializedXml $SerializedXml
 
-# Now open up mRemoteNG and press Ctrl+O and open up the exported XML file
+# Now open up LoipvRemote and press Ctrl+O and open up the exported XML file
 
 
 
@@ -288,7 +288,7 @@ foreach ($i in 1..3) {
 # Serialize the container
 $SerializedXml = ConvertTo-mRNGSerializedXml -Xml $ProdServers, $DevServers
 
-# Write the XML to a file ready to import into mRemoteNG
-Export-mRNGXml -Path "$ENV:APPDATA\mRemoteNG\PowerShellGenerated.xml" -SerializedXml $SerializedXml
+# Write the XML to a file ready to import into LoipvRemote
+Export-mRNGXml -Path "$ENV:APPDATA\LoipvRemote\PowerShellGenerated.xml" -SerializedXml $SerializedXml
 
-# Now open up mRemoteNG and press Ctrl+O and open up the exported XML file
+# Now open up LoipvRemote and press Ctrl+O and open up the exported XML file

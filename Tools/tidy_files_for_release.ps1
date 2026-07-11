@@ -14,7 +14,7 @@ Write-Output "===== Begin $($PSCmdlet.MyInvocation.MyCommand) ====="
 # Remove unnecessary files from Release versions
 if ($ConfigurationName -match "Release") {
     $test = Join-Path -Path $TargetDir -ChildPath "app.publish"
-    if (Test-Path  $test -PathType Container) 
+    if (Test-Path  $test -PathType Container)
 	{
         Remove-Item -Path (Join-Path -Path $TargetDir -ChildPath "app.publish") -Recurse -Force
     }
@@ -27,12 +27,12 @@ if ($ConfigurationName -match "Release") {
         "*vshost*",
         "*.tmp"
     ) -Exclude @(
-        "mRemoteNG.VisualElementsManifest.xml"
+        "LoipvRemote.VisualElementsManifest.xml"
 	)
 
-	if ($filesToDelete) 
-	{ 
-		Write-Output "Unnecessary files are detected and will be removed" 
+	if ($filesToDelete)
+	{
+		Write-Output "Unnecessary files are detected and will be removed"
 		Remove-Item -Path $filesToDelete.FullName
 		Write-Output $filesToDelete.FullName
 	} else {

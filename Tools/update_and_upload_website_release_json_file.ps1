@@ -1,4 +1,4 @@
-﻿#Requires -Version 4.0
+#Requires -Version 4.0
 param (
     [string]
     [Parameter(Mandatory=$true)]
@@ -48,13 +48,13 @@ $IsAppVeyor = !([string]::IsNullOrEmpty($Env:APPVEYOR_BUILD_FOLDER))
 
 if ($IsAppVeyor) {
 
-    #$buildFolder = Join-Path -Path $PSScriptRoot -ChildPath "..\mRemoteNG\bin\x64\Release" -Resolve -ErrorAction Ignore
+    #$buildFolder = Join-Path -Path $PSScriptRoot -ChildPath "..\LoipvRemote\bin\x64\Release" -Resolve -ErrorAction Ignore
     $ReleaseFolder = Join-Path -Path $PSScriptRoot -ChildPath "..\Release" -Resolve
 
     if ($UpdateChannel -ne "" -and $ReleaseFolder -ne "" -and $MainRepository -ne "" -and $WebsiteTargetOwner -ne "" -and $WebsiteTargetRepository -ne "" ) {
 
         $published_at = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
-        
+
         # get releases.json from github
         $releases_json = Get-GitHubContent -OwnerName $WebsiteTargetOwner -RepositoryName $WebsiteTargetRepository -Path _data\releases.json
         ConvertFrom-Base64($releases_json.content) | Out-File -FilePath "$ReleaseFolder\releases.json"

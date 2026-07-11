@@ -1,0 +1,598 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Platforms>x64;arm64</Platforms>
+    <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
+    <NoWarn>$(NoWarn);NU1701</NoWarn>
+  </PropertyGroup>
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <TransformOnBuild>true</TransformOnBuild>
+    <TransformOutOfDateOnly>false</TransformOutOfDateOnly>
+    <OverwriteReadOnlyOutputFiles>true</OverwriteReadOnlyOutputFiles>
+    <ApplicationIcon>Icons\LoipvRemote.ico</ApplicationIcon>
+    <AssemblyName>LoipvRemote</AssemblyName>
+    <Version>1.78.2-dev</Version>
+    <Description>LoipvRemote remote connections manager</Description>
+    <Copyright>$([System.DateTime]::Now.Year) LoipvRemote</Copyright>
+    <PackageLicenseFile>COPYING.TXT</PackageLicenseFile>
+    <Platforms>x64;arm64</Platforms>
+    <Configurations>Debug;Release;Release Self-Contained;Deploy to github</Configurations>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <LangVersion>latest</LangVersion>
+    <PackageIcon>Header_dark.png</PackageIcon>
+    <ProjectTypeGuids>{60dc8134-eba5-43b8-bcc9-bb4bc16c2548};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
+    <UseWPF>True</UseWPF>
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <SignAssembly>False</SignAssembly>
+    <Title>LoipvRemote</Title>
+    <RepositoryUrl>https://github.com/phivanloi/LoipvRemote.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <StartupObject>LoipvRemote.App.ProgramRoot</StartupObject>
+    <ProduceReferenceAssembly>True</ProduceReferenceAssembly>
+    <UserSecretsId>1307e3e3-38d6-41ee-8301-0a9bae87038b</UserSecretsId>
+    <NeutralLanguage>en</NeutralLanguage>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="App\Checks\AppUpdater.cs;App\Checks\UpdateFile.cs;App\Checks\UpdateInfo.cs;App\Info\UpdateChannelInfo.cs;Config\Settings\Registry\OptRegistryUpdatesPage.cs;UI\Forms\OptionsPages\UpdatesPage.cs;UI\Forms\OptionsPages\UpdatesPage.Designer.cs;UI\Menu\msMain\HelpMenu.cs;UI\Window\UpdateWindow.cs;UI\Window\UpdateWindow.Designer.cs;Properties\OptionsUpdatesPage.Designer.cs" />
+    <EmbeddedResource Remove="UI\Forms\OptionsPages\UpdatesPage.resx;UI\Window\UpdateWindow.resx" />
+    <None Remove="Properties\OptionsUpdatesPage.settings" />
+  </ItemGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <DefineConstants>DEBUG</DefineConstants>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <WarningsAsErrors />
+    <OutputPath>bin\x64\Debug\</OutputPath>
+    <GenerateAssemblyInfo>False</GenerateAssemblyInfo>
+    <Optimize>False</Optimize>
+    <WarningLevel>8</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|arm64'">
+    <DefineConstants>DEBUG</DefineConstants>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <WarningsAsErrors />
+    <OutputPath>bin\arm64\Debug\</OutputPath>
+    <GenerateAssemblyInfo>False</GenerateAssemblyInfo>
+    <Optimize>False</Optimize>
+    <WarningLevel>8</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <DefineConstants />
+    <Optimize>True</Optimize>
+    <OutputPath>bin\x64\Release\</OutputPath>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <WarningsAsErrors />
+    <GenerateAssemblyInfo>False</GenerateAssemblyInfo>
+    <WarningLevel>8</WarningLevel>
+    <ResolveComReferenceSilent>True</ResolveComReferenceSilent>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|arm64'">
+    <DefineConstants />
+    <Optimize>True</Optimize>
+    <OutputPath>bin\arm64\Release\</OutputPath>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <WarningsAsErrors />
+    <GenerateAssemblyInfo>False</GenerateAssemblyInfo>
+    <WarningLevel>8</WarningLevel>
+    <ResolveComReferenceSilent>True</ResolveComReferenceSilent>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release Self-Contained|x64'">
+    <DefineConstants>PORTABLE</DefineConstants>
+    <Optimize>True</Optimize>
+    <PublishDir>bin\x64\Publish Self-Contained\</PublishDir>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <WarningsAsErrors />
+    <GenerateAssemblyInfo>False</GenerateAssemblyInfo>
+    <WarningLevel>8</WarningLevel>
+    <ResolveComReferenceSilent>True</ResolveComReferenceSilent>
+    <SelfContained>true</SelfContained>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <PublishReadyToRun>true</PublishReadyToRun>
+    <CopyBuildOutputToPublishDirectory>true</CopyBuildOutputToPublishDirectory>
+    <CopyOutputSymbolsToPublishDirectory>false</CopyOutputSymbolsToPublishDirectory>
+    <RunCommand></RunCommand>
+    <RunArguments></RunArguments>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release Self-Contained|arm64'">
+    <DefineConstants>PORTABLE</DefineConstants>
+    <Optimize>True</Optimize>
+    <OutputPath>bin\arm64\Release Self-Contained\</OutputPath>
+    <PublishDir>bin\arm64\Publish Self-Contained\</PublishDir>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <WarningsAsErrors />
+    <GenerateAssemblyInfo>False</GenerateAssemblyInfo>
+    <WarningLevel>8</WarningLevel>
+    <ResolveComReferenceSilent>True</ResolveComReferenceSilent>
+    <SelfContained>true</SelfContained>
+    <RuntimeIdentifier>win-arm64</RuntimeIdentifier>
+    <PublishReadyToRun>true</PublishReadyToRun>
+    <CopyBuildOutputToPublishDirectory>true</CopyBuildOutputToPublishDirectory>
+    <CopyOutputSymbolsToPublishDirectory>false</CopyOutputSymbolsToPublishDirectory>
+    <RunCommand></RunCommand>
+    <RunArguments></RunArguments>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Remove="buildenv.tmp" />
+    <None Remove="UI\Font\HandelGotDBol.ttf" />
+  </ItemGroup>
+  <ItemGroup>
+    <COMReference Include="MSTSCLib">
+      <WrapperTool>aximp</WrapperTool>
+      <VersionMinor>0</VersionMinor>
+      <VersionMajor>1</VersionMajor>
+      <Guid>8c11efa1-92c3-11d1-bc1e-00c04fa31489</Guid>
+      <Lcid>0</Lcid>
+      <Isolated>false</Isolated>
+      <EmbedInteropTypes>false</EmbedInteropTypes>
+    </COMReference>
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="BouncyCastle.Cryptography" />
+    <PackageReference Include="ConsoleControl" />
+    <PackageReference Include="DockPanelSuite" />
+    <PackageReference Include="DockPanelSuite.ThemeVS2015" />
+    <PackageReference Include="log4net" />
+    <PackageReference Include="Microsoft-WindowsAPICodePack-Shell" />
+    <PackageReference Include="Microsoft.Data.SqlClient" />
+    <PackageReference Include="Microsoft.Data.Sqlite" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" />
+    <PackageReference Include="Microsoft.Web.WebView2" />
+    <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" />
+    <PackageReference Include="MySql.Data" />
+    <PackageReference Include="System.Data.Odbc" />
+    <PackageReference Include="Newtonsoft.Json" />
+    <PackageReference Include="SSH.NET" />
+    <PackageReference Include="System.Management" />
+    <PackageReference Include="VncSharpCore" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Update="Language\Language.Designer.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Language.resx</DependentUpon>
+    </Compile>
+    <Compile Update="Properties\AssemblyInfo.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>AssemblyInfo.tt</DependentUpon>
+    </Compile>
+    <Compile Update="Properties\OptionsBackupPage.Designer.cs">
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>OptionsBackupPage.settings</DependentUpon>
+    </Compile>
+    <Compile Update="Properties\OptionsAdvancedPage.Designer.cs">
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>OptionsAdvancedPage.settings</DependentUpon>
+    </Compile>
+    <Compile Update="Properties\OptionsAppearancePage.Designer.cs">
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>OptionsAppearancePage.settings</DependentUpon>
+    </Compile>
+    <Compile Update="Properties\OptionsConnectionsPage.Designer.cs">
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>OptionsConnectionsPage.settings</DependentUpon>
+    </Compile>
+    <Compile Update="Properties\OptionsCredentialsPage.Designer.cs">
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>OptionsCredentialsPage.settings</DependentUpon>
+    </Compile>
+    <Compile Update="Properties\OptionsDBsPage.Designer.cs">
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>OptionsDBsPage.settings</DependentUpon>
+    </Compile>
+    <Compile Update="Properties\OptionsNotificationsPage.Designer.cs">
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>OptionsNotificationsPage.settings</DependentUpon>
+    </Compile>
+    <Compile Update="Properties\OptionsSecurityPage.Designer.cs">
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>OptionsSecurityPage.settings</DependentUpon>
+    </Compile>
+    <Compile Update="Properties\OptionsStartupExitPage.Designer.cs">
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>OptionsStartupExitPage.settings</DependentUpon>
+    </Compile>
+    <Compile Update="Properties\OptionsTabsPanelsPage.Designer.cs">
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>OptionsTabsPanelsPage.settings</DependentUpon>
+    </Compile>
+    <Compile Update="Properties\OptionsThemePage.Designer.cs">
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>OptionsThemePage.settings</DependentUpon>
+    </Compile>
+    <Compile Update="Properties\OptionsRbac.Designer.cs">
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>OptionsRbac.settings</DependentUpon>
+    </Compile>
+    <Compile Update="Properties\Settings.Designer.cs">
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Settings.settings</DependentUpon>
+    </Compile>
+    <Compile Update="Properties\AppUI.Designer.cs">
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>AppUI.settings</DependentUpon>
+    </Compile>
+    <Compile Update="Properties\App.Designer.cs">
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>App.settings</DependentUpon>
+    </Compile>
+    <Compile Update="Properties\OptionsUpdatesPage.Designer.cs">
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>OptionsUpdatesPage.settings</DependentUpon>
+    </Compile>
+    <Compile Update="UI\Forms\OptionsPages\AdvancedPage.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="UI\Forms\OptionsPages\AppearancePage.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="UI\Forms\OptionsPages\BackupPage.cs" />
+    <Compile Update="UI\Forms\OptionsPages\ConnectionsPage.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="UI\Forms\OptionsPages\CredentialsPage.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="UI\Forms\OptionsPages\NotificationsPage.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="UI\Forms\OptionsPages\OptionsPage.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="UI\Forms\OptionsPages\SecurityPage.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="UI\Forms\OptionsPages\SqlServerPage.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="UI\Forms\OptionsPages\StartupExitPage.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="UI\Forms\OptionsPages\TabsPanelsPage.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="UI\Forms\OptionsPages\ThemePage.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="UI\Forms\OptionsPages\UpdatesPage.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <T4ParameterValues Include="platformType">
+      <Value>$(Platform)</Value>
+    </T4ParameterValues>
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="Properties\AssemblyInfo.tt">
+      <LastGenOutput>AssemblyInfo.cs</LastGenOutput>
+      <Generator>TextTemplatingFileGenerator</Generator>
+    </None>
+    <None Update="Icons\Admin.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Icons\Anti Virus.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Icons\Apple.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Icons\Backup.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Icons\Build Server.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Icons\Console.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Icons\Database.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Icons\Domain Controller.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Icons\ESX.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Icons\Fax.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Icons\File Server.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Icons\Finance.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Icons\Firewall.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Icons\Infrastructure.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Icons\Linux.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Icons\Log.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Icons\Mail Server.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Icons\mRemote.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Icons\LoipvRemote.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Icons\PowerShell.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Icons\WSL.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Icons\Production.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Icons\PuTTY.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Icons\RaspberryPi.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Icons\Remote Desktop.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Icons\Router.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Icons\SharePoint.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Icons\SSH.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Icons\Staging.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Icons\Switch.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Icons\Tel.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Icons\Telnet.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Icons\Terminal Server.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Icons\Test Server.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Icons\Virtual Machine.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Icons\Web Server.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Icons\WiFi.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Icons\Windows.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Icons\Workstation.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="log4net.config">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Properties\OptionsBackupPage.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>OptionsBackupPage.Designer.cs</LastGenOutput>
+    </None>
+    <None Update="Properties\OptionsAdvancedPage.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>OptionsAdvancedPage.Designer.cs</LastGenOutput>
+    </None>
+    <None Update="Properties\OptionsAppearancePage.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>OptionsAppearancePage.Designer.cs</LastGenOutput>
+    </None>
+    <None Update="Properties\OptionsConnectionsPage.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>OptionsConnectionsPage.Designer.cs</LastGenOutput>
+    </None>
+    <None Update="Properties\OptionsCredentialsPage.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>OptionsCredentialsPage.Designer.cs</LastGenOutput>
+    </None>
+    <None Update="Properties\OptionsDBsPage.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>OptionsDBsPage.Designer.cs</LastGenOutput>
+    </None>
+    <None Update="Properties\OptionsNotificationsPage.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>OptionsNotificationsPage.Designer.cs</LastGenOutput>
+    </None>
+    <None Update="Properties\OptionsSecurityPage.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>OptionsSecurityPage.Designer.cs</LastGenOutput>
+    </None>
+    <None Update="Properties\OptionsStartupExitPage.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>OptionsStartupExitPage.Designer.cs</LastGenOutput>
+    </None>
+    <None Update="Properties\OptionsTabsPanelsPage.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>OptionsTabsPanelsPage.Designer.cs</LastGenOutput>
+    </None>
+    <None Update="Properties\OptionsThemePage.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>OptionsThemePage.Designer.cs</LastGenOutput>
+    </None>
+    <None Update="Properties\OptionsRbac.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>OptionsRbac.Designer.cs</LastGenOutput>
+    </None>
+    <None Update="Properties\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
+    </None>
+    <None Update="LoipvRemote.VisualElementsManifest.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Properties\AppUI.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>AppUI.Designer.cs</LastGenOutput>
+    </None>
+    <None Update="Properties\App.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>App.Designer.cs</LastGenOutput>
+    </None>
+    <None Update="Properties\OptionsUpdatesPage.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>OptionsUpdatesPage.Designer.cs</LastGenOutput>
+    </None>
+    <None Update="PuTTYNG.exe">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\Header_dark.png">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+    <None Update="Resources\PuTTYNG.exe">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Schemas\mremoteng_confcons_v2_5.xsd">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </None>
+    <None Update="Schemas\mremoteng_confcons_v2_6.xsd">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </None>
+    <None Update="Schemas\mremoteng_confcons_v2_8.xsd">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Schemas\mremoteng_confcons_v2_7.xsd">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </None>
+    <None Update="Schemas\mremoteng_credrepo_list_v1_0.xsd">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Schemas\mremoteng_creds_v1_0.xsd">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Schemas\mremoteng_default_settings_v1_0.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Themes\darcula.vstheme">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Themes\vs2015blue.vstheme">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Themes\vs2015dark.vstheme">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Themes\vs2015light.vstheme">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="VisualElements_150.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="VisualElements_70.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\COPYING.TXT">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ExternalConnectors\ExternalConnectors.csproj" />
+    <ProjectReference Include="..\ObjectListView\ObjectListView.NetCore.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="UI\Font\HandelGotDBol.ttf">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </Resource>
+  </ItemGroup>
+  <ItemGroup>
+    <XliffResource Include="MultilingualResources\LoipvRemote.ru-RU.xlf" />
+    <XliffResource Include="MultilingualResources\LoipvRemote.ru.xlf" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Update="Language\Language.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <CustomToolNamespace>LoipvRemote.Resources.Language</CustomToolNamespace>
+      <LastGenOutput>Language.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Update="chromiumembeddedframework.runtime.win-x64" Version="149.0.6" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(Platform)'=='arm64'">
+    <PackageReference Update="chromiumembeddedframework.runtime.win-arm64" Version="149.0.6" />
+  </ItemGroup>
+  <ItemGroup>
+    <Service Include="{508349b6-6b84-4df5-91f0-309beebad82d}" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="UI\Helpers\" />
+  </ItemGroup>
+  <PropertyGroup Condition="'$(Platform)'=='x64'">
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <Nullable>enable</Nullable>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Deploy to github|x64'">
+    <WarningLevel>8</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Platform)'=='arm64'">
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <Nullable>enable</Nullable>
+    <PlatformTarget>ARM64</PlatformTarget>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Deploy to github|ARM64'">
+    <WarningLevel>8</WarningLevel>
+  </PropertyGroup>
+  <Target Name="CopyPackageAssembliesToSubFolder" AfterTargets="ResolveReferences">
+    <ItemGroup>
+      <ReferenceCopyLocalPaths Condition=" '%(ReferenceCopyLocalPaths.NuGetPackageId)' != '' " Update="%(ReferenceCopyLocalPaths)" DestinationSubDirectory="Assemblies\" />
+    </ItemGroup>
+  </Target>
+  <PropertyGroup>
+    <!-- Disable CET compatibility check in .NET 9 AppHost -->
+    <CETCompat>false</CETCompat>
+  </PropertyGroup>
+  <Target Name="PublishAfterBuild" AfterTargets="Build" Condition="'$(Configuration)' == 'Release Self-Contained'">
+    <Message Text="Publishing self-contained application for $(Platform)..." Importance="high" />
+    <MSBuild Projects="$(MSBuildProjectFile)" Targets="Publish" Properties="Configuration=$(Configuration);Platform=$(Platform);NoBuild=true;NoRestore=true" />
+    <PropertyGroup>
+      <TempBuildDir>$([System.IO.Path]::GetFullPath('$(OutputPath)'))</TempBuildDir>
+    </PropertyGroup>
+    <Message Text="Cleaning up temporary build directory: $(TempBuildDir)" Importance="high" />
+    <RemoveDir Directories="$(TempBuildDir)" />
+    <RemoveDir Directories="$(ProjectDir)bin\x64\Release Self-Contained" />
+  </Target>
+  <Import Project="$(MSBuildExtensionsPath)\Microsoft\VisualStudio\v18.0\TextTemplating\Microsoft.TextTemplating.targets" />
+</Project>

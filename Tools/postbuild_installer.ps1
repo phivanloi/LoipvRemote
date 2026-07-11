@@ -29,7 +29,7 @@ param (
 
 Write-Output ""
 Write-Output "+===========================================================================================+"
-Write-Output "|                          Beginning mRemoteNG Installer Post Build                         |"
+Write-Output "|                          Beginning LoipvRemote Installer Post Build                         |"
 Write-Output "+===========================================================================================+"
 Format-Table -AutoSize -Wrap -InputObject @{
     "SolutionDir" = $SolutionDir
@@ -47,11 +47,11 @@ if ( $IsAppVeyor -and ($ConfigurationName.ToUpper() -match "RELEASE") -and (($en
     & "$PSScriptRoot\sign_binaries.ps1" -TargetDir $TargetDir -CertificatePath $CertificatePath -CertificatePassword $CertificatePassword -ConfigurationName $ConfigurationName -Exclude $ExcludeFromSigning -SolutionDir $SolutionDir
 
     & "$PSScriptRoot\verify_binary_signatures.ps1" -TargetDir $TargetDir -ConfigurationName $ConfigurationName -CertificatePath $CertificatePath -SolutionDir $SolutionDir
-    
+
     & "$PSScriptRoot\rename_and_copy_installer.ps1" -SolutionDir $SolutionDir -BuildConfiguration $ConfigurationName.Trim()
-    
+
     & "$PSScriptRoot\create_upg_chk_files.ps1" -WebsiteTargetOwner $env:WEBSITE_TARGET_OWNER -WebsiteTargetRepository $env:WEBSITE_TARGET_REPOSITORY -PreTagName $env:NightlyBuildTagName -TagName $env:APPVEYOR_BUILD_VERSION -ProjectName $env:APPVEYOR_PROJECT_NAME
-    
+
     & "$PSScriptRoot\update_and_upload_website_release_json_file.ps1" -WebsiteTargetOwner $env:WEBSITE_TARGET_OWNER -WebsiteTargetRepository $env:WEBSITE_TARGET_REPOSITORY -PreTagName $env:NightlyBuildTagName -TagName $env:APPVEYOR_BUILD_VERSION -ProjectName $env:APPVEYOR_PROJECT_NAME
 
     & "$PSScriptRoot\update_and_upload_assemblyinfocs.ps1"
@@ -59,5 +59,5 @@ if ( $IsAppVeyor -and ($ConfigurationName.ToUpper() -match "RELEASE") -and (($en
 }
 
 
-Write-Output "End mRemoteNG Installer Post Build"
+Write-Output "End LoipvRemote Installer Post Build"
 Write-Output ""

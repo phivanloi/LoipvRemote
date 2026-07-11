@@ -29,7 +29,7 @@ param (
 
 Write-Output ""
 Write-Output "+===========================================================================================+"
-Write-Output "|                          Beginning mRemoteNG Portable Post Build                          |"
+Write-Output "|                          Beginning LoipvRemote Portable Post Build                          |"
 Write-Output "+===========================================================================================+"
 Format-Table -AutoSize -Wrap -InputObject @{
     "SolutionDir" = $SolutionDir
@@ -61,7 +61,7 @@ Format-Table -AutoSize -Wrap -InputObject @{
 #& "$PSScriptRoot\verify_LargeAddressAware.ps1" -TargetDir $TargetDir -TargetFileName $TargetFileName
 
 if (!([string]::IsNullOrEmpty($Env:APPVEYOR_BUILD_FOLDER))) {
-    $postbuild_installer_executed = Get-ItemPropertyValue -Path 'HKLM:\SOFTWARE\AppVeyor_mRemoteNG' -Name postbuild_installer_executed
+    $postbuild_installer_executed = Get-ItemPropertyValue -Path 'HKLM:\SOFTWARE\AppVeyor_LoipvRemote' -Name postbuild_installer_executed
 } else {
     $postbuild_installer_executed = ""
 }
@@ -87,5 +87,5 @@ if ( ![string]::IsNullOrEmpty($env:WEBSITE_TARGET_OWNER) -and ![string]::IsNullO
 
 }
 
-Write-Output "End mRemoteNG Portable Post Build"
+Write-Output "End LoipvRemote Portable Post Build"
 Write-Output ""

@@ -673,7 +673,9 @@ namespace mRemoteNG.Connection.Protocol.RDP
                 // credentials and do not forward explicit passwords to the remote host.
                 // Skipping password assignment avoids potential NTLM fallback attempts that would
                 // fail for accounts in the AD Protected Users security group.
-                if (!connectionInfo.UseRestrictedAdmin && !connectionInfo.UseRCG)
+                if (RdpCredentialPolicy.ShouldAssignClearTextPassword(
+                        connectionInfo.UseRestrictedAdmin,
+                        connectionInfo.UseRCG))
                 {
                     if (string.IsNullOrEmpty(password))
                     {

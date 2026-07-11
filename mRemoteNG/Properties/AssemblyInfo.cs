@@ -10,20 +10,20 @@ using System.Resources;
 
 // Compute version values
 
-//Build nr: 3562
+//Build nr: 3605
 
 // General Information
-[assembly: AssemblyTitle("mRemoteNG")]
-[assembly: AssemblyDescription("Multi-Remote Next Generation Connection Manager")]
+[assembly: AssemblyTitle("LoipvRemote")]
+[assembly: AssemblyDescription("LoipvRemote remote connections manager")]
 [assembly: AssemblyConfiguration("x64")]
-[assembly: AssemblyCompany("Profi-KOM Ltd.")]
-[assembly: AssemblyProduct("mRemoteNG Connection Manager")]
-[assembly: AssemblyCopyright("(c) 2026 mRemoteNG")]
-[assembly: AssemblyTrademark("Profi-KOM LTd.")]
+[assembly: AssemblyCompany("Loipv")]
+[assembly: AssemblyProduct("LoipvRemote")]
+[assembly: AssemblyCopyright("(c) 2026 LoipvRemote")]
+[assembly: AssemblyTrademark("LoipvRemote")]
 [assembly: AssemblyCulture("")]
 
 // Version information
-[assembly: AssemblyVersion("1.78.2.3562")]
-[assembly: AssemblyFileVersion("1.78.2.3562")]
+[assembly: AssemblyVersion("1.78.2.3605")]
+[assembly: AssemblyFileVersion("1.78.2.3605")]
 [assembly: NeutralResourcesLanguageAttribute("en-US")]
-[assembly: AssemblyInformationalVersion("1.78.2 (Nightly Build 3562) x64")]
+[assembly: AssemblyInformationalVersion("1.78.2 (Nightly Build 3605) x64")]

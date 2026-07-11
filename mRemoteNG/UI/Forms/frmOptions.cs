@@ -54,7 +54,6 @@ namespace mRemoteNG.UI.Forms
                 nameof(NotificationsPage),
                 nameof(CredentialsPage),
                 nameof(SqlServerPage),
-                nameof(UpdatesPage),
                 nameof(ThemePage),
                 nameof(SecurityPage),
                 nameof(AdvancedPage),
@@ -224,13 +223,6 @@ namespace mRemoteNG.UI.Forms
                         if (Properties.OptionsDBsPage.Default.cbDBsPageInOptionMenu ||
                             Properties.OptionsRbac.Default.ActiveRole == "AdminRole")
                             page = new SqlServerPage { Dock = DockStyle.Fill };
-                        break;
-                    }
-                case "UpdatesPage":
-                    {
-                        if (Properties.OptionsUpdatesPage.Default.cbUpdatesPageInOptionMenu ||
-                            Properties.OptionsRbac.Default.ActiveRole == "AdminRole")
-                            page = new UpdatesPage { Dock = DockStyle.Fill };
                         break;
                     }
                 case "ThemePage":

@@ -13,11 +13,11 @@
     <TransformOutOfDateOnly>false</TransformOutOfDateOnly>
     <OverwriteReadOnlyOutputFiles>true</OverwriteReadOnlyOutputFiles>
     <ApplicationIcon>Icons\mRemoteNG.ico</ApplicationIcon>
+    <AssemblyName>LoipvRemote</AssemblyName>
     <Version>1.78.2-dev</Version>
-    <Description>Multi-protocol remote connections manager</Description>
-    <Copyright>$([System.DateTime]::Now.Year) mRemoteNG Dev Team, 2010-2013 Riley McArdle, 2007-2009 Felix Deimel</Copyright>
+    <Description>LoipvRemote remote connections manager</Description>
+    <Copyright>$([System.DateTime]::Now.Year) LoipvRemote</Copyright>
     <PackageLicenseFile>COPYING.TXT</PackageLicenseFile>
-    <PackageProjectUrl>https://mremoteng.org/</PackageProjectUrl>
     <Platforms>x64;arm64</Platforms>
     <Configurations>Debug;Release;Release Self-Contained;Deploy to github</Configurations>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
@@ -27,14 +27,19 @@
     <UseWPF>True</UseWPF>
     <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
     <SignAssembly>False</SignAssembly>
-    <Title>Multi-Remote Next Generation Connection Manager</Title>
-    <RepositoryUrl>https://github.com/mRemoteNG/mRemoteNG.git</RepositoryUrl>
+    <Title>LoipvRemote</Title>
+    <RepositoryUrl>https://github.com/phivanloi/LoipvRemote.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <StartupObject>mRemoteNG.App.ProgramRoot</StartupObject>
     <ProduceReferenceAssembly>True</ProduceReferenceAssembly>
     <UserSecretsId>1307e3e3-38d6-41ee-8301-0a9bae87038b</UserSecretsId>
     <NeutralLanguage>en</NeutralLanguage>
   </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="App\Checks\AppUpdater.cs;App\Checks\UpdateFile.cs;App\Checks\UpdateInfo.cs;App\Info\UpdateChannelInfo.cs;Config\Settings\Registry\OptRegistryUpdatesPage.cs;UI\Forms\OptionsPages\UpdatesPage.cs;UI\Forms\OptionsPages\UpdatesPage.Designer.cs;UI\Menu\msMain\HelpMenu.cs;UI\Window\UpdateWindow.cs;UI\Window\UpdateWindow.Designer.cs;Properties\OptionsUpdatesPage.Designer.cs" />
+    <EmbeddedResource Remove="UI\Forms\OptionsPages\UpdatesPage.resx;UI\Window\UpdateWindow.resx" />
+    <None Remove="Properties\OptionsUpdatesPage.settings" />
+  </ItemGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <DefineConstants>DEBUG</DefineConstants>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>

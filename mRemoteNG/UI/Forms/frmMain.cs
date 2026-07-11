@@ -293,7 +293,6 @@ namespace mRemoteNG.UI.Forms
             sessionsMenu.ApplyLanguage();
             viewMenu.ApplyLanguage();
             toolsMenu.ApplyLanguage();
-            helpMenu.ApplyLanguage();
         }
 
         private void OnApplicationSettingChanged(object sender, PropertyChangedEventArgs propertyChangedEventArgs)
@@ -404,77 +403,13 @@ namespace mRemoteNG.UI.Forms
             }
         }
 
-        private async void FrmMain_Shown(object sender, EventArgs e)
+        private void FrmMain_Shown(object sender, EventArgs e)
         {
             // Bring the main window to the front after splash screen closes
             Activate();
             BringToFront();
             NativeMethods.SetForegroundWindow(Handle);
 
-            PromptForUpdatesPreference();
-            await CheckForUpdates();
-        }
-
-        private void PromptForUpdatesPreference()
-        {
-            if (!CommonRegistrySettings.AllowCheckForUpdates) return;
-            if (!CommonRegistrySettings.AllowCheckForUpdatesAutomatical) return;
-
-            if (Properties.OptionsUpdatesPage.Default.CheckForUpdatesAsked) return;
-
-            // If the user has already explicitly disabled automatic updates via settings, don't ask again
-            if (!Properties.OptionsUpdatesPage.Default.CheckForUpdatesOnStartup)
-            {
-                Properties.OptionsUpdatesPage.Default.CheckForUpdatesAsked = true;
-                Properties.OptionsUpdatesPage.Default.Save();
-                return;
-            }
-
-            string[] commandButtons =
-            [
-                Language.AskUpdatesCommandRecommended,
-                Language.AskUpdatesCommandCustom,
-                Language.AskUpdatesCommandAskLater
-            ];
-
-            CTaskDialog.ShowTaskDialogBox(this, GeneralAppInfo.ProductName, Language.AskUpdatesMainInstruction, string.Format(Language.AskUpdatesContent, GeneralAppInfo.ProductName), "", "", "", "", string.Join(" | ", commandButtons), ETaskDialogButtons.None, ESysIcons.Question, ESysIcons.Question);
-
-            if (CTaskDialog.CommandButtonResult == 0)
-            {
-                // Use Recommended Settings: enable automatic updates with the default frequency
-                Properties.OptionsUpdatesPage.Default.CheckForUpdatesOnStartup = true;
-                if (Properties.OptionsUpdatesPage.Default.CheckForUpdatesFrequencyDays < 1)
-                    Properties.OptionsUpdatesPage.Default.CheckForUpdatesFrequencyDays = 14;
-                Properties.OptionsUpdatesPage.Default.CheckForUpdatesAsked = true;
-                Properties.OptionsUpdatesPage.Default.Save();
-            }
-            else if (CTaskDialog.CommandButtonResult == 1)
-            {
-                // Customize: let the user configure update settings manually, then open Options
-                Properties.OptionsUpdatesPage.Default.CheckForUpdatesAsked = true;
-                Properties.OptionsUpdatesPage.Default.Save();
-                AppWindows.Show(WindowType.Options);
-                if (AppWindows.OptionsFormWindow != null)
-                    AppWindows.OptionsFormWindow.SetActivatedPage(Language.Updates);
-            }
-            // For "Ask Later" (button 2), CheckForUpdatesAsked remains false so the dialog will show again next startup
-        }
-
-        private async Task CheckForUpdates()
-        {
-            if (!CommonRegistrySettings.AllowCheckForUpdates) return;
-            if (!CommonRegistrySettings.AllowCheckForUpdatesAutomatical) return;
-
-            if (!Properties.OptionsUpdatesPage.Default.CheckForUpdatesOnStartup) return;
-            if (Properties.OptionsUpdatesPage.Default.CheckForUpdatesFrequencyDays == 0) return;
-
-            DateTime nextUpdateCheck = Convert.ToDateTime(Properties.OptionsUpdatesPage.Default.CheckForUpdatesLastCheck.Add(TimeSpan.FromDays(Convert.ToDouble(Properties.OptionsUpdatesPage.Default.CheckForUpdatesFrequencyDays))));
-
-            if (!Properties.OptionsUpdatesPage.Default.UpdatePending && DateTime.UtcNow <= nextUpdateCheck) return;
-            if (!IsHandleCreated)
-                CreateHandle(); // Make sure the handle is created so that InvokeRequired returns the correct result
-
-            await Startup.Instance.CheckForUpdate();
         }
 
         private void FrmMain_FormClosing(object sender, FormClosingEventArgs e)
@@ -541,8 +476,6 @@ namespace mRemoteNG.UI.Forms
             NativeMethods.ChangeClipboardChain(Handle, _fpChainedWindowHandle);
             SystemEvents.DisplaySettingsChanged -= _advancedWindowMenu.OnDisplayChanged;
             Shutdown.Cleanup(_quickConnectToolStrip, _externalToolsToolStrip, _multiSshToolStrip, this);
-
-            Shutdown.StartUpdate();
 
             Debug.Print("[END] - " + Convert.ToString(DateTime.Now, CultureInfo.InvariantCulture));
         }

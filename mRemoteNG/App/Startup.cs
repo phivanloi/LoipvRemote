@@ -5,7 +5,6 @@ using System.Runtime.Versioning;
 using System.Threading.Tasks;
 using mRemoteNG.App.Info;
 using mRemoteNG.App.Initialization;
-using mRemoteNG.App.Update;
 using mRemoteNG.Config.Connections.Multiuser;
 using mRemoteNG.Config.Settings.Registry;
 using mRemoteNG.Connection;
@@ -23,7 +22,6 @@ namespace mRemoteNG.App
     public class Startup
     {
         private RegistryLoader _RegistryLoader;
-        private AppUpdater _appUpdate;
         private readonly ConnectionIconLoader _connectionIconLoader;
         private readonly FrmMain _frmMain = FrmMain.Default;
 
@@ -32,7 +30,6 @@ namespace mRemoteNG.App
         private Startup()
         {
             _RegistryLoader = RegistryLoader.Instance; //created instance
-            _appUpdate = new AppUpdater(); 
             _connectionIconLoader = new ConnectionIconLoader(GeneralAppInfo.HomePath + "\\Icons\\");
         }
 
@@ -64,33 +61,5 @@ namespace mRemoteNG.App
             Runtime.ConnectionsService.RemoteConnectionsSyncronizer.Enable();
         }
 
-        public async Task CheckForUpdate()
-        {
-            if (_appUpdate == null)
-            {
-                _appUpdate = new AppUpdater();
-            }
-            else if (_appUpdate.IsGetUpdateInfoRunning)
-            {
-                return;
-            }
-
-            DateTime nextUpdateCheck = Convert.ToDateTime(Properties.OptionsUpdatesPage.Default.CheckForUpdatesLastCheck.Add(TimeSpan.FromDays(Convert.ToDouble(Properties.OptionsUpdatesPage.Default.CheckForUpdatesFrequencyDays))));
-            if (!Properties.OptionsUpdatesPage.Default.UpdatePending && DateTime.UtcNow < nextUpdateCheck)
-            {
-                return;
-            }
-
-            try
-            {
-                await _appUpdate.GetUpdateInfoAsync();
-                // Update is available, but don't show the panel automatically at startup
-                // User can check for updates manually via Help > Check for Updates menu
-            }
-            catch (Exception ex)
-            {
-                Runtime.MessageCollector.AddExceptionMessage("CheckForUpdate() failed.", ex);
-            }
-        }
     }
 }

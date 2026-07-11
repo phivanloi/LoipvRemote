@@ -41,7 +41,6 @@ namespace mRemoteNG.UI.Forms
             this.sessionsMenu = new mRemoteNG.UI.Menu.SessionsMenu();
             this.viewMenu = new mRemoteNG.UI.Menu.ViewMenu();
             this.toolsMenu = new mRemoteNG.UI.Menu.ToolsMenu();
-            this.helpMenu = new mRemoteNG.UI.Menu.HelpMenu();
             this.mMenSep3 = new System.Windows.Forms.ToolStripSeparator();
             this.tsContainer = new System.Windows.Forms.ToolStripContainer();
             this._quickConnectToolStrip = new mRemoteNG.UI.Controls.QuickConnectToolStrip();
@@ -78,8 +77,7 @@ namespace mRemoteNG.UI.Forms
             this.fileMenu,
             this.sessionsMenu,
             this.viewMenu,
-            this.toolsMenu,
-            this.helpMenu});
+            this.toolsMenu});
             this.msMain.Location = new System.Drawing.Point(3, 0);
             this.msMain.Name = "msMain";
             this.msMain.Padding = new System.Windows.Forms.Padding(0, 0, 1, 0);
@@ -124,14 +122,6 @@ namespace mRemoteNG.UI.Forms
             this.toolsMenu.Name = "mMenTools";
             this.toolsMenu.Size = new System.Drawing.Size(46, 19);
             this.toolsMenu.Text = "&Tools";
-            // 
-            // helpMenu
-            // 
-            this.helpMenu.Margin = new System.Windows.Forms.Padding(0, 3, 0, 3);
-            this.helpMenu.Name = "mMenInfo";
-            this.helpMenu.Size = new System.Drawing.Size(44, 19);
-            this.helpMenu.Text = "&Help";
-            this.helpMenu.TextDirection = System.Windows.Forms.ToolStripTextDirection.Horizontal;
             // 
             // mMenSep3
             // 
@@ -265,7 +255,6 @@ namespace mRemoteNG.UI.Forms
         private Menu.SessionsMenu sessionsMenu;
         private Menu.ViewMenu viewMenu;
         private Menu.ToolsMenu toolsMenu;
-        private Menu.HelpMenu helpMenu;
         internal mRemoteNG.UI.Controls.QuickConnectToolStrip _quickConnectToolStrip;
         internal mRemoteNG.UI.Controls.ExternalToolsToolStrip _externalToolsToolStrip;
 		internal mRemoteNG.UI.Controls.MultiSshToolStrip _multiSshToolStrip;

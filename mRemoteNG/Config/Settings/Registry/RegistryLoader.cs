@@ -87,8 +87,7 @@ namespace mRemoteNG.Config.Settings.Registry
                 LoadAndApplyAsync<OptRegistrySecurityPage>(),
                 LoadAndApplyAsync<OptRegistrySqlServerPage>(),
                 LoadAndApplyAsync<OptRegistryStartupExitPage>(),
-                LoadAndApplyAsync<OptRegistryTabsPanelsPage>(),
-                LoadAndApplyAsync<OptRegistryUpdatesPage>()
+                LoadAndApplyAsync<OptRegistryTabsPanelsPage>()
             };
 
                 // Await all tasks to complete

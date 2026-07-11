@@ -161,10 +161,6 @@ namespace mRemoteNG.Config.Settings
 
             Properties.App.Default.DoUpgrade = false;
 
-            // Clear pending update flag
-            // This is used for automatic updates, not for settings migration, but it
-            // needs to be cleared here because we know that we just updated.
-            Properties.OptionsUpdatesPage.Default.UpdatePending = false;
         }
 
         private void SetToolbarsDefault()

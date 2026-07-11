@@ -30,6 +30,7 @@
     <PackageReference Include="System.Windows.Extensions" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Remove="App\UpdaterTests.cs" />
     <ProjectReference Include="..\mRemoteNG\mRemoteNG.csproj" />
   </ItemGroup>
   <ItemGroup>

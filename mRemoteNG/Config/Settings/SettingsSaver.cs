@@ -61,7 +61,6 @@ namespace mRemoteNG.Config.Settings
                 Properties.OptionsStartupExitPage.Default.Save();
                 Properties.OptionsTabsPanelsPage.Default.Save();
                 Properties.OptionsThemePage.Default.Save();
-                Properties.OptionsUpdatesPage.Default.Save();
                 
                 Properties.Settings.Default.Save();
 

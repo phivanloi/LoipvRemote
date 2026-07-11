@@ -70,37 +70,16 @@ namespace mRemoteNG.UI.Forms
 
         private void llLicense_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
         {
-            var version = Assembly.GetExecutingAssembly().GetName().Version;
-            var updateChannel = Properties.OptionsUpdatesPage.Default.CurrentUpdateChannelType;
-            if (version != null && updateChannel != null)
-            {
-                var versionString = version.ToString();
-                OpenUrl("https://raw.githubusercontent.com/mRemoteNG/mRemoteNG/v" + versionString[..^2] + "-" + updateChannel + "/COPYING.txt");
-            }
             Close();
         }
 
         private void llChangelog_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
         {
-            var version = Assembly.GetExecutingAssembly().GetName().Version;
-            var updateChannel = Properties.OptionsUpdatesPage.Default.CurrentUpdateChannelType;
-            if (version != null && updateChannel != null)
-            {
-                var versionString = version.ToString();
-                OpenUrl("https://raw.githubusercontent.com/mRemoteNG/mRemoteNG/v" + versionString[..^2] + "-" + updateChannel + "/CHANGELOG.md");
-            }
             Close();
         }
 
         private void llCredits_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
         {
-            var version = Assembly.GetExecutingAssembly().GetName().Version;
-            var updateChannel = Properties.OptionsUpdatesPage.Default.CurrentUpdateChannelType;
-            if (version != null && updateChannel != null)
-            {
-                var versionString = version.ToString();
-                OpenUrl("https://raw.githubusercontent.com/mRemoteNG/mRemoteNG/v" + versionString[..^2] + "-" + updateChannel + "/CREDITS.md");
-            }
             Close();
         }
 

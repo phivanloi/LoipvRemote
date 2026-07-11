@@ -36,13 +36,13 @@ using System.Resources;
 //Build nr: <#= build #>
 
 // General Information
-[assembly: AssemblyTitle("mRemoteNG")]
-[assembly: AssemblyDescription("Multi-Remote Next Generation Connection Manager")]
+[assembly: AssemblyTitle("LoipvRemote")]
+[assembly: AssemblyDescription("LoipvRemote remote connections manager")]
 [assembly: AssemblyConfiguration("<#= platformValue #>")]
-[assembly: AssemblyCompany("Profi-KOM Ltd.")]
-[assembly: AssemblyProduct("mRemoteNG Connection Manager")]
-[assembly: AssemblyCopyright("(c) <#= DateTime.UtcNow.Year #> mRemoteNG")]
-[assembly: AssemblyTrademark("Profi-KOM LTd.")]
+[assembly: AssemblyCompany("Loipv")]
+[assembly: AssemblyProduct("LoipvRemote")]
+[assembly: AssemblyCopyright("(c) <#= DateTime.UtcNow.Year #> LoipvRemote")]
+[assembly: AssemblyTrademark("LoipvRemote")]
 [assembly: AssemblyCulture("")]
 
 // Version information

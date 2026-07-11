@@ -32,6 +32,7 @@
     <Content Include="Includes\Config.wxi" />
     <Content Include="Resources\AppIcon.ico" />
     <Content Include="Resources\Installer_Header.png" />
+    <Content Include="Resources\Installer_FatalError.png" />
     <Content Include="Resources\Installer_Side.png" />
   </ItemGroup>
   <ItemGroup>
@@ -110,7 +111,7 @@ set /p buildenv=&lt;buildenv.tmp
 :: IF "%25APPVEYOR_BUILD_FOLDER"=="" ( set cert_pwd=  )
 
 :: Call the post build powershell script
-powershell.exe -ExecutionPolicy Bypass -File "$(SolutionDir)Tools\postbuild_installer.ps1" -SolutionDir "$(SolutionDir)\" -TargetDir "%25cd%25" -TargetFileName "LoipvRemote.exe" -ConfigurationName "%25buildenv%25" -CertificatePath "$(CertPath)" -CertificatePassword "$(CertPassword)" -ExcludeFromSigning "PuTTYNG.exe"</PostBuildEvent>
+powershell.exe -ExecutionPolicy Bypass -File "$(SolutionDir)Tools\postbuild_installer.ps1" -SolutionDir "$(SolutionDir)\" -TargetDir "%25cd%25" -TargetFileName "LoipvRemote.exe" -ConfigurationName "%25buildenv%25" -CertificatePath "$(CertPath)" -CertificatePassword "$(CertPassword)"</PostBuildEvent>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x64' ">
     <Cultures>en-US</Cultures>
@@ -123,6 +124,9 @@ powershell.exe -ExecutionPolicy Bypass -File "$(SolutionDir)Tools\postbuild_inst
     <DefineConstants>HarvestPath=$(SolutionDir)LoipvRemote\bin\x64\Release</DefineConstants>
     <Cultures>en-US</Cultures>
     <SuppressPdbOutput>True</SuppressPdbOutput>
+    <!-- The payload is harvested into LocalAppData for the current user.
+         WiX's machine-install ICE checks do not apply to this internal MSI. -->
+    <SuppressIces>ICE38;ICE64</SuppressIces>
     <OutputPath>bin\$(Platform)\$(Configuration)\</OutputPath>
     <IntermediateOutputPath>obj\$(Platform)\$(Configuration)\</IntermediateOutputPath>
   </PropertyGroup>

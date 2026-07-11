@@ -1,5 +1,11 @@
 # Changelog
 
+## LoipvRemote 2.0.0.0 (Internal)
+
+- Sửa phục hồi focus/input của terminal SSH sau khi chuyển sang ứng dụng khác rồi quay lại bằng chuột hoặc Alt+Tab.
+- Đồng bộ nhận diện LoipvRemote trong bộ cài: banner, ảnh cạnh và icon title bar.
+- Bản phân phối nội bộ, chưa được code-sign.
+
 ## LoipvRemote 1.78.2.3606
 
 - Hoàn thiện nhận diện thương hiệu LoipvRemote, biểu tượng ứng dụng và giao diện tiếng Việt.

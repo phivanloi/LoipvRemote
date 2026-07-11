@@ -10,7 +10,7 @@ using System.Resources;
 
 // Compute version values
 
-//Build nr: 3605
+//Build nr: 0
 
 // General Information
 [assembly: AssemblyTitle("LoipvRemote")]
@@ -23,7 +23,7 @@ using System.Resources;
 [assembly: AssemblyCulture("")]
 
 // Version information
-[assembly: AssemblyVersion("1.78.2.3605")]
-[assembly: AssemblyFileVersion("1.78.2.3605")]
+[assembly: AssemblyVersion("2.0.0.0")]
+[assembly: AssemblyFileVersion("2.0.0.0")]
 [assembly: NeutralResourcesLanguageAttribute("en-US")]
-[assembly: AssemblyInformationalVersion("1.78.2 (Nightly Build 3605) x64")]
+[assembly: AssemblyInformationalVersion("2.0.0 (Internal Build 0) x64")]

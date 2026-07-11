@@ -505,7 +505,7 @@ namespace LoipvRemote.Connection.Protocol
         {
             try
             {
-                AttachInputQueues();
+                ReattachInputQueues();
 
                 // PuTTY is embedded as a child of the connection panel. Promoting that
                 // child to the foreground changes Windows' Alt+Tab MRU ordering; setting
@@ -633,6 +633,15 @@ namespace LoipvRemote.Connection.Protocol
             _inputQueuesAttached = _hostInputThreadId != 0 && _puttyInputThreadId != 0 &&
                                    _hostInputThreadId != _puttyInputThreadId &&
                                    NativeMethods.AttachThreadInput(_hostInputThreadId, _puttyInputThreadId, true);
+        }
+
+        private void ReattachInputQueues()
+        {
+            // Switching away from a cross-process child can leave its input queue
+            // attached but without an active keyboard focus target. Rebinding on
+            // every explicit focus request makes Alt+Tab and mouse activation reliable.
+            DetachInputQueues();
+            AttachInputQueues();
         }
 
         private void DetachInputQueues()

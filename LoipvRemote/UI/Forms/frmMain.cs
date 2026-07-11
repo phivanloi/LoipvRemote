@@ -623,9 +623,8 @@ namespace LoipvRemote.UI.Forms
                         _inMouseActivate = true;
                         break;
                     case NativeMethods.WM_ACTIVATEAPP:
-                        Control candidateTabToFocus = FromChildHandle(NativeMethods.WindowFromPoint(MousePosition))
-                                               ?? GetChildAtPoint(MousePosition);
-                        if (candidateTabToFocus is InterfaceControl) candidateTabToFocus.Parent.Focus();
+                        if (ApplicationActivationFocusPolicy.ShouldRestoreActiveConnectionFocus(m.Msg, m.WParam))
+                            BeginInvoke(new MethodInvoker(ActivateConnection));
                         _inMouseActivate = false;
                         break;
                     case NativeMethods.WM_ACTIVATE:
@@ -636,7 +635,11 @@ namespace LoipvRemote.UI.Forms
                                                      ?? GetChildAtPoint(MousePosition);
                             if (controlThatWasClicked != null)
                             {
-                                if (controlThatWasClicked is TreeView ||
+                                if (controlThatWasClicked is InterfaceControl)
+                                {
+                                    ActivateConnection();
+                                }
+                                else if (controlThatWasClicked is TreeView ||
                                     controlThatWasClicked is ComboBox ||
                                     controlThatWasClicked is MrngTextBox ||
                                     controlThatWasClicked is FrmMain)

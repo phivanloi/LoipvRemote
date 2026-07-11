@@ -3,8 +3,10 @@
   <?include $(sys.CURRENTDIR)Includes\Config.wxi?>
 	<Fragment>
     <Directory Id="TARGETDIR" Name="SourceDir">
-      <Directory Id="$(var.PlatformProgramFilesFolder)">
-        <Directory Id="INSTALLDIR" Name="$(var.ProductName)">
+      <Directory Id="LocalAppDataFolder">
+        <Directory Id="LocalProgramsFolder" Name="Programs">
+          <Directory Id="INSTALLDIR" Name="$(var.ProductName)">
+          </Directory>
         </Directory>
       </Directory>
 

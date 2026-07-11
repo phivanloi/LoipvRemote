@@ -24,13 +24,13 @@ using System.Resources;
 
 // Compute version values
 <#
-    int major = 1;
-    int minor = 78;
-    int revision = 2;
-    string channel = "Nightly Build";
-    DateTime lastReleaseDate = new DateTime(2019, 9, 2);
-    TimeSpan elapsed = DateTime.UtcNow - lastReleaseDate;
-    int build = (int)(elapsed.TotalMinutes / 1000);
+    // Internal distribution release. Keep all four file-version components
+    // stable so MSI repair/upgrade behavior is deterministic for this build.
+    int major = 2;
+    int minor = 0;
+    int revision = 0;
+    int build = 0;
+    string channel = "Internal Build";
 #>
 
 //Build nr: <#= build #>

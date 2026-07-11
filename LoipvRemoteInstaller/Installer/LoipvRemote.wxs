@@ -6,16 +6,19 @@
            Id="$(var.ProductCode)"
            UpgradeCode="$(var.UpgradeCode)"
            Language="1033">
-    <Package InstallerVersion="200" Compressed="yes" InstallScope="perMachine" />
+    <!-- Internal distribution: install below the signed-in user's profile so
+         installation does not require Administrator privileges. -->
+    <Package InstallerVersion="200" Compressed="yes" InstallScope="perUser" InstallPrivileges="limited" />
     <MajorUpgrade DowngradeErrorMessage="!(loc.Upgrade_NewerVersionInstalled)" Schedule="afterInstallExecute" />
     <MediaTemplate EmbedCab="yes" />
     <Binary Id="CustomActions.CA.dll" SourceFile="$(var.SolutionDir)LoipvRemoteInstaller\CustomActions\bin\x64\$(var.Configuration)\CustomActions.CA.dll" />
+    <Binary Id="LoipvRemote_FatalErrorBmp" SourceFile="Resources\Installer_FatalError.png" />
     <Property Id="MsiLogging" Value="v" />
     <Property Id="ARPPRODUCTICON" Value="AppIcon.ico" />
     <SetProperty Id="ARPINSTALLLOCATION" Value="[INSTALLDIR]" After="CostFinalize" />
     <Property Id="MAINEXE" Value="$(var.ExeProcessName)" />
     <Property Id="INSTALLDIR">
-      <RegistrySearch Id='LoipvRemoteRegistry' Type='raw' Root='HKLM' Key='Software\LoipvRemote' Name='InstallDir' />
+      <RegistrySearch Id='LoipvRemoteRegistry' Type='raw' Root='HKCU' Key='Software\LoipvRemote' Name='InstallDir' />
     </Property>
     <Property Id='RDP_DTLS_KB' Value='$(var.RdpDtlsKb)' />
     <Property Id='RDP_DTLS_UPDATE_INSTALLED' Value='0' Secure='yes' />
@@ -32,23 +35,15 @@
 
     <InstallUISequence>
       <LaunchConditions After="SetWIX_IS_NETFRAMEWORK_40_OR_LATER_INSTALLED" />
-      <Custom Action="CheckIfLegacyVersionInstalled" After="LaunchConditions" />
-      <Custom Action="UninstallLegacyVersion" After="CheckIfLegacyVersionInstalled">(NOT Installed) AND (LEGACYVERSIONINSTALLED = 1)</Custom>
     </InstallUISequence>
 
     <InstallExecuteSequence>
       <Custom Action="CheckIfRdpDtlsUpdateInstalled" After="AppSearch">(NOT Installed) AND (VersionNT = 601 OR VersionNT64 = 601)</Custom>
       <Custom Action="CheckIfMinimumRdpInstalled" After="CheckIfRdpDtlsUpdateInstalled">(NOT Installed) AND (VersionNT = 601 OR VersionNT64 = 601)</Custom>
       <LaunchConditions After="SetWIX_IS_NETFRAMEWORK_40_OR_LATER_INSTALLED" />
-      <Custom Action="CheckIfLegacyVersionInstalled" After="LaunchConditions" />
-      <Custom Action="UninstallLegacyVersion" After="CheckIfLegacyVersionInstalled">(NOT Installed) AND (LEGACYVERSIONINSTALLED = 1)</Custom>
     </InstallExecuteSequence>
 
 
-    <!-- Need to be admin to install -->
-    <Condition Message="!(loc.Install_NeedToBeAdminToInstall)">
-      Privileged
-    </Condition>
     <!-- Windows 7 or higher required -->
     <Condition Message="!(loc.Install_OSVersionRequirement)">
       <![CDATA[Installed OR (IGNOREPREREQUISITES = 1) OR (VersionNT >= 601) OR (VersionNT64 >= 601)]]>

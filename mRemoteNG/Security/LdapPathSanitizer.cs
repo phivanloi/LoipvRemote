@@ -9,6 +9,28 @@ namespace mRemoteNG.Security
     /// </summary>
     public static class LdapPathSanitizer
     {
+        public static string ValidatePath(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+                throw new ArgumentException("LDAP path cannot be empty.", nameof(path));
+
+            if (!path.StartsWith("LDAP://", StringComparison.OrdinalIgnoreCase) &&
+                !path.StartsWith("LDAPS://", StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException("Only LDAP and LDAPS paths are supported.", nameof(path));
+
+            foreach (char character in path)
+            {
+                if (char.IsControl(character))
+                    throw new ArgumentException("LDAP paths cannot contain control characters.", nameof(path));
+            }
+
+            int providerSeparator = path.IndexOf("://", StringComparison.Ordinal);
+            if (providerSeparator < 0 || providerSeparator + 3 == path.Length)
+                throw new ArgumentException("LDAP path must include a server or distinguished name.", nameof(path));
+
+            return path;
+        }
+
         /// <summary>
         /// Sanitizes an LDAP distinguished name (DN) by escaping special characters.
         /// This should be used for DN values like those passed to DirectoryEntry constructor.

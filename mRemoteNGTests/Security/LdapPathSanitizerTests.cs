@@ -1,4 +1,5 @@
 using mRemoteNG.Security;
+using System;
 using NUnit.Framework;
 
 namespace mRemoteNGTests.Security
@@ -6,6 +7,21 @@ namespace mRemoteNGTests.Security
     [TestFixture]
     public class LdapPathSanitizerTests
     {
+        [Test]
+        public void ValidatePath_PreservesValidDistinguishedName()
+        {
+            const string path = "LDAP://dc01/OU=Servers,DC=example,DC=com";
+            Assert.That(LdapPathSanitizer.ValidatePath(path), Is.EqualTo(path));
+        }
+
+        [TestCase("WinNT://domain/user")]
+        [TestCase("file://server/share")]
+        [TestCase("LDAP://server/OU=Users\r\nmalicious")]
+        public void ValidatePath_RejectsUnsupportedProvidersAndControlCharacters(string path)
+        {
+            Assert.Throws<ArgumentException>(() => LdapPathSanitizer.ValidatePath(path));
+        }
+
         [Test]
         public void SanitizeDistinguishedName_EscapesBackslash()
         {

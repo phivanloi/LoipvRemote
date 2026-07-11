@@ -36,50 +36,10 @@ namespace mRemoteNG.Connection.Protocol.Terminal
                     Padding = new Padding(0, 20, 0, 0)
                 };
 
-                // Path to command prompt - dynamically determined from system
-                // Using COMSPEC environment variable which points to the system's command processor
-                string terminalExe = Environment.GetEnvironmentVariable("COMSPEC") ?? @"C:\Windows\System32\cmd.exe";
-
-                // Setup arguments based on whether hostname is provided
-                string arguments = "";
-                string hostname = _connectionInfo.Hostname.Trim().ToLower();
-                bool useLocalHost = hostname == "" || hostname.Equals("localhost");
-                
-                if (!useLocalHost)
-                {
-                    // If hostname is provided, try to connect via SSH
-                    // Note: Domain field is not used for SSH as it's Windows-specific
-                    // SSH authentication will use standard SSH mechanisms (password prompt, keys, etc.)
-                    string username = _connectionInfo.Username;
-                    int port = _connectionInfo.Port;
-                    
-                    // Build SSH command
-                    string sshCommand = "ssh";
-                    
-                    // Add port if it's not the default SSH port (22)
-                    if (port > 0 && port != 22)
-                    {
-                        sshCommand += $" -p {port}";
-                    }
-                    
-                    if (!string.IsNullOrEmpty(username))
-                    {
-                        sshCommand += $" {username}@{_connectionInfo.Hostname}";
-                    }
-                    else
-                    {
-                        sshCommand += $" {_connectionInfo.Hostname}";
-                    }
-                    
-                    arguments = $"/K {sshCommand}";
-                }
-                else
-                {
-                    // For local sessions, just start cmd with /K to keep it open
-                    arguments = "/K";
-                }
-
-                _consoleControl.StartProcess(terminalExe, arguments);
+                string commandProcessor = Environment.GetEnvironmentVariable("COMSPEC") ?? @"C:\Windows\System32\cmd.exe";
+                TerminalProcessStartInfo process = TerminalProcessStartInfoBuilder.Build(
+                    _connectionInfo.Hostname, _connectionInfo.Username, _connectionInfo.Port, commandProcessor);
+                _consoleControl.StartProcess(process.FileName, process.Arguments);
 
                 // Wait for the console control to create its handle
                 int maxWaitMs = 5000; // 5 seconds timeout

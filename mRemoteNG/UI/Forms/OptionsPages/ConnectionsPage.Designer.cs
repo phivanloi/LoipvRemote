@@ -324,9 +324,9 @@ namespace mRemoteNG.UI.Forms.OptionsPages
             chkSlowClickRename.TabIndex = 12;
             chkSlowClickRename.Text = "Rename items using slow double-click (Explorer style)";
             chkSlowClickRename.UseVisualStyleBackColor = true;
-            // 
+            //
             // chkOpenMultipleConnectionsWithEnter
-            // 
+            //
             chkOpenMultipleConnectionsWithEnter._mice = MrngCheckBox.MouseState.OUT;
             chkOpenMultipleConnectionsWithEnter.AutoSize = true;
             chkOpenMultipleConnectionsWithEnter.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);

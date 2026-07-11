@@ -147,9 +147,9 @@ namespace mRemoteNG.UI.Forms.OptionsPages
             chkShowProtocolOnTabs.TabIndex = 3;
             chkShowProtocolOnTabs.Text = "Show protocols on tab names";
             chkShowProtocolOnTabs.UseVisualStyleBackColor = true;
-            // 
+            //
             // chkUseTerminalTitleForTabs
-            // 
+            //
             chkUseTerminalTitleForTabs._mice = MrngCheckBox.MouseState.OUT;
             chkUseTerminalTitleForTabs.AutoSize = true;
             chkUseTerminalTitleForTabs.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);

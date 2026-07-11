@@ -34,6 +34,7 @@ namespace mRemoteNG.Connection.Protocol
         private System.Threading.Timer? _titleMonitorTimer;
         private string _lastWindowTitle = string.Empty;
         private int _titleMonitorCallbackActive;
+        private string? _temporaryOpeningCommandPath;
 
         #region Public Properties
 
@@ -55,6 +56,7 @@ namespace mRemoteNG.Connection.Protocol
 
         private void ProcessExited(object sender, EventArgs e)
         {
+            DeleteTemporaryOpeningCommandFile();
             Event_Closed(this);
         }
 
@@ -263,6 +265,14 @@ namespace mRemoteNG.Connection.Protocol
                             arguments.Add("-i", optionalTemporaryPrivateKeyPath);
                         }
 
+                        // PuTTY reads -m only after SSH authentication completes. This avoids
+                        // sending the command into an interactive username/password prompt.
+                        if (!string.IsNullOrWhiteSpace(InterfaceControl.Info?.OpeningCommand))
+                        {
+                            _temporaryOpeningCommandPath = WriteTemporaryOpeningCommandFile(InterfaceControl.Info.OpeningCommand);
+                            arguments.Add("-m", _temporaryOpeningCommandPath);
+                        }
+
                     }
 
                     arguments.Add("-P", InterfaceControl.Info?.Port.ToString());
@@ -369,13 +379,6 @@ namespace mRemoteNG.Connection.Protocol
                 Runtime.MessageCollector.AddMessage(MessageClass.InformationMsg, string.Format(Language.PuttyTitle, PuttyProcess.MainWindowTitle), true);
                 Runtime.MessageCollector.AddMessage(MessageClass.InformationMsg, string.Format(Language.PanelHandle, InterfaceControl.Parent.Handle), true);
 
-                if (!string.IsNullOrEmpty(InterfaceControl.Info?.OpeningCommand))
-                {
-                    NativeMethods.SetForegroundWindow(PuttyHandle);
-                    string finalCommand = InterfaceControl.Info.OpeningCommand.TrimEnd() + "\n";
-                    SendKeys.SendWait(finalCommand);
-                }
-
                 if (!_isPuttyNg)
                 {
                     NativeMethods.ShowWindow(PuttyHandle, (int)NativeMethods.SW_RESTORE);
@@ -409,6 +412,9 @@ namespace mRemoteNG.Connection.Protocol
                     System.Threading.Thread.Sleep(500);
                     System.IO.File.Delete(optionalTemporaryPrivateKeyPath);
                 }
+
+                if (PuttyProcess == null || PuttyProcess.HasExited)
+                    DeleteTemporaryOpeningCommandFile();
             }
         }
 
@@ -442,6 +448,44 @@ namespace mRemoteNG.Connection.Protocol
             }
 
             throw new IOException("Unable to create a unique temporary private-key file.");
+        }
+
+        private static string WriteTemporaryOpeningCommandFile(string openingCommand)
+        {
+            for (int attempt = 0; attempt < 5; attempt++)
+            {
+                string candidatePath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".txt");
+                try
+                {
+                    using FileStream stream = new(candidatePath, FileMode.CreateNew, FileAccess.Write, FileShare.Read);
+                    using StreamWriter writer = new(stream, Utf8NoBom);
+                    writer.WriteLine(openingCommand.TrimEnd());
+                    File.SetAttributes(candidatePath, FileAttributes.Temporary);
+                    return candidatePath;
+                }
+                catch (IOException) when (File.Exists(candidatePath))
+                {
+                    // Name collided with a pre-existing file; generate another one.
+                }
+            }
+
+            throw new IOException("Unable to create a temporary opening-command file.");
+        }
+
+        private void DeleteTemporaryOpeningCommandFile()
+        {
+            string? path = Interlocked.Exchange(ref _temporaryOpeningCommandPath, null);
+            if (string.IsNullOrEmpty(path)) return;
+
+            try
+            {
+                if (File.Exists(path))
+                    File.Delete(path);
+            }
+            catch (IOException)
+            {
+                // The process can still be shutting down; cleanup is best effort.
+            }
         }
 
         public override void Focus()
@@ -537,6 +581,10 @@ namespace mRemoteNG.Connection.Protocol
             catch (Exception ex)
             {
                 Runtime.MessageCollector.AddMessage(MessageClass.ErrorMsg, Language.PuttyKillFailed + Environment.NewLine + ex.Message, true);
+            }
+            finally
+            {
+                DeleteTemporaryOpeningCommandFile();
             }
 
             try

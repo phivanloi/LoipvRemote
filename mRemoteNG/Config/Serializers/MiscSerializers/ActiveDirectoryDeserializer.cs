@@ -18,8 +18,22 @@ namespace mRemoteNG.Config.Serializers.MiscSerializers
     [SupportedOSPlatform("windows")]
     public class ActiveDirectoryDeserializer(string ldapPath, bool importSubOu)
     {
-        private readonly string _ldapPath = LdapPathSanitizer.ValidatePath(ldapPath.ThrowIfNullOrEmpty(nameof(ldapPath)));
+        private readonly string _ldapPath = SanitizeLdapPath(ldapPath.ThrowIfNullOrEmpty(nameof(ldapPath)));
         private readonly bool _importSubOu = importSubOu;
+
+        private static string SanitizeLdapPath(string ldapPath)
+        {
+            LdapPathSanitizer.ValidatePath(ldapPath);
+
+            int schemeEndIndex = ldapPath.IndexOf("://", StringComparison.OrdinalIgnoreCase) + 3;
+            int pathStartIndex = ldapPath.IndexOf('/', schemeEndIndex);
+            if (pathStartIndex < 0)
+                return ldapPath;
+
+            string schemeAndServer = ldapPath[..(pathStartIndex + 1)];
+            string distinguishedName = ldapPath[(pathStartIndex + 1)..];
+            return schemeAndServer + LdapPathSanitizer.SanitizeDistinguishedName(distinguishedName);
+        }
 
         public ConnectionTreeModel Deserialize()
         {

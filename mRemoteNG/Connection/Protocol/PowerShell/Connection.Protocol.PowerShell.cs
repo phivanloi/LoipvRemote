@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Drawing;
+using System.Threading;
 using System.Runtime.Versioning;
 using System.Windows.Forms;
 using mRemoteNG.App;
@@ -188,10 +189,16 @@ namespace mRemoteNG.Connection.Protocol.PowerShell
 
                 // Setup process for script with arguments
                 //* The -NoProfile parameter would be a valuable addition but should be able to be deactivated.
-                string arguments = PowerShellCommandBuilder.BuildEncodedArguments(
-                    psScriptBlock, _connectionInfo.Hostname, psUsername, _connectionInfo.Password, psLoginAttempts);
                 string hostname = _connectionInfo.Hostname.Trim().ToLower();
                 bool useLocalHost = hostname == "" || hostname.Equals("localhost");
+                string passwordPipeName = string.Empty;
+                if (!useLocalHost && !string.IsNullOrEmpty(_connectionInfo.Password))
+                {
+                    passwordPipeName = PowerShellPasswordPipe.Start(_connectionInfo.Password);
+                }
+
+                string arguments = PowerShellCommandBuilder.BuildEncodedArguments(
+                    psScriptBlock, _connectionInfo.Hostname, psUsername, passwordPipeName, psLoginAttempts);
                 if (useLocalHost)
                 {
                     arguments = $@"-NoExit";

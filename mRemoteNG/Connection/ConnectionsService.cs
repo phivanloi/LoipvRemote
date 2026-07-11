@@ -233,15 +233,6 @@ namespace mRemoteNG.Connection
             if (!forceSave && !IsConnectionsFileLoaded)
                 return;
 
-            if (!useDatabase && !forceSave && !HasExpectedFileVersion(connectionFileName))
-            {
-                Runtime.MessageCollector?.AddMessage(
-                    MessageClass.WarningMsg,
-                    $"Connection file changed outside this instance; save was cancelled: {connectionFileName}",
-                    true);
-                return;
-            }
-
             if (_batchingSaves)
             {
                 _saveRequested = true;
@@ -250,6 +241,27 @@ namespace mRemoteNG.Connection
 
             try
             {
+                Mutex? fileSaveMutex = null;
+                bool ownsFileSaveMutex = false;
+                if (!useDatabase)
+                {
+                    fileSaveMutex = CreateFileSaveMutex(connectionFileName);
+                    ownsFileSaveMutex = fileSaveMutex.WaitOne(TimeSpan.FromSeconds(10));
+                    if (!ownsFileSaveMutex)
+                        throw new TimeoutException($"Timed out waiting to save connection file: {connectionFileName}");
+                }
+
+                try
+                {
+                    if (!useDatabase && !forceSave && !HasExpectedFileVersion(connectionFileName))
+                    {
+                        Runtime.MessageCollector?.AddMessage(
+                            MessageClass.WarningMsg,
+                            $"Connection file changed outside this instance; save was cancelled: {connectionFileName}",
+                            true);
+                        return;
+                    }
+
                 Runtime.MessageCollector.AddMessage(MessageClass.InformationMsg, "Saving connections...");
                 RemoteConnectionsSyncronizer?.Disable();
 
@@ -269,6 +281,13 @@ namespace mRemoteNG.Connection
                 _lastFileContentHash = !useDatabase ? ComputeFileHash(connectionFileName) : string.Empty;
                 RaiseConnectionsSavedEvent(connectionTreeModel, previouslyUsingDatabase, UsingDatabase, connectionFileName);
                 Runtime.MessageCollector.AddMessage(MessageClass.InformationMsg, "Successfully saved connections");
+                }
+                finally
+                {
+                    if (ownsFileSaveMutex)
+                        fileSaveMutex?.ReleaseMutex();
+                    fileSaveMutex?.Dispose();
+                }
             }
             catch (Exception ex)
             {
@@ -321,6 +340,13 @@ namespace mRemoteNG.Connection
 
             using SHA256 sha256 = SHA256.Create();
             return Convert.ToHexString(sha256.ComputeHash(File.ReadAllBytes(fileName)));
+        }
+
+        private static Mutex CreateFileSaveMutex(string connectionFileName)
+        {
+            string mutexName = "mRemoteNG_ConnectionFile_" + Convert.ToHexString(
+                SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(Path.GetFullPath(connectionFileName))));
+            return new Mutex(false, mutexName);
         }
 
         public string GetStartupConnectionFileName()

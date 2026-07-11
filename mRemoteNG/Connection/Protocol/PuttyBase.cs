@@ -35,6 +35,7 @@ namespace mRemoteNG.Connection.Protocol
         private string _lastWindowTitle = string.Empty;
         private int _titleMonitorCallbackActive;
         private string? _temporaryOpeningCommandPath;
+        private bool _puttyProcessStarted;
 
         #region Public Properties
 
@@ -84,6 +85,7 @@ namespace mRemoteNG.Connection.Protocol
         public override bool Connect()
         {
             string optionalTemporaryPrivateKeyPath = ""; // path to ppk file instead of password. only temporary (extracted from credential vault).
+            _puttyProcessStarted = false;
 
             try
             {
@@ -303,6 +305,7 @@ namespace mRemoteNG.Connection.Protocol
                 }
 
                 PuttyProcess.Start();
+                _puttyProcessStarted = true;
                 ChildProcessTracker.AddProcess(PuttyProcess);
                 PuttyProcess.WaitForInputIdle(Properties.OptionsAdvancedPage.Default.MaxPuttyWaitTime * 1000);
 
@@ -413,7 +416,7 @@ namespace mRemoteNG.Connection.Protocol
                     System.IO.File.Delete(optionalTemporaryPrivateKeyPath);
                 }
 
-                if (PuttyProcess == null || PuttyProcess.HasExited)
+                if (!_puttyProcessStarted || PuttyProcess == null || PuttyProcess.HasExited)
                     DeleteTemporaryOpeningCommandFile();
             }
         }

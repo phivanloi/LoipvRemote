@@ -122,13 +122,12 @@ namespace mRemoteNG.App
                     MessageCollector.AddExceptionMessage(Language.LoadFromSqlFailed, ex);
                     // Persist a safe recovery mode so a failed SQL configuration cannot
                     // trap the application in a startup crash loop.
-                    Properties.OptionsDBsPage.Default.UseSQLServer = false;
-                    Properties.OptionsDBsPage.Default.Save();
                     string commandButtons = string.Join("|", Language._TryAgain, Language.CommandOpenConnectionFile, string.Format(Language.CommandExitProgram, Application.ProductName));
                     CTaskDialog.ShowCommandBox(Application.ProductName ?? string.Empty, Language.LoadFromSqlFailed, Language.LoadFromSqlFailedContent, MiscTools.GetExceptionMessageRecursive(ex), "", "", commandButtons, false, ESysIcons.Error, ESysIcons.Error);
                     switch (CTaskDialog.CommandButtonResult)
                     {
                         case 0:
+                            Properties.OptionsDBsPage.Default.UseSQLServer = true;
                             LoadConnections(withDialog);
                             return;
                         case 1:
@@ -136,6 +135,8 @@ namespace mRemoteNG.App
                             LoadConnections(true);
                             return;
                         default:
+                            Properties.OptionsDBsPage.Default.UseSQLServer = false;
+                            Properties.OptionsDBsPage.Default.Save();
                             Application.Exit();
                             return;
                     }

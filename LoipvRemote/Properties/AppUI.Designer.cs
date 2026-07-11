@@ -26,7 +26,7 @@ namespace LoipvRemote.Properties {
         [global::System.Configuration.ApplicationScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("cs-CZ,de,el,en,en-US,es-AR,es,fr,hu,it,lt,ja-JP,ko-KR,nb-NO,nl,pt,pt-BR,pl,ru,uk," +
-            "tr-TR,zh-CN,zh-TW")]
+            "tr-TR,vi-VN,zh-CN,zh-TW")]
         public string SupportedUICultures {
             get {
                 return ((string)(this["SupportedUICultures"]));

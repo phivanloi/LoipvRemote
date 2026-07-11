@@ -39,7 +39,7 @@ namespace LoipvRemote.Tools
 
                 _cMen = new ContextMenuStrip
                 {
-                    Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular,
+                    Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular,
                                                    System.Drawing.GraphicsUnit.Point, Convert.ToByte(0)),
                     RenderMode = ToolStripRenderMode.Professional
                 };

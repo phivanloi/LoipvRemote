@@ -97,7 +97,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             listPalette.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] { keyCol, ColorCol, ColorNameCol });
             listPalette.DecorateLines = true;
             listPalette.Dock = System.Windows.Forms.DockStyle.Fill;
-            listPalette.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            listPalette.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             listPalette.Location = new System.Drawing.Point(3, 37);
             listPalette.Name = "listPalette";
             listPalette.ShowGroups = false;

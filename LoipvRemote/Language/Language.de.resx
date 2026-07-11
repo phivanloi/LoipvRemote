@@ -1460,9 +1460,6 @@ Wenn Sie Fehler feststellen, dann sollten Sie eine neue Verbindungsdatei erstell
   <data name="Screenshots" xml:space="preserve">
     <value>Bilschirmschnappschüsse</value>
   </data>
-  <data name="SearchPrompt" xml:space="preserve">
-    <value>Suche</value>
-  </data>
   <data name="SendTo" xml:space="preserve">
     <value>Senden an...</value>
   </data>
@@ -1843,9 +1840,6 @@ Die Passwortlänge muss zwischen {0} und {1} liegen</value>
   <data name="SaveConnectionsAfterEveryEdit" xml:space="preserve">
     <value>Verbindungen nach jeder Bearbeitung speichern</value>
   </data>
-  <data name="FilterSearchMatchesInConnectionTree" xml:space="preserve">
-    <value>Suchergebnisse in Verbindungen filtern</value>
-  </data>
   <data name="TestConnection" xml:space="preserve">
     <value>Verbindung testen</value>
   </data>
@@ -1905,9 +1899,6 @@ Die Passwortlänge muss zwischen {0} und {1} liegen</value>
   </data>
   <data name="CopyHostname" xml:space="preserve">
     <value>Hostnamen kopieren</value>
-  </data>
-  <data name="PlaceSearchBarAboveConnectionTree" xml:space="preserve">
-    <value>Suchleiste über den Verbindungen anzeigen</value>
   </data>
   <data name="TrackActiveConnectionInConnectionTree" xml:space="preserve">
     <value>Aktive Verbindung im Verbindungsbaum verfolgen</value>

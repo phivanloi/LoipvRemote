@@ -86,7 +86,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             chkSwitchToMCInformation._mice = MrngCheckBox.MouseState.OUT;
             chkSwitchToMCInformation.AutoSize = true;
-            chkSwitchToMCInformation.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            chkSwitchToMCInformation.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkSwitchToMCInformation.Location = new System.Drawing.Point(195, 64);
             chkSwitchToMCInformation.Name = "chkSwitchToMCInformation";
             chkSwitchToMCInformation.Size = new System.Drawing.Size(87, 17);
@@ -98,7 +98,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             chkSwitchToMCErrors._mice = MrngCheckBox.MouseState.OUT;
             chkSwitchToMCErrors.AutoSize = true;
-            chkSwitchToMCErrors.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            chkSwitchToMCErrors.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkSwitchToMCErrors.Location = new System.Drawing.Point(195, 110);
             chkSwitchToMCErrors.Name = "chkSwitchToMCErrors";
             chkSwitchToMCErrors.Size = new System.Drawing.Size(51, 17);
@@ -110,7 +110,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             chkSwitchToMCWarnings._mice = MrngCheckBox.MouseState.OUT;
             chkSwitchToMCWarnings.AutoSize = true;
-            chkSwitchToMCWarnings.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            chkSwitchToMCWarnings.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkSwitchToMCWarnings.Location = new System.Drawing.Point(195, 87);
             chkSwitchToMCWarnings.Name = "chkSwitchToMCWarnings";
             chkSwitchToMCWarnings.Size = new System.Drawing.Size(71, 17);
@@ -150,7 +150,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             chkShowErrorInMC._mice = MrngCheckBox.MouseState.OUT;
             chkShowErrorInMC.AutoSize = true;
-            chkShowErrorInMC.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            chkShowErrorInMC.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkShowErrorInMC.Location = new System.Drawing.Point(20, 110);
             chkShowErrorInMC.Name = "chkShowErrorInMC";
             chkShowErrorInMC.Size = new System.Drawing.Size(51, 17);
@@ -162,7 +162,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             chkShowWarningInMC._mice = MrngCheckBox.MouseState.OUT;
             chkShowWarningInMC.AutoSize = true;
-            chkShowWarningInMC.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            chkShowWarningInMC.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkShowWarningInMC.Location = new System.Drawing.Point(20, 87);
             chkShowWarningInMC.Name = "chkShowWarningInMC";
             chkShowWarningInMC.Size = new System.Drawing.Size(71, 17);
@@ -174,7 +174,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             chkShowInfoInMC._mice = MrngCheckBox.MouseState.OUT;
             chkShowInfoInMC.AutoSize = true;
-            chkShowInfoInMC.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            chkShowInfoInMC.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkShowInfoInMC.Location = new System.Drawing.Point(20, 64);
             chkShowInfoInMC.Name = "chkShowInfoInMC";
             chkShowInfoInMC.Size = new System.Drawing.Size(87, 17);
@@ -186,7 +186,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             chkShowDebugInMC._mice = MrngCheckBox.MouseState.OUT;
             chkShowDebugInMC.AutoSize = true;
-            chkShowDebugInMC.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            chkShowDebugInMC.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkShowDebugInMC.Location = new System.Drawing.Point(20, 41);
             chkShowDebugInMC.Name = "chkShowDebugInMC";
             chkShowDebugInMC.Size = new System.Drawing.Size(61, 17);
@@ -235,7 +235,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             chkLogDebugMsgs._mice = MrngCheckBox.MouseState.OUT;
             chkLogDebugMsgs.AutoSize = true;
-            chkLogDebugMsgs.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            chkLogDebugMsgs.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkLogDebugMsgs.Location = new System.Drawing.Point(3, 3);
             chkLogDebugMsgs.Name = "chkLogDebugMsgs";
             chkLogDebugMsgs.Size = new System.Drawing.Size(61, 17);
@@ -247,7 +247,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             chkLogInfoMsgs._mice = MrngCheckBox.MouseState.OUT;
             chkLogInfoMsgs.AutoSize = true;
-            chkLogInfoMsgs.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            chkLogInfoMsgs.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkLogInfoMsgs.Location = new System.Drawing.Point(149, 3);
             chkLogInfoMsgs.Name = "chkLogInfoMsgs";
             chkLogInfoMsgs.Size = new System.Drawing.Size(87, 17);
@@ -259,7 +259,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             chkLogWarningMsgs._mice = MrngCheckBox.MouseState.OUT;
             chkLogWarningMsgs.AutoSize = true;
-            chkLogWarningMsgs.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            chkLogWarningMsgs.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkLogWarningMsgs.Location = new System.Drawing.Point(295, 3);
             chkLogWarningMsgs.Name = "chkLogWarningMsgs";
             chkLogWarningMsgs.Size = new System.Drawing.Size(71, 17);
@@ -271,7 +271,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             chkLogErrorMsgs._mice = MrngCheckBox.MouseState.OUT;
             chkLogErrorMsgs.AutoSize = true;
-            chkLogErrorMsgs.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            chkLogErrorMsgs.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkLogErrorMsgs.Location = new System.Drawing.Point(441, 3);
             chkLogErrorMsgs.Name = "chkLogErrorMsgs";
             chkLogErrorMsgs.Size = new System.Drawing.Size(51, 17);
@@ -283,7 +283,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             chkLogToCurrentDir._mice = MrngCheckBox.MouseState.OUT;
             chkLogToCurrentDir.AutoSize = true;
-            chkLogToCurrentDir.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            chkLogToCurrentDir.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkLogToCurrentDir.Location = new System.Drawing.Point(9, 18);
             chkLogToCurrentDir.Name = "chkLogToCurrentDir";
             chkLogToCurrentDir.Size = new System.Drawing.Size(168, 17);
@@ -346,7 +346,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             // textBoxLogPath
             //
             textBoxLogPath.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            textBoxLogPath.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            textBoxLogPath.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             textBoxLogPath.Location = new System.Drawing.Point(9, 57);
             textBoxLogPath.Name = "textBoxLogPath";
             textBoxLogPath.ReadOnly = true;
@@ -388,7 +388,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             chkPopupDebug._mice = MrngCheckBox.MouseState.OUT;
             chkPopupDebug.AutoSize = true;
-            chkPopupDebug.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            chkPopupDebug.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkPopupDebug.Location = new System.Drawing.Point(3, 3);
             chkPopupDebug.Name = "chkPopupDebug";
             chkPopupDebug.Size = new System.Drawing.Size(61, 17);
@@ -400,7 +400,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             chkPopupError._mice = MrngCheckBox.MouseState.OUT;
             chkPopupError.AutoSize = true;
-            chkPopupError.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            chkPopupError.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkPopupError.Location = new System.Drawing.Point(441, 3);
             chkPopupError.Name = "chkPopupError";
             chkPopupError.Size = new System.Drawing.Size(51, 17);
@@ -412,7 +412,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             chkPopupInfo._mice = MrngCheckBox.MouseState.OUT;
             chkPopupInfo.AutoSize = true;
-            chkPopupInfo.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            chkPopupInfo.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkPopupInfo.Location = new System.Drawing.Point(149, 3);
             chkPopupInfo.Name = "chkPopupInfo";
             chkPopupInfo.Size = new System.Drawing.Size(87, 17);
@@ -424,7 +424,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             chkPopupWarning._mice = MrngCheckBox.MouseState.OUT;
             chkPopupWarning.AutoSize = true;
-            chkPopupWarning.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            chkPopupWarning.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkPopupWarning.Location = new System.Drawing.Point(295, 3);
             chkPopupWarning.Name = "chkPopupWarning";
             chkPopupWarning.Size = new System.Drawing.Size(71, 17);

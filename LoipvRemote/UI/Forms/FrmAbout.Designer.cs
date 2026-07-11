@@ -93,7 +93,7 @@ namespace LoipvRemote.UI.Forms
             lblTitle.Name = "lblTitle";
             lblTitle.Size = new System.Drawing.Size(149, 27);
             lblTitle.TabIndex = 0;
-            lblTitle.Text = "Fructus temporum";
+            lblTitle.Text = "LoipvRemote";
             lblTitle.UseCompatibleTextRendering = true;
             //
             // lblVersion
@@ -140,7 +140,7 @@ namespace LoipvRemote.UI.Forms
             ClientSize = new System.Drawing.Size(584, 281);
             Controls.Add(pnlBottom);
             Controls.Add(pbLogo);
-            Font = new System.Drawing.Font("Segoe UI", 8.25F);
+            Font = new System.Drawing.Font("Segoe UI", 10F);
             ForeColor = System.Drawing.SystemColors.ControlText;
             Name = "frmAbout";
             Text = "About";

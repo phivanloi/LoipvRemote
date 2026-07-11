@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Runtime.Versioning;
 using System.Windows.Forms;
 using LoipvRemote.Themes;
+using LoipvRemote.UI.DesignSystem;
 
 namespace LoipvRemote.UI.Forms.OptionsPages
 {
@@ -13,6 +14,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
         protected OptionsPage()
         {
             InitializeComponent();
+            UiScaleManager.Instance.Apply(this, false);
             //ThemeManager.getInstance().ThemeChanged += ApplyTheme;
         }
 
@@ -76,7 +78,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             AutoScaleDimensions = new SizeF(96F, 96F);
             AutoScaleMode = AutoScaleMode.Dpi;
-            Font = new Font("Segoe UI", 8.25F, FontStyle.Regular, GraphicsUnit.Point, 0);
+            Font = new Font("Segoe UI", 10F, FontStyle.Regular, GraphicsUnit.Point, 0);
             Name = "OptionsPage";
             ResumeLayout(false);
         }

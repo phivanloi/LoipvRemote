@@ -37,6 +37,8 @@ namespace LoipvRemote.UI.Controls.FilteredPropertyGrid
         /// </summary>
         private ObjectWrapper _mWrapper;
 
+        protected virtual bool SuppressModifiedValueBold => false;
+
         /// <summary>
         /// Public constructor.
         /// </summary>
@@ -133,6 +135,7 @@ namespace LoipvRemote.UI.Controls.FilteredPropertyGrid
 
                 // Set the list of properties to the wrapper.
                 _mWrapper.PropertyDescriptors = _propertyDescriptors;
+                _mWrapper.SuppressModifiedValueBold = SuppressModifiedValueBold;
                 // Link the wrapper to the parent PropertyGrid.
                 base.SelectedObject = _mWrapper;
             }

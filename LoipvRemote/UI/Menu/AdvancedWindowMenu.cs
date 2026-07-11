@@ -48,12 +48,8 @@ namespace LoipvRemote.UI.Menu
             _windowMenu.InsertMenuItem(_windowMenu.SystemMenuHandle, 0,
                 WindowMenu.Flags.MF_POPUP | WindowMenu.Flags.MF_BYPOSITION, popMen,
                 Language.SendTo);
-            // option to show/hide menu strips
-            _windowMenu.InsertMenuItem(_windowMenu.SystemMenuHandle, 1,
-                WindowMenu.Flags.MF_BYPOSITION, new IntPtr(0),
-                Language.ShowHideMenu);
             // separator
-            _windowMenu.InsertMenuItem(_windowMenu.SystemMenuHandle, 2,
+            _windowMenu.InsertMenuItem(_windowMenu.SystemMenuHandle, 1,
                                        WindowMenu.Flags.MF_BYPOSITION | WindowMenu.Flags.MF_SEPARATOR, IntPtr.Zero,
                                        null);
         }

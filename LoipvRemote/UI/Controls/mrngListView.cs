@@ -80,7 +80,7 @@ namespace LoipvRemote.UI.Controls
             //
             // NGListView
             //
-            Font = new Font("Segoe UI", 8.25F, FontStyle.Regular, GraphicsUnit.Point, 0);
+            Font = new Font("Segoe UI", 10F, FontStyle.Regular, GraphicsUnit.Point, 0);
             ((ISupportInitialize)(this)).EndInit();
             ResumeLayout(false);
         }

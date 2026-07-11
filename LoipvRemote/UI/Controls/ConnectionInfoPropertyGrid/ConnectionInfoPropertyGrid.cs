@@ -76,9 +76,51 @@ namespace LoipvRemote.UI.Controls.ConnectionInfoPropertyGrid {
         /// </summary>
         public bool RootNodeSelected { get; private set; }
 
+        protected override bool SuppressModifiedValueBold => true;
+
         public ConnectionInfoPropertyGrid() {
             InitializeComponent();
             PropertyValueChanged += pGrid_PropertyValueChanged;
+        }
+
+        protected override void OnFontChanged(EventArgs e)
+        {
+            base.OnFontChanged(e);
+            ApplyScaledRowHeight();
+        }
+
+        protected override void OnCreateControl()
+        {
+            base.OnCreateControl();
+            ApplyScaledRowHeight();
+        }
+
+        protected override void OnControlAdded(ControlEventArgs e)
+        {
+            base.OnControlAdded(e);
+            ApplyScaledRowHeight();
+        }
+
+        internal void ApplyScaledRowHeight()
+        {
+            Control? gridView = Controls.Cast<Control>()
+                .FirstOrDefault(control => control.GetType().Name.Equals("PropertyGridView", StringComparison.Ordinal));
+            if (gridView != null)
+                gridView.Font = Font;
+
+            int rowHeight = PropertyGridLayoutMetrics.RowHeightForFontHeight(Font.Height);
+            PropertyInfo? rowHeightProperty = gridView?.GetType().GetProperty("RowHeight",
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            FieldInfo? cachedRowHeightField = gridView?.GetType().GetField("_cachedRowHeight",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+
+            if (rowHeightProperty?.CanWrite == true)
+                rowHeightProperty.SetValue(gridView, rowHeight);
+            else
+                cachedRowHeightField?.SetValue(gridView, rowHeight);
+
+            gridView?.Invalidate();
+            Invalidate();
         }
 
         private void SetGridObject() {

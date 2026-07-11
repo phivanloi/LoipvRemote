@@ -14,11 +14,12 @@ namespace LoipvRemote.UI.Controls
     internal class MrngNumericUpDown : NumericUpDown
     {
         private readonly ThemeManager _themeManager;
-        private MrngButton Up;
-        private MrngButton Down;
+        private MrngButton? Up;
+        private MrngButton? Down;
 
         public MrngNumericUpDown()
         {
+            InitializeComponent();
             _themeManager = ThemeManager.getInstance();
             ThemeManager.getInstance().ThemeChanged += OnCreateControl;
         }
@@ -56,20 +57,43 @@ namespace LoipvRemote.UI.Controls
             Up = new MrngButton
             {
                 Text = "\u25B2",
-                Font = new Font(Font.FontFamily, 5f)
+                Font = new Font(Font.FontFamily, Math.Max(7f, Font.SizeInPoints * 0.7f))
             };
-            Up.SetBounds(Controls.Owner.Width - 17, 2, 16, Controls.Owner.Height / 2 - 1);
             Up.Click += Up_Click;
             Down = new MrngButton
             {
                 Text = "\u25BC",
-                Font = new Font(Font.FontFamily, 5f)
+                Font = new Font(Font.FontFamily, Math.Max(7f, Font.SizeInPoints * 0.7f))
             };
-            Down.SetBounds(Controls.Owner.Width - 17, Controls.Owner.Height / 2 + 1, 16, Controls.Owner.Height / 2 - 1);
             Down.Click += Down_Click;
             Controls.Add(Up);
             Controls.Add(Down);
+            LayoutButtons();
             Invalidate();
+        }
+
+        protected override void OnResize(EventArgs e)
+        {
+            base.OnResize(e);
+            LayoutButtons();
+        }
+
+        protected override void OnFontChanged(EventArgs e)
+        {
+            base.OnFontChanged(e);
+            if (Up is not null) Up.Font = new Font(Font.FontFamily, Math.Max(7f, Font.SizeInPoints * 0.7f));
+            if (Down is not null) Down.Font = new Font(Font.FontFamily, Math.Max(7f, Font.SizeInPoints * 0.7f));
+        }
+
+        private void LayoutButtons()
+        {
+            if (Up is null || Down is null) return;
+
+            int buttonWidth = Math.Clamp(Height - 4, 18, 24);
+            int buttonHeight = Math.Max(1, (Height - 3) / 2);
+            int left = Math.Max(0, Width - buttonWidth - 1);
+            Up.SetBounds(left, 1, buttonWidth, buttonHeight);
+            Down.SetBounds(left, 1 + buttonHeight, buttonWidth, Math.Max(1, Height - buttonHeight - 2));
         }
 
         private void Down_Click(object sender, EventArgs e)
@@ -122,7 +146,7 @@ namespace LoipvRemote.UI.Controls
             //
             // NGNumericUpDown
             //
-            this.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular,
+            this.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular,
                                                 System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             ((System.ComponentModel.ISupportInitialize)(this)).EndInit();
             this.ResumeLayout(false);

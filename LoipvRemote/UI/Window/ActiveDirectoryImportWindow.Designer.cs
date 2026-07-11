@@ -33,7 +33,7 @@ namespace LoipvRemote.UI.Window
             //
             this.txtDomain.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.txtDomain.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.txtDomain.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.txtDomain.Location = new System.Drawing.Point(12, 25);
             this.txtDomain.Name = "txtDomain";
             this.txtDomain.Size = new System.Drawing.Size(406, 22);
@@ -93,7 +93,7 @@ namespace LoipvRemote.UI.Window
             this.chkSubOU._mice = MrngCheckBox.MouseState.HOVER;
             this.chkSubOU.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.chkSubOU.AutoSize = true;
-            this.chkSubOU.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.chkSubOU.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.chkSubOU.Location = new System.Drawing.Point(12, 349);
             this.chkSubOU.Name = "chkSubOU";
             this.chkSubOU.Size = new System.Drawing.Size(108, 17);
@@ -115,7 +115,7 @@ namespace LoipvRemote.UI.Window
             this.Controls.Add(this.txtDomain);
             this.Controls.Add(this.btnChangeDomain);
             this.Controls.Add(this.btnImport);
-            this.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.Name = "ActiveDirectoryImportWindow";
             this.TabText = "Active Directory Import";
             this.Text = "Active Directory Import";

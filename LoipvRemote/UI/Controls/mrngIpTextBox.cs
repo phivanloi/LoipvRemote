@@ -247,7 +247,7 @@ namespace LoipvRemote.UI.Controls
             // IPTextBox
             //
             this.Controls.Add(this.panel1);
-            this.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular,
+            this.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular,
                                                 System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.Name = "IPTextBox";
             this.Size = new System.Drawing.Size(124, 18);

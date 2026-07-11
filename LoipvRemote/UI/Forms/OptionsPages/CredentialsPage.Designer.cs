@@ -124,7 +124,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             txtCredentialsUserViaAPI.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             txtCredentialsUserViaAPI.Dock = System.Windows.Forms.DockStyle.Fill;
             txtCredentialsUserViaAPI.Enabled = false;
-            txtCredentialsUserViaAPI.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            txtCredentialsUserViaAPI.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             txtCredentialsUserViaAPI.Location = new System.Drawing.Point(163, 3);
             txtCredentialsUserViaAPI.Name = "txtCredentialsUserViaAPI";
             txtCredentialsUserViaAPI.Size = new System.Drawing.Size(166, 22);
@@ -135,7 +135,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             txtCredentialsUsername.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             txtCredentialsUsername.Dock = System.Windows.Forms.DockStyle.Fill;
             txtCredentialsUsername.Enabled = false;
-            txtCredentialsUsername.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            txtCredentialsUsername.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             txtCredentialsUsername.Location = new System.Drawing.Point(163, 29);
             txtCredentialsUsername.Name = "txtCredentialsUsername";
             txtCredentialsUsername.Size = new System.Drawing.Size(166, 22);
@@ -146,7 +146,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             txtCredentialsPassword.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             txtCredentialsPassword.Dock = System.Windows.Forms.DockStyle.Fill;
             txtCredentialsPassword.Enabled = false;
-            txtCredentialsPassword.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            txtCredentialsPassword.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             txtCredentialsPassword.Location = new System.Drawing.Point(163, 55);
             txtCredentialsPassword.Name = "txtCredentialsPassword";
             txtCredentialsPassword.PasswordChar = '*';
@@ -158,7 +158,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             txtCredentialsDomain.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             txtCredentialsDomain.Dock = System.Windows.Forms.DockStyle.Fill;
             txtCredentialsDomain.Enabled = false;
-            txtCredentialsDomain.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            txtCredentialsDomain.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             txtCredentialsDomain.Location = new System.Drawing.Point(163, 81);
             txtCredentialsDomain.Name = "txtCredentialsDomain";
             txtCredentialsDomain.Size = new System.Drawing.Size(166, 22);

@@ -14,9 +14,7 @@ namespace LoipvRemote.UI.Forms
         public FrmSplashScreenNew()
         {
             InitializeComponent();
-            LoadFont();
-            lblLogoPartD.HorizontalContentAlignment = System.Windows.HorizontalAlignment.Center;
-            lblLogoPartD.Content = $@"v. {GeneralAppInfo.ApplicationVersion} - 'Fructus temporum'";
+            lblVersion.Text = $@"Phiên bản {GeneralAppInfo.ApplicationVersion}";
         }
         public static FrmSplashScreenNew GetInstance()
         {
@@ -25,10 +23,5 @@ namespace LoipvRemote.UI.Forms
             return instance;
         }
 
-        void LoadFont()
-        {
-            lblLogoPartA.FontFamily = new System.Windows.Media.FontFamily(new Uri("pack://application:,,,/"), "./UI/Font/#HandelGotDBol");
-            lblLogoPartB.FontFamily = new System.Windows.Media.FontFamily(new Uri("pack://application:,,,/"), "./UI/Font/#HandelGotDBol");
-        }
     }
 }

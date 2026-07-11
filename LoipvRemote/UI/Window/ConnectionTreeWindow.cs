@@ -18,6 +18,7 @@ using LoipvRemote.UI.TaskDialog;
 using WeifenLuo.WinFormsUI.Docking;
 using LoipvRemote.Resources.Language;
 using System.Runtime.Versioning;
+using LoipvRemote.UI.DesignSystem;
 
 // ReSharper disable ArrangeAccessorOwnerBody
 
@@ -43,6 +44,12 @@ namespace LoipvRemote.UI.Window
             DockPnl = panel;
             Icon = Resources.ImageConverter.GetImageAsIcon(Properties.Resources.ASPWebSite_16x);
             InitializeComponent();
+            UiScaleManager.Instance.Apply(this);
+            UiScaleManager.Instance.ApplyToolStrip(msMain);
+            ApplyToolbarLayout();
+            msMain.Paint += SidebarToolbarOnPaint;
+            UiScaleManager.Instance.Changed += UiScaleManagerOnChanged;
+            Disposed += (_, _) => UiScaleManager.Instance.Changed -= UiScaleManagerOnChanged;
             SetMenuEventHandlers();
             SetConnectionTreeEventHandlers();
             Settings.Default.PropertyChanged += OnAppSettingsChanged;
@@ -51,22 +58,48 @@ namespace LoipvRemote.UI.Window
 
         private void OnAppSettingsChanged(object o, PropertyChangedEventArgs propertyChangedEventArgs)
         {
-            if (propertyChangedEventArgs.PropertyName == nameof(Settings.UseFilterSearch))
-            {
-                ConnectionTree.UseFiltering = Settings.Default.UseFilterSearch;
-                ApplyFiltering();
-            }
-
             if (propertyChangedEventArgs.PropertyName == nameof(Settings.SlowClickRenameEnabled))
                 ConnectionTree.SetupSlowClickRename();
 
-            PlaceSearchBar(Settings.Default.PlaceSearchBarAboveConnectionTree);
             SetConnectionTreeClickHandlers();
         }
 
-        private void PlaceSearchBar(bool placeSearchBarAboveConnectionTree)
+        private void UiScaleManagerOnChanged(object? sender, EventArgs e)
         {
-            searchBoxLayoutPanel.Dock = placeSearchBarAboveConnectionTree ? DockStyle.Top : DockStyle.Bottom;
+            ApplyToolbarLayout();
+        }
+
+        private void ApplyToolbarLayout()
+        {
+            UiMetrics metrics = UiScaleManager.Instance.Metrics;
+            int toolbarHeight = Math.Max(metrics.InteractiveHeight, metrics.IconSize + 16);
+            int itemWidth = Math.Max(metrics.IconHitTarget, metrics.IconSize + 16);
+
+            msMain.AutoSize = false;
+            msMain.Height = toolbarHeight;
+            msMain.Padding = new Padding(8, 0, 8, 0);
+            msMain.ImageScalingSize = new System.Drawing.Size(metrics.IconSize, metrics.IconSize);
+
+            foreach (ToolStripItem item in msMain.Items)
+            {
+                item.AutoSize = false;
+                item.Margin = Padding.Empty;
+                item.Padding = Padding.Empty;
+                item.Size = new System.Drawing.Size(itemWidth, toolbarHeight);
+                item.ImageAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            }
+        }
+
+        private void SidebarToolbarOnPaint(object? sender, PaintEventArgs e)
+        {
+            if (msMain.ClientSize.Width <= 0 || msMain.ClientSize.Height <= 0) return;
+
+            using Pen border = new(Color.FromArgb(214, 219, 229));
+            int right = msMain.ClientSize.Width - 1;
+            int bottom = msMain.ClientSize.Height - 1;
+            e.Graphics.DrawLine(border, 0, 0, right, 0);
+            e.Graphics.DrawLine(border, 0, 0, 0, bottom);
+            e.Graphics.DrawLine(border, right, 0, right, bottom);
         }
 
 
@@ -79,10 +112,6 @@ namespace LoipvRemote.UI.Window
             _themeManager.ThemeChanged += ApplyTheme;
             ApplyTheme();
 
-            txtSearch.Multiline = true;
-            txtSearch.MinimumSize = new Size(0, 14);
-            txtSearch.Size = new Size(txtSearch.Size.Width, 14);
-            txtSearch.Multiline = false;
         }
 
         private void ApplyLanguage()
@@ -97,7 +126,6 @@ namespace LoipvRemote.UI.Window
             mMenSort.ToolTipText = Language.Sort;
             mMenFavorites.ToolTipText = Language.Favorites;
 
-            txtSearch.Text = Language.SearchPrompt;
         }
 
         private new void ApplyTheme()
@@ -113,13 +141,6 @@ namespace LoipvRemote.UI.Window
             if (!_themeManager.ActiveAndExtended)
                 return;
 
-            // connection search area
-            searchBoxLayoutPanel.BackColor = activeTheme.ExtendedPalette.getColor("Dialog_Background");
-            searchBoxLayoutPanel.ForeColor = activeTheme.ExtendedPalette.getColor("Dialog_Foreground");
-            txtSearch.BackColor = activeTheme.ExtendedPalette.getColor("TextBox_Background");
-            txtSearch.ForeColor = activeTheme.ExtendedPalette.getColor("TextBox_Foreground");
-            //Picturebox needs to be manually themed
-            pbSearch.BackColor = activeTheme.ExtendedPalette.getColor("TreeView_Background");
         }
 
         #endregion
@@ -132,7 +153,6 @@ namespace LoipvRemote.UI.Window
                 new SelectedConnectionDeletionConfirmer(prompt => CTaskDialog.MessageBox(
                     Application.ProductName, prompt, "", ETaskDialogButtons.YesNo, ESysIcons.Question));
             ConnectionTree.KeyDown += TvConnections_KeyDown;
-            ConnectionTree.KeyPress += TvConnections_KeyPress;
             SetTreePostSetupActions();
             SetConnectionTreeClickHandlers();
             Runtime.ConnectionsService.ConnectionsLoaded += ConnectionsServiceOnConnectionsLoaded;
@@ -259,67 +279,7 @@ namespace LoipvRemote.UI.Window
 
         #endregion
 
-        #region Search
-
-        private void TxtSearch_KeyDown(object sender, KeyEventArgs e)
-        {
-            try
-            {
-                switch (e.KeyCode)
-                {
-                    case Keys.Escape:
-                        e.Handled = true;
-                        ConnectionTree.Focus();
-                        break;
-                    case Keys.Up:
-                        {
-                            ConnectionInfo? match = ConnectionTree.NodeSearcher.PreviousMatch();
-                            JumpToNode(match);
-                            e.Handled = true;
-                            break;
-                        }
-                    case Keys.Down:
-                        {
-                            ConnectionInfo? match = ConnectionTree.NodeSearcher.NextMatch();
-                            JumpToNode(match);
-                            e.Handled = true;
-                            break;
-                        }
-                    default:
-                        TvConnections_KeyDown(sender, e);
-                        break;
-                }
-            }
-            catch (Exception ex)
-            {
-                Runtime.MessageCollector.AddExceptionStackTrace("txtSearch_KeyDown (UI.Window.ConnectionTreeWindow) failed", ex);
-            }
-        }
-
-        private void TxtSearch_TextChanged(object sender, EventArgs e)
-        {
-            ApplyFiltering();
-        }
-
-        private void ApplyFiltering()
-        {
-            if (Settings.Default.UseFilterSearch)
-            {
-                if (txtSearch.Text == "" || txtSearch.Text == Language.SearchPrompt)
-                {
-                    ConnectionTree.RemoveFilter();
-                    return;
-                }
-
-                ConnectionTree.ApplyFilter(txtSearch.Text);
-            }
-            else
-            {
-                if (txtSearch.Text == "") return;
-                ConnectionTree.NodeSearcher?.SearchByName(txtSearch.Text);
-                JumpToNode(ConnectionTree.NodeSearcher?.CurrentMatch);
-            }
-        }
+        #region Tree Navigation
 
         public void JumpToNode(ConnectionInfo? connectionInfo)
         {
@@ -344,28 +304,6 @@ namespace LoipvRemote.UI.Window
             }
         }
 
-        private void TvConnections_KeyPress(object sender, KeyPressEventArgs e)
-        {
-            try
-            {
-                // Suppress the beep sound for Enter key
-                if (e.KeyChar == (char)Keys.Return)
-                {
-                    e.Handled = true;
-                    return;
-                }
-
-                if (!char.IsLetterOrDigit(e.KeyChar)) return;
-                txtSearch.Focus();
-                txtSearch.Text = e.KeyChar.ToString();
-                txtSearch.SelectionStart = txtSearch.TextLength;
-            }
-            catch (Exception ex)
-            {
-                Runtime.MessageCollector.AddExceptionStackTrace("tvConnections_KeyPress (UI.Window.ConnectionTreeWindow) failed", ex);
-            }
-        }
-
         private void TvConnections_KeyDown(object sender, KeyEventArgs e)
         {
             try
@@ -384,12 +322,6 @@ namespace LoipvRemote.UI.Window
                             return;
                         Runtime.ConnectionInitiator.OpenConnection(SelectedNode);
                     }
-                }
-                else if (e.Control && e.KeyCode == Keys.F)
-                {
-                    txtSearch.Focus();
-                    txtSearch.SelectAll();
-                    e.Handled = true;
                 }
             }
             catch (Exception ex)

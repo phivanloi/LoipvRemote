@@ -95,7 +95,7 @@ namespace LoipvRemote.UI.Window
             // txtLocalFile
             //
             txtLocalFile.BorderStyle = BorderStyle.FixedSingle;
-            txtLocalFile.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular,
+            txtLocalFile.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular,
                                                              System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             txtLocalFile.Location = new System.Drawing.Point(105, 28);
             txtLocalFile.Name = "txtLocalFile";
@@ -119,7 +119,7 @@ namespace LoipvRemote.UI.Window
             // txtRemoteFile
             //
             txtRemoteFile.BorderStyle = BorderStyle.FixedSingle;
-            txtRemoteFile.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular,
+            txtRemoteFile.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular,
                                                               System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             txtRemoteFile.Location = new System.Drawing.Point(105, 60);
             txtRemoteFile.Name = "txtRemoteFile";
@@ -240,7 +240,7 @@ namespace LoipvRemote.UI.Window
             // txtPort
             //
             txtPort.BorderStyle = BorderStyle.FixedSingle;
-            txtPort.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular,
+            txtPort.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular,
                                                         System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             txtPort.Location = new System.Drawing.Point(271, 110);
             txtPort.Name = "txtPort";
@@ -252,7 +252,7 @@ namespace LoipvRemote.UI.Window
             // txtHost
             //
             txtHost.BorderStyle = BorderStyle.FixedSingle;
-            txtHost.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular,
+            txtHost.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular,
                                                         System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             txtHost.Location = new System.Drawing.Point(105, 19);
             txtHost.Name = "txtHost";
@@ -262,7 +262,7 @@ namespace LoipvRemote.UI.Window
             // txtPassword
             //
             txtPassword.BorderStyle = BorderStyle.FixedSingle;
-            txtPassword.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular,
+            txtPassword.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular,
                                                             System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             txtPassword.Location = new System.Drawing.Point(105, 81);
             txtPassword.Name = "txtPassword";
@@ -273,7 +273,7 @@ namespace LoipvRemote.UI.Window
             // txtUser
             //
             txtUser.BorderStyle = BorderStyle.FixedSingle;
-            txtUser.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular,
+            txtUser.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular,
                                                         System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             txtUser.Location = new System.Drawing.Point(105, 51);
             txtUser.Name = "txtUser";
@@ -296,7 +296,7 @@ namespace LoipvRemote.UI.Window
             Controls.Add(grpFiles);
             Controls.Add(grpConnection);
             Controls.Add(pbStatus);
-            Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular,
+            Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular,
                                                 System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             Name = "SSHTransferWindow";
             TabText = "SSH File Transfer";

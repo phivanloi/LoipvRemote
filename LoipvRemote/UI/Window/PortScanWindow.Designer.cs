@@ -84,7 +84,7 @@ namespace LoipvRemote.UI.Window
             //
             // ipStart
             //
-            this.ipStart.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.ipStart.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.ipStart.Location = new System.Drawing.Point(133, 3);
             this.ipStart.Name = "ipStart";
             this.ipStart.Size = new System.Drawing.Size(124, 18);
@@ -93,7 +93,7 @@ namespace LoipvRemote.UI.Window
             //
             // ipEnd
             //
-            this.ipEnd.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.ipEnd.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.ipEnd.Location = new System.Drawing.Point(133, 27);
             this.ipEnd.Name = "ipEnd";
             this.ipEnd.Size = new System.Drawing.Size(124, 18);
@@ -129,7 +129,7 @@ namespace LoipvRemote.UI.Window
             this.olvHosts.Cursor = System.Windows.Forms.Cursors.Default;
             this.olvHosts.DecorateLines = true;
             this.olvHosts.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.olvHosts.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.olvHosts.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.olvHosts.FullRowSelect = true;
             this.olvHosts.GridLines = true;
             this.olvHosts.HideSelection = false;
@@ -427,7 +427,7 @@ namespace LoipvRemote.UI.Window
             //
             this.ngCheckFirstPort._mice = MrngCheckBox.MouseState.OUT;
             this.ngCheckFirstPort.AutoSize = true;
-            this.ngCheckFirstPort.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.ngCheckFirstPort.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.ngCheckFirstPort.Location = new System.Drawing.Point(3, 51);
             this.ngCheckFirstPort.Name = "ngCheckFirstPort";
             this.ngCheckFirstPort.Size = new System.Drawing.Size(72, 17);
@@ -440,7 +440,7 @@ namespace LoipvRemote.UI.Window
             //
             this.ngCheckLastPort._mice = MrngCheckBox.MouseState.OUT;
             this.ngCheckLastPort.AutoSize = true;
-            this.ngCheckLastPort.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.ngCheckLastPort.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.ngCheckLastPort.Location = new System.Drawing.Point(3, 75);
             this.ngCheckLastPort.Name = "ngCheckLastPort";
             this.ngCheckLastPort.Size = new System.Drawing.Size(70, 17);
@@ -493,7 +493,7 @@ namespace LoipvRemote.UI.Window
             this.AutoScroll = true;
             this.ClientSize = new System.Drawing.Size(884, 461);
             this.Controls.Add(this.pnlMain);
-            this.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.Name = "PortScanWindow";
             this.TabText = "Port Scan";
             this.Text = "Port Scan";

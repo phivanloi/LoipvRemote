@@ -9,6 +9,7 @@ using LoipvRemote.Config.DataProviders;
 using LoipvRemote.Config.Putty;
 using LoipvRemote.Config.Settings;
 using LoipvRemote.Connection;
+using LoipvRemote.Connection.Protocol;
 using LoipvRemote.Messages;
 using LoipvRemote.Messages.MessageWriters;
 using LoipvRemote.Themes;
@@ -31,6 +32,7 @@ using System.Windows.Forms;
 using LoipvRemote.UI.Panels;
 using WeifenLuo.WinFormsUI.Docking;
 using LoipvRemote.UI.Controls;
+using LoipvRemote.UI.DesignSystem;
 using LoipvRemote.Resources.Language;
 using System.Runtime.Versioning;
 using LoipvRemote.Config.Settings.Registry;
@@ -83,6 +85,8 @@ namespace LoipvRemote.UI.Forms
         private readonly IList<IMessageWriter> _messageWriters = [];
         private readonly ThemeManager _themeManager;
         private readonly FileBackupPruner _backupPruner = new();
+        private readonly UnifiedWindowHeader _unifiedWindowHeader;
+        private System.Windows.Forms.Timer? _startupMaximizeTimer;
         public static FrmOptions OptionsForm;
 
         /// <summary>
@@ -114,6 +118,17 @@ namespace LoipvRemote.UI.Forms
         {
             _showFullPathInTitle = Properties.OptionsAppearancePage.Default.ShowCompleteConsPathInTitle;
             InitializeComponent();
+            FormBorderStyle = FormBorderStyle.None;
+            Padding = Padding.Empty;
+            _unifiedWindowHeader = new UnifiedWindowHeader(this, msMain);
+            Controls.Add(_unifiedWindowHeader);
+            Controls.SetChildIndex(_unifiedWindowHeader, 0);
+            ConfigureEdgeToEdgeDocking();
+            ClientSizeChanged += (_, _) => LayoutUnifiedShell();
+            _unifiedWindowHeader.SizeChanged += (_, _) => LayoutUnifiedShell();
+            LocationChanged += (_, _) => UpdateMaximizedBounds();
+            UpdateMaximizedBounds();
+            LayoutUnifiedShell();
 
             Screen targetScreen = (Screen.AllScreens.Length > 1) ? Screen.AllScreens[1] : Screen.AllScreens[0];
 
@@ -124,6 +139,11 @@ namespace LoipvRemote.UI.Forms
             this.Top = viewport.Top + (targetScreen.Bounds.Size.Height / 2) - (this.Height / 2);
 
             Fullscreen = new FullscreenHandler(this);
+            Fullscreen.ValueChanged += (_, _) =>
+            {
+                _unifiedWindowHeader.Visible = !Fullscreen.Value;
+                LayoutUnifiedShell();
+            };
 
             //Theming support
             _themeManager = ThemeManager.getInstance();
@@ -131,6 +151,16 @@ namespace LoipvRemote.UI.Forms
             ApplyTheme();
 
             _advancedWindowMenu = new AdvancedWindowMenu(this);
+        }
+
+        protected override CreateParams CreateParams
+        {
+            get
+            {
+                CreateParams createParams = base.CreateParams;
+                createParams.Style = WindowTaskbarStyle.AddStandardTaskbarCommands(createParams.Style);
+                return createParams;
+            }
         }
 
         #region Properties
@@ -207,7 +237,7 @@ namespace LoipvRemote.UI.Forms
         {
             MessageCollector messageCollector = Runtime.MessageCollector;
 
-            SettingsLoader settingsLoader = new(this, messageCollector, _quickConnectToolStrip, _externalToolsToolStrip, _multiSshToolStrip, msMain);
+            SettingsLoader settingsLoader = new(this, messageCollector, _quickConnectToolStrip, _externalToolsToolStrip, _multiSshToolStrip);
             settingsLoader.LoadSettings();
 
             MessageCollectorSetup.SetupMessageCollector(messageCollector, _messageWriters);
@@ -234,6 +264,7 @@ namespace LoipvRemote.UI.Forms
             else
                 SetLayout();
 
+            ApplyStartupShellLayout();
             ShowHidePanelTabs();
 
             Runtime.ConnectionsService.ConnectionsLoaded += ConnectionsServiceOnConnectionsLoaded;
@@ -257,6 +288,8 @@ namespace LoipvRemote.UI.Forms
             _advancedWindowMenu.BuildAdditionalMenuItems();
             SystemEvents.DisplaySettingsChanged += _advancedWindowMenu.OnDisplayChanged;
             ApplyLanguage();
+
+            UiScaleManager.Instance.Apply(this);
 
             Opacity = 1;
             //Fix MagicRemove , revision on panel strategy for mdi
@@ -321,7 +354,7 @@ namespace LoipvRemote.UI.Forms
 
         private void LockToolbarPositions(bool shouldBeLocked)
         {
-            ToolStrip[] toolbars = [_quickConnectToolStrip, _multiSshToolStrip, _externalToolsToolStrip, msMain];
+            ToolStrip[] toolbars = [_quickConnectToolStrip, _multiSshToolStrip, _externalToolsToolStrip];
             foreach (ToolStrip toolbar in toolbars)
             {
                 toolbar.GripStyle = shouldBeLocked ? ToolStripGripStyle.Hidden : ToolStripGripStyle.Visible;
@@ -370,6 +403,8 @@ namespace LoipvRemote.UI.Forms
             if (!_themeManager.ThemingActive)
             {
                 pnlDock.Theme = _themeManager.DefaultTheme.Theme;
+                ConfigureEdgeToEdgeDocking();
+                _unifiedWindowHeader.ApplyTheme(SystemColors.Control, SystemColors.ControlText);
                 return;
             }
 
@@ -384,6 +419,8 @@ namespace LoipvRemote.UI.Forms
                 // intentionally ignore exception
             }
 
+            ConfigureEdgeToEdgeDocking();
+
             // Persist settings when rebuilding UI
             try
             {
@@ -396,6 +433,7 @@ namespace LoipvRemote.UI.Forms
                 tsContainer.TopToolStripPanel.BackColor = _themeManager.ActiveTheme.ExtendedPalette.getColor("CommandBarMenuDefault_Background");
                 BackColor = _themeManager.ActiveTheme.ExtendedPalette.getColor("Dialog_Background");
                 ForeColor = _themeManager.ActiveTheme.ExtendedPalette.getColor("Dialog_Foreground");
+                _unifiedWindowHeader.ApplyTheme(tsContainer.TopToolStripPanel.BackColor, ForeColor);
             }
             catch (Exception ex)
             {
@@ -405,11 +443,35 @@ namespace LoipvRemote.UI.Forms
 
         private void FrmMain_Shown(object sender, EventArgs e)
         {
-            // Bring the main window to the front after splash screen closes
+            ActivateStartupWindow();
+            BeginInvoke((MethodInvoker)ActivateStartupWindow);
+
+            _startupMaximizeTimer?.Dispose();
+            _startupMaximizeTimer = new System.Windows.Forms.Timer
+            {
+                Interval = 100
+            };
+            _startupMaximizeTimer.Tick += (_, _) =>
+            {
+                _startupMaximizeTimer.Stop();
+                _startupMaximizeTimer.Dispose();
+                _startupMaximizeTimer = null;
+                if (!IsDisposed && Visible)
+                    WindowState = FormWindowState.Maximized;
+            };
+            _startupMaximizeTimer.Start();
+
+        }
+
+        private void ActivateStartupWindow()
+        {
+            if (IsDisposed || !Visible) return;
+
+            TopMost = true;
             Activate();
             BringToFront();
             NativeMethods.SetForegroundWindow(Handle);
-
+            TopMost = false;
         }
 
         private void FrmMain_FormClosing(object sender, FormClosingEventArgs e)
@@ -501,6 +563,10 @@ namespace LoipvRemote.UI.Forms
 
         private void FrmMain_Resize(object sender, EventArgs e)
         {
+            UpdateMaximizedBounds();
+            if (_unifiedWindowHeader is not null)
+                _unifiedWindowHeader.Visible = Fullscreen?.Value != true;
+            LayoutUnifiedShell();
             if (WindowState == FormWindowState.Minimized)
             {
                 if (!Properties.OptionsAppearancePage.Default.MinimizeToTray) return;
@@ -523,6 +589,30 @@ namespace LoipvRemote.UI.Forms
 
         protected override void WndProc(ref System.Windows.Forms.Message m)
         {
+            if (PuttyImeMessageRouter.ShouldForward(m.Msg))
+            {
+                InterfaceControl activeInterface = InterfaceControl.FindInterfaceControl(pnlDock);
+                if (activeInterface?.Protocol is PuttyBase putty && putty.PuttyHandle != IntPtr.Zero)
+                {
+                    NativeMethods.SendMessage(putty.PuttyHandle, (uint)m.Msg, m.WParam, m.LParam);
+                    return;
+                }
+            }
+
+            if (m.Msg == NativeMethods.WM_NCHITTEST)
+            {
+                base.WndProc(ref m);
+                ApplyUnifiedWindowChromeHitTest(ref m);
+                return;
+            }
+
+            if (m.Msg == NativeMethods.WM_NCLBUTTONDBLCLK &&
+                WindowChromeHitTest.IsCaptionDoubleClick(m.WParam.ToInt32()))
+            {
+                _unifiedWindowHeader.ToggleMaximizeRestore();
+                return;
+            }
+
             // Listen for and handle operating system messages
             try
             {
@@ -585,8 +675,6 @@ namespace LoipvRemote.UI.Forms
                         }
                         break;
                     case NativeMethods.WM_SYSCOMMAND:
-                        if (m.WParam == new IntPtr(0))
-                            ShowHideMenu();
                         Screen screen = _advancedWindowMenu.GetScreenById(m.WParam.ToInt32());
                         if (screen != null)
                         {
@@ -638,6 +726,65 @@ namespace LoipvRemote.UI.Forms
                                       (IntPtr)NativeMethods.MAKELPARAM(ref temp_wLow, ref temp_wHigh));
             clientMousePosition.X = temp_wLow;
             clientMousePosition.Y = temp_wHigh;
+        }
+
+        private void ApplyUnifiedWindowChromeHitTest(ref System.Windows.Forms.Message m)
+        {
+            if (Fullscreen.Value) return;
+
+            int packedPoint = m.LParam.ToInt32();
+            Point screenPoint = new((short)(packedPoint & 0xffff), (short)((packedPoint >> 16) & 0xffff));
+            Point clientPoint = PointToClient(screenPoint);
+
+            if (WindowState != FormWindowState.Maximized)
+            {
+                int borderThickness = Math.Max(6, (int)Math.Ceiling(8 * DeviceDpi / 96f));
+                int resizeHitTest = WindowChromeHitTest.ResolveResizeHitTest(ClientSize, clientPoint, borderThickness);
+                if (resizeHitTest != WindowChromeHitTest.Client)
+                {
+                    m.Result = (IntPtr)resizeHitTest;
+                    return;
+                }
+            }
+
+            if (_unifiedWindowHeader.IsCaptionPoint(clientPoint))
+                m.Result = (IntPtr)WindowChromeHitTest.Caption;
+        }
+
+        private void LayoutUnifiedShell()
+        {
+            if (_unifiedWindowHeader is null) return;
+            tsContainer.Bounds = UnifiedWindowLayout.ContentBounds(ClientSize, _unifiedWindowHeader.Height, _unifiedWindowHeader.Visible);
+        }
+
+        private void ConfigureEdgeToEdgeDocking()
+        {
+            tsContainer.Dock = DockStyle.None;
+            tsContainer.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
+            tsContainer.Margin = Padding.Empty;
+            tsContainer.Padding = Padding.Empty;
+            tsContainer.ContentPanel.Margin = Padding.Empty;
+            tsContainer.ContentPanel.Padding = Padding.Empty;
+
+            pnlDock.Dock = DockStyle.Fill;
+            pnlDock.Margin = Padding.Empty;
+            pnlDock.Padding = Padding.Empty;
+            pnlDock.Theme.Measures.DockPadding = 0;
+        }
+
+        private void ApplyStartupShellLayout()
+        {
+            pnlDock.DockLeftPortion = AppStartupLayout.SidebarWidthForDpi(DeviceDpi);
+            WindowState = AppStartupLayout.ResolveWindowState(
+                Properties.OptionsStartupExitPage.Default.StartMinimized,
+                Properties.OptionsStartupExitPage.Default.StartFullScreen);
+        }
+
+        private void UpdateMaximizedBounds()
+        {
+            if (!IsHandleCreated) return;
+            Screen screen = Screen.FromHandle(Handle);
+            MaximizedBounds = WindowMaximizeBounds.Resolve(screen.Bounds, screen.WorkingArea);
         }
 
         private void ActivateConnection()
@@ -754,9 +901,9 @@ namespace LoipvRemote.UI.Forms
         {
             pnlDock.Visible = false;
 
-            AppWindows.TreeForm.Show(pnlDock, DockState.DockLeft);
+            AppWindows.ErrorsForm.Show(pnlDock, DockState.DockLeft);
             AppWindows.ConfigForm.Show(pnlDock, DockState.DockLeft);
-            AppWindows.ErrorsForm.Show(pnlDock, DockState.DockBottomAutoHide);
+            AppWindows.TreeForm.Show(pnlDock, DockState.DockLeft);
             viewMenu._mMenViewErrorsAndInfos.Checked = true;
 
             ShowFileMenu();
@@ -772,9 +919,8 @@ namespace LoipvRemote.UI.Forms
 
         public void HideFileMenu()
         {
-            msMain.Visible = false;
-            viewMenu._mMenViewFileMenu.Checked = false;
-            MessageBox.Show(Language.FileMenuWillBeHiddenNow, string.Empty, MessageBoxButtons.OK, MessageBoxIcon.Information);
+            // The menu is a permanent part of the custom title bar and cannot be hidden separately.
+            ShowFileMenu();
         }
 
         public void SetLayout()
@@ -783,7 +929,7 @@ namespace LoipvRemote.UI.Forms
 
             if (Properties.Settings.Default.ViewMenuMessages == true)
             {
-                AppWindows.ErrorsForm.Show(pnlDock, DockState.DockBottomAutoHide);
+                AppWindows.ErrorsForm.Show(pnlDock, DockState.DockLeft);
                 viewMenu._mMenViewErrorsAndInfos.Checked = true;
             }
             else
@@ -837,7 +983,7 @@ namespace LoipvRemote.UI.Forms
             pnlDock.Visible = true;
         }
 
-        public void ShowHideMenu() => tsContainer.TopToolStripPanelVisible = !tsContainer.TopToolStripPanelVisible;
+        public void ShowHideMenu() => _unifiedWindowHeader.Visible = true;
 
         #endregion
 

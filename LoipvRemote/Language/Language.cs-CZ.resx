@@ -1475,9 +1475,6 @@ Zpráva:
   <data name="Screenshots" xml:space="preserve">
     <value>Snímky obrazovek</value>
   </data>
-  <data name="SearchPrompt" xml:space="preserve">
-    <value>Hledat</value>
-  </data>
   <data name="SendTo" xml:space="preserve">
     <value>Odeslat..</value>
   </data>
@@ -1812,9 +1809,6 @@ LoipvRemote se nyní ukončí a zahájí instalaci.</value>
   <data name="SaveConnectionsAfterEveryEdit" xml:space="preserve">
     <value>Uložit připojení při každé úpravě</value>
   </data>
-  <data name="FilterSearchMatchesInConnectionTree" xml:space="preserve">
-    <value>Filtrovat shody vyhledávání v seznamu připojení</value>
-  </data>
   <data name="TestConnection" xml:space="preserve">
     <value>Test spojení</value>
   </data>
@@ -1823,9 +1817,6 @@ LoipvRemote se nyní ukončí a zahájí instalaci.</value>
   </data>
   <data name="CreateEmptyPanelOnStartUp" xml:space="preserve">
     <value>Otevřít prázdný panel při startu aplikace</value>
-  </data>
-  <data name="PlaceSearchBarAboveConnectionTree" xml:space="preserve">
-    <value>Umístit vyhledávací pole nad seznam připojení</value>
   </data>
   <data name="DoNotTrimUsername" xml:space="preserve">
     <value>Nezkracovat uživatelské jméno</value>

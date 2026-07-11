@@ -55,15 +55,15 @@ namespace LoipvRemote.UI.Tabs
         private const int _ToolWindowImageWidth = 0; //16;
         private const int _ToolWindowImageGapTop = 3;
         private const int _ToolWindowImageGapBottom = 1;
-        private const int _ToolWindowImageGapLeft = 2;
+        private const int _ToolWindowImageGapLeft = 0;
         private const int _ToolWindowImageGapRight = 0;
-        private const int _ToolWindowTextGapRight = 3;
+        private const int _ToolWindowTextGapRight = 0;
         private const int _ToolWindowTabSeperatorGapTop = 3;
         private const int _ToolWindowTabSeperatorGapBottom = 3;
 
         private const int _DocumentStripGapTop = 0;
         private const int _DocumentStripGapBottom = 1;
-        private const int _DocumentTabMaxWidth = 200;
+        private const int _DocumentTabMaxWidth = DocumentTabMetrics.MaximumWidth;
         private const int _DocumentButtonGapTop = 3;
         private const int _DocumentButtonGapBottom = 3;
         private const int _DocumentButtonGapBetween = 0;
@@ -71,12 +71,12 @@ namespace LoipvRemote.UI.Tabs
         private const int _DocumentTabGapTop = 0; //3;
         private const int _DocumentTabGapLeft = 0; //3;
         private const int _DocumentTabGapRight = 0; //3;
-        private const int _DocumentIconGapBottom = 2; //2;
-        private const int _DocumentIconGapLeft = 8;
-        private const int _DocumentIconGapRight = 0;
+        private const int _DocumentIconGapBottom = 0;
+        private const int _DocumentIconGapLeft = 0;
+        private const int _DocumentIconGapRight = 4;
         private const int _DocumentIconHeight = 16;
         private const int _DocumentIconWidth = 16;
-        private const int _DocumentTextGapRight = 6;
+        private const int _DocumentTextGapRight = 4;
 
         #endregion
 
@@ -381,7 +381,7 @@ namespace LoipvRemote.UI.Tabs
             if (DockPane.IsAutoHide || Tabs.Count <= 1)
                 return 0;
 
-            int height = Math.Max(TextFont.Height + (PatchController.EnableHighDpi == true ? DocumentIconGapBottom : 0),
+            int height = Math.Max(DockTabMetrics.BoxedTextHeight(TextFont.Height),
                                   ToolWindowImageHeight + ToolWindowImageGapTop + ToolWindowImageGapBottom)
                        + ToolWindowStripGapTop + ToolWindowStripGapBottom;
 
@@ -392,8 +392,7 @@ namespace LoipvRemote.UI.Tabs
         {
             int height =
                 Math.Max(
-                         TextFont.Height + DocumentTabGapTop +
-                         (PatchController.EnableHighDpi == true ? DocumentIconGapBottom : 0),
+                         DocumentTabMetrics.MinimumHeight(TextFont.Height, DocumentIconHeight),
                          ButtonOverflow.Height + DocumentButtonGapTop + DocumentButtonGapBottom)
               + DocumentStripGapBottom + DocumentStripGapTop;
 
@@ -693,11 +692,9 @@ namespace LoipvRemote.UI.Tabs
         {
             IDockContent content = Tabs[index].Content;
             Size sizeString = TextRenderer.MeasureText(content.DockHandler.TabText, TextFont);
-            return ToolWindowImageWidth + sizeString.Width + ToolWindowImageGapLeft
+            return ToolWindowImageWidth + DockTabMetrics.BoxedTextWidth(sizeString.Width) + ToolWindowImageGapLeft
                  + ToolWindowImageGapRight + ToolWindowTextGapRight;
         }
-
-        private const int TAB_CLOSE_BUTTON_WIDTH = 30;
 
         private int GetMaxTabWidth_Document(int index)
         {
@@ -708,12 +705,11 @@ namespace LoipvRemote.UI.Tabs
 
             int width;
             if (DockPane.DockPanel.ShowDocumentIcon)
-                width = sizeText.Width + DocumentIconWidth + DocumentIconGapLeft + DocumentIconGapRight +
-                        DocumentTextGapRight;
+                width = sizeText.Width + DocumentIconWidth + DocumentIconGapRight + DocumentTextGapRight;
             else
-                width = sizeText.Width + DocumentIconGapLeft + DocumentTextGapRight;
+                width = sizeText.Width + DocumentTextGapRight;
 
-            width += TAB_CLOSE_BUTTON_WIDTH;
+            width += DocumentTabMetrics.CloseButtonSize + (DocumentTabMetrics.ContentPadding * 2);
             return width;
         }
 
@@ -790,8 +786,11 @@ namespace LoipvRemote.UI.Tabs
             Rectangle rect = TabStripRectangle_ToolWindow;
             Color borderColor = DockPane.DockPanel.Theme.ColorPalette.ToolWindowBorder;
 
-            g.DrawLine(DockPane.DockPanel.Theme.PaintingService.GetPen(borderColor), rect.Left, rect.Top,
-                       rect.Right, rect.Top);
+            if (!LeftSidebarDockingPolicy.HidesTopTabStripBorder(DockPane.DockState))
+            {
+                g.DrawLine(DockPane.DockPanel.Theme.PaintingService.GetPen(borderColor), rect.Left, rect.Top,
+                           rect.Right, rect.Top);
+            }
 
             for (int i = 0; i < Tabs.Count; i++)
             {
@@ -887,15 +886,9 @@ namespace LoipvRemote.UI.Tabs
                                          rect.X + ToolWindowImageGapLeft,
                                          rect.Y + rect.Height - ToolWindowImageGapBottom - ToolWindowImageHeight,
                                          ToolWindowImageWidth, ToolWindowImageHeight);
-            Rectangle rectText = PatchController.EnableHighDpi == true
-                ? new Rectangle(
-                                rect.X + ToolWindowImageGapLeft,
-                                rect.Y + rect.Height - ToolWindowImageGapBottom - TextFont.Height,
-                                ToolWindowImageWidth, TextFont.Height)
-                : rectIcon;
+            Rectangle rectText = DockTabMetrics.TextBounds(rect);
             rectText.X += rectIcon.Width + ToolWindowImageGapRight;
-            rectText.Width = rect.Width - rectIcon.Width - ToolWindowImageGapLeft -
-                             ToolWindowImageGapRight - ToolWindowTextGapRight;
+            rectText.Width = Math.Max(0, rectText.Width - rectIcon.Width - ToolWindowImageGapRight);
 
             Rectangle rectTab = DrawHelper.RtlTransform(this, rect);
             rectText = DrawHelper.RtlTransform(this, rectText);
@@ -961,27 +954,20 @@ namespace LoipvRemote.UI.Tabs
             if (tab.TabWidth == 0)
                 return;
 
+            Rectangle rectContent = DocumentTabMetrics.ContentBounds(rect);
             Rectangle rectCloseButton = GetCloseButtonRect(rect);
             Rectangle rectIcon = new(
-                                         rect.X + DocumentIconGapLeft,
-                                         rect.Y + rect.Height - DocumentIconGapBottom - DocumentIconHeight,
+                                         rectContent.X,
+                                         rectContent.Y + (rectContent.Height - DocumentIconHeight) / 2,
                                          DocumentIconWidth, DocumentIconHeight);
-            Rectangle rectText = PatchController.EnableHighDpi == true
-                ? new Rectangle(
-                                rect.X + DocumentIconGapLeft,
-                                rect.Y + rect.Height - DocumentIconGapBottom - TextFont.Height,
-                                DocumentIconWidth, TextFont.Height)
-                : rectIcon;
+            Rectangle rectText = rectContent;
             if (DockPane.DockPanel.ShowDocumentIcon)
             {
                 rectText.X += rectIcon.Width + DocumentIconGapRight;
-                rectText.Y = rect.Y;
-                rectText.Width = rect.Width - rectIcon.Width - DocumentIconGapLeft - DocumentIconGapRight -
-                                 DocumentTextGapRight - rectCloseButton.Width;
-                rectText.Height = rect.Height;
+                rectText.Width = Math.Max(0, rectCloseButton.Left - DocumentTextGapRight - rectText.X);
             }
             else
-                rectText.Width = rect.Width - DocumentIconGapLeft - DocumentTextGapRight - rectCloseButton.Width;
+                rectText.Width = Math.Max(0, rectCloseButton.Left - DocumentTextGapRight - rectText.X);
 
             Rectangle rectTab = DrawHelper.RtlTransform(this, rect);
             Rectangle rectBack = DrawHelper.RtlTransform(this, rect);
@@ -1193,10 +1179,7 @@ namespace LoipvRemote.UI.Tabs
                 return Rectangle.Empty;
             }
 
-            const int gap = 3;
-            int imageSize = PatchController.EnableHighDpi == true ? rectTab.Height - gap * 2 : 15;
-            return new Rectangle(rectTab.X + rectTab.Width - imageSize - gap - 1, rectTab.Y + gap, imageSize,
-                                 imageSize);
+            return DocumentTabMetrics.CloseButtonBounds(rectTab);
         }
 
         private void WindowList_Click(object sender, EventArgs e)

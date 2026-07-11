@@ -29,16 +29,6 @@ namespace LoipvRemote.Config.Settings.Registry
         public WinRegistryEntry<bool> SetHostnameLikeDisplayName { get; private set; }
 
         /// <summary>
-        /// Specifies whether filter matches in the search are applied in the connection tree.
-        /// </summary>
-        public WinRegistryEntry<bool> UseFilterSearch { get; private set; }
-
-        /// <summary>
-        /// Specifies whether the search bar is placed above the connection tree.
-        /// </summary>
-        public WinRegistryEntry<bool> PlaceSearchBarAboveConnectionTree { get; private set; }
-
-        /// <summary>
         /// Specifies whether the username trimming is disabled.
         /// </summary>
         public WinRegistryEntry<bool> DoNotTrimUsername { get; private set; }
@@ -77,8 +67,6 @@ namespace LoipvRemote.Config.Settings.Registry
             SingleClickSwitchesToOpenConnection = new WinRegistryEntry<bool>(hive, subKey, nameof(SingleClickSwitchesToOpenConnection)).Read();
             TrackActiveConnectionInConnectionTree = new WinRegistryEntry<bool>(hive, subKey, nameof(TrackActiveConnectionInConnectionTree)).Read();
             SetHostnameLikeDisplayName = new WinRegistryEntry<bool>(hive, subKey, nameof(SetHostnameLikeDisplayName)).Read();
-            UseFilterSearch = new WinRegistryEntry<bool>(hive, subKey, nameof(UseFilterSearch)).Read();
-            PlaceSearchBarAboveConnectionTree = new WinRegistryEntry<bool>(hive, subKey, nameof(PlaceSearchBarAboveConnectionTree)).Read();
             DoNotTrimUsername = new WinRegistryEntry<bool>(hive, subKey, nameof(DoNotTrimUsername)).Read();
             SlowClickRenameEnabled = new WinRegistryEntry<bool>(hive, subKey, nameof(SlowClickRenameEnabled)).Read();
             OpenMultipleConnectionsWithEnter = new WinRegistryEntry<bool>(hive, subKey, nameof(OpenMultipleConnectionsWithEnter)).Read();
@@ -119,8 +107,6 @@ namespace LoipvRemote.Config.Settings.Registry
             ApplySingleClickSwitchesToOpenConnection();
             ApplyTrackActiveConnectionInConnectionTree();
             ApplySetHostnameLikeDisplayName();
-            ApplyUseFilterSearch();
-            ApplyPlaceSearchBarAboveConnectionTree();
             ApplyDoNotTrimUsername();
             ApplySlowClickRenameEnabled();
             ApplyOpenMultipleConnectionsWithEnter();
@@ -151,18 +137,6 @@ namespace LoipvRemote.Config.Settings.Registry
         {
             if (SetHostnameLikeDisplayName.IsSet)
                 Properties.Settings.Default.SetHostnameLikeDisplayName = SetHostnameLikeDisplayName.Value;
-        }
-
-        private void ApplyUseFilterSearch()
-        {
-            if (UseFilterSearch.IsSet)
-                Properties.Settings.Default.UseFilterSearch = UseFilterSearch.Value;
-        }
-
-        private void ApplyPlaceSearchBarAboveConnectionTree()
-        {
-            if (PlaceSearchBarAboveConnectionTree.IsSet)
-                Properties.Settings.Default.PlaceSearchBarAboveConnectionTree = PlaceSearchBarAboveConnectionTree.Value;
         }
 
         private void ApplyDoNotTrimUsername()

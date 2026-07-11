@@ -1519,9 +1519,6 @@ Message:
   <data name="Screenshots" xml:space="preserve">
     <value>複数のスクリーンショット</value>
   </data>
-  <data name="SearchPrompt" xml:space="preserve">
-    <value>検索</value>
-  </data>
   <data name="SendTo" xml:space="preserve">
     <value>送信...</value>
   </data>
@@ -2029,9 +2026,6 @@ LoipvRemoteを終了してインストールを開始します</value>
   <data name="FileMenuWillBeHiddenNow" xml:space="preserve">
     <value>ファイルメニューを非表示にします</value>
   </data>
-  <data name="FilterSearchMatchesInConnectionTree" xml:space="preserve">
-    <value>接続ツリー内で検索条件に一致するものをフィルター</value>
-  </data>
   <data name="FilterSecureCRT" xml:space="preserve">
     <value>SecureCRT ファイル</value>
   </data>
@@ -2202,9 +2196,6 @@ LoipvRemoteを終了してインストールを開始します</value>
   </data>
   <data name="PasswordLengthConstraintHint" xml:space="preserve">
     <value>パスワードは {0} 文字以上にしてください</value>
-  </data>
-  <data name="PlaceSearchBarAboveConnectionTree" xml:space="preserve">
-    <value>検索バーを接続ツリーの上に配置</value>
   </data>
   <data name="Popups" xml:space="preserve">
     <value>ポップアップ</value>

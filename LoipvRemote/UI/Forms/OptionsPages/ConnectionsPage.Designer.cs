@@ -49,9 +49,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             radCloseWarnExit = new MrngRadioButton();
             radCloseWarnNever = new MrngRadioButton();
             chkSaveConnectionsAfterEveryEdit = new MrngCheckBox();
-            chkUseFilterSearch = new MrngCheckBox();
             tableLayoutPanel2 = new System.Windows.Forms.TableLayoutPanel();
-            chkPlaceSearchBarAboveConnectionTree = new MrngCheckBox();
             chkConnectionTreeTrackActiveConnection = new MrngCheckBox();
             chkDoNotTrimUsername = new MrngCheckBox();
             chkSlowClickRename = new MrngCheckBox();
@@ -111,7 +109,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             chkSingleClickOnConnectionOpensIt._mice = MrngCheckBox.MouseState.OUT;
             chkSingleClickOnConnectionOpensIt.AutoSize = true;
-            chkSingleClickOnConnectionOpensIt.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            chkSingleClickOnConnectionOpensIt.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkSingleClickOnConnectionOpensIt.Location = new System.Drawing.Point(6, 3);
             chkSingleClickOnConnectionOpensIt.Name = "chkSingleClickOnConnectionOpensIt";
             chkSingleClickOnConnectionOpensIt.Size = new System.Drawing.Size(206, 17);
@@ -123,7 +121,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             chkHostnameLikeDisplayName._mice = MrngCheckBox.MouseState.OUT;
             chkHostnameLikeDisplayName.AutoSize = true;
-            chkHostnameLikeDisplayName.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            chkHostnameLikeDisplayName.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkHostnameLikeDisplayName.Location = new System.Drawing.Point(6, 72);
             chkHostnameLikeDisplayName.Name = "chkHostnameLikeDisplayName";
             chkHostnameLikeDisplayName.Size = new System.Drawing.Size(355, 17);
@@ -135,7 +133,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             chkSingleClickOnOpenedConnectionSwitchesToIt._mice = MrngCheckBox.MouseState.OUT;
             chkSingleClickOnOpenedConnectionSwitchesToIt.AutoSize = true;
-            chkSingleClickOnOpenedConnectionSwitchesToIt.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            chkSingleClickOnOpenedConnectionSwitchesToIt.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkSingleClickOnOpenedConnectionSwitchesToIt.Location = new System.Drawing.Point(6, 26);
             chkSingleClickOnOpenedConnectionSwitchesToIt.Name = "chkSingleClickOnOpenedConnectionSwitchesToIt";
             chkSingleClickOnOpenedConnectionSwitchesToIt.Size = new System.Drawing.Size(492, 17);
@@ -170,7 +168,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             pnlConfirmCloseConnection.Controls.Add(radCloseWarnExit);
             pnlConfirmCloseConnection.Controls.Add(radCloseWarnNever);
             pnlConfirmCloseConnection.Dock = System.Windows.Forms.DockStyle.Top;
-            pnlConfirmCloseConnection.Location = new System.Drawing.Point(0, 315);
+            pnlConfirmCloseConnection.Location = new System.Drawing.Point(0, 268);
             pnlConfirmCloseConnection.Name = "pnlConfirmCloseConnection";
             pnlConfirmCloseConnection.Size = new System.Drawing.Size(610, 133);
             pnlConfirmCloseConnection.TabIndex = 6;
@@ -236,25 +234,13 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             chkSaveConnectionsAfterEveryEdit._mice = MrngCheckBox.MouseState.OUT;
             chkSaveConnectionsAfterEveryEdit.AutoSize = true;
-            chkSaveConnectionsAfterEveryEdit.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            chkSaveConnectionsAfterEveryEdit.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkSaveConnectionsAfterEveryEdit.Location = new System.Drawing.Point(6, 95);
             chkSaveConnectionsAfterEveryEdit.Name = "chkSaveConnectionsAfterEveryEdit";
             chkSaveConnectionsAfterEveryEdit.Size = new System.Drawing.Size(194, 17);
             chkSaveConnectionsAfterEveryEdit.TabIndex = 7;
             chkSaveConnectionsAfterEveryEdit.Text = "Save connections after every edit";
             chkSaveConnectionsAfterEveryEdit.UseVisualStyleBackColor = true;
-            //
-            // chkUseFilterSearch
-            //
-            chkUseFilterSearch._mice = MrngCheckBox.MouseState.OUT;
-            chkUseFilterSearch.AutoSize = true;
-            chkUseFilterSearch.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
-            chkUseFilterSearch.Location = new System.Drawing.Point(6, 118);
-            chkUseFilterSearch.Name = "chkUseFilterSearch";
-            chkUseFilterSearch.Size = new System.Drawing.Size(230, 17);
-            chkUseFilterSearch.TabIndex = 8;
-            chkUseFilterSearch.Text = "Filter search matches in connection tree";
-            chkUseFilterSearch.UseVisualStyleBackColor = true;
             //
             // tableLayoutPanel2
             //
@@ -268,7 +254,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             tableLayoutPanel2.Controls.Add(lblRDPConTimeout, 0, 1);
             tableLayoutPanel2.Controls.Add(numRDPConTimeout, 1, 1);
             tableLayoutPanel2.Dock = System.Windows.Forms.DockStyle.Top;
-            tableLayoutPanel2.Location = new System.Drawing.Point(0, 236);
+            tableLayoutPanel2.Location = new System.Drawing.Point(0, 189);
             tableLayoutPanel2.Name = "tableLayoutPanel2";
             tableLayoutPanel2.RowCount = 3;
             tableLayoutPanel2.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 26F));
@@ -277,23 +263,11 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             tableLayoutPanel2.Size = new System.Drawing.Size(610, 79);
             tableLayoutPanel2.TabIndex = 9;
             //
-            // chkPlaceSearchBarAboveConnectionTree
-            //
-            chkPlaceSearchBarAboveConnectionTree._mice = MrngCheckBox.MouseState.OUT;
-            chkPlaceSearchBarAboveConnectionTree.AutoSize = true;
-            chkPlaceSearchBarAboveConnectionTree.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
-            chkPlaceSearchBarAboveConnectionTree.Location = new System.Drawing.Point(6, 141);
-            chkPlaceSearchBarAboveConnectionTree.Name = "chkPlaceSearchBarAboveConnectionTree";
-            chkPlaceSearchBarAboveConnectionTree.Size = new System.Drawing.Size(226, 17);
-            chkPlaceSearchBarAboveConnectionTree.TabIndex = 8;
-            chkPlaceSearchBarAboveConnectionTree.Text = "Place search bar above connection tree";
-            chkPlaceSearchBarAboveConnectionTree.UseVisualStyleBackColor = true;
-            //
             // chkConnectionTreeTrackActiveConnection
             //
             chkConnectionTreeTrackActiveConnection._mice = MrngCheckBox.MouseState.OUT;
             chkConnectionTreeTrackActiveConnection.AutoSize = true;
-            chkConnectionTreeTrackActiveConnection.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            chkConnectionTreeTrackActiveConnection.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkConnectionTreeTrackActiveConnection.Location = new System.Drawing.Point(6, 49);
             chkConnectionTreeTrackActiveConnection.Name = "chkConnectionTreeTrackActiveConnection";
             chkConnectionTreeTrackActiveConnection.Size = new System.Drawing.Size(262, 17);
@@ -305,8 +279,8 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             chkDoNotTrimUsername._mice = MrngCheckBox.MouseState.OUT;
             chkDoNotTrimUsername.AutoSize = true;
-            chkDoNotTrimUsername.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
-            chkDoNotTrimUsername.Location = new System.Drawing.Point(6, 165);
+            chkDoNotTrimUsername.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            chkDoNotTrimUsername.Location = new System.Drawing.Point(6, 118);
             chkDoNotTrimUsername.Name = "chkDoNotTrimUsername";
             chkDoNotTrimUsername.Size = new System.Drawing.Size(143, 17);
             chkDoNotTrimUsername.TabIndex = 11;
@@ -317,8 +291,8 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             chkSlowClickRename._mice = MrngCheckBox.MouseState.OUT;
             chkSlowClickRename.AutoSize = true;
-            chkSlowClickRename.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
-            chkSlowClickRename.Location = new System.Drawing.Point(6, 188);
+            chkSlowClickRename.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            chkSlowClickRename.Location = new System.Drawing.Point(6, 141);
             chkSlowClickRename.Name = "chkSlowClickRename";
             chkSlowClickRename.Size = new System.Drawing.Size(290, 17);
             chkSlowClickRename.TabIndex = 12;
@@ -329,8 +303,8 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             chkOpenMultipleConnectionsWithEnter._mice = MrngCheckBox.MouseState.OUT;
             chkOpenMultipleConnectionsWithEnter.AutoSize = true;
-            chkOpenMultipleConnectionsWithEnter.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
-            chkOpenMultipleConnectionsWithEnter.Location = new System.Drawing.Point(6, 211);
+            chkOpenMultipleConnectionsWithEnter.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            chkOpenMultipleConnectionsWithEnter.Location = new System.Drawing.Point(6, 164);
             chkOpenMultipleConnectionsWithEnter.Name = "chkOpenMultipleConnectionsWithEnter";
             chkOpenMultipleConnectionsWithEnter.Size = new System.Drawing.Size(312, 17);
             chkOpenMultipleConnectionsWithEnter.TabIndex = 13;
@@ -347,12 +321,10 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             pnlOptions.Controls.Add(chkConnectionTreeTrackActiveConnection);
             pnlOptions.Controls.Add(chkHostnameLikeDisplayName);
             pnlOptions.Controls.Add(chkSaveConnectionsAfterEveryEdit);
-            pnlOptions.Controls.Add(chkPlaceSearchBarAboveConnectionTree);
-            pnlOptions.Controls.Add(chkUseFilterSearch);
             pnlOptions.Dock = System.Windows.Forms.DockStyle.Top;
             pnlOptions.Location = new System.Drawing.Point(0, 30);
             pnlOptions.Name = "pnlOptions";
-            pnlOptions.Size = new System.Drawing.Size(610, 235);
+            pnlOptions.Size = new System.Drawing.Size(610, 188);
             pnlOptions.TabIndex = 12;
             //
             // lblRegistrySettingsUsedInfo
@@ -405,9 +377,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
         internal Controls.MrngLabel lblRDPConTimeout;
         internal Controls.MrngNumericUpDown numRdpReconnectionCount;
         internal MrngCheckBox chkSaveConnectionsAfterEveryEdit;
-        private MrngCheckBox chkUseFilterSearch;
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanel2;
-        private MrngCheckBox chkPlaceSearchBarAboveConnectionTree;
         private MrngCheckBox chkConnectionTreeTrackActiveConnection;
         private MrngCheckBox chkDoNotTrimUsername;
         private MrngCheckBox chkSlowClickRename;

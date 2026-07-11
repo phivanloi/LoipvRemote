@@ -166,6 +166,7 @@ namespace LoipvRemote.Themes
         private void setCustomExtenders()
         {
             _theme.Extender.DockPaneStripFactory = new MremoteDockPaneStripFactory();
+            _theme.Extender.DockPaneCaptionFactory = new LargeDockPaneCaptionFactory();
             _theme.Extender.FloatWindowFactory = new MremoteFloatWindowFactory();
         }
     }

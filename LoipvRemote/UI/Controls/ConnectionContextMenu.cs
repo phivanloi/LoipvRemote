@@ -132,7 +132,7 @@ namespace LoipvRemote.UI.Controls
             //
             // cMenTree
             //
-            Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular,
+            Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular,
                                            System.Drawing.GraphicsUnit.Point, 0);
             Items.AddRange(new ToolStripItem[]
             {

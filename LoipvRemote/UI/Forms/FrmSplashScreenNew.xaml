@@ -9,14 +9,20 @@
         WindowStyle="None"
         AllowsTransparency="True"
         Background="Transparent"
-        Height="120"
-        Width="450">
-    <Border CornerRadius="10" BorderBrush="#211E1B" BorderThickness="1" Background="#373C42">
+        Height="144"
+        Width="480">
+    <Border CornerRadius="12" BorderBrush="#CBD5E1" BorderThickness="1" Background="#F8FAFC">
         <Grid>
-            <Label Name="lblLogoPartA" Content="m" HorizontalAlignment="Left" VerticalAlignment="Top" Height="59" Margin="104,0,0,0" Width="40" FontFamily="HandelGotDBol" FontSize="40" Foreground="#5289F9"/>
-            <Label Name="lblLogoPartB" Content="RemoteNG" HorizontalAlignment="Left" VerticalAlignment="Top" Height="59" Margin="134,0,0,0" Width="210" FontFamily="HandelGotDBol" FontSize="40" Foreground="#E8EBEE" RenderTransformOrigin="0.548,0.525"/>
-            <Label Name="lblLogoPartC" Content="Multi-Remote Next Generation Connection Manager" HorizontalAlignment="Center" VerticalAlignment="Top" Height="30" Margin="0,83,0,0" Width="410" FontFamily="Segoe" FontSize="16" Foreground="#E8EBEE" FontWeight="Bold"/>
-            <Label Name="lblLogoPartD" Content="v.?.??.?" HorizontalAlignment="Center" VerticalAlignment="Top" Height="28" Margin="0,50,0,0" Width="442" FontFamily="Segoe" FontSize="16" Foreground="#E8EBEE"/>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="112" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Image Grid.Column="0" Source="/Resources/LoipvRemote_Icon_new.png" Width="76" Height="76" Margin="20,24,16,24" Stretch="Uniform" />
+            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,16,24,16">
+                <TextBlock Text="LoipvRemote" FontFamily="Segoe UI" FontSize="30" FontWeight="SemiBold" Foreground="#111827" />
+                <TextBlock Text="Remote Connection Manager" FontFamily="Segoe UI" FontSize="16" Foreground="#374151" Margin="1,3,0,0" />
+                <TextBlock Name="lblVersion" Text="v.?.??.?" FontFamily="Segoe UI" FontSize="14" Foreground="#64748B" Margin="1,10,0,0" />
+            </StackPanel>
         </Grid>
     </Border>
 </Window>

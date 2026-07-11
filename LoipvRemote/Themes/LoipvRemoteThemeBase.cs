@@ -18,7 +18,7 @@ namespace LoipvRemote.Themes
         {
             Measures.SplitterSize = 3;
             Measures.AutoHideSplitterSize = 3;
-            Measures.DockPadding = 2;
+            Measures.DockPadding = 0;
             ShowAutoHideContentOnHover = false;
         }
     }
@@ -27,6 +27,15 @@ namespace LoipvRemote.Themes
     public class MremoteDockPaneStripFactory : DockPanelExtender.IDockPaneStripFactory
     {
         public DockPaneStripBase CreateDockPaneStrip(DockPane pane) => new DockPaneStripNG(pane);
+    }
+
+    [SupportedOSPlatform("windows")]
+    public class LargeDockPaneCaptionFactory : DockPanelExtender.IDockPaneCaptionFactory
+    {
+        public DockPaneCaptionBase CreateDockPaneCaption(DockPane pane) =>
+            LeftSidebarDockingPolicy.UsesHiddenCaption(pane.DockState)
+                ? new HiddenDockPaneCaption(pane)
+                : new LargeDockPaneCaption(pane);
     }
 
     public class MremoteFloatWindowFactory : DockPanelExtender.IFloatWindowFactory

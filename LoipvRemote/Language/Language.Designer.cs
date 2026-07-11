@@ -2784,15 +2784,6 @@ namespace LoipvRemote.Resources.Language {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Filter search matches in connection tree.
-        /// </summary>
-        internal static string FilterSearchMatchesInConnectionTree {
-            get {
-                return ResourceManager.GetString("FilterSearchMatchesInConnectionTree", resourceCulture);
-            }
-        }
-
-        /// <summary>
         ///   Looks up a localized string similar to SecureCRT (*.xml).
         /// </summary>
         internal static string FilterSecureCRT {
@@ -4302,15 +4293,6 @@ namespace LoipvRemote.Resources.Language {
         internal static string PasswordStatusTooShort {
             get {
                 return ResourceManager.GetString("PasswordStatusTooShort", resourceCulture);
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized string similar to Place search bar above connection tree.
-        /// </summary>
-        internal static string PlaceSearchBarAboveConnectionTree {
-            get {
-                return ResourceManager.GetString("PlaceSearchBarAboveConnectionTree", resourceCulture);
             }
         }
 
@@ -6410,15 +6392,6 @@ namespace LoipvRemote.Resources.Language {
         internal static string Screenshots {
             get {
                 return ResourceManager.GetString("Screenshots", resourceCulture);
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized string similar to Search.
-        /// </summary>
-        internal static string SearchPrompt {
-            get {
-                return ResourceManager.GetString("SearchPrompt", resourceCulture);
             }
         }
 

@@ -182,7 +182,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             // tabPage1
             //
             tabPage1.Controls.Add(pnlSQLCon);
-            tabPage1.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, 0);
+            tabPage1.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, 0);
             tabPage1.Location = new System.Drawing.Point(4, 22);
             tabPage1.Name = "tabPage1";
             tabPage1.Padding = new System.Windows.Forms.Padding(3);
@@ -324,7 +324,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             txtSQLServer.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             txtSQLServer.Dock = System.Windows.Forms.DockStyle.Fill;
-            txtSQLServer.Font = new System.Drawing.Font("Segoe UI", 8.25F);
+            txtSQLServer.Font = new System.Drawing.Font("Segoe UI", 10F);
             txtSQLServer.Location = new System.Drawing.Point(163, 29);
             txtSQLServer.Name = "txtSQLServer";
             txtSQLServer.Size = new System.Drawing.Size(292, 22);
@@ -334,7 +334,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             txtSQLPassword.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             txtSQLPassword.Dock = System.Windows.Forms.DockStyle.Fill;
-            txtSQLPassword.Font = new System.Drawing.Font("Segoe UI", 8.25F);
+            txtSQLPassword.Font = new System.Drawing.Font("Segoe UI", 10F);
             txtSQLPassword.Location = new System.Drawing.Point(163, 133);
             txtSQLPassword.Name = "txtSQLPassword";
             txtSQLPassword.Size = new System.Drawing.Size(292, 22);
@@ -345,7 +345,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             txtSQLUsername.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             txtSQLUsername.Dock = System.Windows.Forms.DockStyle.Fill;
-            txtSQLUsername.Font = new System.Drawing.Font("Segoe UI", 8.25F);
+            txtSQLUsername.Font = new System.Drawing.Font("Segoe UI", 10F);
             txtSQLUsername.Location = new System.Drawing.Point(163, 107);
             txtSQLUsername.Name = "txtSQLUsername";
             txtSQLUsername.Size = new System.Drawing.Size(292, 22);
@@ -354,7 +354,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             // tabPage2
             //
             tabPage2.Controls.Add(tableLayoutPanel2);
-            tabPage2.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, 0);
+            tabPage2.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, 0);
             tabPage2.Location = new System.Drawing.Point(4, 22);
             tabPage2.Name = "tabPage2";
             tabPage2.Padding = new System.Windows.Forms.Padding(3);
@@ -397,7 +397,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             txtSQLDatabaseName.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             txtSQLDatabaseName.Dock = System.Windows.Forms.DockStyle.Fill;
-            txtSQLDatabaseName.Font = new System.Drawing.Font("Segoe UI", 8.25F);
+            txtSQLDatabaseName.Font = new System.Drawing.Font("Segoe UI", 10F);
             txtSQLDatabaseName.Location = new System.Drawing.Point(163, 3);
             txtSQLDatabaseName.Name = "txtSQLDatabaseName";
             txtSQLDatabaseName.Size = new System.Drawing.Size(292, 22);
@@ -494,7 +494,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             // tabPage3
             //
             tabPage3.Controls.Add(tableLayoutPanel3);
-            tabPage3.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, 0);
+            tabPage3.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, 0);
             tabPage3.Location = new System.Drawing.Point(4, 22);
             tabPage3.Name = "tabPage3";
             tabPage3.Padding = new System.Windows.Forms.Padding(3);
@@ -547,7 +547,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             mrngCheckBox5._mice = MrngCheckBox.MouseState.OUT;
             mrngCheckBox5.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left;
             mrngCheckBox5.AutoSize = true;
-            mrngCheckBox5.Font = new System.Drawing.Font("Segoe UI", 8.25F);
+            mrngCheckBox5.Font = new System.Drawing.Font("Segoe UI", 10F);
             mrngCheckBox5.Location = new System.Drawing.Point(163, 211);
             mrngCheckBox5.Name = "mrngCheckBox5";
             mrngCheckBox5.Size = new System.Drawing.Size(15, 20);
@@ -568,7 +568,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             mrngTextBox5.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             mrngTextBox5.Dock = System.Windows.Forms.DockStyle.Fill;
-            mrngTextBox5.Font = new System.Drawing.Font("Segoe UI", 8.25F);
+            mrngTextBox5.Font = new System.Drawing.Font("Segoe UI", 10F);
             mrngTextBox5.Location = new System.Drawing.Point(163, 185);
             mrngTextBox5.Name = "mrngTextBox5";
             mrngTextBox5.Size = new System.Drawing.Size(292, 22);
@@ -601,7 +601,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             mrngCheckBox2._mice = MrngCheckBox.MouseState.OUT;
             mrngCheckBox2.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left;
             mrngCheckBox2.AutoSize = true;
-            mrngCheckBox2.Font = new System.Drawing.Font("Segoe UI", 8.25F);
+            mrngCheckBox2.Font = new System.Drawing.Font("Segoe UI", 10F);
             mrngCheckBox2.Location = new System.Drawing.Point(163, 133);
             mrngCheckBox2.Name = "mrngCheckBox2";
             mrngCheckBox2.Size = new System.Drawing.Size(15, 20);
@@ -613,7 +613,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             mrngCheckBox4._mice = MrngCheckBox.MouseState.OUT;
             mrngCheckBox4.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left;
             mrngCheckBox4.AutoSize = true;
-            mrngCheckBox4.Font = new System.Drawing.Font("Segoe UI", 8.25F);
+            mrngCheckBox4.Font = new System.Drawing.Font("Segoe UI", 10F);
             mrngCheckBox4.Location = new System.Drawing.Point(163, 29);
             mrngCheckBox4.Name = "mrngCheckBox4";
             mrngCheckBox4.Size = new System.Drawing.Size(15, 20);
@@ -625,7 +625,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             mrngCheckBox3._mice = MrngCheckBox.MouseState.OUT;
             mrngCheckBox3.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left;
             mrngCheckBox3.AutoSize = true;
-            mrngCheckBox3.Font = new System.Drawing.Font("Segoe UI", 8.25F);
+            mrngCheckBox3.Font = new System.Drawing.Font("Segoe UI", 10F);
             mrngCheckBox3.Location = new System.Drawing.Point(163, 3);
             mrngCheckBox3.Name = "mrngCheckBox3";
             mrngCheckBox3.Size = new System.Drawing.Size(15, 20);
@@ -698,7 +698,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             mrngTextBox8.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             mrngTextBox8.Dock = System.Windows.Forms.DockStyle.Fill;
-            mrngTextBox8.Font = new System.Drawing.Font("Segoe UI", 8.25F);
+            mrngTextBox8.Font = new System.Drawing.Font("Segoe UI", 10F);
             mrngTextBox8.Location = new System.Drawing.Point(163, 55);
             mrngTextBox8.Name = "mrngTextBox8";
             mrngTextBox8.Size = new System.Drawing.Size(292, 22);
@@ -728,7 +728,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             mrngTextBox11.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             mrngTextBox11.Dock = System.Windows.Forms.DockStyle.Fill;
-            mrngTextBox11.Font = new System.Drawing.Font("Segoe UI", 8.25F);
+            mrngTextBox11.Font = new System.Drawing.Font("Segoe UI", 10F);
             mrngTextBox11.Location = new System.Drawing.Point(163, 107);
             mrngTextBox11.Name = "mrngTextBox11";
             mrngTextBox11.Size = new System.Drawing.Size(292, 22);
@@ -737,7 +737,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             // tabPage4
             //
             tabPage4.Controls.Add(tableLayoutPanel4);
-            tabPage4.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, 0);
+            tabPage4.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, 0);
             tabPage4.Location = new System.Drawing.Point(4, 22);
             tabPage4.Name = "tabPage4";
             tabPage4.Padding = new System.Windows.Forms.Padding(3);
@@ -832,7 +832,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             DCMSetuptxtuserpwd.Anchor = System.Windows.Forms.AnchorStyles.Left;
             DCMSetuptxtuserpwd.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            DCMSetuptxtuserpwd.Font = new System.Drawing.Font("Segoe UI", 8.25F);
+            DCMSetuptxtuserpwd.Font = new System.Drawing.Font("Segoe UI", 10F);
             DCMSetuptxtuserpwd.Location = new System.Drawing.Point(219, 184);
             DCMSetuptxtuserpwd.Name = "DCMSetuptxtuserpwd";
             DCMSetuptxtuserpwd.Size = new System.Drawing.Size(210, 22);
@@ -845,7 +845,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             DCMSetuptxtuser.Anchor = System.Windows.Forms.AnchorStyles.Left;
             DCMSetuptxtuser.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            DCMSetuptxtuser.Font = new System.Drawing.Font("Segoe UI", 8.25F);
+            DCMSetuptxtuser.Font = new System.Drawing.Font("Segoe UI", 10F);
             DCMSetuptxtuser.Location = new System.Drawing.Point(219, 154);
             DCMSetuptxtuser.Name = "DCMSetuptxtuser";
             DCMSetuptxtuser.Size = new System.Drawing.Size(210, 22);
@@ -881,7 +881,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             DCMSetuptxtdbname.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             DCMSetuptxtdbname.Dock = System.Windows.Forms.DockStyle.Fill;
-            DCMSetuptxtdbname.Font = new System.Drawing.Font("Segoe UI", 8.25F);
+            DCMSetuptxtdbname.Font = new System.Drawing.Font("Segoe UI", 10F);
             DCMSetuptxtdbname.Location = new System.Drawing.Point(219, 123);
             DCMSetuptxtdbname.Name = "DCMSetuptxtdbname";
             DCMSetuptxtdbname.Size = new System.Drawing.Size(210, 22);
@@ -901,7 +901,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             DCMSetuptxtadmpwd.Anchor = System.Windows.Forms.AnchorStyles.Left;
             DCMSetuptxtadmpwd.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            DCMSetuptxtadmpwd.Font = new System.Drawing.Font("Segoe UI", 8.25F);
+            DCMSetuptxtadmpwd.Font = new System.Drawing.Font("Segoe UI", 10F);
             DCMSetuptxtadmpwd.Location = new System.Drawing.Point(219, 94);
             DCMSetuptxtadmpwd.Name = "DCMSetuptxtadmpwd";
             DCMSetuptxtadmpwd.Size = new System.Drawing.Size(210, 22);
@@ -923,7 +923,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             DCMSetuptxtadmuser.Anchor = System.Windows.Forms.AnchorStyles.Left;
             DCMSetuptxtadmuser.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            DCMSetuptxtadmuser.Font = new System.Drawing.Font("Segoe UI", 8.25F);
+            DCMSetuptxtadmuser.Font = new System.Drawing.Font("Segoe UI", 10F);
             DCMSetuptxtadmuser.Location = new System.Drawing.Point(219, 64);
             DCMSetuptxtadmuser.Name = "DCMSetuptxtadmuser";
             DCMSetuptxtadmuser.Size = new System.Drawing.Size(210, 22);
@@ -1054,7 +1054,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             mrngTextBox2.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             mrngTextBox2.Dock = System.Windows.Forms.DockStyle.Fill;
-            mrngTextBox2.Font = new System.Drawing.Font("Segoe UI", 8.25F);
+            mrngTextBox2.Font = new System.Drawing.Font("Segoe UI", 10F);
             mrngTextBox2.Location = new System.Drawing.Point(163, 3);
             mrngTextBox2.Name = "mrngTextBox2";
             mrngTextBox2.Size = new System.Drawing.Size(292, 22);
@@ -1084,7 +1084,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             mrngTextBox1.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             mrngTextBox1.Dock = System.Windows.Forms.DockStyle.Fill;
-            mrngTextBox1.Font = new System.Drawing.Font("Segoe UI", 8.25F);
+            mrngTextBox1.Font = new System.Drawing.Font("Segoe UI", 10F);
             mrngTextBox1.Location = new System.Drawing.Point(163, 29);
             mrngTextBox1.Name = "mrngTextBox1";
             mrngTextBox1.Size = new System.Drawing.Size(292, 22);
@@ -1104,7 +1104,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             mrngTextBox4.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             mrngTextBox4.Dock = System.Windows.Forms.DockStyle.Fill;
-            mrngTextBox4.Font = new System.Drawing.Font("Segoe UI", 8.25F);
+            mrngTextBox4.Font = new System.Drawing.Font("Segoe UI", 10F);
             mrngTextBox4.Location = new System.Drawing.Point(163, 55);
             mrngTextBox4.Name = "mrngTextBox4";
             mrngTextBox4.Size = new System.Drawing.Size(292, 22);

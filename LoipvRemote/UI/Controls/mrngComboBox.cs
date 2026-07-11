@@ -23,6 +23,7 @@ namespace LoipvRemote.UI.Controls
 
         public MrngComboBox()
         {
+            Font = new Font("Segoe UI", 10F, FontStyle.Regular, GraphicsUnit.Point, 0);
             ThemeManager.getInstance().ThemeChanged += OnCreateControl;
         }
 
@@ -166,7 +167,7 @@ namespace LoipvRemote.UI.Controls
             //
             // NGComboBox
             //
-            this.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular,
+            this.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular,
                                                 System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.ResumeLayout(false);
         }

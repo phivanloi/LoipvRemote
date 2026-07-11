@@ -32,6 +32,7 @@ namespace LoipvRemote.Connection
                 Size = Parent.Size;
                 Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top;
                 InitializeComponent();
+                ImeMode = ImeMode.On;
 
                 // Enable custom painting for border
                 this.Paint += InterfaceControl_Paint;
@@ -96,6 +97,19 @@ namespace LoipvRemote.Connection
                 ConnectionFrameColor.Purple => Color.FromArgb(111, 66, 193),  // Purple
                 _ => Color.Transparent
             };
+        }
+
+        protected override void WndProc(ref Message m)
+        {
+            if (Protocol is PuttyBase putty &&
+                putty.PuttyHandle != IntPtr.Zero &&
+                PuttyImeMessageRouter.ShouldForward(m.Msg))
+            {
+                NativeMethods.SendMessage(putty.PuttyHandle, (uint)m.Msg, m.WParam, m.LParam);
+                return;
+            }
+
+            base.WndProc(ref m);
         }
 
         public static InterfaceControl FindInterfaceControl(DockPanel DockPnl)

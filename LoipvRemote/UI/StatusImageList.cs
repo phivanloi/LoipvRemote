@@ -6,6 +6,7 @@ using LoipvRemote.App;
 using LoipvRemote.Connection;
 using LoipvRemote.Container;
 using LoipvRemote.Tree.Root;
+using LoipvRemote.UI.DesignSystem;
 
 namespace LoipvRemote.UI
 {
@@ -13,19 +14,21 @@ namespace LoipvRemote.UI
     public class StatusImageList : IDisposable
     {
         public ImageList ImageList { get; }
+        private readonly UiScaleManager _uiScaleManager;
 
         public StatusImageList()
         {
-            DisplayProperties display = new();
+            _uiScaleManager = UiScaleManager.Instance;
 
             ImageList = new ImageList
             {
                 ColorDepth = ColorDepth.Depth32Bit,
-                ImageSize = new Size((int)Math.Round(16 * display.ResolutionScalingFactor.Width), (int)Math.Round(16 * display.ResolutionScalingFactor.Height)),
+                ImageSize = new Size(_uiScaleManager.Metrics.IconSize, _uiScaleManager.Metrics.IconSize),
                 TransparentColor = Color.Transparent
             };
 
             FillImageList(ImageList);
+            _uiScaleManager.Changed += UiScaleChanged;
         }
 
         public object ImageGetter(object rowObject)
@@ -75,34 +78,50 @@ namespace LoipvRemote.UI
                 return DefaultConnectionIcon;
             }
 
-            ImageList.Images.Add(BuildConnectionIconName(connection.Icon, false), image);
-            ImageList.Images.Add(BuildConnectionIconName(connection.Icon, true), Overlay(image, Properties.Resources.ConnectedOverlay));
+            using Bitmap source = image.ToBitmap();
+            Bitmap normal = IconService.Resize(source, _uiScaleManager.Metrics.IconSize);
+            Bitmap connectedImage = Overlay(image, Properties.Resources.ConnectedOverlay, _uiScaleManager.Metrics.IconSize);
+            ImageList.Images.Add(BuildConnectionIconName(connection.Icon, false), normal);
+            ImageList.Images.Add(BuildConnectionIconName(connection.Icon, true), connectedImage);
             return name;
         }
 
-        private static Bitmap Overlay(Icon background, Image foreground)
+        private static Bitmap Overlay(Icon background, Image foreground, int size)
         {
-            Bitmap result = new(background.ToBitmap(), new Size(16, 16));
+            using Bitmap source = background.ToBitmap();
+            Bitmap result = IconService.Resize(source, size);
             using (Graphics gr = Graphics.FromImage(result))
             {
-                gr.DrawImage(foreground, new Rectangle(0, 0, foreground.Width, foreground.Height));
+                int overlaySize = Math.Max(8, size / 2);
+                gr.DrawImage(foreground, new Rectangle(size - overlaySize, size - overlaySize, overlaySize, overlaySize));
             }
 
             return result;
         }
 
-        private static void FillImageList(ImageList imageList)
+        private void FillImageList(ImageList imageList)
         {
             try
             {
-                imageList.Images.Add("Root", Properties.Resources.ASPWebSite_16x);
-                imageList.Images.Add("Folder", Properties.Resources.FolderClosed_16x);
-                imageList.Images.Add("PuttySessions", Properties.Resources.PuttySessions);
+                int size = _uiScaleManager.Metrics.IconSize;
+                Bitmap root = IconService.Resize(Properties.Resources.ASPWebSite_16x, size);
+                Bitmap folder = IconService.Resize(Properties.Resources.FolderClosed_16x, size);
+                Bitmap putty = IconService.Resize(Properties.Resources.PuttySessions, size);
+                imageList.Images.Add("Root", root);
+                imageList.Images.Add("Folder", folder);
+                imageList.Images.Add("PuttySessions", putty);
             }
             catch (Exception ex)
             {
                 Runtime.MessageCollector.AddExceptionStackTrace($"Unable to fill the image list of type {nameof(StatusImageList)}", ex);
             }
+        }
+
+        private void UiScaleChanged(object? sender, EventArgs e)
+        {
+            ImageList.Images.Clear();
+            ImageList.ImageSize = new Size(_uiScaleManager.Metrics.IconSize, _uiScaleManager.Metrics.IconSize);
+            FillImageList(ImageList);
         }
 
         public void Dispose()
@@ -115,6 +134,7 @@ namespace LoipvRemote.UI
         {
             if (disposing)
             {
+                _uiScaleManager.Changed -= UiScaleChanged;
                 ImageList?.Dispose();
             }
         }

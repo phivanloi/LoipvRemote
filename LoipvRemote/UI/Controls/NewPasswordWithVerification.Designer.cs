@@ -103,7 +103,7 @@ namespace LoipvRemote.UI.Controls
             this.Controls.Add(this.labelFirstPasswordBox);
             this.Controls.Add(this.secureTextBox2);
             this.Controls.Add(this.secureTextBox1);
-            this.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.MinimumSize = new System.Drawing.Size(0, 100);
             this.Name = "NewPasswordWithVerification";
             this.Size = new System.Drawing.Size(193, 100);

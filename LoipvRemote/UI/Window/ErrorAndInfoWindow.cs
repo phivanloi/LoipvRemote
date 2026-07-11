@@ -18,7 +18,6 @@ namespace LoipvRemote.UI.Window
     [SupportedOSPlatform("windows")]
     public partial class ErrorAndInfoWindow : BaseWindow
     {
-        private ControlLayout _layout = ControlLayout.Vertical;
         private readonly ThemeManager _themeManager;
         private readonly DisplayProperties _display;
 
@@ -39,7 +38,7 @@ namespace LoipvRemote.UI.Window
             _themeManager = ThemeManager.getInstance();
             ApplyTheme();
             _themeManager.ThemeChanged += ApplyTheme;
-            LayoutVertical();
+            UpdateNotificationLayout();
             FillImageList();
             ApplyLanguage();
         }
@@ -57,6 +56,9 @@ namespace LoipvRemote.UI.Window
             cMenMCDelete.Text = Language.DeleteAll;
             TabText = Language.Notifications;
             Text = Language.Notifications;
+            lblEmptyNotifications.Text = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "vi"
+                ? "Không có thông báo"
+                : "No notifications";
         }
 
         #endregion
@@ -68,6 +70,8 @@ namespace LoipvRemote.UI.Window
             if (!_themeManager.ActiveAndExtended) return;
             lvErrorCollector.BackColor = _themeManager.ActiveTheme.ExtendedPalette.getColor("TextBox_Background");
             lvErrorCollector.ForeColor = _themeManager.ActiveTheme.ExtendedPalette.getColor("TextBox_Foreground");
+            lblEmptyNotifications.BackColor = lvErrorCollector.BackColor;
+            lblEmptyNotifications.ForeColor = _themeManager.ActiveTheme.ExtendedPalette.getColor("TextBox_Foreground");
 
             pnlErrorMsg.BackColor = _themeManager.ActiveTheme.ExtendedPalette.getColor("Dialog_Background");
             pnlErrorMsg.ForeColor = _themeManager.ActiveTheme.ExtendedPalette.getColor("Dialog_Foreground");
@@ -90,18 +94,23 @@ namespace LoipvRemote.UI.Window
         {
             try
             {
-                pnlErrorMsg.Location = new Point(0, Height - _display.ScaleHeight(200));
-                pnlErrorMsg.Size = new Size(Width, Height - pnlErrorMsg.Top);
+                int clientWidth = ClientSize.Width;
+                int clientHeight = ClientSize.Height;
+                int gap = _display.ScaleHeight(5);
+                int detailHeight = Math.Min(_display.ScaleHeight(200), Math.Max(_display.ScaleHeight(120), clientHeight / 3));
+                detailHeight = Math.Min(detailHeight, Math.Max(0, clientHeight - gap));
+
+                pnlErrorMsg.Location = new Point(0, clientHeight - detailHeight);
+                pnlErrorMsg.Size = new Size(clientWidth, detailHeight);
                 pnlErrorMsg.Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
                 txtMsgText.Size = new Size(
-                                           pnlErrorMsg.Width - pbError.Width - _display.ScaleWidth(8),
-                                           pnlErrorMsg.Height - _display.ScaleHeight(20));
+                                           Math.Max(0, pnlErrorMsg.Width - pbError.Width - _display.ScaleWidth(8)),
+                                           Math.Max(0, pnlErrorMsg.Height - _display.ScaleHeight(20)));
                 lvErrorCollector.Location = new Point(0, 0);
-                lvErrorCollector.Size = new Size(Width, Height - pnlErrorMsg.Height - _display.ScaleHeight(5));
+                lvErrorCollector.Size = new Size(clientWidth, Math.Max(0, clientHeight - detailHeight - gap));
                 lvErrorCollector.Anchor =
                     AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top;
 
-                _layout = ControlLayout.Vertical;
             }
             catch (Exception ex)
             {
@@ -115,19 +124,24 @@ namespace LoipvRemote.UI.Window
         {
             try
             {
+                int clientWidth = ClientSize.Width;
+                int clientHeight = ClientSize.Height;
+                int gap = _display.ScaleWidth(5);
+                int detailWidth = Math.Min(_display.ScaleWidth(320), Math.Max(_display.ScaleWidth(220), clientWidth / 3));
+                detailWidth = Math.Min(detailWidth, Math.Max(0, clientWidth - gap));
+
                 pnlErrorMsg.Location = new Point(0, 0);
-                pnlErrorMsg.Size = new Size(_display.ScaleWidth(200), Height);
+                pnlErrorMsg.Size = new Size(detailWidth, clientHeight);
                 pnlErrorMsg.Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Top;
 
                 txtMsgText.Size = new Size(
-                                           pnlErrorMsg.Width - pbError.Width - _display.ScaleWidth(8),
-                                           pnlErrorMsg.Height - _display.ScaleHeight(20));
-                lvErrorCollector.Location = new Point(pnlErrorMsg.Width + _display.ScaleWidth(5), 0);
-                lvErrorCollector.Size = new Size(Width - pnlErrorMsg.Width - _display.ScaleWidth(5), Height);
+                                           Math.Max(0, pnlErrorMsg.Width - pbError.Width - _display.ScaleWidth(8)),
+                                           Math.Max(0, pnlErrorMsg.Height - _display.ScaleHeight(20)));
+                lvErrorCollector.Location = new Point(detailWidth + gap, 0);
+                lvErrorCollector.Size = new Size(Math.Max(0, clientWidth - detailWidth - gap), clientHeight);
                 lvErrorCollector.Anchor =
                     AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top;
 
-                _layout = ControlLayout.Horizontal;
             }
             catch (Exception ex)
             {
@@ -141,24 +155,53 @@ namespace LoipvRemote.UI.Window
         {
             try
             {
-                if (Width > Height)
-                {
-                    if (_layout == ControlLayout.Vertical)
-                        LayoutHorizontal();
-                }
-                else
-                {
-                    if (_layout == ControlLayout.Horizontal)
-                        LayoutVertical();
-                }
-
-                lvErrorCollector.Columns[0].Width = lvErrorCollector.Width - 20;
+                UpdateNotificationLayout();
             }
             catch (Exception ex)
             {
                 Runtime.MessageCollector.AddMessage(MessageClass.ErrorMsg,
                                                     "ErrorsAndInfos_Resize (UI.Window.ErrorsAndInfos) failed" +
                                                     Environment.NewLine + ex.Message, true);
+            }
+        }
+
+        internal void UpdateNotificationLayout()
+        {
+            bool showDetails = lvErrorCollector.SelectedItems.Count == 1;
+            bool showEmptyState = lvErrorCollector.Items.Count == 0;
+            SuspendLayout();
+            try
+            {
+                lblEmptyNotifications.Visible = showEmptyState;
+                pnlErrorMsg.Visible = showDetails;
+                if (!showDetails)
+                {
+                    lvErrorCollector.Anchor = AnchorStyles.None;
+                    lvErrorCollector.Dock = DockStyle.Fill;
+                    lvErrorCollector.Bounds = ClientRectangle;
+                }
+                else
+                {
+                    lvErrorCollector.Dock = DockStyle.None;
+                    txtMsgText.Visible = true;
+                    pbError.Visible = true;
+                    if (ClientSize.Width > ClientSize.Height)
+                        LayoutHorizontal();
+                    else
+                        LayoutVertical();
+                }
+
+                if (lvErrorCollector.Columns.Count > 0)
+                    lvErrorCollector.Columns[0].Width = Math.Max(0, lvErrorCollector.ClientSize.Width - SystemInformation.VerticalScrollBarWidth);
+
+                if (showEmptyState)
+                    lblEmptyNotifications.BringToFront();
+                else if (showDetails)
+                    pnlErrorMsg.BringToFront();
+            }
+            finally
+            {
+                ResumeLayout(true);
             }
         }
 
@@ -214,8 +257,11 @@ namespace LoipvRemote.UI.Window
                 if (lvErrorCollector.SelectedItems.Count == 0 | lvErrorCollector.SelectedItems.Count > 1)
                 {
                     SetStyleWhenNoMessageSelected();
+                    UpdateNotificationLayout();
                     return;
                 }
+
+                UpdateNotificationLayout();
 
                 ListViewItem sItem = lvErrorCollector.SelectedItems[0];
                 Message eMsg = (Message)sItem.Tag;
@@ -398,6 +444,7 @@ namespace LoipvRemote.UI.Window
                     pbError.Visible = false;
                     txtMsgText.Visible = false;
                 }
+                UpdateNotificationLayout();
             }
             catch (Exception ex)
             {
@@ -413,10 +460,5 @@ namespace LoipvRemote.UI.Window
 
         #endregion
 
-        private enum ControlLayout
-        {
-            Vertical = 0,
-            Horizontal = 1
-        }
     }
 }

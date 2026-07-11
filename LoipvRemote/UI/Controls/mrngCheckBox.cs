@@ -1,7 +1,9 @@
+using System;
 using System.Drawing;
 using System.Runtime.Versioning;
 using System.Windows.Forms;
 using LoipvRemote.Themes;
+using LoipvRemote.UI.DesignSystem;
 
 namespace LoipvRemote.UI.Controls
 {
@@ -16,18 +18,10 @@ namespace LoipvRemote.UI.Controls
     public class MrngCheckBox : CheckBox
     {
         private ThemeManager _themeManager;
-        private readonly Size _checkboxSize;
-        private readonly int _checkboxYCoord;
-        private readonly int _textXCoord;
-
         public MrngCheckBox()
         {
             InitializeComponent();
             ThemeManager.getInstance().ThemeChanged += OnCreateControl;
-            DisplayProperties display = new();
-            _checkboxSize = new Size(display.ScaleWidth(11), display.ScaleHeight(11));
-            _checkboxYCoord = (display.ScaleHeight(Height) - _checkboxSize.Height) / 2 - display.ScaleHeight(5);
-            _textXCoord = _checkboxSize.Width + display.ScaleWidth(2);
         }
 
         public enum MouseState
@@ -112,11 +106,17 @@ namespace LoipvRemote.UI.Controls
                 checkBorder = _themeManager.ActiveTheme.ExtendedPalette.getColor("CheckBox_Border_Disabled");
             }
 
-            e.Graphics.Clear(Parent.BackColor);
+            Color parentBackColor = Parent?.BackColor ?? BackColor;
+            e.Graphics.Clear(parentBackColor);
+
+            int glyphSize = InputControlMetrics.CheckBoxGlyphSize(Font.Height);
+            Size checkboxSize = new(glyphSize, glyphSize);
+            int checkboxYCoord = Math.Max(0, (Height - checkboxSize.Height) / 2);
+            int textXCoord = checkboxSize.Width + 8;
 
             using (Pen p = new(checkBorder))
             {
-                Rectangle boxRect = new(0, _checkboxYCoord, _checkboxSize.Width, _checkboxSize.Height);
+                Rectangle boxRect = new(0, checkboxYCoord, checkboxSize.Width, checkboxSize.Height);
                 e.Graphics.FillRectangle(new SolidBrush(back), boxRect);
                 e.Graphics.DrawRectangle(p, boxRect);
             }
@@ -124,11 +124,13 @@ namespace LoipvRemote.UI.Controls
             if (Checked)
             {
                 // | \uE001 | &#xE001; |  |  is the tick/check mark and it exists in Segoe UI Symbol at least...
-                e.Graphics.DrawString("\uE001", new Font("Segoe UI Symbol", 7.75f), new SolidBrush(glyph), -4, 0);
+                using Font checkmarkFont = new("Segoe UI Symbol", Math.Max(8f, glyphSize * 0.75f));
+                using SolidBrush glyphBrush = new(glyph);
+                e.Graphics.DrawString("\uE001", checkmarkFont, glyphBrush, -3, checkboxYCoord - 3);
             }
 
-            Rectangle textRect = new(_textXCoord, 0, Width - 16, Height);
-            TextRenderer.DrawText(e.Graphics, Text, Font, textRect, fore, Parent.BackColor,
+            Rectangle textRect = new(textXCoord, 0, Math.Max(0, Width - textXCoord), Height);
+            TextRenderer.DrawText(e.Graphics, Text, Font, textRect, fore, parentBackColor,
                                   TextFormatFlags.PathEllipsis);
         }
 
@@ -138,7 +140,7 @@ namespace LoipvRemote.UI.Controls
             //
             // NGCheckBox
             //
-            Font = new Font("Segoe UI", 8.25F, FontStyle.Regular, GraphicsUnit.Point, 0);
+            Font = new Font("Segoe UI", 10F, FontStyle.Regular, GraphicsUnit.Point, 0);
             ResumeLayout(false);
         }
     }

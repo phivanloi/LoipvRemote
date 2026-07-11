@@ -1591,9 +1591,6 @@ Protokol: "{2}"
   <data name="Screenshots" xml:space="preserve">
     <value>Ekran Görüntüleri</value>
   </data>
-  <data name="SearchPrompt" xml:space="preserve">
-    <value>Ara</value>
-  </data>
   <data name="SendTo" xml:space="preserve">
     <value>Gönder...</value>
   </data>
@@ -1985,9 +1982,6 @@ LoipvRemote şimdi kapanacak ve kurulum başlayacak.</value>
   <data name="SaveConnectionsAfterEveryEdit" xml:space="preserve">
     <value>Her düzenlemeden sonra bağlantıları kaydet</value>
   </data>
-  <data name="FilterSearchMatchesInConnectionTree" xml:space="preserve">
-    <value>Arama eşleşmelerini bağlantı ağacında filtrele</value>
-  </data>
   <data name="TestConnection" xml:space="preserve">
     <value>Bağlantıyı test et</value>
   </data>
@@ -2077,9 +2071,6 @@ LoipvRemote şimdi kapanacak ve kurulum başlayacak.</value>
   </data>
   <data name="CopyHostname" xml:space="preserve">
     <value>Ana Bilgisayar Adını Kopyala</value>
-  </data>
-  <data name="PlaceSearchBarAboveConnectionTree" xml:space="preserve">
-    <value>Arama çubuğunu bağlantı ağacının üstüne yerleştir</value>
   </data>
   <data name="TrackActiveConnectionInConnectionTree" xml:space="preserve">
     <value>Etkin bağlantıyı bağlantı ağacında izle</value>

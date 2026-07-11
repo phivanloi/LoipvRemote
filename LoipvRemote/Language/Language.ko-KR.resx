@@ -1475,9 +1475,6 @@
   <data name="Screenshots" xml:space="preserve">
     <value>스크린 샷</value>
   </data>
-  <data name="SearchPrompt" xml:space="preserve">
-    <value>검색</value>
-  </data>
   <data name="SendTo" xml:space="preserve">
     <value>보내기 ...</value>
   </data>

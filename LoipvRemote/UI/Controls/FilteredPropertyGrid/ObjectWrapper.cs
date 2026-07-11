@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 
 namespace LoipvRemote.UI.Controls.FilteredPropertyGrid
 {
@@ -28,6 +29,8 @@ namespace LoipvRemote.UI.Controls.FilteredPropertyGrid
         /// </summary>
         public List<PropertyDescriptor> PropertyDescriptors { get; set; } = new List<PropertyDescriptor>();
 
+        public bool SuppressModifiedValueBold { get; set; }
+
         #region ICustomTypeDescriptor Members
 
         public PropertyDescriptorCollection GetProperties(Attribute[]? attributes)
@@ -37,7 +40,11 @@ namespace LoipvRemote.UI.Controls.FilteredPropertyGrid
 
         public PropertyDescriptorCollection GetProperties()
         {
-            return new PropertyDescriptorCollection(PropertyDescriptors.ToArray(), true);
+            PropertyDescriptor[] descriptors = SuppressModifiedValueBold
+                ? PropertyDescriptors.Select(descriptor => new PlainValuePropertyDescriptor(descriptor)).Cast<PropertyDescriptor>().ToArray()
+                : PropertyDescriptors.ToArray();
+
+            return new PropertyDescriptorCollection(descriptors, true);
         }
 
         /// <summary>

@@ -36,6 +36,9 @@ namespace LoipvRemote.App
         [DllImport("user32.dll", SetLastError = true)]
         internal static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
 
+        [DllImport("user32.dll")]
+        internal static extern IntPtr GetKeyboardLayout(uint idThread);
+
         [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
         internal static extern IntPtr GetSystemMenu(IntPtr hWnd, bool bRevert);
 
@@ -54,6 +57,9 @@ namespace LoipvRemote.App
 
         [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
         internal static extern bool PostMessage(IntPtr hWnd, int Msg, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        internal static extern bool ReleaseCapture();
 
         [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
         internal static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wparam, IntPtr lparam);
@@ -422,6 +428,15 @@ namespace LoipvRemote.App
         /// </summary>
         public const int WM_ACTIVATEAPP = 0x1C;
 
+        public const int WM_INPUTLANGCHANGE = 0x51;
+
+        public const int WM_IME_STARTCOMPOSITION = 0x010D;
+        public const int WM_IME_ENDCOMPOSITION = 0x010E;
+        public const int WM_IME_COMPOSITION = 0x010F;
+        public const int WM_IME_CHAR = 0x0286;
+        public const int WM_IME_KEYDOWN = 0x0290;
+        public const int WM_IME_KEYUP = 0x0291;
+
         /// <summary>
         /// Sent to a window if the mouse causes the cursor to move within a window and mouse input is not captured.
         /// </summary>
@@ -431,6 +446,11 @@ namespace LoipvRemote.App
         /// Sent when the cursor is in an inactive window and the user presses a mouse button. The parent window receives this message only if the child window passes it to the DefWindowProc function.
         /// </summary>
         public const int WM_MOUSEACTIVATE = 0x21;
+
+        public const int WM_NCHITTEST = 0x84;
+
+        public const int WM_NCLBUTTONDOWN = 0xA1;
+        public const int WM_NCLBUTTONDBLCLK = 0xA3;
 
         /// <summary>
         /// Sent to a window when the size or position of the window is about to change. An application can use this message to override the window's default maximized size and position, or its default minimum or maximum tracking size.
@@ -550,9 +570,13 @@ namespace LoipvRemote.App
         public const int WS_DLGFRAME = 0x400000;
         public const int WS_CAPTION = WS_BORDER | WS_DLGFRAME;
         public const int WS_THICKFRAME = 0x40000;
+        public const int WS_SYSMENU = 0x80000;
+        public const int WS_MINIMIZEBOX = 0x20000;
+        public const int WS_MAXIMIZEBOX = 0x10000;
         public const int WS_MAXIMIZE = 0x1000000;
         public const int WS_VISIBLE = 0x10000000;
         public const int WS_CHILD = 0x40000000;
+        public const int WS_POPUP = unchecked((int)0x80000000);
         public const int WS_EX_MDICHILD = 0x40;
 
         #endregion

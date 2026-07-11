@@ -27,6 +27,7 @@ namespace LoipvRemote.UI.Window
             this.cMenMCDelete = new System.Windows.Forms.ToolStripMenuItem();
             this.imgListMC = new System.Windows.Forms.ImageList(this.components);
             this.lblMsgDate = new LoipvRemote.UI.Controls.MrngLabel();
+            this.lblEmptyNotifications = new LoipvRemote.UI.Controls.MrngLabel();
             this.pnlErrorMsg = new System.Windows.Forms.Panel();
             ((System.ComponentModel.ISupportInitialize)(this.pbError)).BeginInit();
             this.cMenMC.SuspendLayout();
@@ -36,7 +37,7 @@ namespace LoipvRemote.UI.Window
             // txtMsgText
             //
             this.txtMsgText.BorderStyle = System.Windows.Forms.BorderStyle.None;
-            this.txtMsgText.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.txtMsgText.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.txtMsgText.Location = new System.Drawing.Point(40, 19);
             this.txtMsgText.Multiline = true;
             this.txtMsgText.Name = "txtMsgText";
@@ -59,9 +60,6 @@ namespace LoipvRemote.UI.Window
             //
             // lvErrorCollector
             //
-            this.lvErrorCollector.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
-            | System.Windows.Forms.AnchorStyles.Left)
-            | System.Windows.Forms.AnchorStyles.Right)));
             this.lvErrorCollector.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.lvErrorCollector.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
             this.clmMessage});
@@ -69,11 +67,12 @@ namespace LoipvRemote.UI.Window
             this.lvErrorCollector.FullRowSelect = true;
             this.lvErrorCollector.HeaderStyle = System.Windows.Forms.ColumnHeaderStyle.None;
             this.lvErrorCollector.HideSelection = false;
-            this.lvErrorCollector.Location = new System.Drawing.Point(200, 0);
+            this.lvErrorCollector.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.lvErrorCollector.Location = new System.Drawing.Point(0, 0);
             this.lvErrorCollector.Margin = new System.Windows.Forms.Padding(0);
             this.lvErrorCollector.Name = "lvErrorCollector";
             this.lvErrorCollector.ShowGroups = false;
-            this.lvErrorCollector.Size = new System.Drawing.Size(417, 233);
+            this.lvErrorCollector.Size = new System.Drawing.Size(617, 233);
             this.lvErrorCollector.SmallImageList = this.imgListMC;
             this.lvErrorCollector.TabIndex = 10;
             this.lvErrorCollector.UseCompatibleStateImageBehavior = false;
@@ -88,7 +87,7 @@ namespace LoipvRemote.UI.Window
             //
             // cMenMC
             //
-            this.cMenMC.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.cMenMC.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.cMenMC.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.cMenMCCopy,
             this.cMenMCDelete});
@@ -125,7 +124,7 @@ namespace LoipvRemote.UI.Window
             //
             this.lblMsgDate.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.lblMsgDate.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Italic, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblMsgDate.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Italic, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lblMsgDate.Location = new System.Drawing.Point(37, 3);
             this.lblMsgDate.Name = "lblMsgDate";
             this.lblMsgDate.Size = new System.Drawing.Size(157, 13);
@@ -142,6 +141,18 @@ namespace LoipvRemote.UI.Window
             this.pnlErrorMsg.Name = "pnlErrorMsg";
             this.pnlErrorMsg.Size = new System.Drawing.Size(200, 233);
             this.pnlErrorMsg.TabIndex = 20;
+            this.pnlErrorMsg.Visible = false;
+            //
+            // lblEmptyNotifications
+            //
+            this.lblEmptyNotifications.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.lblEmptyNotifications.ForeColor = System.Drawing.SystemColors.GrayText;
+            this.lblEmptyNotifications.Location = new System.Drawing.Point(0, 0);
+            this.lblEmptyNotifications.Name = "lblEmptyNotifications";
+            this.lblEmptyNotifications.Size = new System.Drawing.Size(617, 233);
+            this.lblEmptyNotifications.TabIndex = 5;
+            this.lblEmptyNotifications.Text = "Không có thông báo";
+            this.lblEmptyNotifications.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             //
             // ErrorAndInfoWindow
             //
@@ -149,8 +160,9 @@ namespace LoipvRemote.UI.Window
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
             this.ClientSize = new System.Drawing.Size(617, 233);
             this.Controls.Add(this.lvErrorCollector);
+            this.Controls.Add(this.lblEmptyNotifications);
             this.Controls.Add(this.pnlErrorMsg);
-            this.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.HideOnClose = true;
             this.Name = "ErrorAndInfoWindow";
             this.TabText = Language.Notifications;
@@ -167,6 +179,7 @@ namespace LoipvRemote.UI.Window
 
         private System.ComponentModel.IContainer components;
         internal Controls.MrngLabel lblMsgDate;
+        internal Controls.MrngLabel lblEmptyNotifications;
         internal System.Windows.Forms.Panel pnlErrorMsg;
     }
 }

@@ -1793,18 +1793,6 @@ namespace LoipvRemote.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("False")]
-        public bool UseFilterSearch {
-            get {
-                return ((bool)(this["UseFilterSearch"]));
-            }
-            set {
-                this["UseFilterSearch"] = value;
-            }
-        }
-
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("False")]
         public bool LockToolbars {
             get {
                 return ((bool)(this["LockToolbars"]));
@@ -1859,18 +1847,6 @@ namespace LoipvRemote.Properties {
             }
             set {
                 this["TrackActiveConnectionInConnectionTree"] = value;
-            }
-        }
-
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("True")]
-        public bool PlaceSearchBarAboveConnectionTree {
-            get {
-                return ((bool)(this["PlaceSearchBarAboveConnectionTree"]));
-            }
-            set {
-                this["PlaceSearchBarAboveConnectionTree"] = value;
             }
         }
 

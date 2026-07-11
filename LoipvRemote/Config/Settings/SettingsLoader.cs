@@ -20,7 +20,6 @@ namespace LoipvRemote.Config.Settings
     {
         private readonly ExternalAppsLoader _externalAppsLoader;
         private readonly MessageCollector _messageCollector;
-        private readonly MenuStrip _mainMenu;
         private readonly QuickConnectToolStrip _quickConnectToolStrip;
         private readonly ExternalToolsToolStrip _externalToolsToolStrip;
         private readonly MultiSshToolStrip _multiSshToolStrip;
@@ -28,14 +27,13 @@ namespace LoipvRemote.Config.Settings
         private FrmMain MainForm { get; }
 
 
-        public SettingsLoader(FrmMain mainForm, MessageCollector messageCollector, QuickConnectToolStrip quickConnectToolStrip, ExternalToolsToolStrip externalToolsToolStrip, MultiSshToolStrip multiSshToolStrip, MenuStrip mainMenu)
+        public SettingsLoader(FrmMain mainForm, MessageCollector messageCollector, QuickConnectToolStrip quickConnectToolStrip, ExternalToolsToolStrip externalToolsToolStrip, MultiSshToolStrip multiSshToolStrip)
         {
             MainForm = mainForm ?? throw new ArgumentNullException(nameof(mainForm));
             _messageCollector = messageCollector ?? throw new ArgumentNullException(nameof(messageCollector));
             _quickConnectToolStrip = quickConnectToolStrip ?? throw new ArgumentNullException(nameof(quickConnectToolStrip));
             _externalToolsToolStrip = externalToolsToolStrip ?? throw new ArgumentNullException(nameof(externalToolsToolStrip));
             _multiSshToolStrip = multiSshToolStrip ?? throw new ArgumentNullException(nameof(multiSshToolStrip));
-            _mainMenu = mainMenu ?? throw new ArgumentNullException(nameof(mainMenu));
             _externalAppsLoader = new ExternalAppsLoader(MainForm, messageCollector, _externalToolsToolStrip);
         }
 
@@ -93,10 +91,9 @@ namespace LoipvRemote.Config.Settings
                     MainForm.Size = Properties.App.Default.MainFormRestoreSize;
             }
 
-            if (Properties.App.Default.MainFormState == FormWindowState.Maximized)
-            {
-                MainForm.WindowState = FormWindowState.Maximized;
-            }
+            // LoipvRemote starts maximized by default. Explicit startup modes such as
+            // minimized and full screen are applied later by FrmMain after settings load.
+            MainForm.WindowState = FormWindowState.Maximized;
 
             // Make sure the form is visible on the screen
             const int minHorizontal = 300;
@@ -174,7 +171,6 @@ namespace LoipvRemote.Config.Settings
         private void LoadToolbarsFromSettings()
         {
             ResetAllToolbarLocations();
-            AddMainMenuPanel();
             AddExternalAppsPanel();
             AddQuickConnectPanel();
             AddMultiSshPanel();
@@ -188,17 +184,9 @@ namespace LoipvRemote.Config.Settings
         private void ResetAllToolbarLocations()
         {
             ToolStripPanel tempToolStrip = new();
-            tempToolStrip.Join(_mainMenu);
             tempToolStrip.Join(_quickConnectToolStrip);
             tempToolStrip.Join(_externalToolsToolStrip);
             tempToolStrip.Join(_multiSshToolStrip);
-        }
-
-        private void AddMainMenuPanel()
-        {
-            SetToolstripGripStyle(_mainMenu);
-            ToolStripPanel toolStripPanel = ToolStripPanelFromString("top");
-            toolStripPanel.Join(_mainMenu, new Point(3, 0));
         }
 
         private void AddQuickConnectPanel()

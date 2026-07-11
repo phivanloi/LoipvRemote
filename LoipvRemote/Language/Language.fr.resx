@@ -1493,9 +1493,6 @@ Nécessite RCD 8.0 ou postérieur.</value>
   <data name="Screenshots" xml:space="preserve">
     <value>Captures d'écran</value>
   </data>
-  <data name="SearchPrompt" xml:space="preserve">
-    <value>Invite de recherche</value>
-  </data>
   <data name="SendTo" xml:space="preserve">
     <value>Envoyer à...</value>
   </data>
@@ -1878,9 +1875,6 @@ LoipvRemote va se fermer et l'installation va commencer.</value>
   <data name="SaveConnectionsAfterEveryEdit" xml:space="preserve">
     <value>Enregistrer les connexions après chaque modification</value>
   </data>
-  <data name="FilterSearchMatchesInConnectionTree" xml:space="preserve">
-    <value>Filtrer les résultats de la recherche dans l'arborescence des connexions</value>
-  </data>
   <data name="TestConnection" xml:space="preserve">
     <value>Tester la connexion</value>
   </data>
@@ -1970,9 +1964,6 @@ LoipvRemote va se fermer et l'installation va commencer.</value>
   </data>
   <data name="CopyHostname" xml:space="preserve">
     <value>Copier le nom d'hôte</value>
-  </data>
-  <data name="PlaceSearchBarAboveConnectionTree" xml:space="preserve">
-    <value>Placer la barre de recherche au-dessus de l'arborescence des connexions</value>
   </data>
   <data name="TrackActiveConnectionInConnectionTree" xml:space="preserve">
     <value>Traquer la connexion active dans l'arborescence des connexions</value>

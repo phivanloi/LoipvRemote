@@ -6,9 +6,11 @@ using LoipvRemote.Messages;
 using LoipvRemote.Themes;
 using LoipvRemote.UI.Forms;
 using LoipvRemote.Resources.Language;
+using LoipvRemote.UI.DesignSystem;
 using System;
 using System.Diagnostics;
 using System.Drawing;
+using System.Globalization;
 using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -26,13 +28,25 @@ namespace LoipvRemote.App
     {
         private static Mutex? _mutex;
         private static string customResourcePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Languages");
+        private const string AppUserModelId = "Loipv.LoipvRemote";
 
         private static System.Threading.Thread? _wpfSplashThread;
         private static FrmSplashScreenNew? _wpfSplash;
 
+        [DllImport("shell32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern int SetCurrentProcessExplicitAppUserModelID(string appID);
+
         [STAThread]
         public static void Main(string[] args)
         {
+            // Keep this process distinct from mRemoteNG in the taskbar and make
+            // Windows resolve the taskbar button against LoipvRemote's icon.
+            _ = SetCurrentProcessExplicitAppUserModelID(AppUserModelId);
+
+            ApplyConfiguredUiCulture();
+
+            Application.SetDefaultFont(UiScaleManager.Instance.CreateFont(UiTypographyRole.Body));
+
             // Must be called before any other WinForms / Application.* usage so that
             // per-monitor font scaling and hit-testing are initialised correctly from
             // the very first UI operation (dialogs shown in MainAsync, exception
@@ -42,6 +56,16 @@ namespace LoipvRemote.App
 
             // Ensure the real entry point is definitely STA
             MainAsync(args).GetAwaiter().GetResult();
+        }
+
+        private static void ApplyConfiguredUiCulture()
+        {
+            string cultureName = Properties.Settings.Default.OverrideUICulture;
+            if (string.IsNullOrWhiteSpace(cultureName) || !SupportedCultures.IsNameSupported(cultureName)) return;
+
+            CultureInfo culture = new(cultureName);
+            CultureInfo.DefaultThreadCurrentUICulture = culture;
+            Thread.CurrentThread.CurrentUICulture = culture;
         }
 
         private static Task MainAsync(string[] args)

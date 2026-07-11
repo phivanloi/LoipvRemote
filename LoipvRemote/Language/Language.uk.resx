@@ -1450,9 +1450,6 @@
   <data name="Screenshots" xml:space="preserve">
     <value>Скріншоти</value>
   </data>
-  <data name="SearchPrompt" xml:space="preserve">
-    <value>Шукати</value>
-  </data>
   <data name="SendTo" xml:space="preserve">
     <value>Надіслати…</value>
   </data>
@@ -1820,9 +1817,6 @@ LoipvRemote зараз припинить роботу і почне проце�
   <data name="SaveConnectionsAfterEveryEdit" xml:space="preserve">
     <value>Зберігати з'єднання після кожного редагування</value>
   </data>
-  <data name="FilterSearchMatchesInConnectionTree" xml:space="preserve">
-    <value>Фільтр збігів пошуку в дереві з'єднань</value>
-  </data>
   <data name="TestConnection" xml:space="preserve">
     <value>Тест з'єднання</value>
   </data>
@@ -1903,9 +1897,6 @@ LoipvRemote зараз припинить роботу і почне проце�
   </data>
   <data name="CopyHostname" xml:space="preserve">
     <value>Скопіювати ім'я хоста</value>
-  </data>
-  <data name="PlaceSearchBarAboveConnectionTree" xml:space="preserve">
-    <value>Розмістити рядок пошуку над деревом з'єднань</value>
   </data>
   <data name="TrackActiveConnectionInConnectionTree" xml:space="preserve">
     <value>Відстежувати активне з'єднання у дереві з'єднань</value>

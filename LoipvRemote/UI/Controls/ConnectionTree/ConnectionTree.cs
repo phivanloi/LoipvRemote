@@ -30,8 +30,6 @@ namespace LoipvRemote.UI.Controls.ConnectionTree
         private readonly StatusImageList _statusImageList = new();
         private ThemeManager _themeManager;
 
-        private readonly ConnectionTreeSearchTextFilter _connectionTreeSearchTextFilter = new();
-
         private bool _nodeInEditMode;
         private bool _allowEdit;
         private ConnectionContextMenu _contextMenu;
@@ -39,8 +37,6 @@ namespace LoipvRemote.UI.Controls.ConnectionTree
         private ISlowClickRenameHandler? _slowClickRenameHandler;
 
         public ConnectionInfo SelectedNode => (ConnectionInfo)SelectedObject;
-
-        public NodeSearcher NodeSearcher { get; private set; }
 
         public IConfirm<ConnectionInfo> NodeDeletionConfirmer { get; set; } = new AlwaysConfirmYes();
 
@@ -213,7 +209,6 @@ namespace LoipvRemote.UI.Controls.ConnectionTree
         {
             SetObjects(newModel.RootNodes);
             RegisterModelUpdateHandlers(newModel);
-            NodeSearcher = new NodeSearcher(newModel);
             ExecutePostSetupActions();
             AutoResizeColumn(Columns[0]);
         }
@@ -327,9 +322,6 @@ namespace LoipvRemote.UI.Controls.ConnectionTree
                 SelectedNode?.GetTreeNodeType() == TreeNodeType.PuttySession)
                 return;
 
-            // the new node will survive filtering if filtering is active
-            _connectionTreeSearchTextFilter.SpecialInclusionList.Add(newNode);
-
             // use root node if no node is selected
             ConnectionInfo parentNode = SelectedNode ?? GetRootConnectionNode();
             DefaultConnectionInfo.Instance.SaveTo(newNode);
@@ -415,49 +407,9 @@ namespace LoipvRemote.UI.Controls.ConnectionTree
             AutoResizeColumn(Columns[0]);
         }
 
-        /// <summary>
-        /// Filters tree items based on the given <see cref="filterText"/>
-        /// </summary>
-        /// <param name="filterText">The text to filter by</param>
-        public void ApplyFilter(string filterText)
-        {
-            UseFiltering = true;
-            _connectionTreeSearchTextFilter.FilterText = filterText;
-            ModelFilter = _connectionTreeSearchTextFilter;
-        }
-
-        /// <summary>
-        /// Removes all item filtering from the connection tree
-        /// </summary>
-        public void RemoveFilter()
-        {
-            UseFiltering = false;
-            ResetColumnFiltering();
-        }
-
         private void HandleCollectionChanged(object sender, NotifyCollectionChangedEventArgs args)
         {
-            // disable filtering if necessary. prevents RefreshObjects from
-            // throwing an exception
-            bool filteringEnabled = IsFiltering;
-            IModelFilter filter = ModelFilter;
-            if (filteringEnabled)
-            {
-                ResetColumnFiltering();
-            }
-
             RefreshObject(sender);
-            AutoResizeColumn(Columns[0]);
-
-            // turn filtering back on
-            if (!filteringEnabled) return;
-            ModelFilter = filter;
-            UpdateFiltering();
-        }
-
-        protected override void UpdateFiltering()
-        {
-            base.UpdateFiltering();
             AutoResizeColumn(Columns[0]);
         }
 
@@ -562,9 +514,6 @@ namespace LoipvRemote.UI.Controls.ConnectionTree
                 _nodeInEditMode = false;
                 _allowEdit = false;
                 _slowClickRenameHandler?.Cancel();
-                // ensures that if we are filtering and a new item is added that doesn't match the filter, it will be filtered out
-                _connectionTreeSearchTextFilter.SpecialInclusionList.Clear();
-                UpdateFiltering();
                 AppWindows.ConfigForm.SelectedTreeNode = SelectedNode;
             }
             catch (Exception ex)

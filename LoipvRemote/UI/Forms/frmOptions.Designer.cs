@@ -133,7 +133,7 @@ namespace LoipvRemote.UI.Forms
             this.PageName});
             this.lstOptionPages.DecorateLines = true;
             this.lstOptionPages.Dock = System.Windows.Forms.DockStyle.Left;
-            this.lstOptionPages.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            this.lstOptionPages.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.lstOptionPages.FullRowSelect = true;
             this.lstOptionPages.HeaderStyle = System.Windows.Forms.ColumnHeaderStyle.None;
             this.lstOptionPages.LabelWrap = false;
@@ -168,7 +168,7 @@ namespace LoipvRemote.UI.Forms
             this.Controls.Add(this.lstOptionPages);
             this.Controls.Add(this.splitter1);
             this.Controls.Add(this.pnlBottom);
-            this.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            this.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.Fixed3D;
             this.MaximizeBox = false;
             this.MinimizeBox = false;

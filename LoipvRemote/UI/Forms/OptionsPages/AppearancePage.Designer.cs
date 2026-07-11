@@ -80,7 +80,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             chkShowFullConnectionsFilePathInTitle._mice = MrngCheckBox.MouseState.OUT;
             chkShowFullConnectionsFilePathInTitle.AutoSize = true;
-            chkShowFullConnectionsFilePathInTitle.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            chkShowFullConnectionsFilePathInTitle.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkShowFullConnectionsFilePathInTitle.Location = new System.Drawing.Point(3, 130);
             chkShowFullConnectionsFilePathInTitle.Name = "chkShowFullConnectionsFilePathInTitle";
             chkShowFullConnectionsFilePathInTitle.Size = new System.Drawing.Size(268, 17);
@@ -92,7 +92,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             chkShowDescriptionTooltipsInTree._mice = MrngCheckBox.MouseState.OUT;
             chkShowDescriptionTooltipsInTree.AutoSize = true;
-            chkShowDescriptionTooltipsInTree.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            chkShowDescriptionTooltipsInTree.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkShowDescriptionTooltipsInTree.Location = new System.Drawing.Point(3, 107);
             chkShowDescriptionTooltipsInTree.Name = "chkShowDescriptionTooltipsInTree";
             chkShowDescriptionTooltipsInTree.Size = new System.Drawing.Size(256, 17);
@@ -104,7 +104,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             chkShowSystemTrayIcon._mice = MrngCheckBox.MouseState.OUT;
             chkShowSystemTrayIcon.AutoSize = true;
-            chkShowSystemTrayIcon.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            chkShowSystemTrayIcon.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkShowSystemTrayIcon.Location = new System.Drawing.Point(3, 176);
             chkShowSystemTrayIcon.Name = "chkShowSystemTrayIcon";
             chkShowSystemTrayIcon.Size = new System.Drawing.Size(178, 17);
@@ -116,7 +116,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             chkMinimizeToSystemTray._mice = MrngCheckBox.MouseState.OUT;
             chkMinimizeToSystemTray.AutoSize = true;
-            chkMinimizeToSystemTray.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            chkMinimizeToSystemTray.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkMinimizeToSystemTray.Location = new System.Drawing.Point(3, 199);
             chkMinimizeToSystemTray.Name = "chkMinimizeToSystemTray";
             chkMinimizeToSystemTray.Size = new System.Drawing.Size(147, 17);
@@ -128,7 +128,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             chkCloseToSystemTray._mice = MrngCheckBox.MouseState.OUT;
             chkCloseToSystemTray.AutoSize = true;
-            chkCloseToSystemTray.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            chkCloseToSystemTray.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkCloseToSystemTray.Location = new System.Drawing.Point(3, 222);
             chkCloseToSystemTray.Name = "chkCloseToSystemTray";
             chkCloseToSystemTray.Size = new System.Drawing.Size(129, 17);

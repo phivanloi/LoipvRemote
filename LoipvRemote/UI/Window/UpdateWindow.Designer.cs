@@ -49,7 +49,7 @@ namespace LoipvRemote.UI.Window
             // lblChangeLogLabel
             //
             lblChangeLogLabel.AutoSize = true;
-            lblChangeLogLabel.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
+            lblChangeLogLabel.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
             lblChangeLogLabel.Location = new System.Drawing.Point(3, 129);
             lblChangeLogLabel.Name = "lblChangeLogLabel";
             lblChangeLogLabel.Padding = new System.Windows.Forms.Padding(0, 10, 0, 0);
@@ -61,7 +61,7 @@ namespace LoipvRemote.UI.Window
             //
             tableLayoutPanel1.SetColumnSpan(txtChangeLog, 3);
             txtChangeLog.Dock = System.Windows.Forms.DockStyle.Fill;
-            txtChangeLog.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            txtChangeLog.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             txtChangeLog.Location = new System.Drawing.Point(3, 381);
             txtChangeLog.Multiline = true;
             txtChangeLog.Name = "txtChangeLog";
@@ -88,7 +88,7 @@ namespace LoipvRemote.UI.Window
             // lblLatestVersionLabel
             //
             lblLatestVersionLabel.Dock = System.Windows.Forms.DockStyle.Right;
-            lblLatestVersionLabel.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
+            lblLatestVersionLabel.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
             lblLatestVersionLabel.Location = new System.Drawing.Point(3, 61);
             lblLatestVersionLabel.Name = "lblLatestVersionLabel";
             lblLatestVersionLabel.Size = new System.Drawing.Size(120, 30);
@@ -99,7 +99,7 @@ namespace LoipvRemote.UI.Window
             // lblInstalledVersionLabel
             //
             lblInstalledVersionLabel.Dock = System.Windows.Forms.DockStyle.Right;
-            lblInstalledVersionLabel.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
+            lblInstalledVersionLabel.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
             lblInstalledVersionLabel.Location = new System.Drawing.Point(3, 31);
             lblInstalledVersionLabel.Name = "lblInstalledVersionLabel";
             lblInstalledVersionLabel.Size = new System.Drawing.Size(120, 30);
@@ -203,7 +203,7 @@ namespace LoipvRemote.UI.Window
             AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
             ClientSize = new System.Drawing.Size(734, 418);
             Controls.Add(tableLayoutPanel1);
-            Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             Name = "UpdateWindow";
             TabText = "Update";
             Text = "Update";

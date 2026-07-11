@@ -4,6 +4,7 @@ using LoipvRemote.UI.Forms.OptionsPages;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
 using LoipvRemote.Themes;
@@ -11,6 +12,7 @@ using System.Configuration;
 using LoipvRemote.Properties;
 using LoipvRemote.Resources.Language;
 using System.Runtime.Versioning;
+using LoipvRemote.UI.DesignSystem;
 #endregion
 
 namespace LoipvRemote.UI.Forms
@@ -259,6 +261,7 @@ namespace LoipvRemote.UI.Forms
             page.ApplyLanguage();
             page.LoadRegistrySettings();
             page.LoadSettings();
+            UiScaleManager.Instance.Apply(page);
             _optionPages.Add(page);
             lstOptionPages.AddObject(page);
 
@@ -269,7 +272,11 @@ namespace LoipvRemote.UI.Forms
         private object ImageGetter(object rowobject)
         {
             OptionsPage page = rowobject as OptionsPage;
-            return page?.PageIcon == null ? _display.ScaleImage(Properties.Resources.F1Help_16x) : _display.ScaleImage(page.PageIcon);
+            if (page?.PageIcon == null)
+                return IconService.Resize(Properties.Resources.F1Help_16x, UiScaleManager.Instance.Metrics.IconSize);
+
+            using Bitmap source = page.PageIcon.ToBitmap();
+            return IconService.Resize(source, UiScaleManager.Instance.Metrics.IconSize);
         }
 
         public void SetActivatedPage(string pageName = default)

@@ -1471,9 +1471,6 @@ Se Microsofts support-artikkel på http://support.microsoft.com/kb/811833 for me
   <data name="Screenshots" xml:space="preserve">
     <value>Skjermbilder</value>
   </data>
-  <data name="SearchPrompt" xml:space="preserve">
-    <value>Søk</value>
-  </data>
   <data name="SendTo" xml:space="preserve">
     <value>Send til...</value>
   </data>
@@ -1856,9 +1853,6 @@ LoipvRemote vil nå avslutte og starte installasjonen.</value>
   <data name="SaveConnectionsAfterEveryEdit" xml:space="preserve">
     <value>Lagre tilkoblinger etter hver endring</value>
   </data>
-  <data name="FilterSearchMatchesInConnectionTree" xml:space="preserve">
-    <value>Filtrer søketreff i tilkoblingstre</value>
-  </data>
   <data name="TestConnection" xml:space="preserve">
     <value>Test tilkobling</value>
   </data>
@@ -1948,9 +1942,6 @@ LoipvRemote vil nå avslutte og starte installasjonen.</value>
   </data>
   <data name="CopyHostname" xml:space="preserve">
     <value>Kopier vertsnavn</value>
-  </data>
-  <data name="PlaceSearchBarAboveConnectionTree" xml:space="preserve">
-    <value>Plasser søkelinjen over tilkoblingstreet</value>
   </data>
   <data name="TrackActiveConnectionInConnectionTree" xml:space="preserve">
     <value>Vis aktiv tilkobling i tilkoblingstreet</value>

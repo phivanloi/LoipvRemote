@@ -1543,9 +1543,6 @@
   <data name="Screenshots" xml:space="preserve">
     <value>திரைக்காட்சிகள்</value>
   </data>
-  <data name="SearchPrompt" xml:space="preserve">
-    <value>தேடல்</value>
-  </data>
   <data name="SendTo" xml:space="preserve">
     <value>இதற்கு அனுப்பு...</value>
   </data>
@@ -1928,9 +1925,6 @@
   <data name="SaveConnectionsAfterEveryEdit" xml:space="preserve">
     <value>ஒவ்வொரு திருத்தத்திற்குப் பிறகு இணைப்புகளைச் சேமி</value>
   </data>
-  <data name="FilterSearchMatchesInConnectionTree" xml:space="preserve">
-    <value>இணைப்பு மரத்தில் தேடல் போட்டிகளை வடிகட்டு</value>
-  </data>
   <data name="TestConnection" xml:space="preserve">
     <value>சோதனை இணைப்பு</value>
   </data>
@@ -2020,9 +2014,6 @@
   </data>
   <data name="CopyHostname" xml:space="preserve">
     <value>புரவலன்பெயரை நகலெடு</value>
-  </data>
-  <data name="PlaceSearchBarAboveConnectionTree" xml:space="preserve">
-    <value>இணைப்பு மரத்திற்கு மேலே தேடல் பட்டியை வை</value>
   </data>
   <data name="TrackActiveConnectionInConnectionTree" xml:space="preserve">
     <value>இணைப்பு மரத்தில் செயலில் இணைப்பைக் கண்காணி</value>

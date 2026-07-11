@@ -57,8 +57,6 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             chkSingleClickOnOpenedConnectionSwitchesToIt.Text = Language.SingleClickOnOpenConnectionSwitchesToIt;
             chkConnectionTreeTrackActiveConnection.Text = Language.TrackActiveConnectionInConnectionTree;
             chkHostnameLikeDisplayName.Text = Language.SetHostnameLikeDisplayName;
-            chkUseFilterSearch.Text = Language.FilterSearchMatchesInConnectionTree;
-            chkPlaceSearchBarAboveConnectionTree.Text = Language.PlaceSearchBarAboveConnectionTree;
             chkDoNotTrimUsername.Text = Language.DoNotTrimUsername;
             chkSlowClickRename.Text = Language.SlowClickRenameEnabled;
             chkOpenMultipleConnectionsWithEnter.Text = Language.OpenAllSelectedConnectionsWithEnter;
@@ -83,8 +81,6 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             chkConnectionTreeTrackActiveConnection.Checked = Settings.Default.TrackActiveConnectionInConnectionTree;
             chkHostnameLikeDisplayName.Checked = Settings.Default.SetHostnameLikeDisplayName;
 
-            chkUseFilterSearch.Checked = Settings.Default.UseFilterSearch;
-            chkPlaceSearchBarAboveConnectionTree.Checked = Settings.Default.PlaceSearchBarAboveConnectionTree;
             chkDoNotTrimUsername.Checked = Settings.Default.DoNotTrimUsername;
             chkSlowClickRename.Checked = Settings.Default.SlowClickRenameEnabled;
             chkOpenMultipleConnectionsWithEnter.Checked = Settings.Default.OpenMultipleConnectionsWithEnter;
@@ -137,8 +133,6 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             Properties.Settings.Default.TrackActiveConnectionInConnectionTree = chkConnectionTreeTrackActiveConnection.Checked;
             Properties.Settings.Default.SetHostnameLikeDisplayName = chkHostnameLikeDisplayName.Checked;
 
-            Properties.Settings.Default.UseFilterSearch = chkUseFilterSearch.Checked;
-            Properties.Settings.Default.PlaceSearchBarAboveConnectionTree = chkPlaceSearchBarAboveConnectionTree.Checked;
             Properties.Settings.Default.DoNotTrimUsername = chkDoNotTrimUsername.Checked;
             Properties.Settings.Default.SlowClickRenameEnabled = chkSlowClickRename.Checked;
             Properties.Settings.Default.OpenMultipleConnectionsWithEnter = chkOpenMultipleConnectionsWithEnter.Checked;
@@ -205,12 +199,6 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             if (pageRegSettingsInstance.SetHostnameLikeDisplayName.IsSet)
                 DisableControl(chkHostnameLikeDisplayName);
 
-            if (pageRegSettingsInstance.UseFilterSearch.IsSet)
-                DisableControl(chkUseFilterSearch);
-
-            if (pageRegSettingsInstance.PlaceSearchBarAboveConnectionTree.IsSet)
-                DisableControl(chkPlaceSearchBarAboveConnectionTree);
-
             if (pageRegSettingsInstance.DoNotTrimUsername.IsSet)
                 DisableControl(chkDoNotTrimUsername);
 
@@ -242,8 +230,6 @@ namespace LoipvRemote.UI.Forms.OptionsPages
                 || pageRegSettingsInstance.SingleClickSwitchesToOpenConnection.IsSet
                 || pageRegSettingsInstance.TrackActiveConnectionInConnectionTree.IsSet
                 || pageRegSettingsInstance.SetHostnameLikeDisplayName.IsSet
-                || pageRegSettingsInstance.UseFilterSearch.IsSet
-                || pageRegSettingsInstance.PlaceSearchBarAboveConnectionTree.IsSet
                 || pageRegSettingsInstance.DoNotTrimUsername.IsSet
                 || pageRegSettingsInstance.SlowClickRenameEnabled.IsSet
                 || pageRegSettingsInstance.OpenMultipleConnectionsWithEnter.IsSet

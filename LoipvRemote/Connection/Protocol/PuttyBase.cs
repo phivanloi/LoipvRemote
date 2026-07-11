@@ -30,12 +30,16 @@ namespace LoipvRemote.Connection.Protocol
         private const int IDM_RECONF = 0x50; // PuTTY Settings Menu ID
         private const int TitleMonitorIntervalMs = 500;
         private bool _isPuttyNg;
+        private bool _usesHwndParentEmbedding;
         private readonly DisplayProperties _display = new();
         private System.Threading.Timer? _titleMonitorTimer;
         private string _lastWindowTitle = string.Empty;
         private int _titleMonitorCallbackActive;
         private string? _temporaryOpeningCommandPath;
         private bool _puttyProcessStarted;
+        private uint _hostInputThreadId;
+        private uint _puttyInputThreadId;
+        private bool _inputQueuesAttached;
 
         #region Public Properties
 
@@ -90,6 +94,10 @@ namespace LoipvRemote.Connection.Protocol
             try
             {
                 _isPuttyNg = PuttyTypeDetector.GetPuttyType() == PuttyTypeDetector.PuttyType.PuttyNg;
+                // A Win32 child window cannot be created reliably across process boundaries.
+                // Keep PuTTYNG's authentication features, but embed its terminal using the
+                // same hidden top-level window and SetParent flow as regular PuTTY.
+                _usesHwndParentEmbedding = false;
 
                 // Validate PuttyPath to prevent command injection
                 PathValidator.ValidateExecutablePathOrThrow(PuttyPath, nameof(PuttyPath));
@@ -281,7 +289,7 @@ namespace LoipvRemote.Connection.Protocol
                     arguments.Add(InterfaceControl.Info.Hostname);
                 }
 
-                if (_isPuttyNg)
+                if (_usesHwndParentEmbedding)
                 {
                     arguments.Add("-hwndparent", InterfaceControl.Handle.ToString());
                 }
@@ -299,7 +307,7 @@ namespace LoipvRemote.Connection.Protocol
                 // Start the process minimized for non-PuTTYNG so the window
                 // does not flash at its default position on screen before
                 // being reparented into the LoipvRemote panel.
-                if (!_isPuttyNg)
+                if (!_usesHwndParentEmbedding)
                 {
                     PuttyProcess.StartInfo.WindowStyle = ProcessWindowStyle.Minimized;
                 }
@@ -316,7 +324,7 @@ namespace LoipvRemote.Connection.Protocol
                     if (PuttyProcess.HasExited)
                         break;
 
-                    if (_isPuttyNg)
+                    if (_usesHwndParentEmbedding)
                     {
                         PuttyHandle = NativeMethods.FindWindowEx(InterfaceControl.Handle, new IntPtr(0), null, null);
                     }
@@ -351,38 +359,40 @@ namespace LoipvRemote.Connection.Protocol
                     }
                 }
 
-                if (!_isPuttyNg)
+                if (!_usesHwndParentEmbedding)
                 {
                     NativeMethods.SetParent(PuttyHandle, InterfaceControl.Handle);
-
-                    // Strip the title bar and thick frame border so the
-                    // embedded PuTTY window fills the panel cleanly.
-                    int style = NativeMethods.GetWindowLong(PuttyHandle, NativeMethods.GWL_STYLE);
-                    style &= ~(NativeMethods.WS_CAPTION | NativeMethods.WS_THICKFRAME);
-                    int previousStyle = NativeMethods.SetWindowLong(PuttyHandle, NativeMethods.GWL_STYLE, style);
-
-                    // Check if SetWindowLong failed (returns 0 on error, but 0 could also be the previous value)
-                    // If it returns 0 and the previous GetWindowLong succeeded, log a warning
-                    if (previousStyle == 0)
-                    {
-                        Runtime.MessageCollector.AddMessage(MessageClass.WarningMsg,
-                            Language.PuttyStuff + ": SetWindowLong returned 0, window style change may have failed", true);
-                    }
-
-                    // Force Windows to recalculate the non-client area so the
-                    // removed caption and border actually disappear.
-                    NativeMethods.SetWindowPos(PuttyHandle, IntPtr.Zero,
-                        0, 0, 0, 0,
-                        NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE |
-                        NativeMethods.SWP_NOZORDER | NativeMethods.SWP_FRAMECHANGED);
                 }
+
+                AttachInputQueues();
+
+                // Apply a borderless child style after the cross-process
+                // SetParent operation so only terminal content is visible.
+                int style = NativeMethods.GetWindowLong(PuttyHandle, NativeMethods.GWL_STYLE);
+                int borderlessChildStyle = PuttyEmbeddedWindowLayout.CreateBorderlessChildStyle(style);
+                int previousStyle = NativeMethods.SetWindowLong(PuttyHandle, NativeMethods.GWL_STYLE, borderlessChildStyle);
+
+                // Check if SetWindowLong failed (returns 0 on error, but 0 could also be the previous value)
+                // If it returns 0 and the previous GetWindowLong succeeded, log a warning
+                if (previousStyle == 0)
+                {
+                    Runtime.MessageCollector.AddMessage(MessageClass.WarningMsg,
+                        Language.PuttyStuff + ": SetWindowLong returned 0, window style change may have failed", true);
+                }
+
+                // Force Windows to recalculate the non-client area so the
+                // removed caption and border actually disappear.
+                NativeMethods.SetWindowPos(PuttyHandle, IntPtr.Zero,
+                    0, 0, 0, 0,
+                    NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE |
+                    NativeMethods.SWP_NOZORDER | NativeMethods.SWP_FRAMECHANGED);
 
                 Runtime.MessageCollector.AddMessage(MessageClass.InformationMsg, Language.PuttyStuff, true);
                 Runtime.MessageCollector.AddMessage(MessageClass.InformationMsg, string.Format(Language.PuttyHandle, PuttyHandle), true);
                 Runtime.MessageCollector.AddMessage(MessageClass.InformationMsg, string.Format(Language.PuttyTitle, PuttyProcess.MainWindowTitle), true);
                 Runtime.MessageCollector.AddMessage(MessageClass.InformationMsg, string.Format(Language.PanelHandle, InterfaceControl.Parent.Handle), true);
 
-                if (!_isPuttyNg)
+                if (!_usesHwndParentEmbedding)
                 {
                     NativeMethods.ShowWindow(PuttyHandle, (int)NativeMethods.SW_RESTORE);
                 }
@@ -495,23 +505,19 @@ namespace LoipvRemote.Connection.Protocol
         {
             try
             {
-                uint currentThreadId = NativeMethods.GetWindowThreadProcessId(InterfaceControl.Handle, out _);
-                uint puttyThreadId = NativeMethods.GetWindowThreadProcessId(PuttyHandle, out _);
-                bool inputAttached = currentThreadId != 0 && puttyThreadId != 0 && currentThreadId != puttyThreadId &&
-                                     NativeMethods.AttachThreadInput(currentThreadId, puttyThreadId, true);
+                AttachInputQueues();
 
-                try
-                {
-                    // PuTTY is embedded as a child of the connection panel. Promoting that
-                    // child to the foreground changes Windows' Alt+Tab MRU ordering; setting
-                    // keyboard focus keeps the main LoipvRemote window as the active task.
-                    NativeMethods.SetFocus(PuttyHandle);
-                }
-                finally
-                {
-                    if (inputAttached)
-                        NativeMethods.AttachThreadInput(currentThreadId, puttyThreadId, false);
-                }
+                // PuTTY is embedded as a child of the connection panel. Promoting that
+                // child to the foreground changes Windows' Alt+Tab MRU ordering; setting
+                // keyboard focus keeps the main LoipvRemote window as the active task.
+                NativeMethods.SetFocus(PuttyHandle);
+
+                // Keep the queues attached while the child is active so the Windows IME
+                // can deliver composition messages to the cross-process PuTTY window.
+                NativeMethods.SendMessage(PuttyHandle,
+                                          (uint)NativeMethods.WM_INPUTLANGCHANGE,
+                                          IntPtr.Zero,
+                                          NativeMethods.GetKeyboardLayout(0));
             }
             catch (Exception ex)
             {
@@ -564,21 +570,19 @@ namespace LoipvRemote.Connection.Protocol
                 if (InterfaceControl.Size == Size.Empty)
                     return;
 
-                if (_isPuttyNg)
-                {
-                    // PuTTYNG 0.70.0.1 and later doesn't have any window borders
-                    // Use ClientRectangle to account for padding (for connection frame color)
-                    Rectangle clientRect = InterfaceControl.ClientRectangle;
-                    NativeMethods.MoveWindow(PuttyHandle, clientRect.X, clientRect.Y, clientRect.Width, clientRect.Height, true);
-                }
-                else
-                {
-                    // Window chrome (caption + thick frame) has been stripped
-                    // after reparenting, so just fill the client rectangle.
-                    Rectangle clientRect = InterfaceControl.ClientRectangle;
-
-                    NativeMethods.MoveWindow(PuttyHandle, clientRect.X-8, clientRect.Y-30, clientRect.Width+32, clientRect.Height+38, true);
-                }
+                // PuTTY retains a caption-sized client strip even after its
+                // non-client chrome is removed. Crop that strip at the host
+                // boundary so the terminal begins immediately below its tab.
+                int titleStripHeight = SystemInformation.CaptionHeight + SystemInformation.FrameBorderSize.Height;
+                Rectangle contentBounds = PuttyEmbeddedWindowLayout.ContentBounds(
+                    InterfaceControl.ClientRectangle,
+                    titleStripHeight);
+                NativeMethods.MoveWindow(PuttyHandle,
+                                         contentBounds.X,
+                                         contentBounds.Y,
+                                         contentBounds.Width,
+                                         contentBounds.Height,
+                                         true);
             }
             catch (Exception ex)
             {
@@ -589,6 +593,7 @@ namespace LoipvRemote.Connection.Protocol
         public override void Close()
         {
             StopTitleMonitor();
+            DetachInputQueues();
 
             try
             {
@@ -616,6 +621,29 @@ namespace LoipvRemote.Connection.Protocol
             }
 
             base.Close();
+        }
+
+        private void AttachInputQueues()
+        {
+            if (_inputQueuesAttached || PuttyHandle == IntPtr.Zero || InterfaceControl?.Handle == IntPtr.Zero)
+                return;
+
+            _hostInputThreadId = NativeMethods.GetWindowThreadProcessId(InterfaceControl.Handle, out _);
+            _puttyInputThreadId = NativeMethods.GetWindowThreadProcessId(PuttyHandle, out _);
+            _inputQueuesAttached = _hostInputThreadId != 0 && _puttyInputThreadId != 0 &&
+                                   _hostInputThreadId != _puttyInputThreadId &&
+                                   NativeMethods.AttachThreadInput(_hostInputThreadId, _puttyInputThreadId, true);
+        }
+
+        private void DetachInputQueues()
+        {
+            if (!_inputQueuesAttached)
+                return;
+
+            NativeMethods.AttachThreadInput(_hostInputThreadId, _puttyInputThreadId, false);
+            _inputQueuesAttached = false;
+            _hostInputThreadId = 0;
+            _puttyInputThreadId = 0;
         }
 
         public void ShowSettingsDialog()

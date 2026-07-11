@@ -71,8 +71,10 @@ namespace LoipvRemote.UI.Forms
             //
             this.msMain.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.msMain.Dock = System.Windows.Forms.DockStyle.None;
+            this.msMain.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.msMain.GripMargin = new System.Windows.Forms.Padding(2);
             this.msMain.GripStyle = System.Windows.Forms.ToolStripGripStyle.Visible;
+            this.msMain.ImageScalingSize = new System.Drawing.Size(24, 24);
             this.msMain.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.fileMenu,
             this.sessionsMenu,
@@ -80,15 +82,15 @@ namespace LoipvRemote.UI.Forms
             this.toolsMenu});
             this.msMain.Location = new System.Drawing.Point(3, 0);
             this.msMain.Name = "msMain";
-            this.msMain.Padding = new System.Windows.Forms.Padding(0, 0, 1, 0);
-            this.msMain.Size = new System.Drawing.Size(212, 25);
+            this.msMain.Padding = new System.Windows.Forms.Padding(0, 3, 1, 3);
+            this.msMain.Size = new System.Drawing.Size(258, 34);
             this.msMain.Stretch = false;
             this.msMain.TabIndex = 0;
             this.msMain.Text = "Main Toolbar";
             //
             // fileMenu
             //
-            this.fileMenu.Margin = new System.Windows.Forms.Padding(0, 3, 0, 3);
+            this.fileMenu.Margin = new System.Windows.Forms.Padding(0, 4, 0, 4);
             this.fileMenu.Name = "mMenFile";
             this.fileMenu.Size = new System.Drawing.Size(37, 19);
             this.fileMenu.Text = "&File";
@@ -96,7 +98,7 @@ namespace LoipvRemote.UI.Forms
             //
             // sessionsMenu
             //
-            this.sessionsMenu.Margin = new System.Windows.Forms.Padding(0, 3, 0, 3);
+            this.sessionsMenu.Margin = new System.Windows.Forms.Padding(0, 4, 0, 4);
             this.sessionsMenu.Name = "mMenSessions";
             this.sessionsMenu.Size = new System.Drawing.Size(61, 19);
             this.sessionsMenu.Text = "&Sessions";
@@ -105,7 +107,7 @@ namespace LoipvRemote.UI.Forms
             //
             this.viewMenu.FullscreenHandler = null;
             this.viewMenu.MainForm = null;
-            this.viewMenu.Margin = new System.Windows.Forms.Padding(0, 3, 0, 3);
+            this.viewMenu.Margin = new System.Windows.Forms.Padding(0, 4, 0, 4);
             this.viewMenu.Name = "mMenView";
             this.viewMenu.Size = new System.Drawing.Size(44, 19);
             this.viewMenu.Text = "&View";
@@ -118,7 +120,7 @@ namespace LoipvRemote.UI.Forms
             //
             this.toolsMenu.CredentialProviderCatalog = null;
             this.toolsMenu.MainForm = null;
-            this.toolsMenu.Margin = new System.Windows.Forms.Padding(0, 3, 0, 3);
+            this.toolsMenu.Margin = new System.Windows.Forms.Padding(0, 4, 0, 4);
             this.toolsMenu.Name = "mMenTools";
             this.toolsMenu.Size = new System.Drawing.Size(46, 19);
             this.toolsMenu.Text = "&Tools";
@@ -208,8 +210,8 @@ namespace LoipvRemote.UI.Forms
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
             this.ClientSize = new System.Drawing.Size(1129, 571);
             this.Controls.Add(this.tsContainer);
-            this.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
-            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
+            this.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            this.Icon = global::LoipvRemote.Properties.Resources.LoipvRemote_Icon;
             this.MainMenuStrip = this.msMain;
             this.MinimumSize = new System.Drawing.Size(400, 400);
             this.Name = "FrmMain";
@@ -234,6 +236,26 @@ namespace LoipvRemote.UI.Forms
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
+            if (keyData == (Keys.Control | Keys.Oemplus) ||
+                keyData == (Keys.Control | Keys.Shift | Keys.Oemplus) ||
+                keyData == (Keys.Control | Keys.Add))
+            {
+                LoipvRemote.UI.DesignSystem.UiScaleManager.Instance.ChangeFontScale(5);
+                return true;
+            }
+
+            if (keyData == (Keys.Control | Keys.OemMinus) || keyData == (Keys.Control | Keys.Subtract))
+            {
+                LoipvRemote.UI.DesignSystem.UiScaleManager.Instance.ChangeFontScale(-5);
+                return true;
+            }
+
+            if (keyData == (Keys.Control | Keys.D0) || keyData == (Keys.Control | Keys.NumPad0))
+            {
+                LoipvRemote.UI.DesignSystem.UiScaleManager.Instance.ResetFontScale();
+                return true;
+            }
+
             if (keyData == (Keys.Alt | Keys.Menu))
             {
                 if(!msMain.Visible)

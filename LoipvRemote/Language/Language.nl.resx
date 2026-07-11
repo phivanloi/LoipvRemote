@@ -1364,9 +1364,6 @@ Bericht:
   <data name="Screenshots" xml:space="preserve">
     <value>Schermafbeeldingen</value>
   </data>
-  <data name="SearchPrompt" xml:space="preserve">
-    <value>Zoek</value>
-  </data>
   <data name="SendTo" xml:space="preserve">
     <value>Verstuur naar...</value>
   </data>

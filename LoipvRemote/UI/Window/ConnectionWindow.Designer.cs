@@ -227,7 +227,7 @@ namespace LoipvRemote.UI.Window
             //
             this.ClientSize = new System.Drawing.Size(632, 453);
             this.Controls.Add(this.connDock);
-            this.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.Icon = global::LoipvRemote.Properties.Resources.LoipvRemote_Icon;
             this.Name = "ConnectionWindow";
             this.TabText = "UI.Window.Connection";

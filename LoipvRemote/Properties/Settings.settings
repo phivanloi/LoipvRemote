@@ -443,9 +443,6 @@
     <Setting Name="ConDefaultPanel" Type="System.String" Scope="User">
       <Value Profile="(Default)">General</Value>
     </Setting>
-    <Setting Name="UseFilterSearch" Type="System.Boolean" Scope="User">
-      <Value Profile="(Default)">False</Value>
-    </Setting>
     <Setting Name="LockToolbars" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
     </Setting>
@@ -460,9 +457,6 @@
     </Setting>
     <Setting Name="TrackActiveConnectionInConnectionTree" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
-    </Setting>
-    <Setting Name="PlaceSearchBarAboveConnectionTree" Type="System.Boolean" Scope="User">
-      <Value Profile="(Default)">True</Value>
     </Setting>
     <Setting Name="OverrideFIPSCheck" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>

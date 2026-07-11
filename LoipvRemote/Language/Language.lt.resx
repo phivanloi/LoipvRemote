@@ -205,9 +205,6 @@ See the Microsoft Support article at http://support.microsoft.com/kb/811833 for 
   <data name="CopyHostname" xml:space="preserve">
     <value>Copy Hostname</value>
   </data>
-  <data name="PlaceSearchBarAboveConnectionTree" xml:space="preserve">
-    <value>Place search bar above connection tree</value>
-  </data>
   <data name="TrackActiveConnectionInConnectionTree" xml:space="preserve">
     <value>Track active connection in the connection tree</value>
   </data>

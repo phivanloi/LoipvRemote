@@ -114,7 +114,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             chkCheckForUpdatesOnStartup._mice = MrngCheckBox.MouseState.OUT;
             chkCheckForUpdatesOnStartup.AutoSize = true;
-            chkCheckForUpdatesOnStartup.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            chkCheckForUpdatesOnStartup.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkCheckForUpdatesOnStartup.Location = new System.Drawing.Point(9, 21);
             chkCheckForUpdatesOnStartup.Name = "chkCheckForUpdatesOnStartup";
             chkCheckForUpdatesOnStartup.Size = new System.Drawing.Size(120, 17);
@@ -127,7 +127,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             lblReleaseChannelExplanation.BackColor = System.Drawing.SystemColors.Control;
             lblReleaseChannelExplanation.BorderStyle = System.Windows.Forms.BorderStyle.None;
-            lblReleaseChannelExplanation.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            lblReleaseChannelExplanation.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             lblReleaseChannelExplanation.Location = new System.Drawing.Point(6, 48);
             lblReleaseChannelExplanation.Multiline = true;
             lblReleaseChannelExplanation.Name = "lblReleaseChannelExplanation";
@@ -202,7 +202,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             txtProxyAddress.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             txtProxyAddress.Dock = System.Windows.Forms.DockStyle.Fill;
-            txtProxyAddress.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            txtProxyAddress.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             txtProxyAddress.Location = new System.Drawing.Point(163, 3);
             txtProxyAddress.Name = "txtProxyAddress";
             txtProxyAddress.Size = new System.Drawing.Size(184, 22);
@@ -260,7 +260,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             txtProxyUsername.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             txtProxyUsername.Dock = System.Windows.Forms.DockStyle.Fill;
-            txtProxyUsername.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            txtProxyUsername.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             txtProxyUsername.Location = new System.Drawing.Point(163, 3);
             txtProxyUsername.Name = "txtProxyUsername";
             txtProxyUsername.Size = new System.Drawing.Size(184, 22);
@@ -270,7 +270,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             txtProxyPassword.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             txtProxyPassword.Dock = System.Windows.Forms.DockStyle.Fill;
-            txtProxyPassword.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            txtProxyPassword.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             txtProxyPassword.Location = new System.Drawing.Point(163, 29);
             txtProxyPassword.Name = "txtProxyPassword";
             txtProxyPassword.PasswordChar = '*';
@@ -282,7 +282,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             chkUseProxyForAutomaticUpdates._mice = MrngCheckBox.MouseState.OUT;
             chkUseProxyForAutomaticUpdates.AutoSize = true;
-            chkUseProxyForAutomaticUpdates.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            chkUseProxyForAutomaticUpdates.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkUseProxyForAutomaticUpdates.Location = new System.Drawing.Point(6, 5);
             chkUseProxyForAutomaticUpdates.Name = "chkUseProxyForAutomaticUpdates";
             chkUseProxyForAutomaticUpdates.Size = new System.Drawing.Size(176, 17);
@@ -296,7 +296,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             chkUseProxyAuthentication._mice = MrngCheckBox.MouseState.OUT;
             chkUseProxyAuthentication.AutoSize = true;
             chkUseProxyAuthentication.Enabled = false;
-            chkUseProxyAuthentication.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            chkUseProxyAuthentication.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkUseProxyAuthentication.Location = new System.Drawing.Point(6, 101);
             chkUseProxyAuthentication.Name = "chkUseProxyAuthentication";
             chkUseProxyAuthentication.Size = new System.Drawing.Size(235, 17);

@@ -1,4 +1,5 @@
 using System.Drawing;
+using System;
 using System.Windows.Forms;
 
 namespace LoipvRemote.UI
@@ -11,6 +12,8 @@ namespace LoipvRemote.UI
         private Rectangle _savedBounds;
         private bool _value;
 
+        public event EventHandler? ValueChanged;
+
         public bool Value
         {
             get => _value;
@@ -22,6 +25,7 @@ namespace LoipvRemote.UI
                 else
                     ExitFullscreen();
                 _value = value;
+                ValueChanged?.Invoke(this, EventArgs.Empty);
             }
         }
 

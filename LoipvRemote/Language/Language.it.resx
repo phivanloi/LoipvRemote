@@ -1351,9 +1351,6 @@ Messaggio:
   <data name="Screenshots" xml:space="preserve">
     <value>Screenshot</value>
   </data>
-  <data name="SearchPrompt" xml:space="preserve">
-    <value>Cerca</value>
-  </data>
   <data name="SendTo" xml:space="preserve">
     <value>Invia a...</value>
   </data>

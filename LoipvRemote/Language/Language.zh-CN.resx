@@ -1492,9 +1492,6 @@
   <data name="Screenshots" xml:space="preserve">
     <value>屏幕截图</value>
   </data>
-  <data name="SearchPrompt" xml:space="preserve">
-    <value>搜索</value>
-  </data>
   <data name="SendTo" xml:space="preserve">
     <value>发送到…</value>
   </data>
@@ -1877,9 +1874,6 @@ LoipvRemote 将退出并安装更新。</value>
   <data name="SaveConnectionsAfterEveryEdit" xml:space="preserve">
     <value>每次编辑后保存连接</value>
   </data>
-  <data name="FilterSearchMatchesInConnectionTree" xml:space="preserve">
-    <value>在连接树中过滤搜索匹配</value>
-  </data>
   <data name="TestConnection" xml:space="preserve">
     <value>测试连接</value>
   </data>
@@ -1969,9 +1963,6 @@ LoipvRemote 将退出并安装更新。</value>
   </data>
   <data name="CopyHostname" xml:space="preserve">
     <value>复制主机名</value>
-  </data>
-  <data name="PlaceSearchBarAboveConnectionTree" xml:space="preserve">
-    <value>将搜索栏放在连接树上方</value>
   </data>
   <data name="TrackActiveConnectionInConnectionTree" xml:space="preserve">
     <value>跟踪连接树中的活动连接</value>

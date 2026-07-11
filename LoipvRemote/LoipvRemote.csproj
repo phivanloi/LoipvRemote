@@ -116,6 +116,7 @@
   <ItemGroup>
     <None Remove="buildenv.tmp" />
     <None Remove="UI\Font\HandelGotDBol.ttf" />
+    <None Remove="Resources\LoipvRemote_Icon_new.png" />
   </ItemGroup>
   <ItemGroup>
     <COMReference Include="MSTSCLib">
@@ -535,6 +536,7 @@
     <Resource Include="UI\Font\HandelGotDBol.ttf">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </Resource>
+    <Resource Include="Resources\LoipvRemote_Icon_new.png" />
   </ItemGroup>
   <ItemGroup>
     <XliffResource Include="MultilingualResources\LoipvRemote.ru-RU.xlf" />

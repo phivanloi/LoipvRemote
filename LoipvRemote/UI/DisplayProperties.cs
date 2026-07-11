@@ -55,7 +55,9 @@ namespace LoipvRemote.UI
         /// <returns></returns>
         public Size ScaleSize(Size size)
         {
-            return new Size(ScaleWidth(size.Width), ScaleHeight(size.Height));
+            return new Size(
+                CalculateScaledValue(size.Width, ResolutionScalingFactor.Width),
+                CalculateScaledValue(size.Height, ResolutionScalingFactor.Height));
         }
 
         /// <summary>
@@ -71,8 +73,8 @@ namespace LoipvRemote.UI
             if (image == null)
                 throw new ArgumentNullException(nameof(image));
 
-            int width = ScaleWidth(image.Width);
-            int height = ScaleHeight(image.Height);
+            int width = CalculateScaledValue(image.Width, ResolutionScalingFactor.Width);
+            int height = CalculateScaledValue(image.Height, ResolutionScalingFactor.Height);
             Rectangle destRect = new(0, 0, width, height);
             Bitmap destImage = new(width, height);
 

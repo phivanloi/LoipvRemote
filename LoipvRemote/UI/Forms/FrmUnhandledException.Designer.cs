@@ -211,7 +211,7 @@ namespace LoipvRemote.UI.Forms
             this.ClientSize = new System.Drawing.Size(606, 442);
             this.ControlBox = false;
             this.Controls.Add(this.tableLayoutPanel1);
-            this.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.MinimumSize = new System.Drawing.Size(550, 350);
             this.Name = "FrmUnhandledException";
             this.ShowInTaskbar = false;

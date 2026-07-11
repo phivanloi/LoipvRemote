@@ -62,7 +62,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             chkAutomaticReconnect._mice = MrngCheckBox.MouseState.OUT;
             chkAutomaticReconnect.AutoSize = true;
-            chkAutomaticReconnect.Font = new System.Drawing.Font("Segoe UI", 8.25F);
+            chkAutomaticReconnect.Font = new System.Drawing.Font("Segoe UI", 10F);
             chkAutomaticReconnect.Location = new System.Drawing.Point(9, 8);
             chkAutomaticReconnect.Name = "chkAutomaticReconnect";
             chkAutomaticReconnect.Size = new System.Drawing.Size(421, 17);
@@ -86,7 +86,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             chkUseCustomPuttyPath._mice = MrngCheckBox.MouseState.OUT;
             chkUseCustomPuttyPath.AutoSize = true;
-            chkUseCustomPuttyPath.Font = new System.Drawing.Font("Segoe UI", 8.25F);
+            chkUseCustomPuttyPath.Font = new System.Drawing.Font("Segoe UI", 10F);
             chkUseCustomPuttyPath.Location = new System.Drawing.Point(9, 78);
             chkUseCustomPuttyPath.Name = "chkUseCustomPuttyPath";
             chkUseCustomPuttyPath.Size = new System.Drawing.Size(146, 17);
@@ -120,7 +120,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             txtCustomPuttyPath.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             txtCustomPuttyPath.Enabled = false;
-            txtCustomPuttyPath.Font = new System.Drawing.Font("Segoe UI", 8.25F);
+            txtCustomPuttyPath.Font = new System.Drawing.Font("Segoe UI", 10F);
             txtCustomPuttyPath.Location = new System.Drawing.Point(27, 100);
             txtCustomPuttyPath.Name = "txtCustomPuttyPath";
             txtCustomPuttyPath.Size = new System.Drawing.Size(346, 22);
@@ -176,7 +176,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             chkLoadBalanceInfoUseUtf8._mice = MrngCheckBox.MouseState.OUT;
             chkLoadBalanceInfoUseUtf8.AutoSize = true;
-            chkLoadBalanceInfoUseUtf8.Font = new System.Drawing.Font("Segoe UI", 8.25F);
+            chkLoadBalanceInfoUseUtf8.Font = new System.Drawing.Font("Segoe UI", 10F);
             chkLoadBalanceInfoUseUtf8.Location = new System.Drawing.Point(9, 54);
             chkLoadBalanceInfoUseUtf8.Name = "chkLoadBalanceInfoUseUtf8";
             chkLoadBalanceInfoUseUtf8.Size = new System.Drawing.Size(317, 17);
@@ -188,7 +188,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             chkNoReconnect._mice = MrngCheckBox.MouseState.OUT;
             chkNoReconnect.AutoSize = true;
-            chkNoReconnect.Font = new System.Drawing.Font("Segoe UI", 8.25F);
+            chkNoReconnect.Font = new System.Drawing.Font("Segoe UI", 10F);
             chkNoReconnect.Location = new System.Drawing.Point(27, 31);
             chkNoReconnect.Name = "chkNoReconnect";
             chkNoReconnect.Size = new System.Drawing.Size(430, 17);

@@ -60,7 +60,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             chkEncryptCompleteFile._mice = MrngCheckBox.MouseState.OUT;
             chkEncryptCompleteFile.AutoSize = true;
             chkEncryptCompleteFile.Dock = System.Windows.Forms.DockStyle.Top;
-            chkEncryptCompleteFile.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            chkEncryptCompleteFile.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkEncryptCompleteFile.Location = new System.Drawing.Point(0, 0);
             chkEncryptCompleteFile.Margin = new System.Windows.Forms.Padding(6);
             chkEncryptCompleteFile.Name = "chkEncryptCompleteFile";

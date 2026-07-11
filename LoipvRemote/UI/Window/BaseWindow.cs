@@ -4,6 +4,8 @@ using System.Runtime.Versioning;
 using System.Windows.Forms;
 using LoipvRemote.Messages;
 using LoipvRemote.UI.Window;
+using LoipvRemote.UI.DesignSystem;
+using LoipvRemote.UI.Tabs;
 
 namespace LoipvRemote.UI.Window
 {
@@ -69,6 +71,14 @@ namespace LoipvRemote.UI.Window
             ForeColor = _themeManager.ActiveTheme.ExtendedPalette.getColor("Dialog_Foreground");
         }
 
+        protected override void OnLoad(System.EventArgs e)
+        {
+            base.OnLoad(e);
+            if (WindowType is WindowType.Tree or WindowType.Config or WindowType.ErrorsAndInfos)
+                LeftSidebarDockingPolicy.ConfigurePersistentSidebar(this);
+            UiScaleManager.Instance.Apply(this);
+        }
+
 
         #region Private Methods
 
@@ -95,7 +105,7 @@ namespace LoipvRemote.UI.Window
             // BaseWindow
             //
             this.ClientSize = new System.Drawing.Size(284, 261);
-            this.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.Name = "BaseWindow";
             this.ResumeLayout(false);
         }

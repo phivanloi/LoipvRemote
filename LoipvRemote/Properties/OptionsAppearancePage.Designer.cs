@@ -94,5 +94,37 @@ namespace LoipvRemote.Properties {
                 this["cbAppearancePageInOptionMenu"] = value;
             }
         }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("System")]
+        public string UiFontFamily {
+            get { return ((string)(this["UiFontFamily"])); }
+            set { this["UiFontFamily"] = value; }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("100")]
+        public int UiFontScalePercent {
+            get { return ((int)(this["UiFontScalePercent"])); }
+            set { this["UiFontScalePercent"] = value; }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("20")]
+        public int UiIconSize {
+            get { return ((int)(this["UiIconSize"])); }
+            set { this["UiIconSize"] = value; }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("Standard")]
+        public string UiDensity {
+            get { return ((string)(this["UiDensity"])); }
+            set { this["UiDensity"] = value; }
+        }
     }
 }

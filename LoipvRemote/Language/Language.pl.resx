@@ -1540,9 +1540,6 @@ Jeśli napotkasz na taki błąd, należy utworzyć nowy plik połączenia!</valu
   <data name="Screenshots" xml:space="preserve">
     <value>Zrzuty ekranów</value>
   </data>
-  <data name="SearchPrompt" xml:space="preserve">
-    <value>Szukaj</value>
-  </data>
   <data name="SendTo" xml:space="preserve">
     <value>Wyślij do...</value>
   </data>
@@ -1925,9 +1922,6 @@ LoipvRemote zostanie teraz zamknięty i rozpocznie instalację.</value>
   <data name="SaveConnectionsAfterEveryEdit" xml:space="preserve">
     <value>Zapisz połączenia po każdej edycji</value>
   </data>
-  <data name="FilterSearchMatchesInConnectionTree" xml:space="preserve">
-    <value>Filtrowanie dopasować w drzewie połączeń</value>
-  </data>
   <data name="TestConnection" xml:space="preserve">
     <value>Test połączenia</value>
   </data>
@@ -2017,9 +2011,6 @@ LoipvRemote zostanie teraz zamknięty i rozpocznie instalację.</value>
   </data>
   <data name="CopyHostname" xml:space="preserve">
     <value>Kopiuj nazwę hosta</value>
-  </data>
-  <data name="PlaceSearchBarAboveConnectionTree" xml:space="preserve">
-    <value>Umieść pasek wyszukiwania powyżej drzewka połączeń</value>
   </data>
   <data name="TrackActiveConnectionInConnectionTree" xml:space="preserve">
     <value>Śledź aktywne połączenia w drzewku połączeń</value>

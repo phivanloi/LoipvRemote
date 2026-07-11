@@ -56,6 +56,7 @@ namespace LoipvRemote.Messages.MessageWriters
                 {
                     _messageWindow.pbError.Visible = true;
                 }
+                _messageWindow.UpdateNotificationLayout();
             }
         }
     }

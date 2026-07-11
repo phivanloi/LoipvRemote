@@ -31,8 +31,9 @@ namespace mRemoteNG.Connection.Protocol
         private const int TitleMonitorIntervalMs = 500;
         private bool _isPuttyNg;
         private readonly DisplayProperties _display = new();
-        private System.Threading.Timer _titleMonitorTimer;
-        private string _lastWindowTitle;
+        private System.Threading.Timer? _titleMonitorTimer;
+        private string _lastWindowTitle = string.Empty;
+        private int _titleMonitorCallbackActive;
 
         #region Public Properties
 
@@ -383,9 +384,15 @@ namespace mRemoteNG.Connection.Protocol
                 Resize(this, new EventArgs());
                 base.Connect();
 
-                // Start monitoring PuTTY window title for dynamic tab naming
-                _lastWindowTitle = PuttyProcess.MainWindowTitle;
-                _titleMonitorTimer = new System.Threading.Timer(MonitorPuttyTitle, null, TitleMonitorIntervalMs, TitleMonitorIntervalMs);
+                if (Properties.OptionsTabsPanelsPage.Default.UseTerminalTitleForTabs)
+                {
+                    _lastWindowTitle = PuttyProcess.MainWindowTitle;
+                    _titleMonitorTimer = new System.Threading.Timer(
+                        MonitorPuttyTitle,
+                        null,
+                        TitleMonitorIntervalMs,
+                        TitleMonitorIntervalMs);
+                }
 
                 return true;
             }
@@ -449,13 +456,16 @@ namespace mRemoteNG.Connection.Protocol
             }
         }
 
-        private void MonitorPuttyTitle(object state)
+        private void MonitorPuttyTitle(object? state)
         {
+            if (Interlocked.Exchange(ref _titleMonitorCallbackActive, 1) != 0)
+                return;
+
             try
             {
                 if (PuttyProcess == null || PuttyProcess.HasExited)
                 {
-                    _titleMonitorTimer?.Dispose();
+                    StopTitleMonitor();
                     return;
                 }
 
@@ -469,10 +479,19 @@ namespace mRemoteNG.Connection.Protocol
             }
             catch (Exception ex)
             {
-                _titleMonitorTimer?.Dispose();
+                StopTitleMonitor();
                 Runtime.MessageCollector.AddMessage(MessageClass.InformationMsg,
                     "PuTTY title monitoring stopped: " + ex.Message, true);
             }
+            finally
+            {
+                Volatile.Write(ref _titleMonitorCallbackActive, 0);
+            }
+        }
+
+        private void StopTitleMonitor()
+        {
+            Interlocked.Exchange(ref _titleMonitorTimer, null)?.Dispose();
         }
 
         protected override void Resize(object sender, EventArgs e)
@@ -506,8 +525,7 @@ namespace mRemoteNG.Connection.Protocol
 
         public override void Close()
         {
-            _titleMonitorTimer?.Dispose();
-            _titleMonitorTimer = null;
+            StopTitleMonitor();
 
             try
             {

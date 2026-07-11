@@ -868,14 +868,18 @@ namespace mRemoteNG.UI.Window
             if (tabPage.Disposing || tabPage.IsDisposed) return;
             if (IsDisposed || Disposing) return;
 
-            string connectionName = protocolBase.InterfaceControl.Info?.Name ?? "";
-            string tabText = string.IsNullOrEmpty(newTitle)
-                ? connectionName
-                : $"{newTitle} ({connectionName})";
-            tabText = tabText.Replace("&", "&&");
+            string connectionName = protocolBase.InterfaceControl.Info?.Name ?? string.Empty;
+            string tabText = TerminalTitleFormatter.Format(newTitle, connectionName);
 
             if (tabPage.InvokeRequired)
-                tabPage.Invoke(new Action(() => tabPage.TabText = tabText));
+            {
+                if (tabPage.IsHandleCreated)
+                    tabPage.BeginInvoke(new Action(() =>
+                    {
+                        if (!tabPage.IsDisposed && !tabPage.Disposing)
+                            tabPage.TabText = tabText;
+                    }));
+            }
             else
                 tabPage.TabText = tabText;
         }

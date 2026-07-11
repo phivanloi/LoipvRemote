@@ -495,7 +495,23 @@ namespace LoipvRemote.Connection.Protocol
         {
             try
             {
-                NativeMethods.SetForegroundWindow(PuttyHandle);
+                uint currentThreadId = NativeMethods.GetWindowThreadProcessId(InterfaceControl.Handle, out _);
+                uint puttyThreadId = NativeMethods.GetWindowThreadProcessId(PuttyHandle, out _);
+                bool inputAttached = currentThreadId != 0 && puttyThreadId != 0 && currentThreadId != puttyThreadId &&
+                                     NativeMethods.AttachThreadInput(currentThreadId, puttyThreadId, true);
+
+                try
+                {
+                    // PuTTY is embedded as a child of the connection panel. Promoting that
+                    // child to the foreground changes Windows' Alt+Tab MRU ordering; setting
+                    // keyboard focus keeps the main LoipvRemote window as the active task.
+                    NativeMethods.SetFocus(PuttyHandle);
+                }
+                finally
+                {
+                    if (inputAttached)
+                        NativeMethods.AttachThreadInput(currentThreadId, puttyThreadId, false);
+                }
             }
             catch (Exception ex)
             {

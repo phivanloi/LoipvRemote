@@ -2756,4 +2756,7 @@ Nightly Channel includes Alphas, Betas &amp; Release Candidates.</value>
   <data name="DisplayReconnectionDialog" xml:space="preserve">
     <value>Display reconnection dialog when disconnected from server (RDP &amp;&amp; ICA only)</value>
   </data>
+  <data name="OpenAllSelectedConnectionsWithEnter" xml:space="preserve">
+    <value>Open all selected connections with Enter</value>
+  </data>
 </root>

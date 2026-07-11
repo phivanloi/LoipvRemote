@@ -856,8 +856,31 @@ namespace mRemoteNG.UI.Window
             if (!(protocolBase?.InterfaceControl.Parent is ConnectionTab tabPage)) return;
             if (tabPage.Disposing || tabPage.IsDisposed) return;
             if (IsDisposed || Disposing) return;
-            tabPage.protocolClose = true;
-            Invoke(new Action(() => tabPage.Close()));
+
+            try
+            {
+                void CloseTab()
+                {
+                    if (!tabPage.IsDisposed && !tabPage.Disposing && !Disposing && !IsDisposed)
+                    {
+                        tabPage.protocolClose = true;
+                        tabPage.Close();
+                    }
+                }
+
+                if (tabPage.InvokeRequired)
+                    tabPage.BeginInvoke((Action)CloseTab);
+                else
+                    CloseTab();
+            }
+            catch (ObjectDisposedException)
+            {
+                // A close event can race with form teardown.
+            }
+            catch (InvalidOperationException)
+            {
+                // The handle may disappear between the state check and BeginInvoke.
+            }
         }
 
         public void Prot_Event_TitleChanged(object sender, string newTitle)

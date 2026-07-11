@@ -629,10 +629,21 @@ namespace mRemoteNG.UI.Window
 
         private void ShowStatusImage(Image image)
         {
+            if (IsDisposed || Disposing || _pGrid.IsDisposed || _pGrid.Disposing)
+                return;
+
             if (_pGrid.InvokeRequired)
             {
-                ShowStatusImageCb d = ShowStatusImage;
-                _pGrid.Invoke(d, image);
+                try
+                {
+                    _pGrid.BeginInvoke(new ShowStatusImageCb(ShowStatusImage), image);
+                }
+                catch (ObjectDisposedException)
+                {
+                }
+                catch (InvalidOperationException)
+                {
+                }
             }
             else
             {

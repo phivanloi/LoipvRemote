@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Security.Cryptography;
 using System.Threading;
 using System.Windows.Forms;
 using mRemoteNG.App;
@@ -32,6 +33,7 @@ namespace mRemoteNG.Connection
         private bool _batchingSaves = false;
         private bool _saveRequested = false;
         private bool _saveAsyncRequested = false;
+        private string _lastFileContentHash = string.Empty;
 
         public bool IsConnectionsFileLoaded { get; set; }
         public bool UsingDatabase { get; private set; }
@@ -146,6 +148,7 @@ namespace mRemoteNG.Connection
             IsConnectionsFileLoaded = true;
             ConnectionFileName = connectionFileName;
             Properties.OptionsConnectionsPage.Default.ConnectionFilePath = connectionFileName;
+            _lastFileContentHash = !useDatabase ? ComputeFileHash(connectionFileName) : string.Empty;
 
             UsingDatabase = useDatabase;
 
@@ -230,6 +233,15 @@ namespace mRemoteNG.Connection
             if (!forceSave && !IsConnectionsFileLoaded)
                 return;
 
+            if (!useDatabase && !forceSave && !HasExpectedFileVersion(connectionFileName))
+            {
+                Runtime.MessageCollector?.AddMessage(
+                    MessageClass.WarningMsg,
+                    $"Connection file changed outside this instance; save was cancelled: {connectionFileName}",
+                    true);
+                return;
+            }
+
             if (_batchingSaves)
             {
                 _saveRequested = true;
@@ -254,6 +266,7 @@ namespace mRemoteNG.Connection
 
                 UsingDatabase = useDatabase;
                 ConnectionFileName = connectionFileName;
+                _lastFileContentHash = !useDatabase ? ComputeFileHash(connectionFileName) : string.Empty;
                 RaiseConnectionsSavedEvent(connectionTreeModel, previouslyUsingDatabase, UsingDatabase, connectionFileName);
                 Runtime.MessageCollector.AddMessage(MessageClass.InformationMsg, "Successfully saved connections");
             }
@@ -291,6 +304,23 @@ namespace mRemoteNG.Connection
             });
             t.SetApartmentState(ApartmentState.STA);
             t.Start();
+        }
+
+        private bool HasExpectedFileVersion(string connectionFileName)
+        {
+            if (string.IsNullOrEmpty(connectionFileName) || string.IsNullOrEmpty(_lastFileContentHash))
+                return true;
+
+            return string.Equals(_lastFileContentHash, ComputeFileHash(connectionFileName), StringComparison.Ordinal);
+        }
+
+        private static string ComputeFileHash(string fileName)
+        {
+            if (string.IsNullOrEmpty(fileName) || !File.Exists(fileName))
+                return string.Empty;
+
+            using SHA256 sha256 = SHA256.Create();
+            return Convert.ToHexString(sha256.ComputeHash(File.ReadAllBytes(fileName)));
         }
 
         public string GetStartupConnectionFileName()

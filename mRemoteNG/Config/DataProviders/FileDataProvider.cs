@@ -56,14 +56,22 @@ namespace mRemoteNG.Config.DataProviders
 
         public virtual void Save(string content)
         {
+            string temporaryFile = null;
             try
             {
                 CreateMissingDirectories();
-                File.WriteAllText(FilePath, content);
+                temporaryFile = $"{FilePath}.{Guid.NewGuid():N}.tmp";
+                File.WriteAllText(temporaryFile, content);
+                File.Move(temporaryFile, FilePath, true);
             }
             catch (Exception ex)
             {
                 Runtime.MessageCollector.AddExceptionStackTrace($"Failed to save file {FilePath}", ex);
+            }
+            finally
+            {
+                if (temporaryFile != null && File.Exists(temporaryFile))
+                    File.Delete(temporaryFile);
             }
         }
 

@@ -476,7 +476,7 @@ namespace LoipvRemote.UI.Window
             {
                 if (e.ChangedItem.Label == Language.Icon)
                 {
-                    Icon conIcon = ConnectionIcon.FromString(_pGrid.SelectedConnectionInfo.Icon);
+                    Icon conIcon = ConnectionIcon.FromString(ConnectionIcon.GetConnectionDisplayIcon(_pGrid.SelectedConnectionInfo.Icon));
                     if (conIcon != null)
                         _btnIcon.Image = conIcon.ToBitmap();
                 }

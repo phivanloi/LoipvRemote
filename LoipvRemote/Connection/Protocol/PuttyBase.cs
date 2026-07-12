@@ -575,7 +575,7 @@ namespace LoipvRemote.Connection.Protocol
                 // boundary so the terminal begins immediately below its tab.
                 int titleStripHeight = SystemInformation.CaptionHeight + SystemInformation.FrameBorderSize.Height;
                 Rectangle contentBounds = PuttyEmbeddedWindowLayout.ContentBounds(
-                    InterfaceControl.ClientRectangle,
+                    InterfaceControl.RemoteContentBounds,
                     titleStripHeight);
                 NativeMethods.MoveWindow(PuttyHandle,
                                          contentBounds.X,

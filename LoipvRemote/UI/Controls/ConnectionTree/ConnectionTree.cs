@@ -486,6 +486,12 @@ namespace LoipvRemote.UI.Controls.ConnectionTree
             if (e.Model is not ConnectionInfo connectionInfo)
                 return;
 
+            if (connectionInfo.OpenConnections.Count > 0)
+            {
+                e.SubItem.ForeColor = System.Drawing.Color.FromArgb(22, 163, 74);
+                return;
+            }
+
             string colorString = connectionInfo.Color;
             if (string.IsNullOrEmpty(colorString))
                 return;

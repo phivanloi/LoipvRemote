@@ -39,6 +39,7 @@ namespace LoipvRemote.UI.Controls
         private ToolStripMenuItem _cMenTreeDisconnect;
         private ToolStripSeparator _cMenTreeSep2;
         private ToolStripMenuItem _cMenTreeToolsTransferFile;
+        private ToolStripMenuItem _cMenTreeShowPassword;
         private ToolStripMenuItem _cMenTreeToolsSort;
         private ToolStripMenuItem _cMenTreeToolsSortAscending;
         private ToolStripMenuItem _cMenTreeToolsSortDescending;
@@ -100,6 +101,7 @@ namespace LoipvRemote.UI.Controls
             _cMenTreeDisconnect = new ToolStripMenuItem();
             _cMenTreeSep1 = new ToolStripSeparator();
             _cMenTreeToolsExternalApps = new ToolStripMenuItem();
+            _cMenTreeShowPassword = new ToolStripMenuItem();
             _cMenTreeToolsTransferFile = new ToolStripMenuItem();
             _cMenTreeSep2 = new ToolStripSeparator();
             _cMenTreeDuplicate = new ToolStripMenuItem();
@@ -141,6 +143,7 @@ namespace LoipvRemote.UI.Controls
                 _cMenTreeDisconnect,
                 _cMenTreeSep1,
                 _cMenTreeToolsExternalApps,
+                _cMenTreeShowPassword,
                 _cMenTreeToolsTransferFile,
                 _cMenTreeSep2,
                 _cMenTreeDuplicate,
@@ -257,6 +260,13 @@ namespace LoipvRemote.UI.Controls
             _cMenTreeToolsExternalApps.Name = "_cMenTreeToolsExternalApps";
             _cMenTreeToolsExternalApps.Size = new System.Drawing.Size(199, 22);
             _cMenTreeToolsExternalApps.Text = "External Applications";
+            //
+            // cMenTreeShowPassword
+            //
+            _cMenTreeShowPassword.Name = "_cMenTreeShowPassword";
+            _cMenTreeShowPassword.Size = new System.Drawing.Size(199, 22);
+            _cMenTreeShowPassword.Text = "Show Password";
+            _cMenTreeShowPassword.Click += OnShowPasswordClicked;
             //
             // cMenTreeToolsTransferFile
             //
@@ -483,6 +493,7 @@ namespace LoipvRemote.UI.Controls
             _cMenTreeDisconnect.Text = Language.Disconnect;
 
             _cMenTreeToolsExternalApps.Text = Language._Tools;
+            _cMenTreeShowPassword.Text = "Show Password";
             _cMenTreeToolsTransferFile.Text = Language.TransferFile;
 
             _cMenTreeDuplicate.Text = Language.Duplicate;
@@ -558,6 +569,7 @@ namespace LoipvRemote.UI.Controls
             _cMenTreeConnectWithOptions.Enabled = false;
             _cMenTreeDisconnect.Enabled = false;
             _cMenTreeToolsTransferFile.Enabled = false;
+            _cMenTreeShowPassword.Enabled = false;
             _cMenTreeConnectWithOptions.Enabled = false;
             _cMenTreeToolsSort.Enabled = false;
             _cMenTreeToolsExternalApps.Enabled = false;
@@ -584,6 +596,7 @@ namespace LoipvRemote.UI.Controls
             _cMenTreeConnectWithOptionsChoosePanelBeforeConnecting.Enabled = false;
             _cMenTreeDisconnect.Enabled = false;
             _cMenTreeToolsTransferFile.Enabled = false;
+            _cMenTreeShowPassword.Enabled = false;
             _cMenTreeToolsExternalApps.Enabled = false;
             _cMenTreeDuplicate.Enabled = false;
             _cMenTreeDelete.Enabled = false;
@@ -603,6 +616,7 @@ namespace LoipvRemote.UI.Controls
             _cMenTreeDisconnect.Enabled = hasOpenConnections;
 
             _cMenTreeToolsTransferFile.Enabled = false;
+            _cMenTreeShowPassword.Enabled = false;
             _cMenTreeConnectWithOptionsViewOnly.Enabled = false;
         }
 
@@ -615,7 +629,8 @@ namespace LoipvRemote.UI.Controls
                 _cMenTreeDisconnect.Enabled = false;
 
             if (!(connectionInfo.Protocol == ProtocolType.SSH1 | connectionInfo.Protocol == ProtocolType.SSH2))
-                _cMenTreeToolsTransferFile.Enabled = false;
+            _cMenTreeToolsTransferFile.Enabled = false;
+            _cMenTreeShowPassword.Enabled = false;
 
             _cMenTreeConnectWithOptionsConnectInFullscreen.Enabled = false;
             _cMenTreeConnectWithOptionsConnectToConsoleSession.Enabled = false;
@@ -634,6 +649,8 @@ namespace LoipvRemote.UI.Controls
 
         internal void ShowHideMenuItemsForConnectionNode(ConnectionInfo connectionInfo)
         {
+            _cMenTreeShowPassword.Enabled = CanShowPassword(connectionInfo);
+
             if (connectionInfo.OpenConnections.Count == 0)
                 _cMenTreeDisconnect.Enabled = false;
 
@@ -870,6 +887,84 @@ namespace LoipvRemote.UI.Controls
         private void OnTransferFileClicked(object sender, EventArgs e)
         {
             SshTransferFile();
+        }
+
+        private void OnShowPasswordClicked(object sender, EventArgs e)
+        {
+            ConnectionInfo? connectionInfo = _connectionTree.SelectedNode;
+            if (!CanShowPassword(connectionInfo))
+                return;
+
+            try
+            {
+                ShowPasswordDialog(connectionInfo!, connectionInfo!.Password);
+            }
+            catch (Exception ex)
+            {
+                Runtime.MessageCollector.AddExceptionStackTrace(
+                    "Show password (UI.Controls.ConnectionContextMenu) failed", ex);
+            }
+        }
+
+        internal static bool CanShowPassword(ConnectionInfo? connectionInfo) =>
+            connectionInfo is not null and not ContainerInfo and not PuttySessionInfo &&
+            !string.IsNullOrEmpty(connectionInfo.Password);
+
+        private void ShowPasswordDialog(ConnectionInfo connectionInfo, string password)
+        {
+            using Form dialog = new()
+            {
+                Text = $"Show Password - {connectionInfo.Name}",
+                StartPosition = FormStartPosition.CenterParent,
+                FormBorderStyle = FormBorderStyle.FixedDialog,
+                MaximizeBox = false,
+                MinimizeBox = false,
+                ShowInTaskbar = false,
+                ClientSize = new System.Drawing.Size(430, 112)
+            };
+            Label prompt = new()
+            {
+                Text = "Password",
+                AutoSize = true,
+                Location = new System.Drawing.Point(12, 14)
+            };
+            TextBox value = new()
+            {
+                Text = password,
+                ReadOnly = true,
+                ShortcutsEnabled = false,
+                UseSystemPasswordChar = false,
+                Location = new System.Drawing.Point(12, 36),
+                Size = new System.Drawing.Size(406, 26),
+                TabStop = false
+            };
+            Button copy = new()
+            {
+                Text = "Copy",
+                Image = Properties.Resources.Copy_16x,
+                TextImageRelation = TextImageRelation.ImageBeforeText,
+                Size = new System.Drawing.Size(90, 29),
+                Location = new System.Drawing.Point(230, 72)
+            };
+            Button close = new()
+            {
+                Text = Language._Close,
+                DialogResult = DialogResult.OK,
+                Size = new System.Drawing.Size(90, 29),
+                Location = new System.Drawing.Point(328, 72)
+            };
+            copy.Click += (_, _) => CopyPasswordToClipboard(new WindowsClipboard(), password);
+
+            dialog.Controls.AddRange([prompt, value, copy, close]);
+            dialog.AcceptButton = close;
+            dialog.CancelButton = close;
+            _ = dialog.ShowDialog(_connectionTree.FindForm());
+        }
+
+        internal static void CopyPasswordToClipboard(IClipboard clipboard, string password)
+        {
+            ArgumentNullException.ThrowIfNull(clipboard);
+            clipboard.SetText(password ?? string.Empty);
         }
 
         public void SshTransferFile()

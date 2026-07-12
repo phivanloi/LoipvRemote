@@ -10,7 +10,13 @@ namespace LoipvRemote.Connection
     [SupportedOSPlatform("windows")]
     public class ConnectionIcon : StringConverter
     {
+        public const string LoipvRemoteIconName = "LoipvRemote";
         public static string[] Icons = { };
+
+        public static string GetConnectionDisplayIcon(string? iconName)
+        {
+            return LoipvRemoteIconName;
+        }
 
         public override StandardValuesCollection GetStandardValues(ITypeDescriptorContext? context)
         {

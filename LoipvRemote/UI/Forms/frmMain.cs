@@ -904,10 +904,9 @@ namespace LoipvRemote.UI.Forms
         {
             pnlDock.Visible = false;
 
-            AppWindows.ErrorsForm.Show(pnlDock, DockState.DockLeft);
             AppWindows.ConfigForm.Show(pnlDock, DockState.DockLeft);
             AppWindows.TreeForm.Show(pnlDock, DockState.DockLeft);
-            viewMenu._mMenViewErrorsAndInfos.Checked = true;
+            viewMenu._mMenViewErrorsAndInfos.Visible = false;
 
             ShowFileMenu();
 
@@ -930,13 +929,7 @@ namespace LoipvRemote.UI.Forms
         {
             pnlDock.Visible = false;
 
-            if (Properties.Settings.Default.ViewMenuMessages == true)
-            {
-                AppWindows.ErrorsForm.Show(pnlDock, DockState.DockLeft);
-                viewMenu._mMenViewErrorsAndInfos.Checked = true;
-            }
-            else
-                viewMenu._mMenViewErrorsAndInfos.Checked = false;
+            viewMenu._mMenViewErrorsAndInfos.Visible = false;
 
 
             if (Properties.Settings.Default.ViewMenuExternalTools == true)

@@ -5,7 +5,7 @@ namespace LoipvRemote.UI.Tabs
 {
     /// <summary>
     /// Removes the caption bar from the persistent left sidebar. Its tab strip
-    /// remains available below the content for Connections, Config, and Notifications.
+    /// remains available below the content for Connections and Config.
     /// </summary>
     [ToolboxItem(false)]
     internal sealed class HiddenDockPaneCaption : DockPaneCaptionBase

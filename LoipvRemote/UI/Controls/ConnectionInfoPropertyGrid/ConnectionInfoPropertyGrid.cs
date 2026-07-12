@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -23,6 +24,7 @@ namespace LoipvRemote.UI.Controls.ConnectionInfoPropertyGrid {
     [SupportedOSPlatform("windows")]
     public partial class ConnectionInfoPropertyGrid : FilteredPropertyGrid.FilteredPropertyGrid {
         private readonly Dictionary<Type, IEnumerable<PropertyInfo>> _propertyCache = [];
+        private readonly HashSet<Control> _editorControls = [];
         private ConnectionInfo _selectedConnectionInfo;
         private PropertyMode _propertyMode;
 
@@ -81,24 +83,36 @@ namespace LoipvRemote.UI.Controls.ConnectionInfoPropertyGrid {
         public ConnectionInfoPropertyGrid() {
             InitializeComponent();
             PropertyValueChanged += pGrid_PropertyValueChanged;
+            SelectedGridItemChanged += (_, _) => QueueEditorFontSynchronization();
         }
 
         protected override void OnFontChanged(EventArgs e)
         {
             base.OnFontChanged(e);
             ApplyScaledRowHeight();
+            SynchronizeNativeEditorFonts();
         }
 
         protected override void OnCreateControl()
         {
             base.OnCreateControl();
             ApplyScaledRowHeight();
+            AttachEditorFontHandlers();
+            SynchronizeNativeEditorFonts();
         }
 
         protected override void OnControlAdded(ControlEventArgs e)
         {
             base.OnControlAdded(e);
             ApplyScaledRowHeight();
+            AttachEditorFontHandlers(e.Control);
+            SynchronizeNativeEditorFonts();
+        }
+
+        protected override void OnEnter(EventArgs e)
+        {
+            base.OnEnter(e);
+            QueueEditorFontSynchronization();
         }
 
         internal void ApplyScaledRowHeight()
@@ -121,6 +135,66 @@ namespace LoipvRemote.UI.Controls.ConnectionInfoPropertyGrid {
 
             gridView?.Invalidate();
             Invalidate();
+        }
+
+        /// <summary>
+        /// PropertyGrid creates its value editors lazily inside the native grid
+        /// view. Those editors otherwise keep the Windows default font when a
+        /// value enters edit mode, even if the grid itself uses a larger font.
+        /// </summary>
+        internal static void SynchronizeEditorFonts(Control editorRoot, Font font)
+        {
+            if (editorRoot is TextBoxBase or ComboBox or UpDownBase)
+                editorRoot.Font = font;
+
+            foreach (Control child in editorRoot.Controls)
+                SynchronizeEditorFonts(child, font);
+        }
+
+        private void AttachEditorFontHandlers()
+        {
+            foreach (Control control in Controls)
+                AttachEditorFontHandlers(control);
+        }
+
+        private void AttachEditorFontHandlers(Control control)
+        {
+            if (!_editorControls.Add(control))
+                return;
+
+            control.ControlAdded += EditorControlAdded;
+            control.GotFocus += EditorControlGotFocus;
+
+            foreach (Control child in control.Controls)
+                AttachEditorFontHandlers(child);
+        }
+
+        private void EditorControlAdded(object? sender, ControlEventArgs e)
+        {
+            AttachEditorFontHandlers(e.Control);
+            SynchronizeEditorFonts(e.Control, Font);
+        }
+
+        private void EditorControlGotFocus(object? sender, EventArgs e)
+        {
+            if (sender is Control control)
+                SynchronizeEditorFonts(control, Font);
+        }
+
+        private void QueueEditorFontSynchronization()
+        {
+            if (IsDisposed || !IsHandleCreated)
+                return;
+
+            BeginInvoke((System.Windows.Forms.MethodInvoker)SynchronizeNativeEditorFonts);
+        }
+
+        private void SynchronizeNativeEditorFonts()
+        {
+            Control? gridView = Controls.Cast<Control>()
+                .FirstOrDefault(control => control.GetType().Name.Equals("PropertyGridView", StringComparison.Ordinal));
+            if (gridView != null)
+                SynchronizeEditorFonts(gridView, Font);
         }
 
         private void SetGridObject() {

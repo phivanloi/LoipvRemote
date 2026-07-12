@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Drawing;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
 using System.Windows.Forms;
 using LoipvRemote.UI.Controls.ConnectionInfoPropertyGrid;
 using LoipvRemote.UI.Controls.FilteredPropertyGrid;
@@ -43,6 +44,26 @@ namespace LoipvRemoteTests.UI.Controls
 
             Assert.That((int)rowHeightProperty.GetValue(gridView)!,
                 Is.EqualTo(PropertyGridLayoutMetrics.RowHeightForFontHeight(grid.Font.Height)));
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
+        public void NativePropertyGridEditorsKeepTheSameFontAsTheGrid()
+        {
+            using ConnectionInfoPropertyGrid grid = new();
+            using Font gridFont = new(SystemFonts.MessageBoxFont.FontFamily, 12f);
+            grid.Font = gridFont;
+            _ = grid.Handle;
+
+            Control gridView = grid.Controls.Cast<Control>()
+                .Single(control => control.GetType().Name == "PropertyGridView");
+            TextBox editor = new()
+            {
+                Font = new Font(SystemFonts.MessageBoxFont.FontFamily, 7f)
+            };
+            gridView.Controls.Add(editor);
+
+            Assert.That(editor.Font.SizeInPoints, Is.EqualTo(gridFont.SizeInPoints));
         }
 
         private sealed class ExampleSettings

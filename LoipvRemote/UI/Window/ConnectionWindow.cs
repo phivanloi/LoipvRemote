@@ -134,7 +134,7 @@ namespace LoipvRemote.UI.Window
                 {
                     Tag = connectionInfo,
                     DockAreas = DockAreas.Document | DockAreas.Float,
-                    Icon = ConnectionIcon.FromString(connectionInfo.Icon),
+                    Icon = ConnectionIcon.FromString(ConnectionIcon.GetConnectionDisplayIcon(connectionInfo.Icon)),
                     TabText = titleText,
                     TabPageContextMenuStrip = cmenTab
                 };
@@ -424,6 +424,13 @@ namespace LoipvRemote.UI.Window
             InterfaceControl ic = GetInterfaceControl();
             if (ic?.Info == null) return;
             FrmMain.Default.SelectedConnection = ic.Info;
+
+            foreach (IDockContent document in connDock.DocumentsToArray())
+            {
+                if (document is not ConnectionTab tab) continue;
+                InterfaceControl candidate = InterfaceControl.FindInterfaceControl(tab);
+                candidate?.RemoteResourceBar?.SetIsActive(ReferenceEquals(candidate, ic));
+            }
         }
 
         #endregion

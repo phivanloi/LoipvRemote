@@ -4,6 +4,7 @@ using System;
 using System.Drawing;
 using System.Windows.Forms;
 using LoipvRemote.UI.Tabs;
+using LoipvRemote.UI.Controls;
 using WeifenLuo.WinFormsUI.Docking;
 using System.Runtime.Versioning;
 
@@ -19,6 +20,18 @@ namespace LoipvRemote.Connection
         public ConnectionInfo OriginalInfo { get; set; }
         // in case the connection is through a SSH tunnel the Info of the SSHTunnelConnection is also saved for reference in log messages etc.
         public ConnectionInfo SSHTunnelInfo { get; set; }
+        public RemoteResourceBar? RemoteResourceBar { get; }
+
+        internal Rectangle RemoteContentBounds
+        {
+            get
+            {
+                Rectangle bounds = ClientRectangle;
+                if (RemoteResourceBar?.Visible == true)
+                    bounds.Height = Math.Max(0, bounds.Height - RemoteResourceBar.Height);
+                return bounds;
+            }
+        }
 
 
         public InterfaceControl(Control parent, ProtocolBase protocol, ConnectionInfo info)
@@ -33,6 +46,13 @@ namespace LoipvRemote.Connection
                 Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top;
                 InitializeComponent();
                 ImeMode = ImeMode.On;
+
+                if (Info.Protocol == ProtocolType.SSH2)
+                {
+                    RemoteResourceBar = new RemoteResourceBar(Info);
+                    Controls.Add(RemoteResourceBar);
+                    RemoteResourceBar.BringToFront();
+                }
 
                 // Enable custom painting for border
                 this.Paint += InterfaceControl_Paint;

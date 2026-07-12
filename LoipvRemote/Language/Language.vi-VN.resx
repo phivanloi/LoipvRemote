@@ -2694,4 +2694,43 @@ Kênh hàng đêm bao gồm Alpha, Beta và Ứng viên phát hành.</value>
   <data name="OpenAllSelectedConnectionsWithEnter" xml:space="preserve">
     <value>Mở tất cả các kết nối đã chọn bằng Enter</value>
   </data>
+  <data name="RemoteResourceStatusConnection" xml:space="preserve">
+    <value>SSH: {0}</value>
+  </data>
+  <data name="RemoteResourceStatusPaused" xml:space="preserve">
+    <value>Tạm dừng giám sát tài nguyên SSH</value>
+  </data>
+  <data name="RemoteResourceStatusConnecting" xml:space="preserve">
+    <value>Đang kết nối kênh giám sát SSH</value>
+  </data>
+  <data name="RemoteResourceStatusMonitoring" xml:space="preserve">
+    <value>Đang giám sát tài nguyên máy từ xa</value>
+  </data>
+  <data name="RemoteResourceStatusHostKeyUnavailable" xml:space="preserve">
+    <value>PuTTYNG chưa có host key tin cậy để giám sát SSH</value>
+  </data>
+  <data name="RemoteResourceStatusAuthenticationUnavailable" xml:space="preserve">
+    <value>Giám sát SSH cần tên đăng nhập và mật khẩu trực tiếp của kết nối</value>
+  </data>
+  <data name="RemoteResourceStatusUnavailable" xml:space="preserve">
+    <value>Không thể lấy số liệu SSH</value>
+  </data>
+  <data name="RemoteResourceTooltipCpu" xml:space="preserve">
+    <value>Mức dùng CPU của máy từ xa</value>
+  </data>
+  <data name="RemoteResourceTooltipMemory" xml:space="preserve">
+    <value>RAM đã dùng / tổng RAM</value>
+  </data>
+  <data name="RemoteResourceTooltipDisk" xml:space="preserve">
+    <value>Dung lượng ổ đĩa đã dùng</value>
+  </data>
+  <data name="RemoteResourceTooltipReceive" xml:space="preserve">
+    <value>Lưu lượng nhận của máy từ xa</value>
+  </data>
+  <data name="RemoteResourceTooltipTransmit" xml:space="preserve">
+    <value>Lưu lượng gửi của máy từ xa</value>
+  </data>
+  <data name="RemoteResourceTooltipUptime" xml:space="preserve">
+    <value>Thời gian máy từ xa đã hoạt động</value>
+  </data>
 </root>

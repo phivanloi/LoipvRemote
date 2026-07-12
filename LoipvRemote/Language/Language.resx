@@ -2753,4 +2753,43 @@ Nightly Channel includes Alphas, Betas &amp; Release Candidates.</value>
   <data name="OpenAllSelectedConnectionsWithEnter" xml:space="preserve">
     <value>Open all selected connections with Enter</value>
   </data>
+  <data name="RemoteResourceStatusConnection" xml:space="preserve">
+    <value>SSH: {0}</value>
+  </data>
+  <data name="RemoteResourceStatusPaused" xml:space="preserve">
+    <value>SSH resource monitoring paused</value>
+  </data>
+  <data name="RemoteResourceStatusConnecting" xml:space="preserve">
+    <value>Connecting SSH monitoring channel</value>
+  </data>
+  <data name="RemoteResourceStatusMonitoring" xml:space="preserve">
+    <value>Monitoring remote resources</value>
+  </data>
+  <data name="RemoteResourceStatusHostKeyUnavailable" xml:space="preserve">
+    <value>PuTTYNG has no trusted host key for SSH monitoring</value>
+  </data>
+  <data name="RemoteResourceStatusAuthenticationUnavailable" xml:space="preserve">
+    <value>SSH monitoring requires a direct connection username and password</value>
+  </data>
+  <data name="RemoteResourceStatusUnavailable" xml:space="preserve">
+    <value>Unable to retrieve SSH metrics</value>
+  </data>
+  <data name="RemoteResourceTooltipCpu" xml:space="preserve">
+    <value>Remote CPU usage</value>
+  </data>
+  <data name="RemoteResourceTooltipMemory" xml:space="preserve">
+    <value>Used / total RAM</value>
+  </data>
+  <data name="RemoteResourceTooltipDisk" xml:space="preserve">
+    <value>Used disk space</value>
+  </data>
+  <data name="RemoteResourceTooltipReceive" xml:space="preserve">
+    <value>Remote receive traffic</value>
+  </data>
+  <data name="RemoteResourceTooltipTransmit" xml:space="preserve">
+    <value>Remote transmit traffic</value>
+  </data>
+  <data name="RemoteResourceTooltipUptime" xml:space="preserve">
+    <value>Remote uptime</value>
+  </data>
 </root>

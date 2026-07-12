@@ -119,6 +119,7 @@ namespace LoipvRemote.Connection.Protocol
                 // Use Dock.Fill to respect padding (e.g., for connection frame color)
                 Control.Dock = DockStyle.Fill;
                 _interfaceControl.Controls.Add(Control);
+                _interfaceControl.RemoteResourceBar?.BringToFront();
 
                 return true;
             }
@@ -133,7 +134,7 @@ namespace LoipvRemote.Connection.Protocol
         {
             if (InterfaceControl.Info.Protocol == ProtocolType.RDP) return false;
             if (ConnectedEvent == null) return false;
-            ConnectedEvent(this);
+            Event_Connected(this);
             return true;
         }
 
@@ -322,6 +323,7 @@ namespace LoipvRemote.Connection.Protocol
 
         protected void Event_Closed(object sender)
         {
+            InterfaceControl?.RemoteResourceBar?.Stop();
             ClosedEvent?.Invoke(sender);
         }
 
@@ -332,6 +334,7 @@ namespace LoipvRemote.Connection.Protocol
 
         protected void Event_Connected(object sender)
         {
+            InterfaceControl?.RemoteResourceBar?.Start();
             ConnectedEvent?.Invoke(sender);
         }
 

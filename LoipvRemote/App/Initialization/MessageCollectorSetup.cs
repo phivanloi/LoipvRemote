@@ -35,7 +35,6 @@ namespace LoipvRemote.App.Initialization
             messageWriterList.Add(BuildDebugConsoleWriter());
 #endif
             messageWriterList.Add(BuildTextLogMessageWriter());
-            messageWriterList.Add(BuildNotificationPanelMessageWriter());
             messageWriterList.Add(BuildPopupMessageWriter());
         }
 
@@ -52,23 +51,11 @@ namespace LoipvRemote.App.Initialization
                 );
         }
 
-        private static IMessageWriter BuildNotificationPanelMessageWriter()
-        {
-            return new OnlyLogMessageFilter(
-                new MessageTypeFilterDecorator(
-                    new NotificationPanelMessageFilteringOptions(),
-                    new MessageFocusDecorator(AppWindows.ErrorsForm,
-                    new NotificationPanelSwitchOnMessageFilteringOptions(),
-                    new NotificationPanelMessageWriter(AppWindows.ErrorsForm))
-                    )
-                );
-        }
-
         private static IMessageWriter BuildPopupMessageWriter()
         {
             return new OnlyLogMessageFilter(
                 new MessageTypeFilterDecorator(
-                    new PopupMessageFilteringOptions(),
+                    new AlertMessageFilteringOptions(),
                     new PopupMessageWriter())
                 );
         }

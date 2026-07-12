@@ -60,19 +60,16 @@ namespace LoipvRemote.UI
             return $"Connection_{icon}_{status}";
         }
 
-        private const string DefaultConnectionIcon = "";
+        private const string DefaultConnectionIcon = ConnectionIcon.LoipvRemoteIconName;
 
         private string GetConnectionIcon(ConnectionInfo connection)
         {
-            if (string.IsNullOrEmpty(connection.Icon))
-            {
-                return DefaultConnectionIcon;
-            }
+            string iconName = ConnectionIcon.GetConnectionDisplayIcon(connection.Icon);
 
             bool connected = connection.OpenConnections.Count > 0;
-            string name = BuildConnectionIconName(connection.Icon, connected);
+            string name = BuildConnectionIconName(iconName, connected);
             if (ImageList.Images.ContainsKey(name)) return name;
-            Icon image = ConnectionIcon.FromString(connection.Icon);
+            Icon image = ConnectionIcon.FromString(iconName);
             if (image == null)
             {
                 return DefaultConnectionIcon;
@@ -81,8 +78,8 @@ namespace LoipvRemote.UI
             using Bitmap source = image.ToBitmap();
             Bitmap normal = IconService.Resize(source, _uiScaleManager.Metrics.IconSize);
             Bitmap connectedImage = Overlay(image, Properties.Resources.ConnectedOverlay, _uiScaleManager.Metrics.IconSize);
-            ImageList.Images.Add(BuildConnectionIconName(connection.Icon, false), normal);
-            ImageList.Images.Add(BuildConnectionIconName(connection.Icon, true), connectedImage);
+            ImageList.Images.Add(BuildConnectionIconName(iconName, false), normal);
+            ImageList.Images.Add(BuildConnectionIconName(iconName, true), connectedImage);
             return name;
         }
 

@@ -77,8 +77,6 @@ namespace LoipvRemote.Config.Settings
                 if (persistString == typeof(ConnectionTreeWindow).ToString())
                     return AppWindows.TreeForm;
 
-                if (persistString == typeof(ErrorAndInfoWindow).ToString())
-                    return AppWindows.ErrorsForm;
             }
             catch (Exception ex)
             {

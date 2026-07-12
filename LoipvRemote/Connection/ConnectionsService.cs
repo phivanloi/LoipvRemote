@@ -26,8 +26,10 @@ namespace LoipvRemote.Connection
     [SupportedOSPlatform("windows")]
     public class ConnectionsService(PuttySessionsManager puttySessionsManager)
     {
+        private const int AsyncSaveCoalesceDelayMilliseconds = 75;
         private static readonly object SaveLock = new();
         private readonly PuttySessionsManager _puttySessionsManager = puttySessionsManager ?? throw new ArgumentNullException(nameof(puttySessionsManager));
+        private readonly AsyncSaveRequestQueue _asyncSaveRequestQueue = new();
         private readonly IDataProvider<string> _localConnectionPropertiesDataProvider = new FileDataProvider(Path.Combine(SettingsFileInfo.SettingsPath, SettingsFileInfo.LocalConnectionProperties));
         private readonly LocalConnectionPropertiesXmlSerializer _localConnectionPropertiesSerializer = new LocalConnectionPropertiesXmlSerializer();
         private bool _batchingSaves = false;
@@ -262,7 +264,7 @@ namespace LoipvRemote.Connection
                         return;
                     }
 
-                Runtime.MessageCollector.AddMessage(MessageClass.InformationMsg, "Saving connections...");
+                Runtime.MessageCollector.AddMessage(MessageClass.InformationMsg, "Saving connections...", onlyLog: true);
                 RemoteConnectionsSyncronizer?.Disable();
 
                 bool previouslyUsingDatabase = UsingDatabase;
@@ -314,15 +316,31 @@ namespace LoipvRemote.Connection
                 return;
             }
 
-            Thread t = new(() =>
-            {
-                lock (SaveLock)
-                {
-                    SaveConnections(ConnectionTreeModel, UsingDatabase, new SaveFilter(), ConnectionFileName, propertyNameTrigger: propertyNameTrigger);
-                }
-            });
+            if (!_asyncSaveRequestQueue.Queue(propertyNameTrigger))
+                return;
+
+            Thread t = new(ProcessAsyncSaveRequests);
             t.SetApartmentState(ApartmentState.STA);
             t.Start();
+        }
+
+        private void ProcessAsyncSaveRequests()
+        {
+            while (true)
+            {
+                Thread.Sleep(AsyncSaveCoalesceDelayMilliseconds);
+                if (_asyncSaveRequestQueue.TryTake(out string propertyNameTrigger))
+                {
+                    lock (SaveLock)
+                    {
+                        SaveConnections(ConnectionTreeModel, UsingDatabase, new SaveFilter(), ConnectionFileName,
+                            propertyNameTrigger: propertyNameTrigger);
+                    }
+                }
+
+                if (!_asyncSaveRequestQueue.CompleteSaveAndHasPendingRequest())
+                    return;
+            }
         }
 
         private bool HasExpectedFileVersion(string connectionFileName)

@@ -198,7 +198,7 @@ namespace LoipvRemote.UI.Menu
 
         internal void mMenView_DropDownOpening(object sender, EventArgs e)
         {
-            _mMenViewErrorsAndInfos.Checked = !AppWindows.ErrorsForm.IsHidden;
+            _mMenViewErrorsAndInfos.Visible = false;
             _mMenViewLockToolbars.Checked = Settings.Default.LockToolbars;
 
             _mMenViewExtAppsToolbar.Checked = TsExternalTools.Visible;

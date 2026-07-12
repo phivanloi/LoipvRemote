@@ -43,6 +43,72 @@ namespace LoipvRemoteTests.UI.Controls
 
         [Test]
         [Apartment(ApartmentState.STA)]
+        public void InputFontIsRestoredWhenWinFormsChangesItAfterFocus()
+        {
+            using MrngTextBox textBox = new();
+            UiScaleManager.Instance.Apply(textBox);
+            float expectedSize = textBox.Font.SizeInPoints;
+
+            textBox.Font = new Font(textBox.Font.FontFamily, 7f, textBox.Font.Style);
+
+            Assert.That(textBox.Font.SizeInPoints, Is.EqualTo(expectedSize));
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
+        public void DropdownFontIsRestoredWhenWinFormsChangesItAfterHover()
+        {
+            using MrngComboBox comboBox = new();
+            UiScaleManager.Instance.Apply(comboBox);
+            float expectedSize = comboBox.Font.SizeInPoints;
+
+            comboBox.Font = new Font(comboBox.Font.FontFamily, 7f, comboBox.Font.Style);
+
+            Assert.That(comboBox.Font.SizeInPoints, Is.EqualTo(expectedSize));
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
+        public void DropdownItemsUseTheSameTypographyAsTheClosedInput()
+        {
+            using MrngComboBox comboBox = new();
+            UiScaleManager.Instance.Apply(comboBox);
+
+            Assert.That(comboBox.ItemHeight,
+                Is.EqualTo(InputControlMetrics.ComboBoxItemHeight(comboBox.Font.Height)));
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
+        public void InputAndLabelUseTheSameBodyTypographyAfterHover()
+        {
+            using MrngLabel label = new();
+            using TestableComboBox comboBox = new();
+            UiScaleManager.Instance.Apply(label);
+            UiScaleManager.Instance.Apply(comboBox);
+
+            comboBox.RaiseMouseEnter();
+
+            Assert.That(comboBox.Font.SizeInPoints, Is.EqualTo(label.Font.SizeInPoints));
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
+        public void IpInputKeepsItsVisibleOctetsBoundToTheScaledControlFont()
+        {
+            using MrngIpTextBox ipInput = new() { Font = new Font(SystemFonts.MessageBoxFont.FontFamily, 12f) };
+            UiScaleManager.Instance.Apply(ipInput);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(ipInput.Controls[0].Controls.Contains(ipInput.Octet1), Is.True);
+                Assert.That(ipInput.Octet1.Font.SizeInPoints, Is.EqualTo(ipInput.Font.SizeInPoints));
+                Assert.That(ipInput.Height, Is.EqualTo(InputControlMetrics.InputHeight(ipInput.Font.Height)));
+            });
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
         public void NativeSmallDefaultFontDoesNotMakeAnInputUseTheSmallTypographyRole()
         {
             using TextBox textBox = new()
@@ -77,6 +143,11 @@ namespace LoipvRemoteTests.UI.Controls
         }
 
         private sealed class TestableNumericUpDown : MrngNumericUpDown
+        {
+            public void RaiseMouseEnter() => OnMouseEnter(System.EventArgs.Empty);
+        }
+
+        private sealed class TestableComboBox : MrngComboBox
         {
             public void RaiseMouseEnter() => OnMouseEnter(System.EventArgs.Empty);
         }

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using LoipvRemote.Container;
 using LoipvRemote.Connection;
 using LoipvRemote.UI.Forms;
 using LoipvRemote.Properties;
@@ -47,7 +48,9 @@ namespace LoipvRemote.Config.Connections
         private void SaveConnectionOnEdit(string propertyName = "")
         {
             //OBSOLETE: LoipvRemote.Settings.Default.SaveConnectionsAfterEveryEdit is obsolete and should be removed in a future release
-            if (Properties.OptionsBackupPage.Default.SaveConnectionsAfterEveryEdit || (Properties.OptionsBackupPage.Default.SaveConnectionsFrequency == (int)ConnectionsBackupFrequencyEnum.OnEdit))
+            if (ShouldPersistImmediately(propertyName) ||
+                Properties.OptionsBackupPage.Default.SaveConnectionsAfterEveryEdit ||
+                Properties.OptionsBackupPage.Default.SaveConnectionsFrequency == (int)ConnectionsBackupFrequencyEnum.OnEdit)
             {
                 if (FrmMain.Default.IsClosing)
                     return;
@@ -55,5 +58,8 @@ namespace LoipvRemote.Config.Connections
                 _connectionsService.SaveConnectionsAsync(propertyName);
             }
         }
+
+        internal static bool ShouldPersistImmediately(string? propertyName) =>
+            propertyName == nameof(ContainerInfo.IsExpanded);
     }
 }

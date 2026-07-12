@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
 using System.IO;
@@ -25,6 +26,8 @@ namespace LoipvRemote.UI.Controls.ConnectionInfoPropertyGrid {
     public partial class ConnectionInfoPropertyGrid : FilteredPropertyGrid.FilteredPropertyGrid {
         private readonly Dictionary<Type, IEnumerable<PropertyInfo>> _propertyCache = [];
         private readonly HashSet<Control> _editorControls = [];
+        private readonly Timer _editorFontTimer = new() { Interval = 50 };
+        private bool _synchronizingEditorFont;
         private ConnectionInfo _selectedConnectionInfo;
         private PropertyMode _propertyMode;
 
@@ -84,6 +87,8 @@ namespace LoipvRemote.UI.Controls.ConnectionInfoPropertyGrid {
             InitializeComponent();
             PropertyValueChanged += pGrid_PropertyValueChanged;
             SelectedGridItemChanged += (_, _) => QueueEditorFontSynchronization();
+            _editorFontTimer.Tick += (_, _) => SynchronizeFocusedNativeEditorFont();
+            Disposed += (_, _) => _editorFontTimer.Dispose();
         }
 
         protected override void OnFontChanged(EventArgs e)
@@ -113,6 +118,21 @@ namespace LoipvRemote.UI.Controls.ConnectionInfoPropertyGrid {
         {
             base.OnEnter(e);
             QueueEditorFontSynchronization();
+            _editorFontTimer.Start();
+        }
+
+        protected override void OnMouseDown(MouseEventArgs e)
+        {
+            base.OnMouseDown(e);
+            QueueEditorFontSynchronization();
+            _editorFontTimer.Start();
+        }
+
+        protected override void OnKeyDown(KeyEventArgs e)
+        {
+            base.OnKeyDown(e);
+            QueueEditorFontSynchronization();
+            _editorFontTimer.Start();
         }
 
         internal void ApplyScaledRowHeight()
@@ -144,11 +164,41 @@ namespace LoipvRemote.UI.Controls.ConnectionInfoPropertyGrid {
         /// </summary>
         internal static void SynchronizeEditorFonts(Control editorRoot, Font font)
         {
+            SynchronizeEditorFonts(editorRoot, font, []);
+        }
+
+        private static void SynchronizeEditorFonts(Control editorRoot, Font font, HashSet<Control> visited)
+        {
+            if (!visited.Add(editorRoot))
+                return;
+
             if (editorRoot is TextBoxBase or ComboBox or UpDownBase)
                 editorRoot.Font = font;
 
             foreach (Control child in editorRoot.Controls)
-                SynchronizeEditorFonts(child, font);
+                SynchronizeEditorFonts(child, font, visited);
+
+            for (Type? type = editorRoot.GetType(); type != null && type != typeof(Control); type = type.BaseType)
+            {
+                foreach (PropertyInfo property in type.GetProperties(BindingFlags.Instance | BindingFlags.Public |
+                                                                       BindingFlags.NonPublic |
+                                                                       BindingFlags.DeclaredOnly))
+                {
+                    if (!typeof(Control).IsAssignableFrom(property.PropertyType) ||
+                        property.GetIndexParameters().Length != 0 || property.GetMethod == null)
+                        continue;
+
+                    try
+                    {
+                        if (property.GetValue(editorRoot) is Control nativeEditor)
+                            SynchronizeEditorFonts(nativeEditor, font, visited);
+                    }
+                    catch (TargetInvocationException)
+                    {
+                        // Native PropertyGrid fields are implementation details and may not be available yet.
+                    }
+                }
+            }
         }
 
         private void AttachEditorFontHandlers()
@@ -164,6 +214,7 @@ namespace LoipvRemote.UI.Controls.ConnectionInfoPropertyGrid {
 
             control.ControlAdded += EditorControlAdded;
             control.GotFocus += EditorControlGotFocus;
+            control.FontChanged += EditorControlFontChanged;
 
             foreach (Control child in control.Controls)
                 AttachEditorFontHandlers(child);
@@ -181,6 +232,29 @@ namespace LoipvRemote.UI.Controls.ConnectionInfoPropertyGrid {
                 SynchronizeEditorFonts(control, Font);
         }
 
+        private void EditorControlFontChanged(object? sender, EventArgs e)
+        {
+            if (_synchronizingEditorFont || sender is not Control editor ||
+                (editor is not TextBoxBase && editor is not ComboBox && editor is not UpDownBase))
+                return;
+
+            if (editor.Font.Equals(Font))
+                return;
+
+            // PropertyGrid may reset its lazily-created native editor to the
+            // Windows default font after focus. Reapply the grid font at the
+            // point of mutation, not only when the editor is first discovered.
+            _synchronizingEditorFont = true;
+            try
+            {
+                editor.Font = Font;
+            }
+            finally
+            {
+                _synchronizingEditorFont = false;
+            }
+        }
+
         private void QueueEditorFontSynchronization()
         {
             if (IsDisposed || !IsHandleCreated)
@@ -195,6 +269,17 @@ namespace LoipvRemote.UI.Controls.ConnectionInfoPropertyGrid {
                 .FirstOrDefault(control => control.GetType().Name.Equals("PropertyGridView", StringComparison.Ordinal));
             if (gridView != null)
                 SynchronizeEditorFonts(gridView, Font);
+        }
+
+        private void SynchronizeFocusedNativeEditorFont()
+        {
+            if (IsDisposed || !ContainsFocus)
+            {
+                _editorFontTimer.Stop();
+                return;
+            }
+
+            SynchronizeNativeEditorFonts();
         }
 
         private void SetGridObject() {

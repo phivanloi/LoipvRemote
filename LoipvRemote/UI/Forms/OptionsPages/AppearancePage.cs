@@ -25,9 +25,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
         private Label lblUiScale = null!;
         private Label lblUiIcon = null!;
         private Label lblUiDensity = null!;
-        private Label lblUiPreview = null!;
         private Button btnResetUiSizing = null!;
-        private Font? uiPreviewFont;
 
         public AppearancePage()
         {
@@ -196,33 +194,17 @@ namespace LoipvRemote.UI.Forms.OptionsPages
                 Size = new Size(210, 32)
             };
 
-            lblUiPreview = new Label
-            {
-                Name = "lblUiPreview",
-                AutoSize = false,
-                Location = new Point(16, 150),
-                Size = new Size(544, 28),
-                TextAlign = ContentAlignment.MiddleLeft
-            };
-
             groupUiSizing.Controls.AddRange([lblUiFont, cboUiFont, lblUiScale, numUiFontScale, lblScaleUnit,
-                lblUiIcon, numUiIconSize, lblIconUnit, lblUiDensity, cboUiDensity, btnResetUiSizing, lblUiPreview]);
+                lblUiIcon, numUiIconSize, lblIconUnit, lblUiDensity, cboUiDensity, btnResetUiSizing]);
             pnlOptions.Controls.Add(groupUiSizing);
             PositionUiSizingGroup();
             pnlOptions.Layout += (_, _) => PositionUiSizingGroup();
-            Disposed += (_, _) => uiPreviewFont?.Dispose();
-
-            numUiFontScale.ValueChanged += (_, _) => UpdateUiPreview();
-            numUiIconSize.ValueChanged += (_, _) => UpdateUiPreview();
-            cboUiFont.SelectedIndexChanged += (_, _) => UpdateUiPreview();
-            cboUiDensity.SelectedIndexChanged += (_, _) => UpdateUiPreview();
             btnResetUiSizing.Click += (_, _) =>
             {
                 cboUiFont.SelectedItem = "System";
                 numUiFontScale.Value = UiPreferences.DefaultFontScalePercent;
                 numUiIconSize.Value = UiPreferences.DefaultIconSize;
                 cboUiDensity.SelectedItem = UiDensity.Standard.ToString();
-                UpdateUiPreview();
             };
         }
 
@@ -242,20 +224,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
 
         private void UpdateUiPreview()
         {
-            if (lblUiPreview == null || numUiFontScale == null) return;
-            UiDensity density = Enum.TryParse(Convert.ToString(cboUiDensity.SelectedItem), out UiDensity parsed)
-                ? parsed
-                : UiDensity.Standard;
-            UiPreferences preferences = new(Convert.ToString(cboUiFont.SelectedItem), Decimal.ToInt32(numUiFontScale.Value),
-                Decimal.ToInt32(numUiIconSize.Value), density);
-            UiMetrics metrics = new(preferences);
-            string family = preferences.FontFamily == "System" ? SystemFonts.MessageBoxFont.Name : preferences.FontFamily;
-            Font replacement = new(family, metrics.BodyFontPoints, FontStyle.Regular, GraphicsUnit.Point);
-            Font? previous = uiPreviewFont;
-            uiPreviewFont = replacement;
-            lblUiPreview.Font = replacement;
-            previous?.Dispose();
-            lblUiPreview.Text = $"LoipvRemote — Tiếng Việt · {preferences.FontScalePercent}% · icon {preferences.IconSize}px · {density}";
+            // Interface sizing is applied after saving; no redundant preview text is shown here.
         }
 
         private static Label NewLabel(string text, int x, int y) => new()

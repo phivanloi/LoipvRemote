@@ -87,7 +87,7 @@ namespace LoipvRemote.UI.Window
             this.ipStart.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.ipStart.Location = new System.Drawing.Point(133, 3);
             this.ipStart.Name = "ipStart";
-            this.ipStart.Size = new System.Drawing.Size(124, 18);
+            this.ipStart.Size = new System.Drawing.Size(154, 28);
             this.ipStart.TabIndex = 1;
             this.ipStart.ToolTipText = "";
             //
@@ -96,7 +96,7 @@ namespace LoipvRemote.UI.Window
             this.ipEnd.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.ipEnd.Location = new System.Drawing.Point(133, 27);
             this.ipEnd.Name = "ipEnd";
-            this.ipEnd.Size = new System.Drawing.Size(124, 18);
+            this.ipEnd.Size = new System.Drawing.Size(154, 28);
             this.ipEnd.TabIndex = 2;
             this.ipEnd.ToolTipText = "";
             //
@@ -326,7 +326,7 @@ namespace LoipvRemote.UI.Window
             0,
             0});
             this.numericSelectorTimeout.Name = "numericSelectorTimeout";
-            this.numericSelectorTimeout.Size = new System.Drawing.Size(67, 22);
+            this.numericSelectorTimeout.Size = new System.Drawing.Size(84, 28);
             this.numericSelectorTimeout.TabIndex = 5;
             this.numericSelectorTimeout.Value = new decimal(new int[] {
             5,
@@ -355,7 +355,7 @@ namespace LoipvRemote.UI.Window
             0,
             0});
             this.portEnd.Name = "portEnd";
-            this.portEnd.Size = new System.Drawing.Size(67, 22);
+            this.portEnd.Size = new System.Drawing.Size(84, 28);
             this.portEnd.TabIndex = 4;
             this.portEnd.Value = new decimal(new int[] {
             65535,
@@ -374,7 +374,7 @@ namespace LoipvRemote.UI.Window
             0,
             0});
             this.portStart.Name = "portStart";
-            this.portStart.Size = new System.Drawing.Size(67, 22);
+            this.portStart.Size = new System.Drawing.Size(84, 28);
             this.portStart.TabIndex = 3;
             this.portStart.Enter += new System.EventHandler(this.portStart_Enter);
             //
@@ -400,12 +400,12 @@ namespace LoipvRemote.UI.Window
             this.pnlIp.Location = new System.Drawing.Point(3, 3);
             this.pnlIp.Name = "pnlIp";
             this.pnlIp.RowCount = 5;
-            this.pnlIp.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 24F));
-            this.pnlIp.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 24F));
-            this.pnlIp.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 24F));
-            this.pnlIp.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 24F));
-            this.pnlIp.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 24F));
-            this.pnlIp.Size = new System.Drawing.Size(878, 129);
+            this.pnlIp.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 32F));
+            this.pnlIp.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 32F));
+            this.pnlIp.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 32F));
+            this.pnlIp.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 32F));
+            this.pnlIp.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 32F));
+            this.pnlIp.Size = new System.Drawing.Size(878, 169);
             this.pnlIp.TabIndex = 103;
             //
             // btnScan
@@ -478,7 +478,7 @@ namespace LoipvRemote.UI.Window
             this.pnlMain.Location = new System.Drawing.Point(0, 0);
             this.pnlMain.Name = "pnlMain";
             this.pnlMain.RowCount = 4;
-            this.pnlMain.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 135F));
+            this.pnlMain.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 175F));
             this.pnlMain.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 30F));
             this.pnlMain.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.pnlMain.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 60F));

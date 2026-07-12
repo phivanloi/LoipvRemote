@@ -4,6 +4,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.Versioning;
 using System.Windows.Forms;
+using LoipvRemote.UI.Controls;
 
 namespace LoipvRemote.UI.DesignSystem
 {
@@ -16,9 +17,20 @@ namespace LoipvRemote.UI.DesignSystem
             public FontStyle Style { get; } = style;
         }
 
+        private sealed class InputTypographyBinding
+        {
+            public bool IsRestoring { get; set; }
+        }
+
+        private sealed class NativeInputEditorBinding
+        {
+            public bool IsRestoring { get; set; }
+        }
+
         private static readonly Lazy<UiScaleManager> LazyInstance = new(() => new UiScaleManager());
         private readonly ConditionalWeakTable<Control, TypographyState> _typographyStates = new();
-        private readonly ConditionalWeakTable<Control, object> _inputTypographyBindings = new();
+        private readonly ConditionalWeakTable<Control, InputTypographyBinding> _inputTypographyBindings = new();
+        private readonly ConditionalWeakTable<Control, NativeInputEditorBinding> _nativeInputEditorBindings = new();
 
         private UiScaleManager()
         {
@@ -112,6 +124,7 @@ namespace LoipvRemote.UI.DesignSystem
                 case ComboBox comboBox:
                     KeepInputTypographyStable(comboBox);
                     comboBox.Height = InputControlMetrics.InputHeight(comboBox.Font.Height);
+                    comboBox.ItemHeight = InputControlMetrics.ComboBoxItemHeight(comboBox.Font.Height);
                     SynchronizeNativeInputEditorFont(comboBox);
                     break;
                 case NumericUpDown numericUpDown:
@@ -142,7 +155,9 @@ namespace LoipvRemote.UI.DesignSystem
                 EventHandler restoreTypography = (_, _) => RestoreInputTypography(control);
                 control.Enter += restoreTypography;
                 control.MouseEnter += restoreTypography;
-                return new object();
+                control.FontChanged += restoreTypography;
+                control.ControlAdded += (_, _) => SynchronizeNativeInputEditorFont(control);
+                return new InputTypographyBinding();
             });
         }
 
@@ -150,16 +165,59 @@ namespace LoipvRemote.UI.DesignSystem
         {
             if (input.IsDisposed) return;
 
-            ApplyTypography(input);
-            ApplyMetrics(input);
+            InputTypographyBinding binding = _inputTypographyBindings.GetValue(input,
+                _ => new InputTypographyBinding());
+            if (binding.IsRestoring) return;
+
+            binding.IsRestoring = true;
+            try
+            {
+                ApplyTypography(input);
+                ApplyMetrics(input);
+            }
+            finally
+            {
+                binding.IsRestoring = false;
+            }
         }
 
-        private static void SynchronizeNativeInputEditorFont(Control input)
+        private void SynchronizeNativeInputEditorFont(Control input)
         {
             foreach (Control child in input.Controls)
             {
                 if (child is TextBoxBase)
-                    child.Font = input.Font;
+                    KeepNativeInputEditorTypographyStable(child, input);
+
+                SynchronizeNativeInputEditorFont(child);
+            }
+        }
+
+        private void KeepNativeInputEditorTypographyStable(Control editor, Control owner)
+        {
+            NativeInputEditorBinding binding = _nativeInputEditorBindings.GetValue(editor, control =>
+            {
+                NativeInputEditorBinding result = new();
+                control.FontChanged += (_, _) => RestoreNativeInputEditorFont(control, owner, result);
+                return result;
+            });
+
+            RestoreNativeInputEditorFont(editor, owner, binding);
+        }
+
+        private static void RestoreNativeInputEditorFont(Control editor, Control owner,
+                                                          NativeInputEditorBinding binding)
+        {
+            if (editor.IsDisposed || owner.IsDisposed || binding.IsRestoring || editor.Font.Equals(owner.Font))
+                return;
+
+            binding.IsRestoring = true;
+            try
+            {
+                editor.Font = owner.Font;
+            }
+            finally
+            {
+                binding.IsRestoring = false;
             }
         }
 
@@ -194,7 +252,7 @@ namespace LoipvRemote.UI.DesignSystem
 
         private static bool ShouldSkipChildren(Control control)
         {
-            if (control is ComboBox or NumericUpDown or PropertyGrid)
+            if (control is ComboBox or NumericUpDown or PropertyGrid or MrngIpTextBox)
                 return true;
 
             string typeName = control.GetType().FullName ?? string.Empty;

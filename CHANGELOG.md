@@ -1,5 +1,37 @@
 # Changelog
 
+## LoipvRemote 2.0.29.0 (Internal)
+
+- Language dùng ComboBox chuẩn để tránh font bị vẽ lại khi hover; PropertyGrid đồng bộ editor native trong lúc focus.
+
+## LoipvRemote 2.0.28.0 (Internal)
+
+- Đồng bộ font mặc định của nhãn tùy biến với textbox và dropdown, giữ cùng cỡ chữ cả khi hover/focus.
+
+## LoipvRemote 2.0.27.0 (Internal)
+
+- Đồng bộ cỡ chữ và chiều cao item của dropdown; sửa textbox IP/Port Scan co giãn theo font và xóa dòng preview kích thước giao diện dư thừa.
+
+## LoipvRemote 2.0.26.0 (Internal)
+
+- Khóa font của textbox, dropdown và editor native sau mọi thay đổi do hover/focus; căn giữa lại dấu tích và nhãn checkbox.
+
+## LoipvRemote 2.0.25.0 (Internal)
+
+- PropertyGrid giữ nguyên cỡ chữ đã cấu hình cho input và dropdown cả sau khi editor native nhận focus.
+
+## LoipvRemote 2.0.24.0 (Internal)
+
+- Giữ đủ bốn menu chính, gồm `Công cụ`, khi top menu dùng chiều cao rút gọn và ngôn ngữ tiếng Việt.
+
+## LoipvRemote 2.0.23.0 (Internal)
+
+- Giảm 20% chiều cao top menu, giữ nguyên font, icon và chiều rộng nút điều khiển cửa sổ.
+
+## LoipvRemote 2.0.22.0 (Internal)
+
+- Luôn lưu trạng thái mở/đóng folder của Connections khi người dùng thay đổi, không còn phụ thuộc thiết lập backup/save connection.
+
 ## LoipvRemote 2.0.21.0 (Internal)
 
 - Thêm nút `Copy` có icon trong popup `Show Password`; password chỉ được sao chép vào clipboard khi người dùng bấm nút này.

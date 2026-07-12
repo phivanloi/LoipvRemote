@@ -24,6 +24,24 @@ namespace LoipvRemoteTests.UI.Controls
 
 	    [Test]
 	    [Apartment(ApartmentState.STA)]
+	    public void LoadingTreePreservesCollapsedFolderState()
+	    {
+	        ConnectionTreeModel connectionTreeModel = new();
+	        RootNodeInfo root = new(RootNodeType.Connection) { IsExpanded = true };
+	        ContainerInfo collapsedFolder = new() { IsExpanded = false };
+	        collapsedFolder.AddChild(new ConnectionInfo());
+	        root.AddChild(collapsedFolder);
+	        connectionTreeModel.AddRootNode(root);
+
+	        _connectionTree.PostSetupActions = [new PreviouslyOpenedFolderExpander(), new RootNodeExpander()];
+	        _connectionTree.ConnectionTreeModel = connectionTreeModel;
+
+	        Assert.That(collapsedFolder.IsExpanded, Is.False);
+	        Assert.That(_connectionTree.IsExpanded(collapsedFolder), Is.False);
+	    }
+
+	    [Test]
+	    [Apartment(ApartmentState.STA)]
 	    public void CannotAddConnectionToPuttySessionNode()
 	    {
 	        var connectionTreeModel = new ConnectionTreeModel();

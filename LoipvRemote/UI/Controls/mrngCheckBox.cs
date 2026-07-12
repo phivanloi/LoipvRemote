@@ -113,25 +113,27 @@ namespace LoipvRemote.UI.Controls
             Size checkboxSize = new(glyphSize, glyphSize);
             int checkboxYCoord = Math.Max(0, (Height - checkboxSize.Height) / 2);
             int textXCoord = checkboxSize.Width + 8;
+            Rectangle boxRect = new(0, checkboxYCoord, checkboxSize.Width, checkboxSize.Height);
 
             using (Pen p = new(checkBorder))
             {
-                Rectangle boxRect = new(0, checkboxYCoord, checkboxSize.Width, checkboxSize.Height);
                 e.Graphics.FillRectangle(new SolidBrush(back), boxRect);
                 e.Graphics.DrawRectangle(p, boxRect);
             }
 
             if (Checked)
             {
-                // | \uE001 | &#xE001; |  |  is the tick/check mark and it exists in Segoe UI Symbol at least...
-                using Font checkmarkFont = new("Segoe UI Symbol", Math.Max(8f, glyphSize * 0.75f));
-                using SolidBrush glyphBrush = new(glyph);
-                e.Graphics.DrawString("\uE001", checkmarkFont, glyphBrush, -3, checkboxYCoord - 3);
+                float checkmarkPoints = Math.Max(8f, (glyphSize - 2) * 72f / e.Graphics.DpiY);
+                using Font checkmarkFont = new("Segoe UI Symbol", checkmarkPoints, FontStyle.Regular, GraphicsUnit.Point);
+                TextRenderer.DrawText(e.Graphics, "\u2713", checkmarkFont, boxRect, glyph,
+                                      TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter |
+                                      TextFormatFlags.NoPadding | TextFormatFlags.SingleLine);
             }
 
             Rectangle textRect = new(textXCoord, 0, Math.Max(0, Width - textXCoord), Height);
             TextRenderer.DrawText(e.Graphics, Text, Font, textRect, fore, parentBackColor,
-                                  TextFormatFlags.PathEllipsis);
+                                  TextFormatFlags.PathEllipsis | TextFormatFlags.VerticalCenter |
+                                  TextFormatFlags.SingleLine);
         }
 
         private void InitializeComponent()

@@ -75,5 +75,12 @@ namespace LoipvRemoteTests.UI.DesignSystem
         {
             Assert.That(InputControlMetrics.CheckBoxGlyphSize(textHeight), Is.EqualTo(expectedGlyphSize));
         }
+
+        [TestCase(14, 22)]
+        [TestCase(18, 26)]
+        public void ComboBoxItemHeightTracksTypography(int textHeight, int expectedHeight)
+        {
+            Assert.That(InputControlMetrics.ComboBoxItemHeight(textHeight), Is.EqualTo(expectedHeight));
+        }
     }
 }

@@ -35,7 +35,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
         private void InitializeComponent()
         {
             lblLanguageRestartRequired = new MrngLabel();
-            cboLanguage = new MrngComboBox();
+            cboLanguage = new System.Windows.Forms.ComboBox();
             lblLanguage = new MrngLabel();
             chkShowFullConnectionsFilePathInTitle = new MrngCheckBox();
             chkShowDescriptionTooltipsInTree = new MrngCheckBox();
@@ -58,7 +58,6 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             // cboLanguage
             //
-            cboLanguage._mice = MrngComboBox.MouseState.HOVER;
             cboLanguage.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             cboLanguage.FormattingEnabled = true;
             cboLanguage.Location = new System.Drawing.Point(3, 27);
@@ -179,7 +178,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
         }
 
         internal Controls.MrngLabel lblLanguageRestartRequired;
-        internal MrngComboBox cboLanguage;
+        internal System.Windows.Forms.ComboBox cboLanguage;
         internal Controls.MrngLabel lblLanguage;
         internal MrngCheckBox chkShowFullConnectionsFilePathInTitle;
         internal MrngCheckBox chkShowDescriptionTooltipsInTree;

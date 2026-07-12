@@ -2,6 +2,7 @@ using System.Drawing;
 using System.Runtime.Versioning;
 using System.Windows.Forms;
 using LoipvRemote.Themes;
+using LoipvRemote.UI.DesignSystem;
 
 namespace LoipvRemote.UI.Controls
 {
@@ -23,13 +24,14 @@ namespace LoipvRemote.UI.Controls
 
         public MrngComboBox()
         {
-            Font = new Font("Segoe UI", 10F, FontStyle.Regular, GraphicsUnit.Point, 0);
+            InitializeComponent();
             ThemeManager.getInstance().ThemeChanged += OnCreateControl;
         }
 
         protected override void OnCreateControl()
         {
             base.OnCreateControl();
+            ApplyInputMetrics();
             _themeManager = ThemeManager.getInstance();
             if (!_themeManager.ActiveAndExtended) return;
             BackColor = _themeManager.ActiveTheme.ExtendedPalette.getColor("ComboBox_Background");
@@ -64,6 +66,19 @@ namespace LoipvRemote.UI.Controls
             Invalidate();
         }
 
+        protected override void OnFontChanged(System.EventArgs e)
+        {
+            base.OnFontChanged(e);
+            ApplyInputMetrics();
+            Invalidate();
+        }
+
+        private void ApplyInputMetrics()
+        {
+            ItemHeight = InputControlMetrics.ComboBoxItemHeight(Font.Height);
+            Height = InputControlMetrics.InputHeight(Font.Height);
+        }
+
         private void NG_DrawItem(object sender, DrawItemEventArgs e)
         {
             int index = e.Index >= 0 ? e.Index : 0;
@@ -89,7 +104,7 @@ namespace LoipvRemote.UI.Controls
             if (Items.Count > 0)
             {
                 if (string.IsNullOrEmpty(DisplayMember))
-                    e.Graphics.DrawString(Items[index].ToString(), e.Font, itemBrush, e.Bounds,
+                    e.Graphics.DrawString(Items[index].ToString(), Font, itemBrush, e.Bounds,
                                           StringFormat.GenericDefault);
                 else
                 {
@@ -99,7 +114,7 @@ namespace LoipvRemote.UI.Controls
                                               Items[index]
                                                   .GetType().GetProperty(DisplayMember)?.GetValue(Items[index], null)
                                                   .ToString(),
-                                              e.Font, itemBrush, e.Bounds, StringFormat.GenericDefault);
+                                              Font, itemBrush, e.Bounds, StringFormat.GenericDefault);
                     }
                 }
             }

@@ -15,5 +15,11 @@ namespace LoipvRemote.UI.DesignSystem
             if (textHeight <= 0) throw new ArgumentOutOfRangeException(nameof(textHeight));
             return Math.Clamp(textHeight, 14, 20);
         }
+
+        internal static int ComboBoxItemHeight(int textHeight)
+        {
+            if (textHeight <= 0) throw new ArgumentOutOfRangeException(nameof(textHeight));
+            return Math.Max(22, textHeight + 8);
+        }
     }
 }

@@ -66,10 +66,47 @@ namespace LoipvRemoteTests.UI.Controls
             Assert.That(editor.Font.SizeInPoints, Is.EqualTo(gridFont.SizeInPoints));
         }
 
+        [Test]
+        [Apartment(ApartmentState.STA)]
+        public void NativePropertyGridEditorCannotReplaceTheGridFontAfterItIsCreated()
+        {
+            using ConnectionInfoPropertyGrid grid = new();
+            using Font gridFont = new(SystemFonts.MessageBoxFont.FontFamily, 12f);
+            grid.Font = gridFont;
+            _ = grid.Handle;
+
+            Control gridView = grid.Controls.Cast<Control>()
+                .Single(control => control.GetType().Name == "PropertyGridView");
+            TextBox editor = new();
+            gridView.Controls.Add(editor);
+
+            editor.Font = new Font(SystemFonts.MessageBoxFont.FontFamily, 7f);
+
+            Assert.That(editor.Font.SizeInPoints, Is.EqualTo(gridFont.SizeInPoints));
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
+        public void NativePropertyGridEditorExposedOnlyByReflectionKeepsTheGridFont()
+        {
+            using ReflectionEditorHost gridView = new();
+            using Font gridFont = new(SystemFonts.MessageBoxFont.FontFamily, 12f);
+            gridView.NativeEditor.Font = new Font(SystemFonts.MessageBoxFont.FontFamily, 7f);
+
+            ConnectionInfoPropertyGrid.SynchronizeEditorFonts(gridView, gridFont);
+
+            Assert.That(gridView.NativeEditor.Font.SizeInPoints, Is.EqualTo(gridFont.SizeInPoints));
+        }
+
         private sealed class ExampleSettings
         {
             [DefaultValue("default")]
             public string Value { get; set; } = "default";
+        }
+
+        private sealed class ReflectionEditorHost : Panel
+        {
+            public TextBox NativeEditor { get; } = new();
         }
     }
 }

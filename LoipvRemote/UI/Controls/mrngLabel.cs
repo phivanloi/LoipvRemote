@@ -17,6 +17,7 @@ namespace LoipvRemote.UI.Controls
 
         public MrngLabel()
         {
+            InitializeComponent();
             ThemeManager.getInstance().ThemeChanged += OnCreateControl;
         }
 

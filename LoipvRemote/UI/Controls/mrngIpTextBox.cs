@@ -4,10 +4,12 @@
  */
 
 using System;
+using System.Drawing;
 using System.Windows.Forms;
 using LoipvRemote.Themes;
 using LoipvRemote.Resources.Language;
 using System.Runtime.Versioning;
+using LoipvRemote.UI.DesignSystem;
 
 namespace LoipvRemote.UI.Controls
 {
@@ -76,18 +78,7 @@ namespace LoipvRemote.UI.Controls
             // This call is required by the Windows.Forms Form Designer.
             InitializeComponent();
             SetTabSTopProperties();
-
-            // Initialize non-nullable fields to avoid CS8618 warnings
-            panel1 = new Panel();
-            Octet1 = new MrngTextBox();
-            Octet2 = new MrngTextBox();
-            Octet3 = new MrngTextBox();
-            Octet4 = new MrngTextBox();
-            label1 = new MrngLabel();
-            label2 = new MrngLabel();
-            label3 = new MrngLabel();
-            toolTip1 = new ToolTip();
-            components = new System.ComponentModel.Container();
+            ApplyInputLayout();
         }
 
         private void SetTabSTopProperties()
@@ -107,6 +98,55 @@ namespace LoipvRemote.UI.Controls
             base.OnLoad(e);
             ApplyTheme();
             ThemeManager.getInstance().ThemeChanged += ApplyTheme;
+        }
+
+        protected override void OnFontChanged(EventArgs e)
+        {
+            base.OnFontChanged(e);
+            ApplyInputLayout();
+        }
+
+        protected override void OnResize(EventArgs e)
+        {
+            base.OnResize(e);
+            ApplyInputLayout();
+        }
+
+        private void ApplyInputLayout()
+        {
+            if (panel1 == null || Octet1 == null || Octet2 == null || Octet3 == null || Octet4 == null)
+                return;
+
+            int inputHeight = InputControlMetrics.InputHeight(Font.Height);
+            int dotWidth = Math.Max(6, TextRenderer.MeasureText(".", Font, Size.Empty,
+                                                                 TextFormatFlags.NoPadding).Width + 2);
+            int octetWidth = Math.Max(24, (Math.Max(124, Width) - 4 - dotWidth * 3) / 4);
+            int requiredWidth = octetWidth * 4 + dotWidth * 3 + 4;
+
+            MinimumSize = new Size(requiredWidth, inputHeight);
+            if (Width < requiredWidth) Width = requiredWidth;
+            if (Height != inputHeight) Height = inputHeight;
+            panel1.Bounds = new Rectangle(0, 0, Width, inputHeight);
+
+            MrngTextBox[] octets = [Octet1, Octet2, Octet3, Octet4];
+            MrngLabel[] separators = [label3, label1, label2];
+            int left = 2;
+            for (int index = 0; index < octets.Length; index++)
+            {
+                MrngTextBox octet = octets[index];
+                octet.Font = Font;
+                octet.AutoSize = false;
+                octet.Bounds = new Rectangle(left, 0, octetWidth, inputHeight);
+                left += octetWidth;
+
+                if (index >= separators.Length) continue;
+                MrngLabel separator = separators[index];
+                separator.Font = Font;
+                separator.AutoSize = false;
+                separator.TextAlign = ContentAlignment.MiddleCenter;
+                separator.Bounds = new Rectangle(left, 0, dotWidth, inputHeight);
+                left += dotWidth;
+            }
         }
 
         private void ApplyTheme()

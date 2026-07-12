@@ -28,7 +28,7 @@ using System.Resources;
     // stable so MSI repair/upgrade behavior is deterministic for this build.
     int major = 2;
     int minor = 0;
-    int revision = 21;
+    int revision = 29;
     int build = 0;
     string channel = "Internal Build";
 #>

@@ -8,6 +8,9 @@ namespace LoipvRemote.UI.Forms
 {
     internal sealed class UnifiedWindowHeader : Panel
     {
+        private const double HeaderHeightReductionFactor = 0.8d;
+        private const int MinimumHeaderHeight = 35;
+        private const int MinimumMenuHostWidth = 400;
         private readonly FrmMain _owner;
         private readonly Panel _dragArea;
         private readonly Panel _menuHost;
@@ -158,13 +161,34 @@ namespace LoipvRemote.UI.Forms
         private void RefreshMetrics()
         {
             UiMetrics metrics = UiScaleManager.Instance.Metrics;
-            int baseHeight = Math.Max(44, (int)Math.Ceiling(metrics.InteractiveHeight * metrics.FontScale + 4));
+            int uncompressedHeight = Math.Max(44, (int)Math.Ceiling(metrics.InteractiveHeight * metrics.FontScale + 4));
+            int baseHeight = ReduceHeaderHeight(uncompressedHeight);
             Height = metrics.ScaleForDpi(baseHeight, _owner.DeviceDpi / 96f);
             int buttonWidth = Math.Max(46, Height);
             _windowButtons.Width = buttonWidth * 3;
-            _menuHost.Width = Math.Max(340, Height * 8);
+            _menuHost.Width = MenuHostWidthFor(Height);
             LayoutHeaderControls();
             Invalidate();
+        }
+
+        internal static int ReduceHeaderHeight(int uncompressedHeight)
+        {
+            if (uncompressedHeight <= 0)
+                throw new ArgumentOutOfRangeException(nameof(uncompressedHeight));
+
+            return Math.Max(MinimumHeaderHeight,
+                (int)Math.Round(uncompressedHeight * HeaderHeightReductionFactor, MidpointRounding.AwayFromZero));
+        }
+
+        internal static int MenuHostWidthFor(int headerHeight)
+        {
+            if (headerHeight <= 0)
+                throw new ArgumentOutOfRangeException(nameof(headerHeight));
+
+            // The main menu contains the app icon plus four localized menu items.
+            // Keep a stable minimum so the last item cannot overflow when the
+            // compact header is enabled or Vietnamese labels are active.
+            return Math.Max(MinimumMenuHostWidth, headerHeight * 8);
         }
 
         private void LayoutHeaderControls()

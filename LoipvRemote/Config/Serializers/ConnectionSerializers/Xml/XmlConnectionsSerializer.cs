@@ -37,20 +37,17 @@ namespace LoipvRemote.Config.Serializers.ConnectionSerializers.Xml
 
         private string SerializeConnectionsData(ConnectionInfo serializationTarget)
         {
-            string xml = "";
             try
             {
                 XmlConnectionsDocumentCompiler documentCompiler =
                     new(_cryptographyProvider, _connectionNodeSerializer);
                 XDocument xmlDocument = documentCompiler.CompileDocument(serializationTarget, UseFullEncryption);
-                xml = WriteXmlToString(xmlDocument);
+                return WriteXmlToString(xmlDocument);
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionStackTrace("SaveToXml failed", ex);
+                throw new InvalidOperationException("Connection XML serialization failed.", ex);
             }
-
-            return xml;
         }
 
         private static string WriteXmlToString(XNode xmlDocument)

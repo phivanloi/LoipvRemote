@@ -6,6 +6,7 @@ using System.Linq;
 using System.Windows.Forms;
 using BrightIdeasSoftware;
 using LoipvRemote.App;
+using LoipvRemote.App.Composition;
 using LoipvRemote.Config.Putty;
 using LoipvRemote.Connection;
 using LoipvRemote.Container;
@@ -35,6 +36,7 @@ namespace LoipvRemote.UI.Controls.ConnectionTree
         private ConnectionContextMenu _contextMenu;
         private ConnectionTreeModel _connectionTreeModel;
         private ISlowClickRenameHandler? _slowClickRenameHandler;
+        private DesktopShellRuntime? _desktopShellRuntime;
 
         public ConnectionInfo SelectedNode => (ConnectionInfo)SelectedObject;
 
@@ -71,6 +73,19 @@ namespace LoipvRemote.UI.Controls.ConnectionTree
             _themeManager.ThemeChanged += ThemeManagerOnThemeChanged;
             ApplyTheme();
         }
+
+        internal void AttachRuntime(DesktopShellRuntime desktopShellRuntime)
+        {
+            ArgumentNullException.ThrowIfNull(desktopShellRuntime);
+            if (_desktopShellRuntime is not null && !ReferenceEquals(_desktopShellRuntime, desktopShellRuntime))
+                throw new InvalidOperationException("The connection-tree runtime is already attached.");
+
+            _desktopShellRuntime = desktopShellRuntime;
+            _contextMenu.AttachRuntime(desktopShellRuntime);
+        }
+
+        private DesktopShellRuntime ShellRuntime => _desktopShellRuntime
+            ?? throw new InvalidOperationException("The connection-tree runtime must be attached before it handles commands.");
 
         private void ThemeManagerOnThemeChanged()
         {
@@ -300,7 +315,7 @@ namespace LoipvRemote.UI.Controls.ConnectionTree
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionStackTrace("UI.Window.Tree.AddConnection() failed.", ex);
+                ShellRuntime.MessageCollector.AddExceptionStackTrace("UI.Window.Tree.AddConnection() failed.", ex);
             }
         }
 
@@ -312,7 +327,7 @@ namespace LoipvRemote.UI.Controls.ConnectionTree
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionStackTrace(Language.ErrorAddFolderFailed, ex);
+                ShellRuntime.MessageCollector.AddExceptionStackTrace(Language.ErrorAddFolderFailed, ex);
             }
         }
 
@@ -387,14 +402,14 @@ namespace LoipvRemote.UI.Controls.ConnectionTree
         {
             sortTarget ??= GetRootConnectionNode();
 
-            Runtime.ConnectionsService.BeginBatchingSaves();
+            ShellRuntime.ConnectionsService.BeginBatchingSaves();
 
             if (sortTarget is ContainerInfo sortTargetAsContainer)
                 sortTargetAsContainer.SortRecursive(sortDirection);
             else
                 SelectedNode.Parent.SortRecursive(sortDirection);
 
-            Runtime.ConnectionsService.EndBatchingSaves();
+            ShellRuntime.ConnectionsService.EndBatchingSaves();
         }
 
         /// <summary>
@@ -422,7 +437,7 @@ namespace LoipvRemote.UI.Controls.ConnectionTree
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionStackTrace("tvConnections_AfterSelect (UI.Window.ConnectionTreeWindow) failed", ex);
+                ShellRuntime.MessageCollector.AddExceptionStackTrace("tvConnections_AfterSelect (UI.Window.ConnectionTreeWindow) failed", ex);
             }
         }
 
@@ -460,7 +475,7 @@ namespace LoipvRemote.UI.Controls.ConnectionTree
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionStackTrace(
+                ShellRuntime.MessageCollector.AddExceptionStackTrace(
                                                                 "tvConnections_MouseMove (UI.Window.ConnectionTreeWindow) failed",
                                                                 ex);
             }
@@ -524,7 +539,7 @@ namespace LoipvRemote.UI.Controls.ConnectionTree
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionStackTrace("tvConnections_AfterLabelEdit (UI.Window.ConnectionTreeWindow) failed", ex);
+                ShellRuntime.MessageCollector.AddExceptionStackTrace("tvConnections_AfterLabelEdit (UI.Window.ConnectionTreeWindow) failed", ex);
             }
         }
 

@@ -3,9 +3,9 @@ using System.Drawing;
 using System.IO;
 using System.Runtime.Versioning;
 using System.Windows.Forms;
-using LoipvRemote.App;
 using LoipvRemote.Messages;
 using LoipvRemote.Resources.Language;
+using LoipvRemote.Protocols.ExternalApps;
 
 namespace LoipvRemote.Connection.Protocol.WSL
 {
@@ -16,7 +16,7 @@ namespace LoipvRemote.Connection.Protocol.WSL
 
         private IntPtr _handle;
         private readonly ConnectionInfo _connectionInfo = connectionInfo;
-        private ConsoleControl.ConsoleControl _consoleControl;
+        private ExternalConsoleRuntime _consoleRuntime;
 
         #endregion
 
@@ -29,34 +29,30 @@ namespace LoipvRemote.Connection.Protocol.WSL
                 // Check if WSL is installed
                 if (!IsWslInstalled())
                 {
-                    Runtime.MessageCollector?.AddMessage(MessageClass.ErrorMsg,
+                    MessageCollector?.AddMessage(MessageClass.ErrorMsg,
                         "WSL is not installed on this system. Please install WSL to use this protocol.", true);
                     return false;
                 }
 
-                Runtime.MessageCollector?.AddMessage(MessageClass.InformationMsg,
+                MessageCollector?.AddMessage(MessageClass.InformationMsg,
                     "Attempting to start WSL session.", true);
 
-                _consoleControl = new ConsoleControl.ConsoleControl
-                {
-                    Dock = DockStyle.Fill,
-                    BackColor = ColorTranslator.FromHtml("#300A24"), // Ubuntu terminal color
-                    ForeColor = Color.White,
-                    IsInputEnabled = true,
-                    Padding = new Padding(0, 20, 0, 0)
-                };
+                _consoleRuntime = new ExternalConsoleRuntime(ColorTranslator.FromHtml("#300A24"));
 
                 // Path to wsl.exe
                 string wslExe = @"C:\Windows\System32\wsl.exe";
 
                 // Build arguments based on connection info
-                string arguments = BuildWslArguments();
+                string arguments = string.Join(' ', WslLaunchArguments.Build(
+                    _connectionInfo.Hostname,
+                    _connectionInfo.Username).Select(ProcessArgumentEscaper.Quote));
 
-                _consoleControl.StartProcess(wslExe, arguments);
+                _consoleRuntime.StartProcess(wslExe, arguments);
 
-                while (!_consoleControl.IsHandleCreated) break;
-                _handle = _consoleControl.Handle;
-                NativeMethods.SetParent(_handle, InterfaceControl.Handle);
+                if (!_consoleRuntime.IsHandleCreated)
+                    throw new InvalidOperationException("Failed to initialize the managed WSL terminal control.");
+                _handle = _consoleRuntime.Handle;
+                EmbeddedWindowOperations.SetParent(_handle, InterfaceControl.Handle);
 
                 Resize(this, new EventArgs());
                 base.Connect();
@@ -64,7 +60,7 @@ namespace LoipvRemote.Connection.Protocol.WSL
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector?.AddExceptionMessage(Language.ConnectionFailed, ex);
+                MessageCollector?.AddExceptionMessage(Language.ConnectionFailed, ex);
                 return false;
             }
         }
@@ -90,40 +86,22 @@ namespace LoipvRemote.Connection.Protocol.WSL
             }
         }
 
-        private string BuildWslArguments()
-        {
-            string arguments = "";
-
-            // If a hostname is specified, treat it as a distribution name
-            if (!string.IsNullOrEmpty(_connectionInfo.Hostname))
-            {
-                string hostname = _connectionInfo.Hostname.Trim();
-                // Check if it's not localhost (WSL doesn't use localhost as a distribution name)
-                if (!hostname.Equals("localhost", StringComparison.OrdinalIgnoreCase))
-                {
-                    arguments = $"-d {hostname}";
-                }
-            }
-
-            // If username is specified, we can try to use it
-            if (!string.IsNullOrEmpty(_connectionInfo.Username))
-            {
-                arguments += $" -u {_connectionInfo.Username}";
-            }
-
-            return arguments.Trim();
-        }
-
         public override void Focus()
         {
             try
             {
-                NativeMethods.SetForegroundWindow(_handle);
+                _consoleRuntime.Control.Focus();
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage(Language.IntAppFocusFailed, ex);
+                MessageCollector.AddExceptionMessage(Language.IntAppFocusFailed, ex);
             }
+        }
+
+        public override void Close()
+        {
+            _consoleRuntime?.Dispose();
+            base.Close();
         }
 
         protected override void Resize(object sender, EventArgs e)
@@ -133,16 +111,16 @@ namespace LoipvRemote.Connection.Protocol.WSL
                 if (InterfaceControl.Size == Size.Empty) return;
                 // Use ClientRectangle to account for padding (for connection frame color)
                 Rectangle clientRect = InterfaceControl.ClientRectangle;
-                NativeMethods.MoveWindow(_handle,
+                EmbeddedWindowOperations.Move(_handle,
                                          clientRect.X - SystemInformation.FrameBorderSize.Width,
                                          clientRect.Y - (SystemInformation.CaptionHeight + SystemInformation.FrameBorderSize.Height),
                                          clientRect.Width + SystemInformation.FrameBorderSize.Width * 2,
                                          clientRect.Height + SystemInformation.CaptionHeight +
-                                         SystemInformation.FrameBorderSize.Height * 2, true);
+                                         SystemInformation.FrameBorderSize.Height * 2);
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage(Language.IntAppResizeFailed, ex);
+                MessageCollector.AddExceptionMessage(Language.IntAppResizeFailed, ex);
             }
         }
 

@@ -2,8 +2,8 @@ using System;
 using System.Drawing;
 using System.Runtime.Versioning;
 using System.Windows.Forms;
-using LoipvRemote.App;
 using LoipvRemote.Messages;
+using LoipvRemote.Protocols.ExternalApps;
 using LoipvRemote.Resources.Language;
 
 namespace LoipvRemote.Connection.Protocol.Terminal
@@ -15,7 +15,7 @@ namespace LoipvRemote.Connection.Protocol.Terminal
 
         private IntPtr _handle;
         private readonly ConnectionInfo _connectionInfo = connectionInfo;
-        private ConsoleControl.ConsoleControl _consoleControl;
+        private ExternalConsoleRuntime _consoleRuntime;
 
         #endregion
 
@@ -25,38 +25,22 @@ namespace LoipvRemote.Connection.Protocol.Terminal
         {
             try
             {
-                Runtime.MessageCollector?.AddMessage(MessageClass.InformationMsg, "Attempting to start Terminal session.", true);
+                MessageCollector?.AddMessage(MessageClass.InformationMsg, "Attempting to start Terminal session.", true);
 
-                _consoleControl = new ConsoleControl.ConsoleControl
-                {
-                    Dock = DockStyle.Fill,
-                    BackColor = ColorTranslator.FromHtml("#012456"),
-                    ForeColor = Color.White,
-                    IsInputEnabled = true,
-                    Padding = new Padding(0, 20, 0, 0)
-                };
+                _consoleRuntime = new ExternalConsoleRuntime(ColorTranslator.FromHtml("#012456"));
 
                 string commandProcessor = Environment.GetEnvironmentVariable("COMSPEC") ?? @"C:\Windows\System32\cmd.exe";
                 TerminalProcessStartInfo process = TerminalProcessStartInfoBuilder.Build(
                     _connectionInfo.Hostname, _connectionInfo.Username, _connectionInfo.Port, commandProcessor);
-                _consoleControl.StartProcess(process.FileName, process.Arguments);
+                _consoleRuntime.StartProcess(process.FileName, process.Arguments);
 
-                // Wait for the console control to create its handle
-                int maxWaitMs = 5000; // 5 seconds timeout
-                long startTicks = Environment.TickCount64;
-                while (!_consoleControl.IsHandleCreated &&
-                       Environment.TickCount64 < startTicks + maxWaitMs)
+                if (!_consoleRuntime.IsHandleCreated)
                 {
-                    System.Threading.Thread.Sleep(50);
+                    throw new InvalidOperationException("Failed to initialize the managed terminal control.");
                 }
 
-                if (!_consoleControl.IsHandleCreated)
-                {
-                    throw new Exception("Failed to initialize terminal console within 5 seconds. This may indicate system resource constraints or permission issues.");
-                }
-
-                _handle = _consoleControl.Handle;
-                NativeMethods.SetParent(_handle, InterfaceControl.Handle);
+                _handle = _consoleRuntime.Handle;
+                EmbeddedWindowOperations.SetParent(_handle, InterfaceControl.Handle);
 
                 Resize(this, new EventArgs());
                 base.Connect();
@@ -64,7 +48,7 @@ namespace LoipvRemote.Connection.Protocol.Terminal
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector?.AddExceptionMessage(Language.ConnectionFailed, ex);
+                MessageCollector?.AddExceptionMessage(Language.ConnectionFailed, ex);
                 return false;
             }
         }
@@ -73,12 +57,18 @@ namespace LoipvRemote.Connection.Protocol.Terminal
         {
             try
             {
-                NativeMethods.SetForegroundWindow(_handle);
+                _consoleRuntime.Control.Focus();
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage(Language.IntAppFocusFailed, ex);
+                MessageCollector.AddExceptionMessage(Language.IntAppFocusFailed, ex);
             }
+        }
+
+        public override void Close()
+        {
+            _consoleRuntime?.Dispose();
+            base.Close();
         }
 
         protected override void Resize(object sender, EventArgs e)
@@ -88,16 +78,16 @@ namespace LoipvRemote.Connection.Protocol.Terminal
                 if (InterfaceControl.Size == Size.Empty) return;
                 // Use ClientRectangle to account for padding (for connection frame color)
                 Rectangle clientRect = InterfaceControl.ClientRectangle;
-                NativeMethods.MoveWindow(_handle,
+                EmbeddedWindowOperations.Move(_handle,
                                          clientRect.X - SystemInformation.FrameBorderSize.Width,
                                          clientRect.Y - (SystemInformation.CaptionHeight + SystemInformation.FrameBorderSize.Height),
                                          clientRect.Width + SystemInformation.FrameBorderSize.Width * 2,
                                          clientRect.Height + SystemInformation.CaptionHeight +
-                                         SystemInformation.FrameBorderSize.Height * 2, true);
+                                         SystemInformation.FrameBorderSize.Height * 2);
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage(Language.IntAppResizeFailed, ex);
+                MessageCollector.AddExceptionMessage(Language.IntAppResizeFailed, ex);
             }
         }
 

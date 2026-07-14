@@ -2,12 +2,31 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Versioning;
+using LoipvRemote.Connectors.Abstractions;
+using LoipvRemote.UseCases.Credentials;
+using LoipvRemote.Messages;
+using LoipvRemote.Protocols.Rdp;
 
 namespace LoipvRemote.Connection.Protocol.RDP
 {
     [SupportedOSPlatform("windows")]
     public class RdpProtocolFactory
     {
+        private readonly ExternalCredentialConnectorRegistry _externalCredentialConnectors;
+        private readonly IStringSecretStore _userSecretStore;
+        private readonly MessageCollector _messageCollector;
+
+        public RdpProtocolFactory(
+            ExternalCredentialConnectorRegistry externalCredentialConnectors,
+            IStringSecretStore userSecretStore,
+            MessageCollector messageCollector)
+        {
+            _externalCredentialConnectors = externalCredentialConnectors
+                ?? throw new ArgumentNullException(nameof(externalCredentialConnectors));
+            _userSecretStore = userSecretStore ?? throw new ArgumentNullException(nameof(userSecretStore));
+            _messageCollector = messageCollector ?? throw new ArgumentNullException(nameof(messageCollector));
+        }
+
         public RdpProtocol Build(RdpVersion rdpVersion)
         {
             switch (rdpVersion)
@@ -15,17 +34,17 @@ namespace LoipvRemote.Connection.Protocol.RDP
                 case RdpVersion.Highest:
                     return BuildHighestSupportedVersion();
                 case RdpVersion.Rdc6:
-                    return new RdpProtocol();
+                    return Attach(new RdpProtocol(_externalCredentialConnectors, _userSecretStore));
                 case RdpVersion.Rdc7:
-                    return new RdpProtocol7();
+                    return Attach(new RdpProtocol7(_externalCredentialConnectors, _userSecretStore));
                 case RdpVersion.Rdc8:
-                    return new RdpProtocol8();
+                    return Attach(new RdpProtocol8(_externalCredentialConnectors, _userSecretStore));
                 case RdpVersion.Rdc9:
-                    return new RdpProtocol9();
+                    return Attach(new RdpProtocol9(_externalCredentialConnectors, _userSecretStore));
                 case RdpVersion.Rdc10:
-                    return new RdpProtocol10();
+                    return Attach(new RdpProtocol10(_externalCredentialConnectors, _userSecretStore));
                 case RdpVersion.Rdc11:
-                    return new RdpProtocol11();
+                    return Attach(new RdpProtocol11(_externalCredentialConnectors, _userSecretStore));
                 default:
                     throw new ArgumentOutOfRangeException(nameof(rdpVersion), rdpVersion, null);
             }
@@ -33,35 +52,22 @@ namespace LoipvRemote.Connection.Protocol.RDP
 
         private RdpProtocol BuildHighestSupportedVersion()
         {
-            IEnumerable<RdpVersion> versions = Enum.GetValues(typeof(RdpVersion))
-                .OfType<RdpVersion>()
-                .Except(new[] { RdpVersion.Highest })
-                .Reverse();
-
-            foreach (RdpVersion version in versions)
-            {
-                RdpProtocol rdp = Build(version);
-                if (rdp.RdpVersionSupported())
-                    return rdp;
-            }
-
-            throw new ArgumentOutOfRangeException();
+            RdpVersion selectedVersion = RdpVersionSelector.SelectHighestSupported(
+                version => Build(version).RdpVersionSupported());
+            return Build(selectedVersion);
         }
 
         public List<RdpVersion> GetSupportedVersions()
         {
-            IEnumerable<RdpVersion> versions = Enum.GetValues(typeof(RdpVersion))
-                .OfType<RdpVersion>()
-                .Except(new[] { RdpVersion.Highest });
+            return RdpVersionSelector.GetSupportedVersions(
+                    version => Build(version).RdpVersionSupported())
+                .ToList();
+        }
 
-            List<RdpVersion> supportedVersions = new();
-            foreach (RdpVersion version in versions)
-            {
-                if (Build(version).RdpVersionSupported())
-                    supportedVersions.Add(version);
-            }
-
-            return supportedVersions;
+        private RdpProtocol Attach(RdpProtocol protocol)
+        {
+            protocol.AttachServices(_messageCollector);
+            return protocol;
         }
     }
 }

@@ -10,6 +10,7 @@ using LoipvRemote.UI.Forms;
 using LoipvRemote.Themes;
 using LoipvRemote.Tools.CustomCollections;
 using LoipvRemote.Resources.Language;
+using LoipvRemote.Messages;
 using System.Runtime.Versioning;
 
 namespace LoipvRemote.UI.Window
@@ -20,16 +21,20 @@ namespace LoipvRemote.UI.Window
         private readonly ExternalAppsSaver _externalAppsSaver;
         private readonly ThemeManager _themeManager;
         private readonly FullyObservableCollection<ExternalTool> _currentlySelectedExternalTools;
+        private readonly ExternalToolsService _externalToolsService;
+        private readonly MessageCollector _messageCollector;
 
-        public ExternalToolsWindow()
+        public ExternalToolsWindow(ExternalToolsService externalToolsService, MessageCollector messageCollector)
         {
+            _externalToolsService = externalToolsService ?? throw new ArgumentNullException(nameof(externalToolsService));
+            _messageCollector = messageCollector ?? throw new ArgumentNullException(nameof(messageCollector));
             InitializeComponent();
             Icon = Resources.ImageConverter.GetImageAsIcon(Properties.Resources.Console_16x);
             WindowType = WindowType.ExternalApps;
             DockPnl = new DockContent();
             _themeManager = ThemeManager.getInstance();
             _themeManager.ThemeChanged += ApplyTheme;
-            _externalAppsSaver = new ExternalAppsSaver();
+            _externalAppsSaver = new ExternalAppsSaver(_messageCollector);
             _currentlySelectedExternalTools = [];
             _currentlySelectedExternalTools.CollectionUpdated += CurrentlySelectedExternalToolsOnCollectionUpdated;
             BrowseButton.Height = FilenameTextBox.Height;
@@ -106,13 +111,13 @@ namespace LoipvRemote.UI.Window
             try
             {
                 ToolsListObjView.BeginUpdate();
-                ToolsListObjView.SetObjects(Runtime.ExternalToolsService.ExternalTools, true);
+                ToolsListObjView.SetObjects(_externalToolsService.ExternalTools, true);
                 ToolsListObjView.AutoResizeColumns();
                 ToolsListObjView.EndUpdate();
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage("UI.Window.ExternalTools.PopulateToolsListObjView()", ex);
+                _messageCollector.AddExceptionMessage("UI.Window.ExternalTools.PopulateToolsListObjView()", ex);
             }
         }
 
@@ -127,7 +132,7 @@ namespace LoipvRemote.UI.Window
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage("UI.Window.ExternalTools.LaunchTool() failed.", ex);
+                _messageCollector.AddExceptionMessage("UI.Window.ExternalTools.LaunchTool() failed.", ex);
             }
         }
 
@@ -172,7 +177,7 @@ namespace LoipvRemote.UI.Window
 
         private void ExternalTools_FormClosed(object sender, FormClosedEventArgs e)
         {
-            _externalAppsSaver.Save(Runtime.ExternalToolsService.ExternalTools);
+            _externalAppsSaver.Save(_externalToolsService.ExternalTools);
             _themeManager.ThemeChanged -= ApplyTheme;
             _currentlySelectedExternalTools.CollectionUpdated -= CurrentlySelectedExternalToolsOnCollectionUpdated;
         }
@@ -182,14 +187,14 @@ namespace LoipvRemote.UI.Window
             try
             {
                 ExternalTool externalTool = new(Language.ExternalToolDefaultName);
-                Runtime.ExternalToolsService.ExternalTools.Add(externalTool);
+                _externalToolsService.ExternalTools.Add(externalTool);
                 UpdateToolsListObjView();
                 ToolsListObjView.SelectedObject = externalTool;
                 DisplayNameTextBox.Focus();
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage("UI.Window.ExternalTools.NewTool_Click() failed.", ex);
+                _messageCollector.AddExceptionMessage("UI.Window.ExternalTools.NewTool_Click() failed.", ex);
             }
         }
 
@@ -207,13 +212,13 @@ namespace LoipvRemote.UI.Window
                 else
                     return;
 
-                if (MessageBox.Show(FrmMain.Default, message, "Question?", MessageBoxButtons.YesNo,
+                if (MessageBox.Show(this, message, "Question?", MessageBoxButtons.YesNo,
                                     MessageBoxIcon.Question) != DialogResult.Yes)
                     return;
 
                 foreach (ExternalTool externalTool in _currentlySelectedExternalTools)
                 {
-                    Runtime.ExternalToolsService.ExternalTools.Remove(externalTool);
+                    _externalToolsService.ExternalTools.Remove(externalTool);
                 }
 
                 ExternalTool firstDeletedNode = _currentlySelectedExternalTools.FirstOrDefault();
@@ -230,7 +235,7 @@ namespace LoipvRemote.UI.Window
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage("UI.Window.ExternalTools.DeleteTool_Click() failed.", ex);
+                _messageCollector.AddExceptionMessage("UI.Window.ExternalTools.DeleteTool_Click() failed.", ex);
             }
         }
 
@@ -247,7 +252,7 @@ namespace LoipvRemote.UI.Window
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage(
+                _messageCollector.AddExceptionMessage(
                                                              "UI.Window.ExternalTools.ToolsListObjView_SelectedIndexChanged() failed.",
                                                              ex);
             }
@@ -282,7 +287,7 @@ namespace LoipvRemote.UI.Window
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage(
+                _messageCollector.AddExceptionMessage(
                                                              "UI.Window.ExternalTools.PropertyControl_ChangedOrLostFocus() failed.",
                                                              ex);
             }
@@ -306,7 +311,7 @@ namespace LoipvRemote.UI.Window
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage("UI.Window.ExternalTools.BrowseButton_Click() failed.",
+                _messageCollector.AddExceptionMessage("UI.Window.ExternalTools.BrowseButton_Click() failed.",
                                                              ex);
             }
         }
@@ -327,7 +332,7 @@ namespace LoipvRemote.UI.Window
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage("UI.Window.ExternalTools.BrowseButton_Click() failed.",
+                _messageCollector.AddExceptionMessage("UI.Window.ExternalTools.BrowseButton_Click() failed.",
                                                              ex);
             }
         }

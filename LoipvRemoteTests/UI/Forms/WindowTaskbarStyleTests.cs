@@ -1,4 +1,5 @@
-using LoipvRemote.App;
+using LoipvRemote.Infrastructure.Windows.Interop;
+using LoipvRemote.Desktop.Shell;
 using LoipvRemote.UI.Forms;
 using NUnit.Framework;
 

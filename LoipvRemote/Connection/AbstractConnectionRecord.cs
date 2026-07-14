@@ -36,8 +36,8 @@ namespace LoipvRemote.Connection
         private string _username = "";
         //private SecureString _password = null;
         private string _password = null;
-        private string _vaultRole = null;
-        private string _vaultMount = null;
+        private string _vaultRole = "";
+        private string _vaultMount = "";
         private VaultOpenbaoSecretEngine _vaultSecretEngine = VaultOpenbaoSecretEngine.Kv;
         private string _domain = "";
         private string _vmId = "";
@@ -204,7 +204,7 @@ namespace LoipvRemote.Connection
          AttributeUsedInAllProtocolsExcept()]
         public virtual string Hostname
         {
-            get => _hostname.Trim();
+            get => _hostname?.Trim() ?? string.Empty;
             set => SetField(ref _hostname, value?.Trim(), "Hostname");
         }
 
@@ -993,8 +993,6 @@ namespace LoipvRemote.Connection
         #endregion
 
         #region VNC
-        // TODO: it seems all these VNC properties were added and serialized but
-        // never hooked up to the VNC protocol or shown to the user
         [LocalizedAttributes.LocalizedCategory(nameof(Language.Appearance), 5),
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.Compression)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionCompression)),

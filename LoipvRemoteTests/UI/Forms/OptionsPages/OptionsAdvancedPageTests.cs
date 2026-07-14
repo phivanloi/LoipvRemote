@@ -13,14 +13,14 @@ namespace LoipvRemoteTests.UI.Forms.OptionsPages
         public void AdvancedPageLinkExistsInListView()
         {
             ListViewTester listViewTester = new("lstOptionPages", _optionsForm);
-            Assert.That(listViewTester.Items[10].Text, Does.Match("Advanced"));
+            Assert.That(listViewTester.Items[9].Text, Does.Match("Advanced"));
         }
 
         [Test]
         public void AdvancedIconShownInListView()
         {
             ListViewTester listViewTester = new("lstOptionPages", _optionsForm);
-            Assert.That(listViewTester.Items[10].ImageList, Is.Not.Null);
+            Assert.That(listViewTester.Items[9].ImageList, Is.Not.Null);
         }
 
         [Test]
@@ -30,7 +30,7 @@ namespace LoipvRemoteTests.UI.Forms.OptionsPages
             listViewTester.Select("Advanced");
 
             CheckBox checkboxTester = _optionsForm.FindControl<CheckBox>("chkAutomaticReconnect");
-            Assert.That(checkboxTester.Text, Is.EqualTo("Automatically try to reconnect when disconnected from server (RDP && ICA only)"));
+            Assert.That(checkboxTester.Text, Is.EqualTo("Display reconnection dialog when disconnected from server (RDP && ICA only)"));
         }
     }
 }

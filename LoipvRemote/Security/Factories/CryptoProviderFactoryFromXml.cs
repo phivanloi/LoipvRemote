@@ -34,7 +34,7 @@ namespace LoipvRemote.Security.Factories
             }
             catch (Exception)
             {
-                return new LegacyRijndaelCryptographyProvider();
+                return new CryptoProviderFactoryFromSettings().Build();
             }
 
             return cryptoProvider;

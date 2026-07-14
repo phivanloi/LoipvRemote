@@ -1,7 +1,7 @@
 using System;
 using System.Collections;
+using System.Diagnostics;
 using System.Runtime.Versioning;
-using LoipvRemote.App;
 using LoipvRemote.Connection.Protocol.Http;
 using LoipvRemote.Connection.Protocol.RDP;
 using LoipvRemote.Connection.Protocol.Rlogin;
@@ -64,7 +64,7 @@ namespace LoipvRemote.Tools
             }
             catch (Exception)
             {
-                Runtime.MessageCollector.AddMessage(MessageClass.WarningMsg, "ToString failed (Tools.PortScan)", true);
+                Trace.TraceWarning("ToString failed (Tools.PortScan)");
                 return "";
             }
         }

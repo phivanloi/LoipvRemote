@@ -9,8 +9,6 @@ using LoipvRemote.Properties;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using LoipvRemote.UI.Window;
-using LoipvRemote.App;
-using LoipvRemote.Messages;
 
 namespace LoipvRemote.UI.Forms
 {
@@ -151,8 +149,7 @@ namespace LoipvRemote.UI.Forms
                 catch
                 {
                     // Unable to open URL - notify the user
-                    Runtime.MessageCollector?.AddMessage(MessageClass.WarningMsg,
-                        "Unable to open URL in browser. Please open manually: " + url, true);
+                    Trace.TraceWarning("Unable to open URL in browser. Please open manually: " + url);
                 }
             }
         }

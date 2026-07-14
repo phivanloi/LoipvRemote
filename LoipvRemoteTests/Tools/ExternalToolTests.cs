@@ -39,10 +39,11 @@ namespace LoipvRemoteTests.Tools
             // Assert
             // The arguments should contain the password with the equals sign
             // It may be escaped (e.g., Z-3^=Wv99/Aq), but should not be split
-            Assert.That(process.StartInfo.Arguments, Does.Contain("Z-3"));
-            Assert.That(process.StartInfo.Arguments, Does.Contain("Wv99/Aq"));
-            // The equals sign should be present (possibly escaped as ^=)
-            Assert.That(process.StartInfo.Arguments, Does.Match("Z-3.=Wv99/Aq"));
+            string configuredArguments = GetConfiguredArguments(process);
+            Assert.That(configuredArguments, Does.Contain("Z-3"));
+            Assert.That(configuredArguments, Does.Contain("Wv99/Aq"));
+            // ArgumentList keeps the value as data rather than shell syntax.
+            Assert.That(configuredArguments, Does.Contain("Z-3=Wv99/Aq"));
         }
 
         [Test]
@@ -73,8 +74,9 @@ namespace LoipvRemoteTests.Tools
 
             // Assert
             // The password should be present in the arguments (possibly escaped)
-            Assert.That(process.StartInfo.Arguments, Does.Contain("P@ss"));
-            Assert.That(process.StartInfo.Arguments, Does.Contain("W0rd"));
+            string configuredArguments = GetConfiguredArguments(process);
+            Assert.That(configuredArguments, Does.Contain("P@ss"));
+            Assert.That(configuredArguments, Does.Contain("W0rd"));
         }
 
         [Test]
@@ -105,7 +107,7 @@ namespace LoipvRemoteTests.Tools
             setProcessPropertiesMethod?.Invoke(externalTool, new object[] { process, connectionInfo });
 
             // Assert
-            var arguments = process.StartInfo.Arguments;
+            string arguments = GetConfiguredArguments(process);
             Assert.That(arguments, Does.Contain("myhost.com"));
             Assert.That(arguments, Does.Contain("8080"));
             Assert.That(arguments, Does.Contain("admin"));
@@ -243,5 +245,35 @@ namespace LoipvRemoteTests.Tools
             // Assert
             Assert.That(process.StartInfo.UseShellExecute, Is.False);
         }
+
+        [Test]
+        public void ToDefinition_ExpandsConnectionTokensAndPreservesLaunchOptions()
+        {
+            var externalTool = new ExternalTool
+            {
+                DisplayName = "Terminal",
+                FileName = "%WINDIR%\\System32\\cmd.exe",
+                Arguments = "/c echo %HOSTNAME%",
+                WorkingDir = "%WINDIR%",
+                TryIntegrate = true
+            };
+            var connectionInfo = new ConnectionInfo { Hostname = "server.example" };
+
+            var definition = externalTool.ToDefinition(connectionInfo);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(definition.DisplayName, Is.EqualTo("Terminal"));
+                Assert.That(definition.ExecutablePath, Does.Contain("cmd.exe"));
+                Assert.That(definition.Arguments, Is.EqualTo("/c echo server.example"));
+                Assert.That(definition.EmbedWindow, Is.True);
+                Assert.That(definition.WaitForExit, Is.False);
+            });
+        }
+
+        private static string GetConfiguredArguments(Process process) =>
+            process.StartInfo.UseShellExecute
+                ? process.StartInfo.Arguments
+                : string.Join(" ", process.StartInfo.ArgumentList);
     }
 }

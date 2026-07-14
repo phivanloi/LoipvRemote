@@ -3,9 +3,10 @@ using System.Drawing;
 using System.Threading;
 using System.Runtime.Versioning;
 using System.Windows.Forms;
-using LoipvRemote.App;
 using LoipvRemote.Messages;
 using LoipvRemote.Resources.Language;
+using LoipvRemote.Protocols.ExternalApps;
+using LoipvRemote.Infrastructure.Windows.Process;
 
 namespace LoipvRemote.Connection.Protocol.PowerShell
 {
@@ -16,7 +17,7 @@ namespace LoipvRemote.Connection.Protocol.PowerShell
 
         private IntPtr _handle;
         private readonly ConnectionInfo _connectionInfo = connectionInfo;
-        private ConsoleControl.ConsoleControl _consoleControl;
+        private ExternalConsoleRuntime _consoleRuntime;
 
         #endregion
 
@@ -26,16 +27,9 @@ namespace LoipvRemote.Connection.Protocol.PowerShell
         {
             try
             {
-                Runtime.MessageCollector?.AddMessage(MessageClass.InformationMsg, "Attempting to start remote PowerShell session.", true);
+                MessageCollector?.AddMessage(MessageClass.InformationMsg, "Attempting to start remote PowerShell session.", true);
 
-                _consoleControl = new ConsoleControl.ConsoleControl
-                {
-                    Dock = DockStyle.Fill,
-                    BackColor = ColorTranslator.FromHtml("#012456"),
-                    ForeColor = Color.White,
-                    IsInputEnabled = true,
-                    Padding = new Padding(0, 20, 0, 0)
-                };
+                _consoleRuntime = new ExternalConsoleRuntime(ColorTranslator.FromHtml("#012456"));
 
                 /*
                  * Prepair powershell script parameter and create script
@@ -194,7 +188,9 @@ namespace LoipvRemote.Connection.Protocol.PowerShell
                 string passwordPipeName = string.Empty;
                 if (!useLocalHost && !string.IsNullOrEmpty(_connectionInfo.Password))
                 {
-                    passwordPipeName = PowerShellPasswordPipe.Start(_connectionInfo.Password);
+                    passwordPipeName = WindowsSecretPipeServer.StartPassword(
+                        "LoipvRemotePowerShellSecretPipe",
+                        _connectionInfo.Password);
                 }
 
                 string arguments = PowerShellCommandBuilder.BuildEncodedArguments(
@@ -203,11 +199,12 @@ namespace LoipvRemote.Connection.Protocol.PowerShell
                 {
                     arguments = $@"-NoExit";
                 }
-                _consoleControl.StartProcess(psExe, arguments);
+                _consoleRuntime.StartProcess(psExe, arguments);
 
-                while (!_consoleControl.IsHandleCreated) break;
-                _handle = _consoleControl.Handle;
-                NativeMethods.SetParent(_handle, InterfaceControl.Handle);
+                if (!_consoleRuntime.IsHandleCreated)
+                    throw new InvalidOperationException("Failed to initialize the managed PowerShell terminal control.");
+                _handle = _consoleRuntime.Handle;
+                EmbeddedWindowOperations.SetParent(_handle, InterfaceControl.Handle);
 
                 Resize(this, new EventArgs());
                 base.Connect();
@@ -215,7 +212,7 @@ namespace LoipvRemote.Connection.Protocol.PowerShell
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector?.AddExceptionMessage(Language.ConnectionFailed, ex);
+                MessageCollector?.AddExceptionMessage(Language.ConnectionFailed, ex);
                 return false;
             }
         }
@@ -224,12 +221,18 @@ namespace LoipvRemote.Connection.Protocol.PowerShell
         {
             try
             {
-                NativeMethods.SetForegroundWindow(_handle);
+                _consoleRuntime.Control.Focus();
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage(Language.IntAppFocusFailed, ex);
+                MessageCollector.AddExceptionMessage(Language.IntAppFocusFailed, ex);
             }
+        }
+
+        public override void Close()
+        {
+            _consoleRuntime?.Dispose();
+            base.Close();
         }
 
         protected override void Resize(object sender, EventArgs e)
@@ -239,16 +242,16 @@ namespace LoipvRemote.Connection.Protocol.PowerShell
                 if (InterfaceControl.Size == Size.Empty) return;
                 // Use ClientRectangle to account for padding (for connection frame color)
                 Rectangle clientRect = InterfaceControl.ClientRectangle;
-                NativeMethods.MoveWindow(_handle,
+                EmbeddedWindowOperations.Move(_handle,
                                          clientRect.X - SystemInformation.FrameBorderSize.Width,
                                          clientRect.Y - (SystemInformation.CaptionHeight + SystemInformation.FrameBorderSize.Height),
                                          clientRect.Width + SystemInformation.FrameBorderSize.Width * 2,
                                          clientRect.Height + SystemInformation.CaptionHeight +
-                                         SystemInformation.FrameBorderSize.Height * 2, true);
+                                         SystemInformation.FrameBorderSize.Height * 2);
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage(Language.IntAppResizeFailed, ex);
+                MessageCollector.AddExceptionMessage(Language.IntAppResizeFailed, ex);
             }
         }
 

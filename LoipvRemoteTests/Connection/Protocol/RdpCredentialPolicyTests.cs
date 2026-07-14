@@ -1,4 +1,4 @@
-using LoipvRemote.Connection.Protocol.RDP;
+using LoipvRemote.Protocols.Rdp;
 using NUnit.Framework;
 
 namespace LoipvRemoteTests.Connection.Protocol

@@ -50,11 +50,15 @@ namespace LoipvRemoteTests.IntegrationTests
         }
 
         [Test]
-        public void SerializeThenDeserializeWithFullEncryption()
+    public void SerializeThenDeserializeWithFullEncryption()
+    {
+        _originalModel.RootNodes.OfType<RootNodeInfo>().First().PasswordString = "test-password";
+        _serializer.UseFullEncryption = true;
+        var serializedContent = _serializer.Serialize(_originalModel);
+        var deserializedModel = new XmlConnectionsDeserializer
         {
-            _serializer.UseFullEncryption = true;
-            var serializedContent = _serializer.Serialize(_originalModel);
-            var deserializedModel = _deserializer.Deserialize(serializedContent);
+            InitialAuthenticationPassword = "test-password"
+        }.Deserialize(serializedContent);
             var nodeNamesFromDeserializedModel = deserializedModel.GetRecursiveChildList().Select(node => node.Name);
             var nodeNamesFromOriginalModel = _originalModel.GetRecursiveChildList().Select(node => node.Name);
             Assert.That(nodeNamesFromDeserializedModel, Is.EquivalentTo(nodeNamesFromOriginalModel));
@@ -115,12 +119,15 @@ namespace LoipvRemoteTests.IntegrationTests
             var sb = new StringBuilder();
             foreach (var property in originalConnectionInfo.GetSerializableProperties())
             {
-                if (property.Name == nameof(ConnectionInfo.Password))
+                if (property.Name is nameof(ConnectionInfo.Password)
+                    or nameof(ConnectionInfo.VNCProxyPassword)
+                    or nameof(ConnectionInfo.RDGatewayPassword)
+                    or nameof(ConnectionInfo.RDGatewayAccessToken))
                     continue;
 
                 var originalValue = property.GetValue(originalConnectionInfo);
                 var deserializedValue = property.GetValue(deserializedConnectionInfo);
-                if (originalValue.Equals(deserializedValue))
+                if (Equals(originalValue, deserializedValue))
                     continue;
 
                 sb.AppendLine($"Property: {property.Name}");
@@ -152,7 +159,7 @@ namespace LoipvRemoteTests.IntegrationTests
                 var originalValue = property.GetValue(originalConnectionInfo.Inheritance);
                 var deserializedValue = property.GetValue(deserializedConnectionInfo.Inheritance);
 
-                if (originalValue.Equals(deserializedValue))
+                if (Equals(originalValue, deserializedValue))
                     continue;
 
                 sb.AppendLine($"Property: Inheritance.{property.Name}");

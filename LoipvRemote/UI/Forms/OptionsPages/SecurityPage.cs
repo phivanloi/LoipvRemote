@@ -12,6 +12,7 @@ using LoipvRemote.Resources.Language;
 using System.Runtime.Versioning;
 using LoipvRemote.Config.Settings.Registry;
 using LoipvRemote.Security.SymmetricEncryption;
+using LoipvRemote.Tree.Root;
 
 namespace LoipvRemote.UI.Forms.OptionsPages
 {
@@ -21,7 +22,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
         #region Private Fields
         private OptRegistrySecurityPage pageRegSettingsInstance;
 
-        private readonly Timer clipboardClearTimer = new() { Interval = 1000 };
+        private readonly System.Windows.Forms.Timer clipboardClearTimer = new() { Interval = 1000 };
         private const int clipboardClearSeconds = 30;
         private int countdownSeconds = clipboardClearSeconds;
         #endregion
@@ -132,8 +133,8 @@ namespace LoipvRemote.UI.Forms.OptionsPages
 
         private void BtnTestSettings_Click(object sender, EventArgs e)
         {
-            Tree.ConnectionTreeModel connectionTree = Runtime.ConnectionsService.ConnectionTreeModel;
-            if (!connectionTree.RootNodes.Any())
+            Tree.ConnectionTreeModel? connectionTree = FrmMain.Default.TryGetConnectionTreeModel();
+            if (connectionTree is null || !connectionTree.RootNodes.Any())
                 return;
 
             BlockCipherEngines engine = (BlockCipherEngines)comboBoxEncryptionEngine.SelectedItem;
@@ -169,17 +170,20 @@ namespace LoipvRemote.UI.Forms.OptionsPages
         {
             if (string.IsNullOrEmpty(txtPasswdGenerator.Text)) return;
 
-            var cryptographyProvider = new LegacyRijndaelCryptographyProvider();
+            ICryptographyProvider cryptographyProvider = new CryptoProviderFactoryFromSettings().Build();
 
             try
             {
                 // Encrypt and set the clipboard content
-                string encryptedText = cryptographyProvider.Encrypt(txtPasswdGenerator.Text, Runtime.EncryptionKey);
+                using var encryptionKey = new RootNodeInfo(RootNodeType.Connection)
+                    .PasswordString
+                    .ConvertToSecureString();
+                string encryptedText = cryptographyProvider.Encrypt(txtPasswdGenerator.Text, encryptionKey);
                 System.Windows.Clipboard.SetText(encryptedText);
             }
             catch (System.Runtime.InteropServices.COMException)
             {
-                Runtime.MessageCollector.AddMessage(Messages.MessageClass.ErrorMsg, "Failed to set clipboard content. Please try again.");
+                FrmMain.Default.ReportUiError(Messages.MessageClass.ErrorMsg, "Failed to set clipboard content. Please try again.");
                 return;
             }
 
@@ -245,7 +249,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             }
             catch (System.Runtime.InteropServices.COMException)
             {
-                Runtime.MessageCollector.AddMessage(Messages.MessageClass.ErrorMsg, "Failed to clear clipboard.");
+                FrmMain.Default.ReportUiError(Messages.MessageClass.ErrorMsg, "Failed to clear clipboard.");
             }
         }
 

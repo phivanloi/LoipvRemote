@@ -2,7 +2,6 @@ using System;
 using System.Runtime.Versioning;
 using System.Security;
 using System.Xml.Linq;
-using LoipvRemote.App;
 using LoipvRemote.Connection;
 using LoipvRemote.Container;
 using LoipvRemote.Security;
@@ -42,26 +41,24 @@ namespace LoipvRemote.Config.Serializers.ConnectionSerializers.Xml
             element.Add(new XAttribute("Descr", connectionInfo.Description));
             element.Add(new XAttribute("Icon", connectionInfo.Icon));
             element.Add(new XAttribute("Panel", connectionInfo.Panel));
+            element.Add(new XAttribute("Color", connectionInfo.Color));
             element.Add(new XAttribute("TabColor", connectionInfo.TabColor));
             element.Add(new XAttribute("ConnectionFrameColor", connectionInfo.ConnectionFrameColor));
             element.Add(new XAttribute("Id", connectionInfo.ConstantID));
 
-            if (!Runtime.UseCredentialManager)
-            {
-                element.Add(_saveFilter.SaveUsername
-                    ? new XAttribute("Username", connectionInfo.Username)
-                    : new XAttribute("Username", ""));
+            element.Add(_saveFilter.SaveUsername
+                ? new XAttribute("Username", connectionInfo.Username)
+                : new XAttribute("Username", ""));
 
-                element.Add(_saveFilter.SaveDomain
-                    ? new XAttribute("Domain", connectionInfo.Domain)
-                    : new XAttribute("Domain", ""));
+            element.Add(_saveFilter.SaveDomain
+                ? new XAttribute("Domain", connectionInfo.Domain)
+                : new XAttribute("Domain", ""));
 
-                if (_saveFilter.SavePassword && !connectionInfo.Inheritance.Password)
-                    //element.Add(new XAttribute("Password", _cryptographyProvider.Encrypt(connectionInfo.Password?.ConvertToUnsecureString(), _encryptionKey)));
-                    element.Add(new XAttribute("Password", _cryptographyProvider.Encrypt(connectionInfo.Password, _encryptionKey)));
-                else
-                    element.Add(new XAttribute("Password", ""));
-            }
+            element.Add(new XAttribute(
+                "Password",
+                _saveFilter.SavePassword && !connectionInfo.Inheritance.Password
+                    ? EncryptIfKeyIsAvailable(connectionInfo.Password)
+                    : string.Empty));
 
             element.Add(new XAttribute("Hostname", connectionInfo.Hostname));
             element.Add(new XAttribute("Protocol", connectionInfo.Protocol));
@@ -121,9 +118,9 @@ namespace LoipvRemote.Config.Serializers.ConnectionSerializers.Xml
                 ? new XAttribute("VNCProxyUsername", connectionInfo.VNCProxyUsername)
                 : new XAttribute("VNCProxyUsername", ""));
 
-            element.Add(_saveFilter.SavePassword
-                ? new XAttribute("VNCProxyPassword", _cryptographyProvider.Encrypt(connectionInfo.VNCProxyPassword, _encryptionKey))
-                : new XAttribute("VNCProxyPassword", ""));
+            element.Add(new XAttribute(
+                "VNCProxyPassword",
+                _saveFilter.SavePassword ? EncryptIfKeyIsAvailable(connectionInfo.VNCProxyPassword) : string.Empty));
 
             element.Add(new XAttribute("VNCColors", connectionInfo.VNCColors));
             element.Add(new XAttribute("VNCSmartSizeMode", connectionInfo.VNCSmartSizeMode));
@@ -138,13 +135,13 @@ namespace LoipvRemote.Config.Serializers.ConnectionSerializers.Xml
                 ? new XAttribute("RDGatewayUsername", connectionInfo.RDGatewayUsername)
                 : new XAttribute("RDGatewayUsername", ""));
 
-            element.Add(_saveFilter.SavePassword
-                ? new XAttribute("RDGatewayPassword", _cryptographyProvider.Encrypt(connectionInfo.RDGatewayPassword, _encryptionKey))
-                : new XAttribute("RDGatewayPassword", ""));
+            element.Add(new XAttribute(
+                "RDGatewayPassword",
+                _saveFilter.SavePassword ? EncryptIfKeyIsAvailable(connectionInfo.RDGatewayPassword) : string.Empty));
 
-            element.Add(_saveFilter.SavePassword
-                ? new XAttribute("RDGatewayAccessToken", _cryptographyProvider.Encrypt(connectionInfo.RDGatewayAccessToken, _encryptionKey))
-                : new XAttribute("RDGatewayAccessToken", ""));
+            element.Add(new XAttribute(
+                "RDGatewayAccessToken",
+                _saveFilter.SavePassword ? EncryptIfKeyIsAvailable(connectionInfo.RDGatewayAccessToken) : string.Empty));
 
             element.Add(_saveFilter.SaveDomain
                 ? new XAttribute("RDGatewayDomain", connectionInfo.RDGatewayDomain)
@@ -164,6 +161,13 @@ namespace LoipvRemote.Config.Serializers.ConnectionSerializers.Xml
             element.Add(new XAttribute("VaultOpenbaoMount", connectionInfo.VaultOpenbaoMount ?? string.Empty));
             element.Add(new XAttribute("VaultOpenbaoRole", connectionInfo.VaultOpenbaoRole ?? string.Empty));
             element.Add(new XAttribute("VaultOpenbaoSecretEngine", connectionInfo.VaultOpenbaoSecretEngine));
+        }
+
+        private string EncryptIfKeyIsAvailable(string value)
+        {
+            return _encryptionKey.Length == 0
+                ? string.Empty
+                : _cryptographyProvider.Encrypt(value, _encryptionKey);
         }
 
         private void SetInheritanceAttributes(XContainer element, IInheritable connectionInfo)
@@ -200,6 +204,8 @@ namespace LoipvRemote.Config.Serializers.ConnectionSerializers.Xml
                 element.Add(new XAttribute("InheritIcon", inheritance.Icon.ToString().ToLowerInvariant()));
             if (inheritance.Panel)
                 element.Add(new XAttribute("InheritPanel", inheritance.Panel.ToString().ToLowerInvariant()));
+            if (inheritance.Color)
+                element.Add(new XAttribute("InheritColor", inheritance.Color.ToString().ToLowerInvariant()));
             if (inheritance.TabColor)
                 element.Add(new XAttribute("InheritTabColor", inheritance.TabColor.ToString().ToLowerInvariant()));
             if (inheritance.ConnectionFrameColor)

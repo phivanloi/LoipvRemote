@@ -2,6 +2,7 @@ using System.Windows.Forms;
 using LoipvRemote.App;
 using LoipvRemote.Themes;
 using LoipvRemote.UI.Panels;
+using LoipvRemote.UI.Window;
 using LoipvRemote.Resources.Language;
 using System.Runtime.Versioning;
 
@@ -12,11 +13,11 @@ namespace LoipvRemote.UI.Forms
     {
         private readonly PanelAdder _panelAdder;
 
-        public FrmChoosePanel()
+        public FrmChoosePanel(PanelAdder panelAdder)
         {
             InitializeComponent();
             Icon = Resources.ImageConverter.GetImageAsIcon(Properties.Resources.Panel_16x);
-            _panelAdder = new PanelAdder();
+            _panelAdder = panelAdder ?? throw new ArgumentNullException(nameof(panelAdder));
         }
 
         public string Panel
@@ -63,9 +64,9 @@ namespace LoipvRemote.UI.Forms
         {
             cbPanels.Items.Clear();
 
-            for (int i = 0; i <= Runtime.WindowList.Count - 1; i++)
+            foreach (BaseWindow panel in _panelAdder.Panels)
             {
-                cbPanels.Items.Add(Runtime.WindowList[i].Text.Replace("&&", "&"));
+                cbPanels.Items.Add(panel.Text.Replace("&&", "&"));
             }
 
             if (cbPanels.Items.Count > 0)

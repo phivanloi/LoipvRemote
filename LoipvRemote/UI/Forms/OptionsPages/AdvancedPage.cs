@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Windows.Forms;
 using LoipvRemote.App;
@@ -9,6 +10,7 @@ using LoipvRemote.Properties;
 using LoipvRemote.Tools;
 using LoipvRemote.Resources.Language;
 using System.Runtime.Versioning;
+using LoipvRemote.Infrastructure.Windows.ProcessManagement;
 
 namespace LoipvRemote.UI.Forms.OptionsPages
 {
@@ -131,8 +133,9 @@ namespace LoipvRemote.UI.Forms.OptionsPages
         {
             try
             {
-                PuttyProcessController puttyProcess = new();
                 string fileName = chkUseCustomPuttyPath.Checked ? txtCustomPuttyPath.Text : GeneralAppInfo.PuttyPath;
+                using WindowsProcessController puttyProcess = new(
+                    TimeSpan.FromSeconds(Properties.OptionsAdvancedPage.Default.MaxPuttyWaitTime));
                 puttyProcess.Start(fileName);
                 puttyProcess.SetControlText("Button", "&Cancel", "&Close");
                 puttyProcess.SetControlVisible("Button", "&Open", false);
@@ -142,7 +145,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             {
                 MessageBox.Show(Language.ErrorCouldNotLaunchPutty, Application.ProductName,
                                 MessageBoxButtons.OK, MessageBoxIcon.Exclamation, MessageBoxDefaultButton.Button1);
-                Runtime.MessageCollector.AddExceptionMessage(Language.ErrorCouldNotLaunchPutty, ex);
+                Trace.TraceError($"{Language.ErrorCouldNotLaunchPutty}{Environment.NewLine}{ex}");
             }
         }
 

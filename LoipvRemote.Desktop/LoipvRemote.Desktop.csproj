@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <SupportedOSPlatformVersion>10.0.26100.0</SupportedOSPlatformVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" />
+    <ProjectReference Include="..\LoipvRemote.Domain\LoipvRemote.Domain.csproj" />
+    <ProjectReference Include="..\LoipvRemote.Application\LoipvRemote.Application.csproj" />
+    <ProjectReference Include="..\LoipvRemote.Protocols.Abstractions\LoipvRemote.Protocols.Abstractions.csproj" />
+  </ItemGroup>
+</Project>

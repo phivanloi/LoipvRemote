@@ -1,13 +1,16 @@
 using System.Runtime.Versioning;
+using LoipvRemote.Connectors.Abstractions;
+using LoipvRemote.UseCases.Credentials;
+using LoipvRemote.Protocols.Putty;
 
 namespace LoipvRemote.Connection.Protocol.Serial
 {
     [SupportedOSPlatform("windows")]
     public class ProtocolSerial : PuttyBase
     {
-        public ProtocolSerial()
+        public ProtocolSerial(ExternalCredentialConnectorRegistry externalCredentialConnectors, IStringSecretStore userSecretStore) : base(externalCredentialConnectors, userSecretStore)
         {
-            this.PuttyProtocol = Putty_Protocol.serial;
+            PuttyProtocol = PuttyProtocolKind.Serial;
         }
 
         public enum Defaults

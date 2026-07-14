@@ -6,6 +6,7 @@ using log4net;
 using log4net.Appender;
 using log4net.Config;
 using log4net.Repository;
+using ApplicationEdition = LoipvRemote.UseCases.Hosting.ApplicationEdition;
 
 namespace LoipvRemote.App
 {
@@ -56,7 +57,7 @@ namespace LoipvRemote.App
 
         private static string BuildLogFilePath()
         {
-            string logFilePath = Runtime.IsPortableEdition ? GetLogPathPortableEdition() : GetLogPathNormalEdition();
+            string logFilePath = ApplicationEdition.IsPortable ? GetLogPathPortableEdition() : GetLogPathNormalEdition();
 
             string? logFileName = Path.ChangeExtension(Application.ProductName, ".log");
 

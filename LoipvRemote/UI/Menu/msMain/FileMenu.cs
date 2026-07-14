@@ -1,6 +1,7 @@
 using System;
 using System.Windows.Forms;
 using LoipvRemote.App;
+using LoipvRemote.App.Composition;
 using LoipvRemote.Connection;
 using LoipvRemote.Properties;
 using LoipvRemote.Security;
@@ -22,6 +23,7 @@ namespace LoipvRemote.UI.Menu
         private ToolStripMenuItem _mMenFileExit;
         private ToolStripSeparator _mMenFileSep2;
         private ToolStripSeparator _mMenFileSep1;
+        private DesktopShellRuntime? _desktopShellRuntime;
 
         public ConnectionTreeWindow TreeWindow { get; set; }
 
@@ -29,6 +31,12 @@ namespace LoipvRemote.UI.Menu
         {
             Initialize();
         }
+
+        internal void AttachRuntime(DesktopShellRuntime desktopShellRuntime) =>
+            _desktopShellRuntime = desktopShellRuntime ?? throw new ArgumentNullException(nameof(desktopShellRuntime));
+
+        private DesktopShellRuntime DesktopShellRuntime => _desktopShellRuntime
+            ?? throw new InvalidOperationException("The desktop shell runtime must be attached before using the file menu.");
 
         private void Initialize()
         {
@@ -144,13 +152,13 @@ namespace LoipvRemote.UI.Menu
                     return;
                 }
 
-                Runtime.ConnectionsService.NewConnectionsFile(saveFileDialog.FileName);
+                DesktopShellRuntime.ConnectionsService.NewConnectionsFile(saveFileDialog.FileName);
             }
         }
 
         private void mMenFileLoad_Click(object sender, EventArgs e)
         {
-            if (Runtime.ConnectionsService.IsConnectionsFileLoaded)
+            if (DesktopShellRuntime.ConnectionsService.IsConnectionsFileLoaded)
             {
                 DialogResult msgBoxResult = MessageBox.Show(Language.SaveConnectionsFileBeforeOpeningAnother,
                                                    Language.Save, MessageBoxButtons.YesNoCancel);
@@ -158,19 +166,19 @@ namespace LoipvRemote.UI.Menu
                 switch (msgBoxResult)
                 {
                     case DialogResult.Yes:
-                        Runtime.ConnectionsService.SaveConnections();
+                        DesktopShellRuntime.ConnectionsService.SaveConnections();
                         break;
                     case DialogResult.Cancel:
                         return;
                 }
             }
 
-            Runtime.LoadConnections(true);
+            DesktopShellRuntime.ConnectionLoadingService.LoadConnections(true);
         }
 
         private void mMenFileSave_Click(object sender, EventArgs e)
         {
-            Runtime.ConnectionsService.SaveConnectionsAsync();
+            DesktopShellRuntime.ConnectionsService.SaveConnectionsAsync();
         }
 
         private void mMenFileSaveAs_Click(object sender, EventArgs e)
@@ -182,9 +190,9 @@ namespace LoipvRemote.UI.Menu
 
                 string newFileName = saveFileDialog.FileName;
 
-                Runtime.ConnectionsService.SaveConnections(Runtime.ConnectionsService.ConnectionTreeModel, false, new SaveFilter(), newFileName);
+                DesktopShellRuntime.ConnectionsService.SaveConnections(DesktopShellRuntime.ConnectionsService.ConnectionTreeModel, false, new SaveFilter(), newFileName);
 
-                if (newFileName == Runtime.ConnectionsService.GetDefaultStartupConnectionFileName())
+                if (newFileName == DesktopShellRuntime.ConnectionsService.GetDefaultStartupConnectionFileName())
                 {
                     Properties.OptionsBackupPage.Default.LoadConsFromCustomLocation = false;
                 }

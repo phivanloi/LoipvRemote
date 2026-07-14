@@ -48,12 +48,12 @@ namespace LoipvRemoteTests.Security
         }
 
         [Test]
-        public void ReturnsOldProviderTypeIfXmlIsntValid()
+        public void FallsBackToCurrentConfiguredProviderIfXmlIsntValid()
         {
             var badElement = new XElement("BadElement");
             var builder = new CryptoProviderFactoryFromXml(badElement);
             var cryptoProvider = builder.Build();
-            Assert.That(cryptoProvider, Is.TypeOf<LegacyRijndaelCryptographyProvider>());
+            Assert.That(cryptoProvider, Is.TypeOf<AeadCryptographyProvider>());
         }
 
         private static XElement BuildValidElement()

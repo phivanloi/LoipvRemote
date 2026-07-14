@@ -30,13 +30,13 @@ namespace LoipvRemote.UI.Panels
         private bool _panelsTemporarilyPinned = false;
 
         // Timer to check for focus loss
-        private Timer _focusCheckTimer;
+        private System.Windows.Forms.Timer _focusCheckTimer;
 
         public static PanelBinder Instance => _instance ?? (_instance = new PanelBinder());
 
         private PanelBinder()
         {
-            _focusCheckTimer = new Timer();
+            _focusCheckTimer = new System.Windows.Forms.Timer();
             _focusCheckTimer.Interval = 250; // Check every 250ms
             _focusCheckTimer.Tick += FocusCheckTimer_Tick;
 

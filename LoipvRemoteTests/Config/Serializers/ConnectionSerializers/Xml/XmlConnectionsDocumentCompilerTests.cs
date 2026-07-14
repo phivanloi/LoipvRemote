@@ -63,9 +63,19 @@ public class XmlConnectionsDocumentCompilerTests
     [Test]
     public void XmlContentEncryptedWhenFullFileEncryptionTurnedOn()
     {
+        _connectionTreeModel.RootNodes.OfType<RootNodeInfo>().First().PasswordString = "test-password";
         var xdoc = _documentCompiler.CompileDocument(_connectionTreeModel, true);
         var rootElementValue = xdoc.Root?.Value;
         Assert.That(rootElementValue, Is.Not.EqualTo(string.Empty));
+    }
+
+    [Test]
+    public void FullFileEncryptionRequiresConfiguredPassword()
+    {
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
+            () => _documentCompiler.CompileDocument(_connectionTreeModel, true));
+
+        Assert.That(exception!.Message, Does.Contain("requires a configured connection-file password"));
     }
 
 

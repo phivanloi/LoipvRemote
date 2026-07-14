@@ -292,7 +292,7 @@ namespace BrightIdeasSoftware
         /// Make a new drop sink
         /// </summary>
         public SimpleDropSink() {
-            this.timer = new Timer();
+            this.timer = new System.Windows.Forms.Timer();
             this.timer.Interval = 250;
             this.timer.Tick += new EventHandler(this.timer_Tick);
 
@@ -1123,7 +1123,7 @@ namespace BrightIdeasSoftware
 
         #endregion
 
-        private Timer timer;
+        private System.Windows.Forms.Timer timer;
         private int scrollAmount;
         private bool originalFullRowSelect;
         private ModelDropEventArgs dropEventArgs;

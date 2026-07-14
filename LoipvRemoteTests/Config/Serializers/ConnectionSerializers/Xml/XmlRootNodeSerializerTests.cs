@@ -83,18 +83,22 @@ public class XmlRootNodeSerializerTests
         Assert.That(bool.Parse(attributeValue), Is.EqualTo(fullFileEncryption));
     }
 
-    [TestCase("", "ThisIsNotProtected")]
-    [TestCase(null, "ThisIsNotProtected")]
-    [TestCase("mR3m", "ThisIsNotProtected")]
-    [TestCase("customPassword1", "ThisIsProtected")]
-    public void ProtectedStringSerialized(string customPassword, string expectedPlainText)
+    [TestCase("")]
+    [TestCase(null)]
+    public void ProtectedStringIsEmptyWhenNoPasswordIsConfigured(string customPassword)
     {
         _rootNodeInfo.PasswordString = customPassword;
         var element = _rootNodeSerializer.SerializeRootNodeInfo(_rootNodeInfo, _cryptographyProvider, _version);
-        var attributeValue = element.Attribute(XName.Get("Protected"))?.Value;
-        var attributeValuePlainText =
-            _cryptographyProvider.Decrypt(attributeValue, _rootNodeInfo.PasswordString.ConvertToSecureString());
-        Assert.That(attributeValuePlainText, Is.EqualTo(expectedPlainText));
+        Assert.That(element.Attribute(XName.Get("Protected"))?.Value, Is.Empty);
+    }
+
+    [Test]
+    public void ProtectedStringIsEncryptedWhenPasswordIsConfigured()
+    {
+        _rootNodeInfo.PasswordString = "customPassword1";
+        var element = _rootNodeSerializer.SerializeRootNodeInfo(_rootNodeInfo, _cryptographyProvider, _version);
+        string attributeValue = element.Attribute(XName.Get("Protected"))!.Value;
+        Assert.That(_cryptographyProvider.Decrypt(attributeValue, _rootNodeInfo.PasswordString.ConvertToSecureString()), Is.EqualTo("ThisIsProtected"));
     }
 
     [Test]
@@ -105,10 +109,7 @@ public class XmlRootNodeSerializerTests
         _rootNodeInfo.Password = true;
         var element = _rootNodeSerializer.SerializeRootNodeInfo(_rootNodeInfo, _cryptographyProvider, _version);
         var attributeValue = element.Attribute(XName.Get("Protected"))?.Value;
-        // Should use default password and serialize as "ThisIsNotProtected"
-        var attributeValuePlainText =
-            _cryptographyProvider.Decrypt(attributeValue, _rootNodeInfo.PasswordString.ConvertToSecureString());
-        Assert.That(attributeValuePlainText, Is.EqualTo("ThisIsNotProtected"));
+        Assert.That(attributeValue, Is.Empty);
     }
 
     [Test]
@@ -120,11 +121,9 @@ public class XmlRootNodeSerializerTests
         var element = _rootNodeSerializer.SerializeRootNodeInfo(_rootNodeInfo, _cryptographyProvider, _version, fullFileEncryption: true);
         var fullFileEncryptionValue = element.Attribute(XName.Get("FullFileEncryption"))?.Value;
         Assert.That(bool.Parse(fullFileEncryptionValue), Is.True);
-        // Verify Protected attribute can be decrypted successfully
+        // A boolean flag alone does not provide a key; the protected marker remains empty.
         var protectedValue = element.Attribute(XName.Get("Protected"))?.Value;
-        Assert.That(protectedValue, Is.Not.Null.And.Not.Empty);
-        var decryptedProtected = _cryptographyProvider.Decrypt(protectedValue, _rootNodeInfo.PasswordString.ConvertToSecureString());
-        Assert.That(decryptedProtected, Is.EqualTo("ThisIsNotProtected"));
+        Assert.That(protectedValue, Is.Empty);
     }
 
     [Test]

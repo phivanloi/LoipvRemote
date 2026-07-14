@@ -44,7 +44,7 @@ namespace LoipvRemoteTests.Tools
         {
             var color = Color.FromArgb(255, 128, 64, 32);
             var result = _converter.ConvertFrom(color);
-            Assert.That(result, Is.EqualTo("#80401F"));
+            Assert.That(result, Is.EqualTo("#804020"));
         }
 
         [Test]

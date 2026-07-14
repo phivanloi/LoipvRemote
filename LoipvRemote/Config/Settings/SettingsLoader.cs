@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Windows.Forms;
 using WeifenLuo.WinFormsUI.Docking;
 using LoipvRemote.App;
+using LoipvRemote.App.Composition;
 using System.Threading;
 using System.Globalization;
 using LoipvRemote.Connection.Protocol;
@@ -23,18 +24,26 @@ namespace LoipvRemote.Config.Settings
         private readonly QuickConnectToolStrip _quickConnectToolStrip;
         private readonly ExternalToolsToolStrip _externalToolsToolStrip;
         private readonly MultiSshToolStrip _multiSshToolStrip;
+        private readonly DesktopShellRuntime _desktopShellRuntime;
 
         private FrmMain MainForm { get; }
 
 
-        public SettingsLoader(FrmMain mainForm, MessageCollector messageCollector, QuickConnectToolStrip quickConnectToolStrip, ExternalToolsToolStrip externalToolsToolStrip, MultiSshToolStrip multiSshToolStrip)
+        public SettingsLoader(
+            FrmMain mainForm,
+            MessageCollector messageCollector,
+            QuickConnectToolStrip quickConnectToolStrip,
+            ExternalToolsToolStrip externalToolsToolStrip,
+            MultiSshToolStrip multiSshToolStrip,
+            DesktopShellRuntime desktopShellRuntime)
         {
             MainForm = mainForm ?? throw new ArgumentNullException(nameof(mainForm));
             _messageCollector = messageCollector ?? throw new ArgumentNullException(nameof(messageCollector));
             _quickConnectToolStrip = quickConnectToolStrip ?? throw new ArgumentNullException(nameof(quickConnectToolStrip));
             _externalToolsToolStrip = externalToolsToolStrip ?? throw new ArgumentNullException(nameof(externalToolsToolStrip));
             _multiSshToolStrip = multiSshToolStrip ?? throw new ArgumentNullException(nameof(multiSshToolStrip));
-            _externalAppsLoader = new ExternalAppsLoader(MainForm, messageCollector, _externalToolsToolStrip);
+            _desktopShellRuntime = desktopShellRuntime ?? throw new ArgumentNullException(nameof(desktopShellRuntime));
+            _externalAppsLoader = new ExternalAppsLoader(MainForm, messageCollector, _externalToolsToolStrip, _desktopShellRuntime.ExternalToolsService);
         }
 
         #region Public Methods
@@ -126,10 +135,10 @@ namespace LoipvRemote.Config.Settings
             MainForm.Fullscreen.Value = true;
         }
 
-        private static void SetShowSystemTrayIcon()
+        private void SetShowSystemTrayIcon()
         {
             if (Properties.OptionsAppearancePage.Default.ShowSystemTrayIcon)
-                Runtime.NotificationAreaIcon = new NotificationAreaIcon();
+                _desktopShellRuntime.RuntimeState.NotificationAreaIcon = new NotificationAreaIcon(MainForm, _desktopShellRuntime);
         }
 
         private static void SetPuttyPath()
@@ -139,7 +148,6 @@ namespace LoipvRemote.Config.Settings
 
         private void EnsureSettingsAreSavedInNewestVersion()
         {
-            // TODO: is this ever true and run?
             if (Properties.App.Default.DoUpgrade)
                 UpgradeSettingsVersion();
         }

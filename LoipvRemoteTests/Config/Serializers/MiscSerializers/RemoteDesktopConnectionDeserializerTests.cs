@@ -21,7 +21,7 @@ public class RemoteDesktopConnectionDeserializerTests
     private const int ExpectedPort = 9933;
     private const RDPColors ExpectedColors = RDPColors.Colors24Bit;
     private const bool ExpectedBitmapCaching = true;
-    private const RDPResolutions ExpectedResolutionMode = RDPResolutions.FitToWindow;
+    private const RDPResolutions ExpectedResolutionMode = RDPResolutions.SmartSize;
     private const bool ExpectedWallpaperDisplay = true;
     private const bool ExpectedThemesDisplay = true;
     private const bool ExpectedFontSmoothing = true;

@@ -11,6 +11,7 @@ using System.IO;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
 using System.Linq;
+using LoipvRemote.UseCases.Credentials;
 
 namespace LoipvRemote.UI.Forms.OptionsPages
 {
@@ -95,8 +96,9 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             txtSQLServer.Text = Properties.OptionsDBsPage.Default.SQLHost;
             txtSQLDatabaseName.Text = Properties.OptionsDBsPage.Default.SQLDatabaseName;
             txtSQLUsername.Text = Properties.OptionsDBsPage.Default.SQLUser;
-            LegacyRijndaelCryptographyProvider cryptographyProvider = new();
-            txtSQLPassword.Text = cryptographyProvider.Decrypt(Properties.OptionsDBsPage.Default.SQLPass, Runtime.EncryptionKey);
+            txtSQLPassword.Text = Runtime.UserSecretStore.Unprotect(
+                Properties.OptionsDBsPage.Default.SQLPass,
+                SecretPurposes.SqlPassword);
             chkSQLReadOnly.Checked = Properties.OptionsDBsPage.Default.SQLReadOnly;
             lblTestConnectionResults.Text = "";
         }
@@ -111,8 +113,9 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             Properties.OptionsDBsPage.Default.SQLHost = txtSQLServer.Text;
             Properties.OptionsDBsPage.Default.SQLDatabaseName = txtSQLDatabaseName.Text;
             Properties.OptionsDBsPage.Default.SQLUser = txtSQLUsername.Text;
-            LegacyRijndaelCryptographyProvider cryptographyProvider = new();
-            Properties.OptionsDBsPage.Default.SQLPass = cryptographyProvider.Encrypt(txtSQLPassword.Text, Runtime.EncryptionKey);
+            Properties.OptionsDBsPage.Default.SQLPass = Runtime.UserSecretStore.Protect(
+                txtSQLPassword.Text,
+                SecretPurposes.SqlPassword);
             Properties.OptionsDBsPage.Default.SQLReadOnly = chkSQLReadOnly.Checked;
 
             if (Properties.OptionsDBsPage.Default.UseSQLServer)
@@ -176,7 +179,9 @@ namespace LoipvRemote.UI.Forms.OptionsPages
         private static void ReinitializeSqlUpdater()
         {
             Runtime.ConnectionsService.RemoteConnectionsSyncronizer?.Dispose();
-            Runtime.ConnectionsService.RemoteConnectionsSyncronizer = new RemoteConnectionsSyncronizer(new SqlConnectionsUpdateChecker());
+            Runtime.ConnectionsService.RemoteConnectionsSyncronizer = new RemoteConnectionsSyncronizer(
+                new ConnectionStoreUpdateChecker(Runtime.ConnectionsService, Runtime.MessageCollector),
+                Runtime.ConnectionsService);
             Runtime.ConnectionsService.LoadConnections(true, false, "");
         }
 

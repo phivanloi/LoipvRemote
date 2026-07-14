@@ -140,20 +140,9 @@ namespace LoipvRemote.Config.Settings.Registry
         {
             if (DefaultPassword.IsSet && DefaultPasswordEnabled)
             {
-                try
-                {
-                    LegacyRijndaelCryptographyProvider cryptographyProvider = new();
-                    string decryptedPassword;
-                    string defaultPassword = DefaultPassword.Value;
-
-                    decryptedPassword = cryptographyProvider.Decrypt(defaultPassword, Runtime.EncryptionKey);
-                    Properties.OptionsCredentialsPage.Default.DefaultPassword = defaultPassword;
-                }
-                catch
-                {
-                    // Fire-and-forget: The DefaultPassword in the registry is not encrypted.
-                    DefaultPassword.Clear();
-                }
+                // Registry-provided legacy ciphertext is deliberately unsupported. DPAPI secrets
+                // are scoped to the current Windows user and must be entered through the UI.
+                DefaultPassword.Clear();
             }
             else if (!DefaultPasswordEnabled)
             {

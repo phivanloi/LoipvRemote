@@ -5,6 +5,8 @@ using LoipvRemote.Connection.Protocol;
 using LoipvRemote.Connection.Protocol.SSH;
 using LoipvRemote.Container;
 using LoipvRemote.Tree.Root;
+using LoipvRemote.Connectors.Abstractions;
+using LoipvRemoteTests.TestHelpers;
 using NUnit.Framework;
 
 
@@ -80,7 +82,7 @@ namespace LoipvRemoteTests.Connection
         {
             var eventWasCalled = false;
             _connectionInfo.PropertyChanged += (sender, args) => eventWasCalled = true;
-            _connectionInfo.OpenConnections.Add(new ProtocolSSH2());
+            _connectionInfo.OpenConnections.Add(new ProtocolSSH2(new ExternalCredentialConnectorRegistry([]), TestSecretStore.Instance));
             Assert.That(eventWasCalled);
         }
 
@@ -89,7 +91,7 @@ namespace LoipvRemoteTests.Connection
         {
             var nameOfModifiedProperty = "";
             _connectionInfo.PropertyChanged += (sender, args) => nameOfModifiedProperty = args.PropertyName;
-            _connectionInfo.OpenConnections.Add(new ProtocolSSH2());
+            _connectionInfo.OpenConnections.Add(new ProtocolSSH2(new ExternalCredentialConnectorRegistry([]), TestSecretStore.Instance));
             Assert.That(nameOfModifiedProperty, Is.EqualTo("OpenConnections"));
         }
 

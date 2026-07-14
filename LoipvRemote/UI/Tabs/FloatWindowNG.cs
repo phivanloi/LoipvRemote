@@ -1,10 +1,9 @@
 using System;
 using System.Drawing;
-using System.Runtime.InteropServices;
-using System.Security.Permissions;
 using System.Windows.Forms;
 using WeifenLuo.WinFormsUI.Docking;
 using LoipvRemote.Themes;
+using LoipvRemote.Infrastructure.Windows.Interop;
 
 namespace LoipvRemote.UI.Tabs
 {
@@ -41,9 +40,6 @@ namespace LoipvRemote.UI.Tabs
             ThemeManager.getInstance().ApplyThemeToTitleBar(this);
         }
 
-        [DllImport("User32.dll", CharSet = CharSet.Auto)]
-        public static extern uint SendMessage(IntPtr hWnd, int Msg, uint wParam, uint lParam);
-
         //[SecurityPermission(SecurityAction.LinkDemand, Flags = SecurityPermissionFlag.UnmanagedCode)]
         protected override void WndProc(ref Message m)
         {
@@ -61,9 +57,9 @@ namespace LoipvRemote.UI.Tabs
                 if ((uint)m.WParam == 8) // Check if button down occured in minimize box
                 {
                     if (WindowState == FormWindowState.Minimized)
-                        _ = FloatWindowNG.SendMessage(Handle, (int)WM_SYSCOMMAND, (uint)SC_RESTORE, 0);
+                        _ = NativeMethods.SendMessage(Handle, WM_SYSCOMMAND, (IntPtr)SC_RESTORE, IntPtr.Zero);
                     else
-                        _ = FloatWindowNG.SendMessage(Handle, (int)WM_SYSCOMMAND, (uint)SC_MINIMIZE, 0);
+                        _ = NativeMethods.SendMessage(Handle, WM_SYSCOMMAND, (IntPtr)SC_MINIMIZE, IntPtr.Zero);
 
                     return;
                 }

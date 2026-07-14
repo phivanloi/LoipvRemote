@@ -668,7 +668,7 @@ namespace LoipvRemote.UI.Tabs
         private bool EnsureDocumentTabVisible(IDockContent content, bool repaint)
         {
             int index = Tabs.IndexOf(content);
-            if (index == -1) // TODO: should prevent it from being -1;
+            if (index == -1)
                 return false;
 
             if (Tabs[index] is MremoteNGTab tab && tab.TabWidth != 0)

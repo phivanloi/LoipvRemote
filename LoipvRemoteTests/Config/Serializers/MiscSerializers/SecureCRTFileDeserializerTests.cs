@@ -4,6 +4,7 @@ using LoipvRemote.Config.Serializers.MiscSerializers;
 using LoipvRemote.Connection;
 using LoipvRemote.Connection.Protocol;
 using LoipvRemote.Container;
+using LoipvRemote.Messages;
 using NUnit.Framework;
 using LoipvRemoteTests.Properties;
 using LoipvRemote.Tree;
@@ -21,7 +22,7 @@ public class SecureCRTFileDeserializerTests
     public void OnetimeSetup()
     {
         var fileContents = Resources.test_securecrt;
-        _deserializer = new SecureCRTFileDeserializer();
+        _deserializer = new SecureCRTFileDeserializer(new MessageCollector());
         _connectionTreeModel = _deserializer.Deserialize(fileContents);
     }
 

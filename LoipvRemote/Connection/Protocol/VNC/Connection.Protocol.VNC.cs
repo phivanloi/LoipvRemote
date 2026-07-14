@@ -1,14 +1,10 @@
 using System;
-using System.Threading;
 using System.ComponentModel;
-using System.Net.Sockets;
-using LoipvRemote.App;
 using LoipvRemote.Tools;
-using LoipvRemote.UI.Forms;
 using LoipvRemote.Resources.Language;
 using System.Runtime.Versioning;
 using LoipvRemote.Security;
-using System.Runtime.ExceptionServices;
+using LoipvRemote.Protocols.Vnc;
 
 // ReSharper disable ArrangeAccessorOwnerBody
 
@@ -20,12 +16,10 @@ namespace LoipvRemote.Connection.Protocol.VNC
     {
         #region Private Declarations
 
-        private VncSharpCore.RemoteDesktop _vnc;
+        private readonly VncDesktopClient _vnc = new();
         private ConnectionInfo _info;
-        private static volatile bool _isConnectionSuccessful;
-        private static ExceptionDispatchInfo _socketexception;
-        private static readonly ManualResetEvent TimeoutObject = new(false);
-        private static readonly object _testConnectLock = new();
+        private readonly VncEndpointProbe _endpointProbe = new();
+        private VncSession? _session;
 
         #endregion
 
@@ -33,7 +27,7 @@ namespace LoipvRemote.Connection.Protocol.VNC
 
         public ProtocolVNC()
         {
-            Control = new VncSharpCore.RemoteDesktop();
+            Control = _vnc.Control;
         }
 
         public override bool Initialize()
@@ -42,15 +36,20 @@ namespace LoipvRemote.Connection.Protocol.VNC
 
             try
             {
-                _vnc = Control as VncSharpCore.RemoteDesktop;
                 _info = InterfaceControl.Info;
-                _vnc.VncPort = _info.Port;
+                if (_info is null)
+                    return false;
 
-                return true;
+                _session = new VncSession(_vnc.Session, _endpointProbe);
+                return _session.Initialize(new VncConnectionOptions(
+                    _info.Hostname,
+                    _info.Port,
+                    _info.VNCViewOnly,
+                    _info.VNCSmartSizeMode != SmartSizeMode.SmartSNo));
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddMessage(Messages.MessageClass.ErrorMsg,
+                MessageCollector.AddMessage(Messages.MessageClass.ErrorMsg,
                                                     Language.VncSetPropsFailed + Environment.NewLine + ex.Message,
                                                     true);
                 return false;
@@ -62,12 +61,12 @@ namespace LoipvRemote.Connection.Protocol.VNC
             SetEventHandlers();
             try
             {
-                if (TestConnect(_info.Hostname, _info.Port, 500))
-                    _vnc.Connect(_info.Hostname, _info.VNCViewOnly, _info.VNCSmartSizeMode != SmartSizeMode.SmartSNo);
+                if (_session is null || !_session.Connect())
+                    return false;
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddMessage(Messages.MessageClass.ErrorMsg,
+                MessageCollector.AddMessage(Messages.MessageClass.ErrorMsg,
                                                     Language.ConnectionOpenFailed + Environment.NewLine +
                                                     ex.Message);
                 return false;
@@ -80,11 +79,11 @@ namespace LoipvRemote.Connection.Protocol.VNC
         {
             try
             {
-                _vnc.Disconnect();
+                _session?.Disconnect();
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddMessage(Messages.MessageClass.ErrorMsg,
+                MessageCollector.AddMessage(Messages.MessageClass.ErrorMsg,
                                                     Language.VncConnectionDisconnectFailed + Environment.NewLine +
                                                     ex.Message, true);
             }
@@ -98,16 +97,16 @@ namespace LoipvRemote.Connection.Protocol.VNC
                 switch (Keys)
                 {
                     case SpecialKeys.CtrlAltDel:
-                        _vnc.SendSpecialKeys(VncSharpCore.SpecialKeys.CtrlAltDel);
+                        _vnc.SendSpecialKeys(VncSpecialKeys.CtrlAltDel);
                         break;
                     case SpecialKeys.CtrlEsc:
-                        _vnc.SendSpecialKeys(VncSharpCore.SpecialKeys.CtrlEsc);
+                        _vnc.SendSpecialKeys(VncSpecialKeys.CtrlEsc);
                         break;
                 }
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddMessage(Messages.MessageClass.ErrorMsg,
+                MessageCollector.AddMessage(Messages.MessageClass.ErrorMsg,
                                                     Language.VncSendSpecialKeysFailed + Environment.NewLine +
                                                     ex.Message, true);
             }
@@ -127,11 +126,11 @@ namespace LoipvRemote.Connection.Protocol.VNC
         {
             try
             {
-                _vnc.FullScreenUpdate();
+                _vnc.RefreshScreen();
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddMessage(Messages.MessageClass.ErrorMsg,
+                MessageCollector.AddMessage(Messages.MessageClass.ErrorMsg,
                                                     Language.VncRefreshFailed + Environment.NewLine + ex.Message,
                                                     true);
             }
@@ -145,73 +144,19 @@ namespace LoipvRemote.Connection.Protocol.VNC
         {
             try
             {
-                _vnc.ConnectComplete += VNCEvent_Connected;
-                _vnc.ConnectionLost += VNCEvent_Disconnected;
-                FrmMain.ClipboardChanged += VNCEvent_ClipboardChanged;
+                _vnc.Connected += VNCEvent_Connected;
+                _vnc.Disconnected += VNCEvent_Disconnected;
+                ClipboardChangedSource.ClipboardChanged += VNCEvent_ClipboardChanged;
                 if (!Force.HasFlag(ConnectionInfo.Force.NoCredentials) && _info?.Password?.Length > 0)
                 {
-                    _vnc.GetPassword = VNCEvent_Authenticate;
+                    _vnc.PasswordProvider = VNCEvent_Authenticate;
                 }
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddMessage(Messages.MessageClass.ErrorMsg,
+                MessageCollector.AddMessage(Messages.MessageClass.ErrorMsg,
                                                     Language.VncSetEventHandlersFailed + Environment.NewLine +
                                                     ex.Message, true);
-            }
-        }
-
-        private static bool TestConnect(string hostName, int port, int timeoutMSec)
-        {
-            lock (_testConnectLock)
-            {
-                _socketexception = null;
-                TcpClient tcpclient = new();
-
-                TimeoutObject.Reset();
-                tcpclient.BeginConnect(hostName, port, CallBackMethod, tcpclient);
-
-                if (TimeoutObject.WaitOne(timeoutMSec, false))
-                {
-                    if (_isConnectionSuccessful) return true;
-                    // Connection completed but failed - tcpclient will be closed in CallBackMethod's finally block
-                    if (_socketexception != null)
-                    {
-                        _socketexception.Throw();
-                    }
-                }
-                else
-                {
-                    tcpclient.Close();
-                    throw new TimeoutException($"Connection timed out to host " + hostName + " on port " + port);
-                }
-
-                return false;
-            }
-        }
-
-        private static void CallBackMethod(IAsyncResult asyncresult)
-        {
-            TcpClient tcpclient = null;
-            try
-            {
-                _isConnectionSuccessful = false;
-                tcpclient = asyncresult.AsyncState as TcpClient;
-
-                if (tcpclient?.Client == null) return;
-
-                tcpclient.EndConnect(asyncresult);
-                _isConnectionSuccessful = true;
-            }
-            catch (Exception ex)
-            {
-                _isConnectionSuccessful = false;
-                _socketexception = ExceptionDispatchInfo.Capture(ex);
-            }
-            finally
-            {
-                tcpclient?.Close();
-                TimeoutObject.Set();
             }
         }
 
@@ -227,7 +172,7 @@ namespace LoipvRemote.Connection.Protocol.VNC
 
         private void VNCEvent_Disconnected(object sender, EventArgs e)
         {
-            FrmMain.ClipboardChanged -= VNCEvent_ClipboardChanged;
+            ClipboardChangedSource.ClipboardChanged -= VNCEvent_ClipboardChanged;
             Event_Disconnected(this, @"VncSharp Disconnected.", null);
             Close();
         }

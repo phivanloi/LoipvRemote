@@ -1,9 +1,22 @@
 using System;
 using System.Linq;
 using LoipvRemote.App;
+using LoipvRemote.App.Composition;
 using LoipvRemote.Connection;
 using LoipvRemote.Connection.Protocol;
+using LoipvRemote.Config.Putty;
+using LoipvRemote.UseCases.Configuration;
+using LoipvRemoteTests.TestHelpers;
+using LoipvRemote.Connectors.Abstractions;
+using LoipvRemote.Infrastructure.Persistence;
+using LoipvRemote.Infrastructure.Windows.Dpapi;
+using LoipvRemote.Infrastructure.Windows.ProcessManagement;
+using LoipvRemoteTests.TestHelpers;
 using LoipvRemote.Messages;
+using LoipvRemote.Tools;
+using LoipvRemote.UI.Adapters;
+using LoipvRemote.UI.Panels;
+using LoipvRemote.UseCases.Configuration;
 using NUnit.Framework;
 
 namespace LoipvRemoteTests.Connection
@@ -17,8 +30,24 @@ namespace LoipvRemoteTests.Connection
         [SetUp]
         public void Setup()
         {
-            _connectionInitiator = new ConnectionInitiator();
             _messageCollector = Runtime.MessageCollector;
+            RuntimeState runtimeState = new() { WindowList = [] };
+            ConnectionWorkspaceAdapter connectionWorkspace = new();
+            ExternalToolsService externalToolsService = new();
+            _connectionInitiator = new ConnectionInitiator(
+                new ProtocolFactory(new ExternalCredentialConnectorRegistry([]), TestSecretStore.Instance, _messageCollector, connectionWorkspace, externalToolsService, new WindowsExternalApplicationHostFactory()),
+                externalToolsService,
+                runtimeState,
+                _messageCollector,
+                connectionWorkspace,
+                new ConnectionsService(
+                    PuttySessionsManager.Instance,
+                    new ConnectionStoreRuntime(
+                        new ConnectionDefinitionPersistenceRuntime(new ConnectionStoreConfigurationService(new ConnectionDefinitionStoreFactory())),
+                        new XmlConnectionStoreOptionsProvider(),
+                        new DpapiStringSecretStore(new WindowsDpapiSecretProtector())),
+                    _messageCollector),
+                new PanelAdder(runtimeState, _messageCollector, connectionWorkspace));
             _messageCollector.ClearMessages();
         }
 

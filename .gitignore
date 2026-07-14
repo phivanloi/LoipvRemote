@@ -67,6 +67,9 @@ dlldata.c
 # DNX
 project.lock.json
 artifacts/
+build/
+SpecResults/
+TestResults/
 
 *_i.c
 *_p.c

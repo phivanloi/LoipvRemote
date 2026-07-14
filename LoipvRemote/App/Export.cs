@@ -9,19 +9,31 @@ using LoipvRemote.Config.Serializers.ConnectionSerializers.Csv;
 using LoipvRemote.Config.Serializers.ConnectionSerializers.Xml;
 using LoipvRemote.Connection;
 using LoipvRemote.Container;
+using LoipvRemote.Credential;
+using LoipvRemote.Messages;
 using LoipvRemote.Security;
 using LoipvRemote.Security.Factories;
 using LoipvRemote.Tree;
 using LoipvRemote.Tree.Root;
 using LoipvRemote.UI.Forms;
+using LoipvRemote.UI.Adapters;
 
 
 namespace LoipvRemote.App
 {
     [SupportedOSPlatform("windows")]
-    public static class Export
+    public sealed class ConnectionExportService(
+        ConnectionWorkspaceAdapter connectionWorkspace,
+        MessageCollector messageCollector,
+        ConnectionsService connectionsService,
+        ICredentialRepositoryList credentialRepositoryList)
     {
-        public static void ExportToFile(ConnectionInfo selectedNode, ConnectionTreeModel connectionTreeModel)
+        private readonly ConnectionWorkspaceAdapter _connectionWorkspace = connectionWorkspace ?? throw new ArgumentNullException(nameof(connectionWorkspace));
+        private readonly MessageCollector _messageCollector = messageCollector ?? throw new ArgumentNullException(nameof(messageCollector));
+        private readonly ConnectionsService _connectionsService = connectionsService ?? throw new ArgumentNullException(nameof(connectionsService));
+        private readonly ICredentialRepositoryList _credentialRepositoryList = credentialRepositoryList ?? throw new ArgumentNullException(nameof(credentialRepositoryList));
+
+        public void ExportToFile(ConnectionInfo selectedNode, ConnectionTreeModel connectionTreeModel)
         {
             try
             {
@@ -39,7 +51,7 @@ namespace LoipvRemote.App
                         exportForm.SelectedConnection = selectedNode;
                     }
 
-                    if (exportForm.ShowDialog(FrmMain.Default) != DialogResult.OK)
+                    if (_connectionWorkspace.ShowDialog(exportForm) != DialogResult.OK)
                         return;
 
                     ConnectionInfo? exportTarget;
@@ -70,14 +82,14 @@ namespace LoipvRemote.App
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage("App.Export.ExportToFile() failed.", ex);
+                _messageCollector.AddExceptionMessage("App.Export.ExportToFile() failed.", ex);
             }
         }
 
-        private static void SaveExportFile(string fileName,
-                                           SaveFormat saveFormat,
-                                           SaveFilter saveFilter,
-                                           ConnectionInfo exportTarget)
+        private void SaveExportFile(string fileName,
+                                    SaveFormat saveFormat,
+                                    SaveFilter saveFilter,
+                                    ConnectionInfo exportTarget)
         {
             try
             {
@@ -100,7 +112,7 @@ namespace LoipvRemote.App
                         break;
                     case SaveFormat.mRCSV:
                         serializer =
-                            new CsvConnectionsSerializerMremotengFormat(saveFilter, Runtime.CredentialProviderCatalog);
+                            new CsvConnectionsSerializerMremotengFormat(saveFilter, _credentialRepositoryList);
                         break;
                     default:
                         throw new ArgumentOutOfRangeException(nameof(saveFormat), saveFormat, null);
@@ -112,11 +124,11 @@ namespace LoipvRemote.App
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionStackTrace($"Export.SaveExportFile(\"{fileName}\") failed.", ex);
+                _messageCollector.AddExceptionStackTrace($"Export.SaveExportFile(\"{fileName}\") failed.", ex);
             }
             finally
             {
-                Runtime.ConnectionsService.RemoteConnectionsSyncronizer?.Enable();
+                _connectionsService.RemoteConnectionsSyncronizer?.Enable();
             }
         }
     }

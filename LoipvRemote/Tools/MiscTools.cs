@@ -1,13 +1,13 @@
 using System;
 using System.ComponentModel;
+using System.Diagnostics;
+using LoipvRemote.Domain.Metadata;
 using System.Data.SqlTypes;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Globalization;
 using System.IO;
 using System.Security;
-using LoipvRemote.App;
-using LoipvRemote.Messages;
 using LoipvRemote.UI.Forms;
 using MySql.Data.Types;
 using LoipvRemote.Resources.Language;
@@ -26,23 +26,18 @@ namespace LoipvRemote.Tools
             }
             catch (ArgumentException AEx)
             {
-                Runtime.MessageCollector.AddMessage(MessageClass.WarningMsg, "GetIconFromFile failed (Tools.Misc) - using default icon" + Environment.NewLine + AEx.Message, true);
+                Trace.TraceWarning("GetIconFromFile failed (Tools.Misc) - using default icon" + Environment.NewLine + AEx.Message);
                 return Properties.Resources.LoipvRemote_Icon;
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddMessage(MessageClass.WarningMsg, "GetIconFromFile failed (Tools.Misc)" + Environment.NewLine + ex.Message, true);
+                Trace.TraceWarning("GetIconFromFile failed (Tools.Misc)" + Environment.NewLine + ex.Message);
                 return null;
             }
         }
 
         public static Optional<SecureString> PasswordDialog(string? passwordName = null, bool verify = true)
         {
-            //var splash = FrmSplashScreenNew.GetInstance();
-            //TODO: something not right there
-            //if (PresentationSource.FromVisual(splash))
-            //    splash.Close();
-
             passwordName ??= string.Empty; // Ensure passwordName is not null
             FrmPassword passwordForm = new(passwordName, verify);
             return passwordForm.GetKey();
@@ -75,7 +70,7 @@ namespace LoipvRemote.Tools
                 return (sbyte)dataObject == 1;
             }
 
-            Runtime.MessageCollector.AddMessage(MessageClass.ErrorMsg, $"Conversion of object to boolean failed because the type, {type}, is not handled.");
+            Trace.TraceError($"Conversion of object to boolean failed because the type, {type}, is not handled.");
             return false;
         }
 
@@ -149,7 +144,7 @@ namespace LoipvRemote.Tools
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionStackTrace("Taking Screenshot failed", ex);
+                Trace.TraceError($"Taking Screenshot failed.{Environment.NewLine}{ex}");
             }
 
             return null;
@@ -180,6 +175,11 @@ namespace LoipvRemote.Tools
                     throw new ArgumentException("FieldInfo could not be retrieved for the provided enum value.");
                 }
 
+                ProtocolDisplayKeyAttribute? displayKey =
+                    (ProtocolDisplayKeyAttribute?)Attribute.GetCustomAttribute(fi, typeof(ProtocolDisplayKeyAttribute));
+                if (displayKey is not null)
+                    return Language.ResourceManager.GetString(displayKey.ResourceKey) ?? displayKey.ResourceKey;
+
                 DescriptionAttribute? dna = (DescriptionAttribute?)Attribute.GetCustomAttribute(fi, typeof(DescriptionAttribute));
                 return dna?.Description ?? value.ToString() ?? string.Empty;
             }
@@ -195,9 +195,13 @@ namespace LoipvRemote.Tools
                 {
                     foreach (System.Reflection.FieldInfo fi in _enumType.GetFields())
                     {
-                        DescriptionAttribute? dna = (DescriptionAttribute?)Attribute.GetCustomAttribute(fi, typeof(DescriptionAttribute));
+                        ProtocolDisplayKeyAttribute? displayKey =
+                            (ProtocolDisplayKeyAttribute?)Attribute.GetCustomAttribute(fi, typeof(ProtocolDisplayKeyAttribute));
+                        string? displayValue = displayKey is not null
+                            ? Language.ResourceManager.GetString(displayKey.ResourceKey) ?? displayKey.ResourceKey
+                            : ((DescriptionAttribute?)Attribute.GetCustomAttribute(fi, typeof(DescriptionAttribute)))?.Description;
 
-                        if (dna != null && string.Equals(stringValue, dna.Description, StringComparison.Ordinal))
+                        if (displayValue is not null && string.Equals(stringValue, displayValue, StringComparison.Ordinal))
                         {
                             return Enum.Parse(_enumType, fi.Name);
                         }
@@ -340,6 +344,9 @@ namespace LoipvRemote.Tools
                     {
                         try
                         {
+                            if (TryParseHexColor(stringValue, out Color hexColor))
+                                return hexColor;
+
                             ColorConverter converter = new ColorConverter();
                             return converter.ConvertFromString(stringValue) ?? Color.Empty;
                         }
@@ -351,6 +358,25 @@ namespace LoipvRemote.Tools
                 }
 
                 return base.ConvertTo(context, culture, value, destinationType) ?? throw new InvalidOperationException("Base conversion returned null.");
+            }
+
+            private static bool TryParseHexColor(string value, out Color color)
+            {
+                color = Color.Empty;
+                if (!value.StartsWith('#'))
+                    return false;
+
+                string hexValue = value[1..];
+                if (hexValue.Length is not 6 and not 8 ||
+                    !uint.TryParse(hexValue, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out uint numericValue))
+                {
+                    return false;
+                }
+
+                color = hexValue.Length == 6
+                    ? Color.FromArgb(255, (int)(numericValue >> 16), (int)((numericValue >> 8) & 0xFF), (int)(numericValue & 0xFF))
+                    : Color.FromArgb((int)(numericValue >> 24), (int)((numericValue >> 16) & 0xFF), (int)((numericValue >> 8) & 0xFF), (int)(numericValue & 0xFF));
+                return true;
             }
 
             public override bool GetStandardValuesSupported(ITypeDescriptorContext? context)

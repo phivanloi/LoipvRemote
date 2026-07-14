@@ -1,8 +1,8 @@
 using System;
+using System.Diagnostics;
 using System.Drawing;
 using System.Runtime.Versioning;
 using System.Windows.Forms;
-using LoipvRemote.App;
 using LoipvRemote.Connection;
 using LoipvRemote.Container;
 using LoipvRemote.Tree.Root;
@@ -110,7 +110,7 @@ namespace LoipvRemote.UI
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionStackTrace($"Unable to fill the image list of type {nameof(StatusImageList)}", ex);
+                Trace.TraceError($"Unable to fill the image list of type {nameof(StatusImageList)}.{Environment.NewLine}{ex}");
             }
         }
 

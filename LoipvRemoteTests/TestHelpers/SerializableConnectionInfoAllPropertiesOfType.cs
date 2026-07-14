@@ -9,6 +9,9 @@ namespace LoipvRemoteTests.TestHelpers
 		public TType Description { get; set; }
 		public TType Icon { get; set; }
 		public TType Panel { get; set; }
+		public TType Color { get; set; }
+		public TType TabColor { get; set; }
+		public TType ConnectionFrameColor { get; set; }
 		public TType Username { get; set; }
 		public TType Password { get; set; }
 		public TType Domain { get; set; }
@@ -25,6 +28,7 @@ namespace LoipvRemoteTests.TestHelpers
 		public TType UseCredSsp { get; set; }
 		public TType UseRestrictedAdmin { get; set; }
 		public TType UseRCG { get; set; }
+		public TType UseRedirectionServerName { get; set; }
 		public TType RDGatewayUsageMethod { get; set; }
 		public TType RDGatewayHostname { get; set; }
 		public TType RDGatewayUseConnectionCredentials { get; set; }
@@ -83,6 +87,9 @@ namespace LoipvRemoteTests.TestHelpers
         public TType RDPStartProgramWorkDir { get; set; }
 		public TType OpeningCommand { get; set; }
 		public TType ExternalCredentialProvider { get; set; }
+		public TType VaultOpenbaoMount { get; set; }
+		public TType VaultOpenbaoRole { get; set; }
+		public TType VaultOpenbaoSecretEngine { get; set; }
 		public TType UserViaAPI { get; set; }
 		public TType EC2InstanceId { get; set; }
 		public TType ExternalAddressProvider { get; set; }

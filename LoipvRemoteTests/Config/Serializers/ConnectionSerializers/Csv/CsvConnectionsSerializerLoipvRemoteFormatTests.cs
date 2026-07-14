@@ -51,7 +51,6 @@ public class CsvConnectionsSerializerMremotengFormatTests
 
     [TestCase(Username)]
     [TestCase(Domain)]
-    [TestCase(Password)]
     [TestCase("InheritColors")]
     public void CreatesCsv(string valueThatShouldExist)
     {
@@ -63,7 +62,6 @@ public class CsvConnectionsSerializerMremotengFormatTests
 
     [TestCase(Username)]
     [TestCase(Domain)]
-    [TestCase(Password)]
     [TestCase("InheritColors")]
     public void SerializerRespectsSaveFilterSettings(string valueThatShouldntExist)
     {
@@ -113,8 +111,7 @@ public class CsvConnectionsSerializerMremotengFormatTests
         Assert.That(csv, Does.Match(container.Name));
         Assert.That(csv, Does.Match(container.Username));
         Assert.That(csv, Does.Match(container.Domain));
-        //Assert.That(csv, Does.Match(container.Password?.ConvertToUnsecureString()));
-        Assert.That(csv, Does.Match(container.Password));
+        Assert.That(csv, Does.Not.Contain(container.Password));
         Assert.That(csv, Does.Contain(TreeNodeType.Container.ToString()));
     }
 
@@ -129,8 +126,29 @@ public class CsvConnectionsSerializerMremotengFormatTests
             .First(s => s.Contains(serializationTarget.Name));
         Assert.That(lineWithFolder3, Does.Contain(serializationTarget.Username));
         Assert.That(lineWithFolder3, Does.Contain(serializationTarget.Domain));
-        //Assert.That(lineWithFolder3, Does.Contain(serializationTarget.Password?.ConvertToUnsecureString()));
-        Assert.That(lineWithFolder3, Does.Contain(serializationTarget.Password));
+        Assert.That(lineWithFolder3, Does.Not.Contain(serializationTarget.Password));
+    }
+
+    [Test]
+    public void CsvExportNeverContainsSecrets()
+    {
+        var serializer = new CsvConnectionsSerializerMremotengFormat(new SaveFilter(), _credentialRepositoryList);
+        var connectionInfo = BuildConnectionInfo();
+        connectionInfo.VNCProxyPassword = "vnc-secret";
+        connectionInfo.RDGatewayPassword = "gateway-secret";
+        connectionInfo.RDGatewayAccessToken = "token-secret";
+
+        var csv = serializer.Serialize(connectionInfo);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(csv, Does.Not.Contain(Password));
+            Assert.That(csv, Does.Not.Contain("vnc-secret"));
+            Assert.That(csv, Does.Not.Contain("gateway-secret"));
+            Assert.That(csv, Does.Not.Contain("token-secret"));
+            Assert.That(csv, Does.Not.Contain("Password;"));
+            Assert.That(csv, Does.Not.Contain("AccessToken;"));
+        });
     }
 
     private ConnectionInfo BuildConnectionInfo()

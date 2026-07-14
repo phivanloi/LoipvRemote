@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using LoipvRemote.App;
@@ -240,7 +241,7 @@ namespace LoipvRemote.Connection
             }
             catch (Exception e)
             {
-                Runtime.MessageCollector.AddExceptionStackTrace($"Error retrieving inherited property '{propertyName}'", e);
+                Trace.TraceError($"Error retrieving inherited property '{propertyName}'.{Environment.NewLine}{e}");
                 inheritedValue = default(TPropertyType);
                 return false;
             }
@@ -287,7 +288,7 @@ namespace LoipvRemote.Connection
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage(Language.ConnectionSetDefaultPortFailed, ex);
+                Trace.TraceError($"{Language.ConnectionSetDefaultPortFailed}{Environment.NewLine}{ex}");
                 return 0;
             }
         }

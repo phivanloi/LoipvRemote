@@ -28,9 +28,10 @@ namespace LoipvRemote.Config.Serializers.ConnectionSerializers.Xml
         private XAttribute CreateProtectedAttribute(RootNodeInfo rootNodeInfo, ICryptographyProvider cryptographyProvider)
         {
             XAttribute attribute = new(XName.Get("Protected"), "");
-            string plainText = (rootNodeInfo.PasswordString != rootNodeInfo.DefaultPassword) ? "ThisIsProtected" : "ThisIsNotProtected";
-            System.Security.SecureString encryptionPassword = rootNodeInfo.PasswordString.ConvertToSecureString();
-            attribute.Value = cryptographyProvider.Encrypt(plainText, encryptionPassword);
+            if (string.IsNullOrEmpty(rootNodeInfo.PasswordString))
+                return attribute;
+
+            attribute.Value = cryptographyProvider.Encrypt("ThisIsProtected", rootNodeInfo.PasswordString.ConvertToSecureString());
             return attribute;
         }
     }

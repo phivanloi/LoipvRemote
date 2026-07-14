@@ -52,87 +52,60 @@ jobs:
       - name: (01) Checkout Repository
         uses: actions/checkout@v7
 
-        # 2. Auto-detect solution file (Supports legacy .sln modern VS2026 .slnx)
-      - name: (02) Find solution file
+      - name: (02) Select solution file
         shell: pwsh
         run: |
-          Write-Host "Locating solution file (.sln or .slnx)..."
-          $sln = Get-ChildItem -Path . -Filter "*.sln*" -File -Recurse |
-                 Where-Object { $_.Extension -match '^\.slnx?$' } |
-                 Select-Object -First 1
-
-          if ($sln) {
-            "SOLUTION_FILE=$($sln.Name)" | Out-File -FilePath $env:GITHUB_ENV -Append
-            Write-Host "Located file: $($sln.Name)" -ForegroundColor Green
-          } else {
-            Write-Host "ERROR: Could not locate a .sln or .slnx file!" -ForegroundColor Red
+          $solutionPath = Join-Path $env:GITHUB_WORKSPACE 'LoipvRemote.slnx'
+          if (-not (Test-Path -LiteralPath $solutionPath)) {
+            Write-Host "ERROR: LoipvRemote.slnx was not found." -ForegroundColor Red
             exit 1
           }
+          "SOLUTION_FILE=$solutionPath" | Out-File -FilePath $env:GITHUB_ENV -Append
+          Write-Host "Using solution: $solutionPath" -ForegroundColor Green
 
       - name: (02) Install .NET 10 SDK
         uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '10.0.x'
 
-      # 6. Install Visual Studio 2026 Build Tools
-      - name: (03) Install Visual Studio 2026 Build Tools
-        shell: pwsh
-        run: |
-          Write-Host "Installing VS 2026 Build Tools..."
-          choco install visualstudio2026buildtools --package-parameters "--add Microsoft.VisualStudio.Workload.VCTools --add Microsoft.VisualStudio.Component.VC.Tools.x86.x64 --includeRecommended --quiet" -y --ignore-package-exit-codes=3010
-          Write-Host "VS 2026 Build Tools installation completed"
-
-      - name: (04) Install and run dotnet-t4 to transform T4 templates
-        shell: pwsh
-        run: |
-          dotnet tool install --global dotnet-t4
-          # Refresh PATH to include global tools
-          $env:PATH += ";$env:USERPROFILE\.dotnet\tools"
-          $ttFile = "$env:GITHUB_WORKSPACE\LoipvRemote\Properties\AssemblyInfo.tt"
-          # VS Enterprise 2022 assemblies
-          $vsPath = "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\IDE\PublicAssemblies"
-          Write-Host "Transforming T4 template"
-          t4 $ttFile -P platformType=${{ matrix.platform }} -r:"$vsPath\EnvDTE.dll" -r:"$vsPath\Microsoft.VisualStudio.Interop.dll"
-        env:
-          PLATFORM: '${{ matrix.platform }}'
-
-      - name: (05) Cache NuGet Packages
+      - name: (03) Cache NuGet Packages
         uses: actions/cache@v6
         with:
           path: ~/.nuget/packages
-          key: ${{ runner.os }}-${{ matrix.arch }}-${{ matrix.deployment }}-nuget-${{ hashFiles('**/*.csproj') }}
+          key: ${{ runner.os }}-${{ matrix.arch }}-${{ matrix.deployment }}-nuget-${{ hashFiles('global.json', 'LoipvRemote.slnx', '**/*.csproj', 'Directory.Packages.props') }}
           restore-keys: |
             ${{ runner.os }}-${{ matrix.arch }}-${{ matrix.deployment }}-nuget-
             ${{ runner.os }}-${{ matrix.arch }}-nuget-
 
-      - name: (06) Restore NuGet Packages
+      - name: (04) Restore NuGet Packages
         shell: pwsh
-        run: dotnet restore
+        run: dotnet restore $env:SOLUTION_FILE
 
-      - name: (07) Build Framework-Dependent Release
+      - name: (05) Build Framework-Dependent Release
         if: matrix.deployment == 'framework-dependent'
         shell: pwsh
-        run: |
-          msbuild "$Env:GITHUB_WORKSPACE\$($sln.Name)" -p:Configuration="Release" -p:Platform=${{ matrix.platform }} /verbosity:minimal
+        run: dotnet build $env:SOLUTION_FILE -c Release -p:Platform=${{ matrix.platform }} --no-restore --nologo
 
-      - name: (08) Build Self-Contained Release
+      - name: (06) Build Self-Contained Release
         if: matrix.deployment == 'self-contained'
         shell: pwsh
-        run: |
-          msbuild "$Env:GITHUB_WORKSPACE\LoipvRemote.sln" /t:Publish /p:Configuration="Release Self-Contained" -p:Platform=${{ matrix.platform }} /verbosity:minimal /p:SelfContained=true /p:PublishDir="bin\${{ matrix.platform }}\Release"
+        run: >
+          dotnet build LoipvRemote/LoipvRemote.csproj
+          -c "Release Self-Contained"
+          -p:Platform=${{ matrix.platform }}
+          --no-restore
+          --self-contained true
+          -p:PublishDir="${{ github.workspace }}\\LoipvRemote\\bin\\${{ matrix.platform }}\\Release\\"
 
-      - name: (09) Release Information
+      - name: (07) Release Information
         id: version
         shell: pwsh
         run: |
-          $assemblyInfoPath = "${{ github.workspace }}\LoipvRemote\Properties\AssemblyInfo.cs"
-          $line = Get-Content $assemblyInfoPath | Where-Object { $_ -match 'AssemblyVersion\("(.+?)"\)' }
-          if ($line -match 'AssemblyVersion\("(?<ver>\d+\.\d+\.\d+)\.(?<build>\d+)"\)') {
-            $version = $matches['ver']
-            $build = $matches['build']
-          } else {
-            throw "Could not extract version and build number"
-          }
+          [xml]$project = Get-Content "${{ github.workspace }}\LoipvRemote\LoipvRemote.csproj"
+          $fullVersion = @($project.Project.PropertyGroup | ForEach-Object Version | Where-Object { $_ })[0]
+          if ([string]::IsNullOrWhiteSpace($fullVersion)) { throw 'Could not extract Version from LoipvRemote.csproj.' }
+          $version = $fullVersion
+          $build = $env:GITHUB_RUN_NUMBER
           $date = Get-Date -Format "yyyyMMdd"
           $zipName = "LoipvRemote-$date-v$version-NB-$build-${{ matrix.arch }}-${{ matrix.deploy_suffix }}.zip"
           $tag = "$date-v$version-NB-($build)"
@@ -144,39 +117,7 @@ jobs:
           echo "tag=$tag" >> $env:GITHUB_OUTPUT
           echo "deployment=${{ matrix.deployment }}" >> $env:GITHUB_OUTPUT
 
-      - name: (10) Extract Changelog Section
-        id: changelog
-        shell: pwsh
-        run: |
-          $changelogPath = "$env:GITHUB_WORKSPACE\CHANGELOG.md"
-          $lines = Get-Content $changelogPath
-
-          $startIndex = -1
-          for ($i = 0; $i -lt $lines.Count; $i++) {
-            if ($lines[$i] -match '^## \[') {
-              $startIndex = $i
-              break
-            }
-          }
-
-          if ($startIndex -eq -1) {
-            throw "No version header found in CHANGELOG.md"
-          }
-
-          $section = @()
-          for ($i = $startIndex + 1; $i -lt $lines.Count; $i++) {
-            if ($lines[$i] -match '^## ') {
-              break
-            }
-            $section += $lines[$i]
-          }
-
-          $joined = $section -join "`n"
-          echo "log<<EOF" >> $env:GITHUB_OUTPUT
-          echo $joined >> $env:GITHUB_OUTPUT
-          echo "EOF" >> $env:GITHUB_OUTPUT
-
-      - name: (11) Create Zip File
+      - name: (08) Create Zip File
         shell: pwsh
         run: |
           $sourceDir = "$Env:GITHUB_WORKSPACE\LoipvRemote\bin\${{ matrix.platform }}\Release"
@@ -187,7 +128,7 @@ jobs:
           $fileSize = (Get-Item ${{ steps.version.outputs.zipname }}).Length / 1MB
           echo "Size: $([math]::Round($fileSize, 2)) MB"
 
-      - name: (10) Upload artifacts for combination
+      - name: (09) Upload artifacts for combination
         uses: actions/upload-artifact@v7
         with:
           name: release-${{ matrix.arch }}-${{ matrix.deploy_suffix }}
@@ -212,14 +153,11 @@ jobs:
         id: version
         shell: pwsh
         run: |
-          $assemblyInfoPath = "${{ github.workspace }}\LoipvRemote\Properties\AssemblyInfo.cs"
-          $line = Get-Content $assemblyInfoPath | Where-Object { $_ -match 'AssemblyVersion\("(.+?)"\)' }
-          if ($line -match 'AssemblyVersion\("(?<ver>\d+\.\d+\.\d+)\.(?<build>\d+)"\)') {
-            $version = $matches['ver']
-            $build = $matches['build']
-          } else {
-            throw "Could not extract version and build number"
-          }
+          [xml]$project = Get-Content "${{ github.workspace }}\LoipvRemote\LoipvRemote.csproj"
+          $fullVersion = @($project.Project.PropertyGroup | ForEach-Object Version | Where-Object { $_ })[0]
+          if ([string]::IsNullOrWhiteSpace($fullVersion)) { throw 'Could not extract Version from LoipvRemote.csproj.' }
+          $version = $fullVersion
+          $build = $env:GITHUB_RUN_NUMBER
           $date = Get-Date -Format "yyyyMMdd"
           $tag = "$date-v$version-NB-($build)"
           $message = git log -1 --pretty=%B
@@ -227,38 +165,6 @@ jobs:
           echo "build=$build" >> $env:GITHUB_OUTPUT
           echo "tag=$tag" >> $env:GITHUB_OUTPUT
           echo "message=$message" >> $env:GITHUB_OUTPUT
-
-      - name: Extract Changelog
-        id: changelog
-        shell: pwsh
-        run: |
-          $changelogPath = "$env:GITHUB_WORKSPACE\CHANGELOG.md"
-          $lines = Get-Content $changelogPath
-
-          $startIndex = -1
-          for ($i = 0; $i -lt $lines.Count; $i++) {
-            if ($lines[$i] -match '^## \[') {
-              $startIndex = $i
-              break
-            }
-          }
-
-          if ($startIndex -eq -1) {
-            throw "No version header found in CHANGELOG.md"
-          }
-
-          $section = @()
-          for ($i = $startIndex + 1; $i -lt $lines.Count; $i++) {
-            if ($lines[$i] -match '^## ') {
-              break
-            }
-            $section += $lines[$i]
-          }
-
-          $joined = $section -join "`n"
-          echo "log<<EOF" >> $env:GITHUB_OUTPUT
-          echo $joined >> $env:GITHUB_OUTPUT
-          echo "EOF" >> $env:GITHUB_OUTPUT
 
       - name: Collect all release files
         shell: pwsh
@@ -294,9 +200,6 @@ jobs:
             Both versions are available for **x64** and **ARM64** architectures.
 
             ---
-
-            ### 📝 Changes in this Release
-            ${{ steps.changelog.outputs.log }}
 
             ### 💬 Last Commit Message
             ${{ steps.version.outputs.message }}

@@ -3,6 +3,7 @@ using System.Linq;
 using System.Windows.Forms;
 using WeifenLuo.WinFormsUI.Docking;
 using LoipvRemote.App;
+using LoipvRemote.App.Composition;
 using LoipvRemote.Container;
 using LoipvRemote.Themes;
 using LoipvRemote.Resources.Language;
@@ -14,9 +15,11 @@ namespace LoipvRemote.UI.Window
     public partial class ActiveDirectoryImportWindow : BaseWindow
     {
         private string _currentDomain;
+        private readonly ConnectionImportService _connectionImportService;
 
-        public ActiveDirectoryImportWindow()
+        public ActiveDirectoryImportWindow(ConnectionImportService connectionImportService)
         {
+            _connectionImportService = connectionImportService ?? throw new ArgumentNullException(nameof(connectionImportService));
             WindowType = WindowType.ActiveDirectoryImport;
             DockPnl = new DockContent();
             Icon = Resources.ImageConverter.GetImageAsIcon(Properties.Resources.Schema_16x);
@@ -49,9 +52,9 @@ namespace LoipvRemote.UI.Window
             if (selectedNode != null)
                 importDestination = selectedNode as ContainerInfo ?? selectedNode.Parent;
             else
-                importDestination = Runtime.ConnectionsService.ConnectionTreeModel.RootNodes.First();
+                importDestination = AppWindows.TreeForm.ConnectionTree.ConnectionTreeModel.RootNodes.First();
 
-            Import.ImportFromActiveDirectory(activeDirectoryTree.AdPath, importDestination, chkSubOU.Checked);
+            _connectionImportService.ImportFromActiveDirectory(activeDirectoryTree.AdPath, importDestination, chkSubOU.Checked);
         }
 
         private void TxtDomain_KeyDown(object sender, KeyEventArgs e)

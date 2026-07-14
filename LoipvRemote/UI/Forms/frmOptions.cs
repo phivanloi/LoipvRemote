@@ -130,17 +130,6 @@ namespace LoipvRemote.UI.Forms
             pnlBottom.ForeColor = ThemeManager.getInstance().ActiveTheme.ExtendedPalette.getColor("Dialog_Foreground");
         }
 
-#if false
-        private void ApplyLanguage()
-        {
-            Text = Language.OptionsPageTitle;
-            foreach (var optionPage in _pages.Values)
-            {
-                optionPage.ApplyLanguage();
-            }
-        }
-#endif
-
         private void InitOptionsPagesToListView()
         {
             Logger.Instance.Log?.Debug($"[InitOptionsPagesToListView] START - Loading {_optionPageObjectNames.Count} pages");

@@ -19,11 +19,10 @@ namespace LoipvRemoteTests.Tree
         public void DefaultPasswordReturnsExpectedValue()
         {
             var defaultPassword = _rootNodeInfo.DefaultPassword;
-            Assert.That(defaultPassword, Is.EqualTo("mR3m"));
+            Assert.That(defaultPassword, Is.Empty);
         }
 
         [TestCase("a", true)]
-        [TestCase("mR3m", false)]
         [TestCase("", false)]
         [TestCase(null, false)]
         public void PasswordPropertyReflectsWhetherACustomPasswordIsInUse(string password, bool expected)

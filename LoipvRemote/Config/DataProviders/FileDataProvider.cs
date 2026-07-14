@@ -1,7 +1,7 @@
 using System;
 using System.IO;
 using System.Runtime.Versioning;
-using LoipvRemote.App;
+using System.Diagnostics;
 using LoipvRemote.Tools;
 
 namespace LoipvRemote.Config.DataProviders
@@ -42,13 +42,11 @@ namespace LoipvRemote.Config.DataProviders
             }
             catch (FileNotFoundException ex)
             {
-                Runtime.MessageCollector.AddExceptionStackTrace(
-                                                                $"Could not load file. File does not exist '{FilePath}'",
-                                                                ex);
+                Trace.TraceWarning($"Could not load file. File does not exist '{FilePath}'.{Environment.NewLine}{ex}");
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionStackTrace($"Failed to load file {FilePath}", ex);
+                Trace.TraceWarning($"Failed to load file {FilePath}.{Environment.NewLine}{ex}");
             }
 
             return fileContents;
@@ -66,7 +64,7 @@ namespace LoipvRemote.Config.DataProviders
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionStackTrace($"Failed to save file {FilePath}", ex);
+                Trace.TraceWarning($"Failed to save file {FilePath}.{Environment.NewLine}{ex}");
             }
             finally
             {
@@ -85,7 +83,7 @@ namespace LoipvRemote.Config.DataProviders
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionStackTrace($"Failed to move file {FilePath} to {newPath}", ex);
+                Trace.TraceWarning($"Failed to move file {FilePath} to {newPath}.{Environment.NewLine}{ex}");
             }
         }
 

@@ -8,7 +8,6 @@ using LoipvRemote.App.Info;
 using LoipvRemote.Config;
 using LoipvRemote.Config.Connections;
 using LoipvRemote.Config.Connections.Multiuser;
-using LoipvRemote.Config.DataProviders;
 using LoipvRemote.Config.Putty;
 using LoipvRemote.Connection.Protocol;
 using LoipvRemote.Messages;
@@ -18,20 +17,23 @@ using LoipvRemote.Tree;
 using LoipvRemote.Tree.Root;
 using LoipvRemote.UI;
 using LoipvRemote.Resources.Language;
+using ApplicationEdition = LoipvRemote.UseCases.Hosting.ApplicationEdition;
 using System.Runtime.Versioning;
-using LoipvRemote.Config.Serializers.ConnectionSerializers.Sql;
 
 namespace LoipvRemote.Connection
 {
     [SupportedOSPlatform("windows")]
-    public class ConnectionsService(PuttySessionsManager puttySessionsManager)
+    public class ConnectionsService(
+        PuttySessionsManager puttySessionsManager,
+        ConnectionStoreRuntime connectionStoreRuntime,
+        MessageCollector messageCollector)
     {
         private const int AsyncSaveCoalesceDelayMilliseconds = 75;
         private static readonly object SaveLock = new();
         private readonly PuttySessionsManager _puttySessionsManager = puttySessionsManager ?? throw new ArgumentNullException(nameof(puttySessionsManager));
+        private readonly ConnectionStoreRuntime _connectionStoreRuntime = connectionStoreRuntime ?? throw new ArgumentNullException(nameof(connectionStoreRuntime));
+        private readonly MessageCollector _messageCollector = messageCollector ?? throw new ArgumentNullException(nameof(messageCollector));
         private readonly AsyncSaveRequestQueue _asyncSaveRequestQueue = new();
-        private readonly IDataProvider<string> _localConnectionPropertiesDataProvider = new FileDataProvider(Path.Combine(SettingsFileInfo.SettingsPath, SettingsFileInfo.LocalConnectionProperties));
-        private readonly LocalConnectionPropertiesXmlSerializer _localConnectionPropertiesSerializer = new LocalConnectionPropertiesXmlSerializer();
         private bool _batchingSaves = false;
         private bool _saveRequested = false;
         private bool _saveAsyncRequested = false;
@@ -46,6 +48,8 @@ namespace LoipvRemote.Connection
 
         public ConnectionTreeModel ConnectionTreeModel { get; private set; }
 
+        public string GetDatabaseRevision() => _connectionStoreRuntime.GetDatabaseRevision();
+
         public void NewConnectionsFile(string filename)
         {
             try
@@ -58,7 +62,7 @@ namespace LoipvRemote.Connection
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage(Language.CouldNotCreateNewConnectionsFile, ex);
+                _messageCollector.AddExceptionMessage(Language.CouldNotCreateNewConnectionsFile, ex);
             }
         }
 
@@ -115,7 +119,7 @@ namespace LoipvRemote.Connection
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage(Language.QuickConnectFailed, ex);
+                _messageCollector.AddExceptionMessage(Language.QuickConnectFailed, ex);
                 return null;
             }
         }
@@ -132,11 +136,7 @@ namespace LoipvRemote.Connection
             ConnectionTreeModel oldConnectionTreeModel = ConnectionTreeModel;
             bool oldIsUsingDatabaseValue = UsingDatabase;
 
-            IConnectionsLoader connectionLoader = useDatabase
-                ? (IConnectionsLoader)new SqlConnectionsLoader(_localConnectionPropertiesSerializer, _localConnectionPropertiesDataProvider)
-                : new XmlConnectionsLoader(connectionFileName);
-
-            ConnectionTreeModel newConnectionTreeModel = connectionLoader.Load();
+            ConnectionTreeModel newConnectionTreeModel = _connectionStoreRuntime.Load(useDatabase, connectionFileName);
 
             if (useDatabase)
                 LastSqlUpdate = DateTime.Now.ToUniversalTime();
@@ -163,7 +163,7 @@ namespace LoipvRemote.Connection
             ConnectionTreeModel = newConnectionTreeModel;
             UpdateCustomConsPathSetting(connectionFileName);
             RaiseConnectionsLoadedEvent(oldConnectionTreeModel, newConnectionTreeModel, oldIsUsingDatabaseValue, useDatabase, connectionFileName);
-            Runtime.MessageCollector.AddMessage(MessageClass.DebugMsg, $"Connections loaded using {connectionLoader.GetType().Name}");
+            _messageCollector.AddMessage(MessageClass.DebugMsg, "Connections loaded using IConnectionDefinitionStore");
         }
 
         /// <summary>
@@ -257,23 +257,19 @@ namespace LoipvRemote.Connection
                 {
                     if (!useDatabase && !forceSave && !HasExpectedFileVersion(connectionFileName))
                     {
-                        Runtime.MessageCollector?.AddMessage(
+                        _messageCollector.AddMessage(
                             MessageClass.WarningMsg,
                             $"Connection file changed outside this instance; save was cancelled: {connectionFileName}",
                             true);
                         return;
                     }
 
-                Runtime.MessageCollector.AddMessage(MessageClass.InformationMsg, "Saving connections...", onlyLog: true);
+                _messageCollector.AddMessage(MessageClass.InformationMsg, "Saving connections...", onlyLog: true);
                 RemoteConnectionsSyncronizer?.Disable();
 
                 bool previouslyUsingDatabase = UsingDatabase;
 
-                ISaver<ConnectionTreeModel> saver = useDatabase
-                    ? (ISaver<ConnectionTreeModel>)new SqlConnectionsSaver(saveFilter, _localConnectionPropertiesSerializer, _localConnectionPropertiesDataProvider)
-                    : new XmlConnectionsSaver(connectionFileName, saveFilter);
-
-                saver.Save(connectionTreeModel, propertyNameTrigger);
+                _connectionStoreRuntime.Save(useDatabase, connectionFileName, connectionTreeModel);
 
                 if (UsingDatabase)
                     LastSqlUpdate = DateTime.Now.ToUniversalTime();
@@ -282,7 +278,7 @@ namespace LoipvRemote.Connection
                 ConnectionFileName = connectionFileName;
                 _lastFileContentHash = !useDatabase ? ComputeFileHash(connectionFileName) : string.Empty;
                 RaiseConnectionsSavedEvent(connectionTreeModel, previouslyUsingDatabase, UsingDatabase, connectionFileName);
-                Runtime.MessageCollector.AddMessage(MessageClass.InformationMsg, "Successfully saved connections");
+                _messageCollector.AddMessage(MessageClass.InformationMsg, "Successfully saved connections");
                 }
                 finally
                 {
@@ -293,7 +289,7 @@ namespace LoipvRemote.Connection
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector?.AddExceptionMessage(string.Format(Language.ConnectionsFileCouldNotSaveAs, connectionFileName), ex, logOnly: false);
+                _messageCollector.AddExceptionMessage(string.Format(Language.ConnectionsFileCouldNotSaveAs, connectionFileName), ex, logOnly: false);
             }
             finally
             {
@@ -389,7 +385,7 @@ namespace LoipvRemote.Connection
 
         public string GetDefaultStartupConnectionFileName()
         {
-            return Runtime.IsPortableEdition ? GetDefaultStartupConnectionFileNamePortableEdition() : GetDefaultStartupConnectionFileNameNormalEdition();
+            return ApplicationEdition.IsPortable ? GetDefaultStartupConnectionFileNamePortableEdition() : GetDefaultStartupConnectionFileNameNormalEdition();
         }
 
         private void UpdateCustomConsPathSetting(string filename)

@@ -1,10 +1,11 @@
-using LoipvRemote.App;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.Versioning;
 using System.Threading.Tasks;
+using System.Threading;
+using LoipvRemote.Messages;
 
 namespace LoipvRemote.Config.Settings.Registry
 {
@@ -29,6 +30,7 @@ namespace LoipvRemote.Config.Settings.Registry
         /// Dictionary to store settings for all registry pages.
         /// </summary>
         public static ConcurrentDictionary<Type, object> RegistrySettings { get; private set; }
+        private static int _initialized;
 
         /// <summary>
         /// Static constructor that initializes the registry settings dictionary
@@ -37,8 +39,16 @@ namespace LoipvRemote.Config.Settings.Registry
         static RegistryLoader()
         {
             RegistrySettings = new ConcurrentDictionary<Type, object>();
-            // Start loading asynchronously on startup
-            _ = LoadAllAsync();
+        }
+
+        public static void Initialize(MessageCollector messageCollector)
+        {
+            ArgumentNullException.ThrowIfNull(messageCollector);
+
+            if (Interlocked.Exchange(ref _initialized, 1) != 0)
+                return;
+
+            _ = LoadAllAsync(messageCollector);
         }
 
         /// <summary>
@@ -69,7 +79,7 @@ namespace LoipvRemote.Config.Settings.Registry
         /// and applying a specific registry class. It awaits the completion of all tasks
         /// using Task.WhenAll.
         /// </remarks>
-        private static async Task LoadAllAsync()
+        private static async Task LoadAllAsync(MessageCollector messageCollector)
         {
 #if DEBUG
             Stopwatch stopwatch = Stopwatch.StartNew();
@@ -80,31 +90,31 @@ namespace LoipvRemote.Config.Settings.Registry
                 // Create a list of tasks to initialize and apply each registry class asynchronously
                 var tasks = new List<Task>
             {
-                LoadAndApplyAsync<OptRegistryAppearancePage>(),
-                LoadAndApplyAsync<OptRegistryConnectionsPage>(),
-                LoadAndApplyAsync<OptRegistryCredentialsPage>(),
-                LoadAndApplyAsync<OptRegistryNotificationsPage>(),
-                LoadAndApplyAsync<OptRegistrySecurityPage>(),
-                LoadAndApplyAsync<OptRegistrySqlServerPage>(),
-                LoadAndApplyAsync<OptRegistryStartupExitPage>(),
-                LoadAndApplyAsync<OptRegistryTabsPanelsPage>()
+                LoadAndApplyAsync<OptRegistryAppearancePage>(messageCollector),
+                LoadAndApplyAsync<OptRegistryConnectionsPage>(messageCollector),
+                LoadAndApplyAsync<OptRegistryCredentialsPage>(messageCollector),
+                LoadAndApplyAsync<OptRegistryNotificationsPage>(messageCollector),
+                LoadAndApplyAsync<OptRegistrySecurityPage>(messageCollector),
+                LoadAndApplyAsync<OptRegistrySqlServerPage>(messageCollector),
+                LoadAndApplyAsync<OptRegistryStartupExitPage>(messageCollector),
+                LoadAndApplyAsync<OptRegistryTabsPanelsPage>(messageCollector)
             };
 
                 // Await all tasks to complete
                 await Task.WhenAll(tasks);
 
-                Runtime.MessageCollector.AddMessage(Messages.MessageClass.DebugMsg,
+                messageCollector.AddMessage(Messages.MessageClass.DebugMsg,
                     $"Registry settings loaded and applied asynchronously in {typeof(RegistryLoader).Name}", true);
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddMessage(Messages.MessageClass.DebugMsg,
+                messageCollector.AddMessage(Messages.MessageClass.DebugMsg,
                     $"Registry settings error during load: {ex.Message}", true);
             }
 
 #if DEBUG
             stopwatch.Stop();
-            Runtime.MessageCollector.AddMessage(Messages.MessageClass.DebugMsg,
+            messageCollector.AddMessage(Messages.MessageClass.DebugMsg,
                 $"Registry settings total async load time: {stopwatch.ElapsedMilliseconds} ms", true);
 #endif
         }
@@ -118,7 +128,7 @@ namespace LoipvRemote.Config.Settings.Registry
         /// This method creates an instance of the specified type T, stores it in a dictionary
         /// using its type as the key, and completes the task.
         /// </remarks>
-        private static async Task LoadAndApplyAsync<T>() where T : new()
+        private static async Task LoadAndApplyAsync<T>(MessageCollector messageCollector) where T : new()
         {
             try
             {
@@ -133,7 +143,7 @@ namespace LoipvRemote.Config.Settings.Registry
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddMessage(Messages.MessageClass.DebugMsg,
+                messageCollector.AddMessage(Messages.MessageClass.DebugMsg,
                     $"Registry settings error during load {typeof(T).Name}: {ex.Message}", true);
             }
         }
@@ -158,8 +168,6 @@ namespace LoipvRemote.Config.Settings.Registry
 
             disposedValue = true;
 
-            Runtime.MessageCollector.AddMessage(Messages.MessageClass.DebugMsg,
-                $"Registry settings lazy instance of {typeof(RegistryLoader).Name} has been disposed.", true);
         }
 
         /// <summary>

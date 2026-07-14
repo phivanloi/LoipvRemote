@@ -1,5 +1,4 @@
 using System;
-using LoipvRemote.App;
 using LoipvRemote.App.Info;
 using LoipvRemote.UI.Forms;
 using System.IO;
@@ -18,8 +17,13 @@ namespace LoipvRemote.Config.Settings
         private readonly FrmMain _mainForm;
         private readonly MessageCollector _messageCollector;
         private readonly ExternalToolsToolStrip _externalToolsToolStrip;
+        private readonly ExternalToolsService _externalToolsService;
 
-        public ExternalAppsLoader(FrmMain mainForm, MessageCollector messageCollector, ExternalToolsToolStrip externalToolsToolStrip)
+        public ExternalAppsLoader(
+            FrmMain mainForm,
+            MessageCollector messageCollector,
+            ExternalToolsToolStrip externalToolsToolStrip,
+            ExternalToolsService externalToolsService)
         {
             if (mainForm == null)
                 throw new ArgumentNullException(nameof(mainForm));
@@ -31,6 +35,7 @@ namespace LoipvRemote.Config.Settings
             _mainForm = mainForm;
             _messageCollector = messageCollector;
             _externalToolsToolStrip = externalToolsToolStrip;
+            _externalToolsService = externalToolsService ?? throw new ArgumentNullException(nameof(externalToolsService));
         }
 
 
@@ -101,7 +106,7 @@ namespace LoipvRemote.Config.Settings
                 _messageCollector.AddMessage(MessageClass.InformationMsg,
                                              $"Adding External App: {extA.DisplayName} {extA.FileName} {extA.Arguments}",
                                              true);
-                Runtime.ExternalToolsService.ExternalTools.Add(extA);
+                _externalToolsService.ExternalTools.Add(extA);
             }
 
             _externalToolsToolStrip.SwitchToolBarText(Properties.Settings.Default.ExtAppsTBShowText);

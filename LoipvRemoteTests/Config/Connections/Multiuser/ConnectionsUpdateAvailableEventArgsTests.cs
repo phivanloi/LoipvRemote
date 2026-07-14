@@ -1,42 +1,21 @@
-using System;
 using LoipvRemote.Config.Connections.Multiuser;
-using LoipvRemote.Config.DatabaseConnectors;
-using NSubstitute;
 using NUnit.Framework;
-
-// ReSharper disable ObjectCreationAsStatement
 
 namespace LoipvRemoteTests.Config.Connections.Multiuser;
 
-public class ConnectionsUpdateAvailableEventArgsTests
+public sealed class ConnectionsUpdateAvailableEventArgsTests
 {
-    private IDatabaseConnector _databaseConnector;
-    private DateTime _dateTime;
-
-    [SetUp]
-    public void Setup()
+    [Test]
+    public void RejectsMissingRevision()
     {
-        _databaseConnector = Substitute.For<IDatabaseConnector>();
-        _dateTime = DateTime.MinValue;
+        Assert.That(() => new ConnectionsUpdateAvailableEventArgs(" "), Throws.ArgumentException);
     }
 
     [Test]
-    public void CantProvideNullDatabaseConnectorToCtor()
+    public void PreservesRevision()
     {
-        Assert.Throws<ArgumentNullException>(() => new ConnectionsUpdateAvailableEventArgs(null, _dateTime));
-    }
+        var eventArgs = new ConnectionsUpdateAvailableEventArgs("A1B2C3");
 
-    [Test]
-    public void DatabaseConnectorPropertySet()
-    {
-        var eventArgs = new ConnectionsUpdateAvailableEventArgs(_databaseConnector, _dateTime);
-        Assert.That(eventArgs.DatabaseConnector, Is.EqualTo(_databaseConnector));
-    }
-
-    [Test]
-    public void UpdateTimePropertySet()
-    {
-        var eventArgs = new ConnectionsUpdateAvailableEventArgs(_databaseConnector, _dateTime);
-        Assert.That(eventArgs.UpdateTime, Is.EqualTo(_dateTime));
+        Assert.That(eventArgs.Revision, Is.EqualTo("A1B2C3"));
     }
 }

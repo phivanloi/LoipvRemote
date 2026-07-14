@@ -2,6 +2,7 @@ using System;
 using LoipvRemote.App;
 using WeifenLuo.WinFormsUI.Docking;
 using LoipvRemote.Resources.Language;
+using LoipvRemote.Messages;
 using System.Runtime.Versioning;
 
 
@@ -10,6 +11,10 @@ namespace LoipvRemote.UI.Window
     [SupportedOSPlatform("windows")]
     public class UltraVNCWindow : BaseWindow
     {
+        private MessageCollector? _messageCollector;
+
+        private MessageCollector MessageCollector => _messageCollector
+            ?? throw new InvalidOperationException("UltraVNCWindow services must be attached before use.");
         #region Form Init
 
         internal System.Windows.Forms.ToolStrip tsMain;
@@ -97,6 +102,11 @@ namespace LoipvRemote.UI.Window
             this.InitializeComponent();
         }
 
+        public void AttachServices(MessageCollector messageCollector)
+        {
+            _messageCollector = messageCollector ?? throw new ArgumentNullException(nameof(messageCollector));
+        }
+
         #endregion
 
         #region Private Methods
@@ -136,28 +146,12 @@ namespace LoipvRemote.UI.Window
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddMessage(Messages.MessageClass.ErrorMsg,
+                MessageCollector.AddMessage(Messages.MessageClass.ErrorMsg,
                                                     "StartListening (UI.Window.UltraVNCSC) failed" +
                                                     Environment.NewLine + ex.Message);
                 Close();
             }
         }
-
-#if false
-        private void SetupLicense()
-		{
-			try
-			{
-				//Dim f As System.Reflection.FieldInfo
-				//f = GetType(AxHost).GetField("licenseKey", Reflection.BindingFlags.NonPublic Or Reflection.BindingFlags.Instance)
-				//f.SetValue(vnc, "{072169039103041044176252035252117103057101225235137221179204110241121074}")
-			}
-			catch (Exception ex)
-			{
-				Runtime.MessageCollector.AddMessage(Messages.MessageClass.ErrorMsg, "VNC SetupLicense failed (UI.Window.UltraVNCSC)" + Environment.NewLine + ex.Message, true);
-			}
-		}
-#endif
 
         //Private Sub vnc_ConnectionAccepted(ByVal sender As Object, ByVal e As AxViewerX._ISmartCodeVNCViewerEvents_ConnectionAcceptedEvent) Handles vnc.ConnectionAccepted
         //    mC.AddMessage(Messages.MessageClass.InformationMsg, e.bstrServerAddress & " is now connected to your UltraVNC SingleClick panel!")

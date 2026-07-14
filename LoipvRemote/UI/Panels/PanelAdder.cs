@@ -1,6 +1,8 @@
 using LoipvRemote.App;
+using LoipvRemote.App.Composition;
 using LoipvRemote.Messages;
 using LoipvRemote.UI.Forms;
+using LoipvRemote.UI.Adapters;
 using LoipvRemote.UI.Window;
 using System;
 using System.Collections;
@@ -15,6 +17,29 @@ namespace LoipvRemote.UI.Panels
     [SupportedOSPlatform("windows")]
     public class PanelAdder
     {
+        private readonly RuntimeState _runtimeState;
+        private readonly MessageCollector _messageCollector;
+        private readonly ConnectionWorkspaceAdapter _connectionWorkspace;
+
+        public PanelAdder(
+            RuntimeState runtimeState,
+            MessageCollector messageCollector,
+            ConnectionWorkspaceAdapter connectionWorkspace)
+        {
+            _runtimeState = runtimeState ?? throw new ArgumentNullException(nameof(runtimeState));
+            _messageCollector = messageCollector ?? throw new ArgumentNullException(nameof(messageCollector));
+            _connectionWorkspace = connectionWorkspace ?? throw new ArgumentNullException(nameof(connectionWorkspace));
+        }
+
+        public IEnumerable<BaseWindow> Panels
+        {
+            get
+            {
+                for (int index = 0; index < WindowList.Count; index++)
+                    yield return WindowList[index];
+            }
+        }
+
         public ConnectionWindow AddPanel(string title = "", bool showImmediately = true)
         {
             try
@@ -31,25 +56,24 @@ namespace LoipvRemote.UI.Panels
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddMessage(MessageClass.ErrorMsg, "Couldn\'t add panel" + Environment.NewLine + ex.Message);
+                _messageCollector.AddMessage(MessageClass.ErrorMsg, "Couldn\'t add panel" + Environment.NewLine + ex.Message);
                 return null;
             }
         }
 
         public bool DoesPanelExist(string panelName)
         {
-            return Runtime.WindowList?.OfType<ConnectionWindow>().Any(w => w.TabText == panelName)
-                ?? false;
+            return Panels.OfType<ConnectionWindow>().Any(window => window.TabText == panelName);
         }
 
-        private static void ShowConnectionWindow(ConnectionWindow connectionForm)
+        private void ShowConnectionWindow(ConnectionWindow connectionForm)
         {
-            connectionForm.Show(FrmMain.Default.pnlDock, DockState.Document);
+            _connectionWorkspace.Show(connectionForm);
         }
 
-        private static void PrepareTabSupport(ConnectionWindow connectionForm)
+        private void PrepareTabSupport(ConnectionWindow connectionForm)
         {
-            Runtime.WindowList.Add(connectionForm);
+            WindowList.Add(connectionForm);
         }
 
         private static void SetConnectionWindowTitle(string title, ConnectionWindow connectionForm)
@@ -59,7 +83,7 @@ namespace LoipvRemote.UI.Panels
             connectionForm.SetFormText(title.Replace("&", "&&"));
         }
 
-        private static void BuildConnectionWindowContextMenu(DockContent pnlcForm)
+        private void BuildConnectionWindowContextMenu(DockContent pnlcForm)
         {
             ContextMenuStrip cMen = new();
             ToolStripMenuItem cMenRen = CreateRenameMenuItem(pnlcForm);
@@ -69,7 +93,7 @@ namespace LoipvRemote.UI.Panels
             pnlcForm.TabPageContextMenuStrip = cMen;
         }
 
-        private static ToolStripMenuItem CreateScreensMenuItem(DockContent pnlcForm)
+        private ToolStripMenuItem CreateScreensMenuItem(DockContent pnlcForm)
         {
             ToolStripMenuItem cMenScreens = new()
             {
@@ -82,7 +106,7 @@ namespace LoipvRemote.UI.Panels
             return cMenScreens;
         }
 
-        private static ToolStripMenuItem CreateRenameMenuItem(DockContent pnlcForm)
+        private ToolStripMenuItem CreateRenameMenuItem(DockContent pnlcForm)
         {
             ToolStripMenuItem cMenRen = new()
             {
@@ -94,7 +118,7 @@ namespace LoipvRemote.UI.Panels
             return cMenRen;
         }
 
-        private static ToolStripMenuItem CreateCloseMenuItem(DockContent pnlcForm)
+        private ToolStripMenuItem CreateCloseMenuItem(DockContent pnlcForm)
         {
             ToolStripMenuItem cMenClose = new()
             {
@@ -106,7 +130,7 @@ namespace LoipvRemote.UI.Panels
             return cMenClose;
         }
 
-        private static void cMenConnectionPanelRename_Click(object sender, EventArgs e)
+        private void cMenConnectionPanelRename_Click(object sender, EventArgs e)
         {
             try
             {
@@ -118,11 +142,11 @@ namespace LoipvRemote.UI.Panels
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionStackTrace("cMenConnectionPanelRename_Click: Caught Exception: ", ex);
+                _messageCollector.AddExceptionStackTrace("cMenConnectionPanelRename_Click: Caught Exception: ", ex);
             }
         }
 
-        private static void cMenConnectionPanelClose_Click(object sender, EventArgs e)
+        private void cMenConnectionPanelClose_Click(object sender, EventArgs e)
         {
             try
             {
@@ -131,11 +155,11 @@ namespace LoipvRemote.UI.Panels
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionStackTrace("cMenConnectionPanelClose_Click: Caught Exception: ", ex);
+                _messageCollector.AddExceptionStackTrace("cMenConnectionPanelClose_Click: Caught Exception: ", ex);
             }
         }
 
-        private static void cMenConnectionPanelScreens_DropDownOpening(object sender, EventArgs e)
+        private void cMenConnectionPanelScreens_DropDownOpening(object sender, EventArgs e)
         {
             try
             {
@@ -157,11 +181,11 @@ namespace LoipvRemote.UI.Panels
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionStackTrace("cMenConnectionPanelScreens_DropDownOpening: Caught Exception: ", ex);
+                _messageCollector.AddExceptionStackTrace("cMenConnectionPanelScreens_DropDownOpening: Caught Exception: ", ex);
             }
         }
 
-        private static void cMenConnectionPanelScreen_Click(object sender, EventArgs e)
+        private void cMenConnectionPanelScreen_Click(object sender, EventArgs e)
         {
             Screen screen = null;
             DockContent panel = null;
@@ -185,8 +209,11 @@ namespace LoipvRemote.UI.Panels
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionStackTrace("cMenConnectionPanelScreen_Click: Caught Exception: ", ex);
+                _messageCollector.AddExceptionStackTrace("cMenConnectionPanelScreen_Click: Caught Exception: ", ex);
             }
         }
+
+        private WindowList WindowList => _runtimeState.WindowList
+            ?? throw new InvalidOperationException("Connection windows must be initialized before adding a panel.");
     }
 }

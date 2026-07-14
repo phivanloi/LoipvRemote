@@ -206,12 +206,16 @@ namespace LoipvRemoteTests.UI.Window.ConfigWindowTests
                 nameof(ConnectionInfo.Description),
                 nameof(ConnectionInfo.Icon),
                 nameof(ConnectionInfo.Panel),
+                nameof(ConnectionInfo.Color),
+                nameof(ConnectionInfo.TabColor),
+                nameof(ConnectionInfo.ConnectionFrameColor),
                 nameof(ConnectionInfo.Protocol),
                 nameof(ConnectionInfo.PreExtApp),
                 nameof(ConnectionInfo.PostExtApp),
                 nameof(ConnectionInfo.MacAddress),
                 nameof(ConnectionInfo.UserField),
                 nameof(ConnectionInfo.Favorite),
+                nameof(ConnectionInfo.EnvironmentTags),
                 nameof(ConnectionInfo.SSHTunnelConnectionName)
             };
 
@@ -254,7 +258,6 @@ namespace LoipvRemoteTests.UI.Window.ConfigWindowTests
                         nameof(ConnectionInfo.DisableCursorBlinking),
                         nameof(ConnectionInfo.RedirectKeys),
                         nameof(ConnectionInfo.RedirectDiskDrives),
-                        nameof(ConnectionInfo.RedirectDiskDrivesCustom),
                         nameof(ConnectionInfo.RedirectPrinters),
                         nameof(ConnectionInfo.RedirectClipboard),
                         nameof(ConnectionInfo.RedirectPorts),
@@ -264,14 +267,15 @@ namespace LoipvRemoteTests.UI.Window.ConfigWindowTests
 			            nameof(ConnectionInfo.RdpVersion),
                         nameof(ConnectionInfo.RDPStartProgram),
                         nameof(ConnectionInfo.RDPStartProgramWorkDir),
+                        nameof(ConnectionInfo.UseRedirectionServerName),
                         nameof(ConnectionInfo.RDGatewayExternalCredentialProvider),
                         nameof(ConnectionInfo.RDGatewayUserViaAPI),
                         nameof(ConnectionInfo.ExternalCredentialProvider),
                         nameof(ConnectionInfo.ExternalAddressProvider),
-                        nameof(ConnectionInfo.UserViaAPI),
                     });
                     break;
                 case ProtocolType.VNC:
+                case ProtocolType.ARD:
                     expectedProperties.AddRange(new []
                     {
                         nameof(ConnectionInfo.Password),
@@ -340,9 +344,24 @@ namespace LoipvRemoteTests.UI.Window.ConfigWindowTests
                         nameof(ConnectionInfo.Port),
                     });
                     break;
+                case ProtocolType.Terminal:
+                    expectedProperties.AddRange(new[]
+                    {
+                        nameof(ConnectionInfo.Password),
+                        nameof(ConnectionInfo.Port),
+                    });
+                    break;
+                case ProtocolType.AnyDesk:
+                    expectedProperties.AddRange(new[]
+                    {
+                        nameof(ConnectionInfo.Port),
+                        nameof(ConnectionInfo.Password),
+                    });
+                    break;
                 case ProtocolType.IntApp:
                     expectedProperties.AddRange(new[]
                     {
+                        nameof(ConnectionInfo.Username),
                         nameof(ConnectionInfo.Password),
                         nameof(ConnectionInfo.Domain),
                         nameof(ConnectionInfo.Port),

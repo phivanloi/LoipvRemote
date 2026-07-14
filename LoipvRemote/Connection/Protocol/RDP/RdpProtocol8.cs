@@ -1,13 +1,13 @@
 using System;
 using System.Drawing;
 using System.Windows.Forms;
-using AxMSTSCLib;
-using LoipvRemote.App;
 using LoipvRemote.Messages;
-using MSTSCLib;
 using LoipvRemote.Resources.Language;
 using System.Runtime.Versioning;
 using Microsoft.Win32;
+using LoipvRemote.Infrastructure.Windows.Com;
+using LoipvRemote.Connectors.Abstractions;
+using LoipvRemote.UseCases.Credentials;
 
 namespace LoipvRemote.Connection.Protocol.RDP
 {
@@ -21,9 +21,8 @@ namespace LoipvRemote.Connection.Protocol.RDP
 		*/
     public class RdpProtocol8 : RdpProtocol7
     {
-        private MsRdpClient8NotSafeForScripting RdpClient8 => (MsRdpClient8NotSafeForScripting)((AxHost)Control).GetOcx();
 
-        protected override RdpVersion RdpProtocolVersion => RDP.RdpVersion.Rdc8;
+        protected override RdpVersion RdpProtocolVersion => global::LoipvRemote.Domain.Protocols.Rdp.RdpVersion.Rdc8;
         protected FormWindowState LastWindowState = FormWindowState.Minimized;
 
         // Debounce timer to reduce flickering during resize
@@ -31,7 +30,7 @@ namespace LoipvRemote.Connection.Protocol.RDP
         private Size _pendingResizeSize;
         private bool _hasPendingResize = false;
 
-        public RdpProtocol8()
+        public RdpProtocol8(ExternalCredentialConnectorRegistry externalCredentialConnectors, IStringSecretStore userSecretStore) : base(externalCredentialConnectors, userSecretStore)
         {
             // Initialize debounce timer (300ms delay).
             // Keep this in the constructor because it doesn't root the instance in any
@@ -52,7 +51,7 @@ namespace LoipvRemote.Connection.Protocol.RDP
             // Subscribe to static/external events here (not in the constructor) so that
             // temporary probing instances created by RdpProtocolFactory.RdpVersionSupported()
             // are not rooted and do not accumulate memory leaks or spurious callbacks.
-            _frmMain.ResizeEnd += ResizeEnd;
+            MainWindow.ResizeEnd += ResizeEnd;
             SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
 
             // https://learn.microsoft.com/en-us/windows/win32/termserv/imsrdpextendedsettings-property
@@ -81,13 +80,16 @@ namespace LoipvRemote.Connection.Protocol.RDP
 
         protected override void Resize(object sender, EventArgs e)
         {
-            if (_frmMain == null) return;
+            // Remember minimization so restoring to Normal is treated as a state
+            // transition and resizes the RDP session again.
+            if (MainWindow.WindowState == FormWindowState.Minimized)
+            {
+                LastWindowState = FormWindowState.Minimized;
+                return;
+            }
 
-            // Skip resize entirely when minimized or minimizing
-            if (_frmMain.WindowState == FormWindowState.Minimized) return;
-
-            Runtime.MessageCollector.AddMessage(MessageClass.DebugMsg,
-                $"Resize() called - WindowState={_frmMain.WindowState}, LastWindowState={LastWindowState}");
+            MessageCollector.AddMessage(MessageClass.DebugMsg,
+                $"Resize() called - WindowState={MainWindow.WindowState}, LastWindowState={LastWindowState}");
 
             // Update control size during resize to keep UI synchronized
             // Actual RDP session resize is deferred to ResizeEnd() to prevent flickering
@@ -95,32 +97,30 @@ namespace LoipvRemote.Connection.Protocol.RDP
 
             // Only resize RDP session on window state changes (Maximize/Restore)
             // Manual drag-resizing will be handled by ResizeEnd()
-            if (LastWindowState != _frmMain.WindowState)
+            if (LastWindowState != MainWindow.WindowState)
             {
-                Runtime.MessageCollector.AddMessage(MessageClass.DebugMsg,
-                    $"Resize() - Window state changed from {LastWindowState} to {_frmMain.WindowState}, calling DoResizeClient()");
-                LastWindowState = _frmMain.WindowState;
+                MessageCollector.AddMessage(MessageClass.DebugMsg,
+                    $"Resize() - Window state changed from {LastWindowState} to {MainWindow.WindowState}, calling DoResizeClient()");
+                LastWindowState = MainWindow.WindowState;
                 DoResizeClient();
             }
             else
             {
-                Runtime.MessageCollector.AddMessage(MessageClass.DebugMsg,
-                    $"Resize() - Window state unchanged ({_frmMain.WindowState}), deferring to ResizeEnd()");
+                MessageCollector.AddMessage(MessageClass.DebugMsg,
+                    $"Resize() - Window state unchanged ({MainWindow.WindowState}), deferring to ResizeEnd()");
             }
         }
 
         protected override void ResizeEnd(object sender, EventArgs e)
         {
-            if (_frmMain == null) return;
-
             // Skip resize when minimized
-            if (_frmMain.WindowState == FormWindowState.Minimized) return;
+            if (MainWindow.WindowState == FormWindowState.Minimized) return;
 
-            Runtime.MessageCollector.AddMessage(MessageClass.DebugMsg,
-                $"ResizeEnd() called - WindowState={_frmMain.WindowState}");
+            MessageCollector.AddMessage(MessageClass.DebugMsg,
+                $"ResizeEnd() called - WindowState={MainWindow.WindowState}");
 
             // Update window state tracking
-            LastWindowState = _frmMain.WindowState;
+            LastWindowState = MainWindow.WindowState;
 
             // Update control size immediately (no flicker)
             DoResizeControl();
@@ -141,7 +141,7 @@ namespace LoipvRemote.Connection.Protocol.RDP
             _resizeDebounceTimer?.Stop();
             _resizeDebounceTimer?.Start();
 
-            Runtime.MessageCollector?.AddMessage(MessageClass.DebugMsg,
+            MessageCollector?.AddMessage(MessageClass.DebugMsg,
                 $"Resize debounced - will resize to {_pendingResizeSize.Width}x{_pendingResizeSize.Height} after 300ms");
         }
 
@@ -165,7 +165,7 @@ namespace LoipvRemote.Connection.Protocol.RDP
 
             _hasPendingResize = false;
 
-            Runtime.MessageCollector?.AddMessage(MessageClass.DebugMsg,
+            MessageCollector?.AddMessage(MessageClass.DebugMsg,
                 $"Debounce timer fired - executing delayed resize to {_pendingResizeSize.Width}x{_pendingResizeSize.Height}");
 
             // Marshal to the UI thread because DoResizeClient() accesses WinForms and COM objects.
@@ -185,12 +185,12 @@ namespace LoipvRemote.Connection.Protocol.RDP
             }
             catch (ObjectDisposedException ex)
             {
-                Runtime.MessageCollector?.AddMessage(MessageClass.DebugMsg,
+                MessageCollector?.AddMessage(MessageClass.DebugMsg,
                     $"ResizeDebounceTimer_Elapsed: control disposed during BeginInvoke ({ex.GetType().Name})");
             }
             catch (InvalidOperationException ex)
             {
-                Runtime.MessageCollector?.AddMessage(MessageClass.DebugMsg,
+                MessageCollector?.AddMessage(MessageClass.DebugMsg,
                     $"ResizeDebounceTimer_Elapsed: control handle unavailable during BeginInvoke ({ex.GetType().Name})");
             }
         }
@@ -215,23 +215,18 @@ namespace LoipvRemote.Connection.Protocol.RDP
             }
         }
 
-        protected override AxHost CreateActiveXRdpClientControl()
-        {
-            return new AxMsRdpClient8NotSafeForScripting();
-        }
-
         private void DoResizeClient()
         {
             if (!loginComplete)
             {
-                Runtime.MessageCollector.AddMessage(MessageClass.DebugMsg,
+                MessageCollector.AddMessage(MessageClass.DebugMsg,
                     $"Resize skipped for '{connectionInfo.Hostname}': Login not complete");
                 return;
             }
 
             if (!InterfaceControl.Info.AutomaticResize)
             {
-                Runtime.MessageCollector.AddMessage(MessageClass.DebugMsg,
+                MessageCollector.AddMessage(MessageClass.DebugMsg,
                     $"Resize skipped for '{connectionInfo.Hostname}': AutomaticResize is disabled");
                 return;
             }
@@ -241,12 +236,12 @@ namespace LoipvRemote.Connection.Protocol.RDP
             // Only Fullscreen benefits from dynamically changing the remote session resolution.
             if (InterfaceControl.Info.Resolution != RDPResolutions.Fullscreen)
             {
-                Runtime.MessageCollector.AddMessage(MessageClass.DebugMsg,
+                MessageCollector.AddMessage(MessageClass.DebugMsg,
                     $"Resize skipped for '{connectionInfo.Hostname}': Resolution is {InterfaceControl.Info.Resolution} (only Fullscreen supports dynamic resize)");
                 return;
             }
 
-            Runtime.MessageCollector.AddMessage(MessageClass.DebugMsg,
+            MessageCollector.AddMessage(MessageClass.DebugMsg,
                 $"Resizing RDP connection to host '{connectionInfo.Hostname}'");
 
             try
@@ -257,17 +252,17 @@ namespace LoipvRemote.Connection.Protocol.RDP
                     ? Screen.FromControl(Control).Bounds.Size
                     : InterfaceControl.Size;
 
-                Runtime.MessageCollector.AddMessage(MessageClass.DebugMsg,
+                MessageCollector.AddMessage(MessageClass.DebugMsg,
                     $"Calling UpdateSessionDisplaySettings({size.Width}, {size.Height}) for '{connectionInfo.Hostname}' (Control.Size={Control.Size}, InterfaceControl.Size={InterfaceControl.Size})");
 
                 UpdateSessionDisplaySettings((uint)size.Width, (uint)size.Height);
 
-                Runtime.MessageCollector.AddMessage(MessageClass.DebugMsg,
+                MessageCollector.AddMessage(MessageClass.DebugMsg,
                     $"Successfully resized RDP session for '{connectionInfo.Hostname}' to {size.Width}x{size.Height}");
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage(
+                MessageCollector.AddExceptionMessage(
                     string.Format(Language.ChangeConnectionResolutionError, connectionInfo.Hostname),
                     ex, MessageClass.WarningMsg, false);
             }
@@ -284,7 +279,7 @@ namespace LoipvRemote.Connection.Protocol.RDP
             if (InterfaceControl.Info.Resolution == RDPResolutions.FitToWindow)
                 return false;
 
-            Runtime.MessageCollector?.AddMessage(MessageClass.DebugMsg,
+            MessageCollector?.AddMessage(MessageClass.DebugMsg,
                 $"DoResizeControl - Before: Control.Size={Control.Size}, InterfaceControl.Size={InterfaceControl.Size}, Control.Dock={Control.Dock}");
 
             // If control is docked, we need to temporarily undock it, resize it, then redock it
@@ -306,7 +301,7 @@ namespace LoipvRemote.Connection.Protocol.RDP
                     Control.Dock = DockStyle.Fill;
                 }
 
-                Runtime.MessageCollector?.AddMessage(MessageClass.DebugMsg,
+                MessageCollector?.AddMessage(MessageClass.DebugMsg,
                     $"DoResizeControl - Skipped: Sizes already match or InterfaceControl.Size is empty");
                 return false;
             }
@@ -319,7 +314,7 @@ namespace LoipvRemote.Connection.Protocol.RDP
                 Control.Dock = DockStyle.Fill;
             }
 
-            Runtime.MessageCollector?.AddMessage(MessageClass.DebugMsg,
+            MessageCollector?.AddMessage(MessageClass.DebugMsg,
                 $"DoResizeControl - After: Control.Size={Control.Size}, Control.Dock={Control.Dock}");
 
             return true;
@@ -327,16 +322,13 @@ namespace LoipvRemote.Connection.Protocol.RDP
 
         protected virtual void UpdateSessionDisplaySettings(uint width, uint height)
         {
-            if (RdpClient8 != null)
-            {
-                RdpClient8.Reconnect(width, height);
-            }
+            Runtime.ResizeSession(width, height, Orientation, DesktopScaleFactor, DeviceScaleFactor);
         }
 
         public override void Close()
         {
             // Unsubscribe from external/static events to prevent memory leaks
-            _frmMain.ResizeEnd -= ResizeEnd;
+            AttachedMainWindow?.ResizeEnd -= ResizeEnd;
             SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
 
             // Clean up debounce timer

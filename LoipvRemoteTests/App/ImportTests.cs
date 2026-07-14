@@ -3,6 +3,7 @@ using LoipvRemote.App;
 using LoipvRemote.Config.Putty;
 using LoipvRemote.Connection;
 using LoipvRemote.Container;
+using LoipvRemote.Messages;
 using LoipvRemoteTests.Properties;
 using LoipvRemoteTests.TestHelpers;
 using NUnit.Framework;
@@ -16,11 +17,12 @@ public class ImportTests
     {
         using (FileTestHelpers.DisposableTempFile(out var file, ".blah"))
         {
-            var conService = new ConnectionsService(PuttySessionsManager.Instance);
+            var conService = Runtime.ConnectionsService;
             var container = new ContainerInfo();
             var exceptionOccurred = false;
 
-            Import.HeadlessFileImport(new[] { file }, container, conService, s => exceptionOccurred = true);
+            var importService = new ConnectionImportService(conService, Runtime.MessageCollector);
+            importService.HeadlessFileImport(new[] { file }, container, s => exceptionOccurred = true);
 
             Assert.That(exceptionOccurred);
         }
@@ -33,11 +35,12 @@ public class ImportTests
         using (FileTestHelpers.DisposableTempFile(out var rdpFile, ".rdp"))
         {
             File.AppendAllText(rdpFile, Resources.test_remotedesktopconnection_rdp);
-            var conService = new ConnectionsService(PuttySessionsManager.Instance);
+            var conService = Runtime.ConnectionsService;
             var container = new ContainerInfo();
             var exceptionCount = 0;
 
-            Import.HeadlessFileImport(new[] { badFile, rdpFile }, container, conService, s => exceptionCount++);
+            var importService = new ConnectionImportService(conService, Runtime.MessageCollector);
+            importService.HeadlessFileImport(new[] { badFile, rdpFile }, container, s => exceptionCount++);
 
             Assert.That(exceptionCount, Is.EqualTo(1));
             Assert.That(container.Children, Has.One.Items);

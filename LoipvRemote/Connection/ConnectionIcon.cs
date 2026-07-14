@@ -1,7 +1,7 @@
 using System;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Runtime.Versioning;
-using LoipvRemote.App;
 using LoipvRemote.App.Info;
 
 
@@ -47,7 +47,7 @@ namespace LoipvRemote.Connection
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddMessage(Messages.MessageClass.ErrorMsg, $"Couldn't get Icon from String" + Environment.NewLine + ex.Message);
+                Trace.TraceError($"Couldn't get icon from string.{Environment.NewLine}{ex}");
             }
 
             return null;

@@ -28,6 +28,9 @@ namespace LoipvRemote.Config.Serializers.ConnectionSerializers.Xml
         {
             RootNodeInfo rootNodeInfo = GetRootNodeFromConnectionInfo(serializationTarget);
             _encryptionKey = rootNodeInfo.PasswordString.ConvertToSecureString();
+            if (fullFileEncryption && _encryptionKey.Length == 0)
+                throw new InvalidOperationException("Full-file encryption requires a configured connection-file password.");
+
             XElement rootElement = CompileRootNode(rootNodeInfo, fullFileEncryption);
 
             CompileRecursive(serializationTarget, rootElement);

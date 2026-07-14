@@ -11,7 +11,7 @@ namespace LoipvRemote.UI.Controls.ConnectionTree
     [SupportedOSPlatform("windows")]
     public sealed class SlowClickRenameTimer : ISlowClickRenameTimer
     {
-        private readonly Timer _timer;
+        private readonly System.Windows.Forms.Timer _timer;
 
         /// <inheritdoc />
         public int Interval
@@ -40,7 +40,7 @@ namespace LoipvRemote.UI.Controls.ConnectionTree
         /// </param>
         public SlowClickRenameTimer(int intervalMs)
         {
-            _timer = new Timer { Interval = Math.Max(1, intervalMs) };
+            _timer = new System.Windows.Forms.Timer { Interval = Math.Max(1, intervalMs) };
         }
 
         /// <inheritdoc />

@@ -1,6 +1,6 @@
 using System;
+using System.Diagnostics;
 using System.Windows.Forms;
-using LoipvRemote.App;
 using LoipvRemote.App.Info;
 using LoipvRemote.Config;
 using LoipvRemote.Connection;
@@ -96,7 +96,7 @@ namespace LoipvRemote.UI.Tabs
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage("RefreshIC (UI.Window.Connection) failed", ex);
+                Trace.TraceError($"RefreshIC (UI.Window.Connection) failed.{Environment.NewLine}{ex}");
             }
         }
 

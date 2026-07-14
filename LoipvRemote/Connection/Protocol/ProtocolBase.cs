@@ -1,9 +1,14 @@
-using LoipvRemote.App;
 using LoipvRemote.Tools;
 using System;
 using System.Threading;
 using System.Windows.Forms;
 using LoipvRemote.UI.Tabs;
+using LoipvRemote.UI.Forms;
+using LoipvRemote.Protocols.Abstractions;
+using LoipvRemote.Domain.Protocols;
+using LoipvRemote.Messages;
+using LoipvRemote.Tools;
+using LoipvRemote.Infrastructure.Windows.WindowEmbedding;
 using System.Runtime.Versioning;
 
 // ReSharper disable UnusedMember.Local
@@ -11,8 +16,10 @@ using System.Runtime.Versioning;
 namespace LoipvRemote.Connection.Protocol
 {
     [SupportedOSPlatform("windows")]
-    public abstract class ProtocolBase : IDisposable
+    public abstract class ProtocolBase : IProtocolSession
     {
+        protected static IEmbeddedWindowOperations EmbeddedWindowOperations { get; } = new WindowsEmbeddedWindowOperations();
+
         #region Private Variables
 
         private ConnectionTab _connectionTab;
@@ -23,6 +30,10 @@ namespace LoipvRemote.Connection.Protocol
         private ErrorOccuredEventHandler ErrorOccuredEvent;
         private ClosingEventHandler ClosingEvent;
         private ClosedEventHandler ClosedEvent;
+        private MessageCollector? _messageCollector;
+        private FrmMain? _mainWindow;
+        private ExternalToolsService? _externalToolsService;
+        private IClipboardChangedSource? _clipboardChangedSource;
 
         #endregion
 
@@ -62,6 +73,10 @@ namespace LoipvRemote.Connection.Protocol
 
         public ConnectionInfo.Force Force { get; set; }
 
+        public ProtocolSessionState State { get; private set; } = ProtocolSessionState.Created;
+
+        public virtual ProtocolCapabilities Capabilities => ProtocolCapabilities.None;
+
         protected readonly System.Timers.Timer tmrReconnect = new(5000);
         protected ReconnectGroup ReconnectGroup;
 
@@ -73,6 +88,36 @@ namespace LoipvRemote.Connection.Protocol
         protected ProtocolBase()
         {
         }
+
+        public void AttachServices(
+            MessageCollector messageCollector,
+            FrmMain? mainWindow = null,
+            ExternalToolsService? externalToolsService = null,
+            IClipboardChangedSource? clipboardChangedSource = null)
+        {
+            _messageCollector = messageCollector ?? throw new ArgumentNullException(nameof(messageCollector));
+            _mainWindow = mainWindow;
+            _externalToolsService = externalToolsService;
+            _clipboardChangedSource = clipboardChangedSource;
+        }
+
+        /// <summary>
+        /// Gets the session-scoped diagnostic sink. Protocol instances created outside the
+        /// composition root (for capability probing) keep working without consulting the
+        /// legacy global Runtime singleton.
+        /// </summary>
+        protected MessageCollector MessageCollector => _messageCollector ??= new MessageCollector();
+
+        protected FrmMain MainWindow => _mainWindow
+            ?? throw new InvalidOperationException("The protocol session must be attached to a desktop workspace before it is initialized.");
+
+        protected FrmMain? AttachedMainWindow => _mainWindow;
+
+        protected ExternalToolsService ExternalToolsService => _externalToolsService
+            ?? throw new InvalidOperationException("The protocol session must be attached to external-tool services before it is initialized.");
+
+        protected IClipboardChangedSource ClipboardChangedSource => _clipboardChangedSource
+            ?? throw new InvalidOperationException("The protocol session must be attached to a clipboard notification source before it is initialized.");
 
         #endregion
 
@@ -88,7 +133,7 @@ namespace LoipvRemote.Connection.Protocol
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionStackTrace("Couldn't focus Control (Connection.Protocol.Base)", ex);
+                MessageCollector.AddExceptionStackTrace("Couldn't focus Control (Connection.Protocol.Base)", ex);
             }
         }
 
@@ -112,7 +157,10 @@ namespace LoipvRemote.Connection.Protocol
                 _interfaceControl.Show();
 
                 if (Control == null)
+                {
+                    State = ProtocolSessionState.Initialized;
                     return true;
+                }
 
 
                 Control.Name = Name;
@@ -121,11 +169,13 @@ namespace LoipvRemote.Connection.Protocol
                 _interfaceControl.Controls.Add(Control);
                 _interfaceControl.RemoteResourceBar?.BringToFront();
 
+                State = ProtocolSessionState.Initialized;
                 return true;
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionStackTrace("Couldn't SetProps (Connection.Protocol.Base)", ex);
+                _messageCollector?.AddExceptionStackTrace("Couldn't SetProps (Connection.Protocol.Base)", ex);
+                State = ProtocolSessionState.Faulted;
                 return false;
             }
         }
@@ -135,6 +185,7 @@ namespace LoipvRemote.Connection.Protocol
             if (InterfaceControl.Info.Protocol == ProtocolType.RDP) return false;
             if (ConnectedEvent == null) return false;
             Event_Connected(this);
+            State = ProtocolSessionState.Connected;
             return true;
         }
 
@@ -145,6 +196,7 @@ namespace LoipvRemote.Connection.Protocol
 
         public virtual void Close()
         {
+            State = ProtocolSessionState.Closing;
             Thread t = new(CloseBG);
             t.SetApartmentState(ApartmentState.STA);
             t.IsBackground = true;
@@ -166,7 +218,7 @@ namespace LoipvRemote.Connection.Protocol
                     }
                     catch (Exception ex)
                     {
-                        Runtime.MessageCollector?.AddExceptionStackTrace(
+                        _messageCollector?.AddExceptionStackTrace(
                             "Couldn't dispose control, probably form is already closed (Connection.Protocol.Base)", ex);
                     }
                 }
@@ -186,17 +238,28 @@ namespace LoipvRemote.Connection.Protocol
                 }
                 catch (Exception ex)
                 {
-                    Runtime.MessageCollector?.AddExceptionStackTrace(
+                    _messageCollector?.AddExceptionStackTrace(
                         "Couldn't set InterfaceControl.Parent.Tag or Dispose Interface, " +
                         "probably form is already closed (Connection.Protocol.Base)", ex);
                 }
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector?.AddExceptionStackTrace(
+                _messageCollector?.AddExceptionStackTrace(
                     "Couldn't Close InterfaceControl BG (Connection.Protocol.Base)", ex);
             }
+            finally
+            {
+                State = ProtocolSessionState.Closed;
+            }
         }
+
+        /// <summary>
+        /// Gives a protocol an opportunity to route shell messages to its embedded
+        /// child window. The desktop shell must not know protocol-specific Win32
+        /// details (for example PuTTY IME messages).
+        /// </summary>
+        public virtual bool TryForwardInputMessage(int message, IntPtr wParam, IntPtr lParam) => false;
 
         private delegate void DisposeInterfaceCB();
 

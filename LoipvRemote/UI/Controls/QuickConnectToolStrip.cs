@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
 using LoipvRemote.App;
+using LoipvRemote.App.Composition;
 using LoipvRemote.Connection;
 using LoipvRemote.Connection.Protocol;
 using LoipvRemote.Container;
@@ -29,6 +31,7 @@ namespace LoipvRemote.UI.Controls
         private readonly ThemeManager _themeManager;
         private WeifenLuo.WinFormsUI.Docking.VisualStudioToolStripExtender vsToolStripExtender;
         private readonly DisplayProperties _display;
+        private DesktopShellRuntime? _desktopShellRuntime;
 
 
         public QuickConnectToolStrip()
@@ -41,6 +44,15 @@ namespace LoipvRemote.UI.Controls
             ApplyTheme();
             ApplyLanguage();
         }
+
+        internal void AttachRuntime(DesktopShellRuntime desktopShellRuntime)
+        {
+            _desktopShellRuntime = desktopShellRuntime ?? throw new ArgumentNullException(nameof(desktopShellRuntime));
+            _cmbQuickConnect.AttachServices(_desktopShellRuntime.MessageCollector);
+        }
+
+        private DesktopShellRuntime DesktopShellRuntime => _desktopShellRuntime
+            ?? throw new InvalidOperationException("The desktop shell runtime must be attached before using quick connect.");
 
         private void ApplyLanguage()
         {
@@ -170,7 +182,7 @@ namespace LoipvRemote.UI.Controls
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionStackTrace("PopulateQuickConnectProtocolMenu() failed.", ex);
+                Trace.TraceError($"PopulateQuickConnectProtocolMenu() failed.{Environment.NewLine}{ex}");
             }
         }
 
@@ -188,7 +200,7 @@ namespace LoipvRemote.UI.Controls
         {
             try
             {
-                ConnectionInfo connectionInfo = Runtime.ConnectionsService.CreateQuickConnect(_cmbQuickConnect.Text.Trim(),
+                ConnectionInfo connectionInfo = DesktopShellRuntime.ConnectionsService.CreateQuickConnect(_cmbQuickConnect.Text.Trim(),
                                                                                    Converter.StringToProtocol(Settings
                                                                                                               .Default
                                                                                                               .QuickConnectProtocol));
@@ -199,11 +211,11 @@ namespace LoipvRemote.UI.Controls
                 }
 
                 _cmbQuickConnect.Add(connectionInfo);
-                Runtime.ConnectionInitiator.OpenConnection(connectionInfo, ConnectionInfo.Force.DoNotJump);
+                DesktopShellRuntime.ConnectionInitiator.OpenConnection(connectionInfo, ConnectionInfo.Force.DoNotJump);
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionStackTrace("btnQuickConnect_ButtonClick() failed.", ex);
+                DesktopShellRuntime.MessageCollector.AddExceptionStackTrace("btnQuickConnect_ButtonClick() failed.", ex);
             }
         }
 
@@ -238,24 +250,24 @@ namespace LoipvRemote.UI.Controls
         private void btnConnections_DropDownOpening(object sender, EventArgs e)
         {
             _btnConnections.DropDownItems.Clear();
-            ConnectionsTreeToMenuItemsConverter menuItemsConverter = new()
+            ConnectionsTreeToMenuItemsConverter menuItemsConverter = new(DesktopShellRuntime.MessageCollector)
             {
                 MouseUpEventHandler = ConnectionsMenuItem_MouseUp
             };
 
             // ReSharper disable once CoVariantArrayConversion
             ToolStripItem[] rootMenuItems = menuItemsConverter
-                                            .CreateToolStripDropDownItems(Runtime.ConnectionsService
+                                            .CreateToolStripDropDownItems(DesktopShellRuntime.ConnectionsService
                                                                                  .ConnectionTreeModel).ToArray();
             _btnConnections.DropDownItems.AddRange(rootMenuItems);
 
             ToolStripMenuItem favorites = new(Language.Favorites, Properties.Resources.Favorite_16x);
-            List<ContainerInfo> rootNodes = Runtime.ConnectionsService.ConnectionTreeModel.RootNodes;
+            List<ContainerInfo> rootNodes = DesktopShellRuntime.ConnectionsService.ConnectionTreeModel.RootNodes;
             List<ToolStripMenuItem> favoritesList = [];
 
             foreach (ContainerInfo node in rootNodes)
             {
-                foreach (ConnectionInfo containerInfo in Runtime.ConnectionsService.ConnectionTreeModel.GetRecursiveFavoriteChildList(node))
+                foreach (ConnectionInfo containerInfo in DesktopShellRuntime.ConnectionsService.ConnectionTreeModel.GetRecursiveFavoriteChildList(node))
                 {
                     ToolStripMenuItem favoriteMenuItem = new()
                     {
@@ -284,7 +296,7 @@ namespace LoipvRemote.UI.Controls
                 case ContainerInfo _:
                     return;
                 case ConnectionInfo connectionInfo:
-                    Runtime.ConnectionInitiator.OpenConnection(connectionInfo);
+                    DesktopShellRuntime.ConnectionInitiator.OpenConnection(connectionInfo);
                     break;
             }
         }

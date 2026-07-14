@@ -10,6 +10,7 @@ using LoipvRemote.Messages;
 using LoipvRemote.Properties;
 using WeifenLuo.WinFormsUI.Docking;
 using System.Runtime.Versioning;
+using System.Diagnostics;
 using System.Drawing;
 using System.Windows.Forms;
 
@@ -109,7 +110,7 @@ namespace LoipvRemote.Themes
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionStackTrace("Error loading theme directory", ex);
+                Trace.TraceError($"Error loading theme directory.{Environment.NewLine}{ex}");
             }
 
             return false;
@@ -125,8 +126,7 @@ namespace LoipvRemote.Themes
 
                     if (!File.Exists($"{themePath}\\vs2015light.vstheme"))
                     {
-                        Runtime.MessageCollector.AddMessage(MessageClass.ErrorMsg, "Could not find default theme file.",
-                                                            true);
+                        Trace.TraceError("Could not find default theme file.");
                         return null;
                     }
 
@@ -140,7 +140,7 @@ namespace LoipvRemote.Themes
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionStackTrace("Error loading default theme", ex);
+                Trace.TraceError($"Error loading default theme.{Environment.NewLine}{ex}");
             }
 
             return null;
@@ -205,7 +205,7 @@ namespace LoipvRemote.Themes
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionStackTrace("Error loading themes", ex);
+                Trace.TraceError($"Error loading themes.{Environment.NewLine}{ex}");
             }
 
             return themes.Values.OfType<ThemeInfo>().ToList();

@@ -37,7 +37,7 @@ namespace LoipvRemote.Properties {
 
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("mR3m0t3NG!")]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
         public string AdminRolePassword {
             get {
                 return ((string)(this["AdminRolePassword"]));

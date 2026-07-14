@@ -1,8 +1,9 @@
 using System;
 using System.Drawing;
+using System.Diagnostics;
 using System.Runtime.Versioning;
 using System.Windows.Forms;
-using LoipvRemote.App;
+using LoipvRemote.Messages;
 using LoipvRemote.Connection;
 using LoipvRemote.Connection.Protocol;
 using LoipvRemote.Resources.Language;
@@ -14,6 +15,7 @@ namespace LoipvRemote.UI.Controls
     {
         private readonly ComboBox _comboBox;
         private bool _ignoreEnter;
+        private MessageCollector? _messageCollector;
 
         public QuickConnectComboBox()
         {
@@ -28,6 +30,9 @@ namespace LoipvRemote.UI.Controls
             // This makes it so that _ignoreEnter works correctly before any items are added to the combo box
             _comboBox.Items.Clear();
         }
+
+        internal void AttachServices(MessageCollector messageCollector) =>
+            _messageCollector = messageCollector ?? throw new ArgumentNullException(nameof(messageCollector));
 
         private void ComboBox_PreviewKeyDown(object sender, PreviewKeyDownEventArgs e)
         {
@@ -179,7 +184,10 @@ namespace LoipvRemote.UI.Controls
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage(Language.QuickConnectAddFailed, ex);
+                if (_messageCollector is not null)
+                    _messageCollector.AddExceptionMessage(Language.QuickConnectAddFailed, ex);
+                else
+                    Trace.TraceError($"{Language.QuickConnectAddFailed}{Environment.NewLine}{ex}");
             }
         }
 
@@ -203,8 +211,7 @@ namespace LoipvRemote.UI.Controls
 
         private void OnConnectRequested(ConnectRequestedEventArgs e)
         {
-            // TODO: Any reason to not jsut pass "e"?
-            ConnectRequestedEvent?.Invoke(this, new ConnectRequestedEventArgs(e.ConnectionString));
+            ConnectRequestedEvent?.Invoke(this, e);
         }
 
         public class ProtocolChangedEventArgs(ProtocolType protocol) : EventArgs
@@ -225,8 +232,7 @@ namespace LoipvRemote.UI.Controls
 
         private void OnProtocolChanged(ProtocolChangedEventArgs e)
         {
-            // TODO: Any reason to not jsut pass "e"?
-            ProtocolChangedEvent?.Invoke(this, new ProtocolChangedEventArgs(e.Protocol));
+            ProtocolChangedEvent?.Invoke(this, e);
         }
 
         #endregion

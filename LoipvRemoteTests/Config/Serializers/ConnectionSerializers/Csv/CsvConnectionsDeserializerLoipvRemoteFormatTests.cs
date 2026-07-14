@@ -159,7 +159,11 @@ namespace LoipvRemoteTests.Config.Serializers.ConnectionSerializers.Csv
                 {
                     nameof(ConnectionInfo.Inheritance),
                     nameof(ConnectionInfo.ConstantID),
-                    nameof(ConnectionInfo.Parent)
+                    nameof(ConnectionInfo.Parent),
+                    nameof(ConnectionInfo.Password),
+                    nameof(ConnectionInfo.VNCProxyPassword),
+                    nameof(ConnectionInfo.RDGatewayPassword),
+                    nameof(ConnectionInfo.RDGatewayAccessToken)
                 };
                 var properties = typeof(ConnectionInfo)
                     .GetProperties()
@@ -169,9 +173,6 @@ namespace LoipvRemoteTests.Config.Serializers.ConnectionSerializers.Csv
 
                 foreach (var property in properties)
                 {
-                    if (property.Name == "Password")
-                        continue;
-
                     testCases.Add(
                         new TestCaseData(property.Name)
                         .Returns(property.GetValue(testConnectionInfo)));
@@ -186,7 +187,10 @@ namespace LoipvRemoteTests.Config.Serializers.ConnectionSerializers.Csv
                 {
                     nameof(ConnectionInfoInheritance.EverythingInherited),
                     nameof(ConnectionInfoInheritance.Parent),
-                    nameof(ConnectionInfoInheritance.EverythingInherited)
+                    nameof(ConnectionInfoInheritance.Password),
+                    nameof(ConnectionInfoInheritance.VNCProxyPassword),
+                    nameof(ConnectionInfoInheritance.RDGatewayPassword),
+                    nameof(ConnectionInfoInheritance.RDGatewayAccessToken)
                 };
                 var properties = typeof(ConnectionInfoInheritance)
                     .GetProperties()

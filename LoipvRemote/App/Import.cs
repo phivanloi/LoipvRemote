@@ -6,6 +6,7 @@ using LoipvRemote.Config.Import;
 using LoipvRemote.Connection;
 using LoipvRemote.Connection.Protocol;
 using LoipvRemote.Container;
+using LoipvRemote.Messages;
 using LoipvRemote.Tools;
 using LoipvRemote.Resources.Language;
 using System.Runtime.Versioning;
@@ -13,9 +14,14 @@ using System.Runtime.Versioning;
 namespace LoipvRemote.App
 {
     [SupportedOSPlatform("windows")]
-    public static class Import
+    public sealed class ConnectionImportService(
+        ConnectionsService connectionsService,
+        MessageCollector messageCollector)
     {
-        public static void ImportFromFile(ContainerInfo importDestinationContainer)
+        private readonly ConnectionsService _connectionsService = connectionsService ?? throw new ArgumentNullException(nameof(connectionsService));
+        private readonly MessageCollector _messageCollector = messageCollector ?? throw new ArgumentNullException(nameof(messageCollector));
+
+        public void ImportFromFile(ContainerInfo importDestinationContainer)
         {
             try
             {
@@ -43,22 +49,21 @@ namespace LoipvRemote.App
 					HeadlessFileImport(
 						openFileDialog.FileNames,
 						importDestinationContainer,
-						Runtime.ConnectionsService,
 						fileName => MessageBox.Show(string.Format(Language.ImportFileFailedContent, fileName), Language.AskUpdatesMainInstruction,
 							MessageBoxButtons.OK, MessageBoxIcon.Exclamation, MessageBoxDefaultButton.Button1));
                 }
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage("Unable to import file.", ex);
+                _messageCollector.AddExceptionMessage("Unable to import file.", ex);
             }
         }
 
-        public static void ImportFromRemoteDesktopManagerCsv(ContainerInfo importDestinationContainer)
+        public void ImportFromRemoteDesktopManagerCsv(ContainerInfo importDestinationContainer)
         {
             try
             {
-                using (Runtime.ConnectionsService.BatchedSavingContext())
+                using (_connectionsService.BatchedSavingContext())
                 {
                     using (OpenFileDialog openFileDialog = new())
                     {
@@ -74,24 +79,23 @@ namespace LoipvRemote.App
                         if (openFileDialog.ShowDialog() != DialogResult.OK)
                             return;
 
-                        RemoteDesktopManagerImporter importer = new();
+                        RemoteDesktopManagerImporter importer = new(_messageCollector);
                         importer.Import(openFileDialog.FileName, importDestinationContainer);
                     }
                 }
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage("App.Import.ImportFromRemoteDesktopManagerCsv() failed.", ex);
+                _messageCollector.AddExceptionMessage("App.Import.ImportFromRemoteDesktopManagerCsv() failed.", ex);
             }
         }
 
-        public static void HeadlessFileImport(
+        public void HeadlessFileImport(
 	        IEnumerable<string> filePaths,
 	        ContainerInfo importDestinationContainer,
-	        ConnectionsService connectionsService,
 	        Action<string>? exceptionAction = null)
         {
-	        using (connectionsService.BatchedSavingContext())
+	        using (_connectionsService.BatchedSavingContext())
 	        {
 		        foreach (string fileName in filePaths)
 		        {
@@ -103,36 +107,36 @@ namespace LoipvRemote.App
 			        catch (Exception ex)
 			        {
 				        exceptionAction?.Invoke(fileName);
-				        Runtime.MessageCollector.AddExceptionMessage($"Error occurred while importing file '{fileName}'.", ex);
+					    _messageCollector.AddExceptionMessage($"Error occurred while importing file '{fileName}'.", ex);
 			        }
 		        }
 	        }
 		}
 
-        public static void ImportFromActiveDirectory(string ldapPath,
+        public void ImportFromActiveDirectory(string ldapPath,
                                                      ContainerInfo importDestinationContainer,
                                                      bool importSubOu)
         {
             try
             {
-	            using (Runtime.ConnectionsService.BatchedSavingContext())
+	            using (_connectionsService.BatchedSavingContext())
 	            {
-					ActiveDirectoryImporter.Import(ldapPath, importDestinationContainer, importSubOu);
+					new ActiveDirectoryImporter(_messageCollector).Import(ldapPath, importDestinationContainer, importSubOu);
 	            }
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage("App.Import.ImportFromActiveDirectory() failed.", ex);
+                _messageCollector.AddExceptionMessage("App.Import.ImportFromActiveDirectory() failed.", ex);
             }
         }
 
-        public static void ImportFromPortScan(IEnumerable<ScanHost> hosts,
+        public void ImportFromPortScan(IEnumerable<ScanHost> hosts,
                                               ProtocolType protocol,
                                               ContainerInfo importDestinationContainer)
         {
             try
             {
-	            using (Runtime.ConnectionsService.BatchedSavingContext())
+	            using (_connectionsService.BatchedSavingContext())
 	            {
                     PortScanImporter importer = new(protocol);
 					importer.Import(hosts, importDestinationContainer);
@@ -140,35 +144,34 @@ namespace LoipvRemote.App
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage("App.Import.ImportFromPortScan() failed.", ex);
+                _messageCollector.AddExceptionMessage("App.Import.ImportFromPortScan() failed.", ex);
             }
         }
 
-        internal static void ImportFromPutty(ContainerInfo selectedNodeAsContainer)
+        internal void ImportFromPutty(ContainerInfo selectedNodeAsContainer)
         {
             try
             {
-                using (Runtime.ConnectionsService.BatchedSavingContext())
+                using (_connectionsService.BatchedSavingContext())
                 {
-                    RegistryImporter.Import("Software\\SimonTatham\\PuTTY\\Sessions", selectedNodeAsContainer);
+                    new RegistryImporter(_messageCollector).ImportFromRegistry("Software\\SimonTatham\\PuTTY\\Sessions", selectedNodeAsContainer);
                 }
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage("App.Import.ImportFromPutty() failed.", ex);
+                _messageCollector.AddExceptionMessage("App.Import.ImportFromPutty() failed.", ex);
             }
         }
 
-        private static IConnectionImporter<string> BuildConnectionImporterFromFileExtension(string fileName)
+        private IConnectionImporter<string> BuildConnectionImporterFromFileExtension(string fileName)
         {
-            // TODO: Use the file contents to determine the file type instead of trusting the extension
             string extension = Path.GetExtension(fileName) ?? "";
             switch (extension.ToLowerInvariant())
             {
                 case ".xml":
-                    return new LoipvRemoteXmlImporter();
+                    return new LoipvRemoteXmlImporter(_messageCollector);
                 case ".csv":
-                    return new LoipvRemoteCsvImporter();
+                    return new LoipvRemoteCsvImporter(_messageCollector);
                 case ".rdp":
                     return new RemoteDesktopConnectionImporter();
                 case ".rdg":
@@ -176,7 +179,7 @@ namespace LoipvRemote.App
                 case ".dat":
                     return new PuttyConnectionManagerImporter();
                 case ".crt":
-                    return new SecureCRTImporter();
+                    return new SecureCRTImporter(_messageCollector);
                 default:
                     throw new FileFormatException("Unrecognized file format.");
             }

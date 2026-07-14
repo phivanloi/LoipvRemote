@@ -104,18 +104,26 @@ namespace LoipvRemote.Config.Serializers.ConnectionSerializers.Csv
                 ? connectionCsv[headers.IndexOf("Panel")]
                 : "";
 
+            connectionRecord.Color = headers.Contains("Color")
+                ? connectionCsv[headers.IndexOf("Color")]
+                : connectionRecord.Color;
+
+            connectionRecord.TabColor = headers.Contains("TabColor")
+                ? connectionCsv[headers.IndexOf("TabColor")]
+                : connectionRecord.TabColor;
+
+            if (headers.Contains("ConnectionFrameColor") &&
+                Enum.TryParse(connectionCsv[headers.IndexOf("ConnectionFrameColor")], out ConnectionFrameColor frameColor))
+            {
+                connectionRecord.ConnectionFrameColor = frameColor;
+            }
+
             connectionRecord.Username = headers.Contains("UserViaAPI")
                 ? connectionCsv[headers.IndexOf("UserViaAPI")]
                 : "";
 
             connectionRecord.Username = headers.Contains("Username")
                 ? connectionCsv[headers.IndexOf("Username")]
-                : "";
-
-            connectionRecord.Password = headers.Contains("Password")
-                // ? connectionCsv[headers.IndexOf("Password")].ConvertToSecureString()
-                // : "".ConvertToSecureString();
-                ? connectionCsv[headers.IndexOf("Password")]
                 : "";
 
             connectionRecord.Domain = headers.Contains("Domain")
@@ -180,16 +188,8 @@ namespace LoipvRemote.Config.Serializers.ConnectionSerializers.Csv
                 ? connectionCsv[headers.IndexOf("VNCProxyUsername")]
                 : "";
 
-            connectionRecord.VNCProxyPassword = headers.Contains("VNCProxyPassword")
-                ? connectionCsv[headers.IndexOf("VNCProxyPassword")]
-                : "";
-
             connectionRecord.RDGatewayUsername = headers.Contains("RDGatewayUsername")
                 ? connectionCsv[headers.IndexOf("RDGatewayUsername")]
-                : "";
-
-            connectionRecord.RDGatewayPassword = headers.Contains("RDGatewayPassword")
-                ? connectionCsv[headers.IndexOf("RDGatewayPassword")]
                 : "";
 
             connectionRecord.RDGatewayDomain = headers.Contains("RDGatewayDomain")
@@ -577,6 +577,24 @@ namespace LoipvRemote.Config.Serializers.ConnectionSerializers.Csv
                     connectionRecord.Inheritance.Panel = value;
             }
 
+            if (headers.Contains("InheritColor"))
+            {
+                if (bool.TryParse(connectionCsv[headers.IndexOf("InheritColor")], out bool value))
+                    connectionRecord.Inheritance.Color = value;
+            }
+
+            if (headers.Contains("InheritTabColor"))
+            {
+                if (bool.TryParse(connectionCsv[headers.IndexOf("InheritTabColor")], out bool value))
+                    connectionRecord.Inheritance.TabColor = value;
+            }
+
+            if (headers.Contains("InheritConnectionFrameColor"))
+            {
+                if (bool.TryParse(connectionCsv[headers.IndexOf("InheritConnectionFrameColor")], out bool value))
+                    connectionRecord.Inheritance.ConnectionFrameColor = value;
+            }
+
             if (headers.Contains("InheritPassword"))
             {
                 if (bool.TryParse(connectionCsv[headers.IndexOf("InheritPassword")], out bool value))
@@ -905,6 +923,12 @@ namespace LoipvRemote.Config.Serializers.ConnectionSerializers.Csv
             {
                 if (bool.TryParse(connectionCsv[headers.IndexOf("InheritRDGatewayPassword")], out bool value))
                     connectionRecord.Inheritance.RDGatewayPassword = value;
+            }
+
+            if (headers.Contains("InheritRDGatewayAccessToken"))
+            {
+                if (bool.TryParse(connectionCsv[headers.IndexOf("InheritRDGatewayAccessToken")], out bool value))
+                    connectionRecord.Inheritance.RDGatewayAccessToken = value;
             }
 
             if (headers.Contains("InheritRDGatewayDomain"))

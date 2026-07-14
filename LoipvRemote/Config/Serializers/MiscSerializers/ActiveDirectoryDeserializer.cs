@@ -1,7 +1,6 @@
 using System;
 using System.DirectoryServices;
 using System.Text.RegularExpressions;
-using LoipvRemote.App;
 using LoipvRemote.Config.Import;
 using LoipvRemote.Connection;
 using LoipvRemote.Connection.Protocol;
@@ -11,15 +10,17 @@ using LoipvRemote.Tree;
 using LoipvRemote.Tree.Root;
 using LoipvRemote.Resources.Language;
 using LoipvRemote.Security;
+using LoipvRemote.Messages;
 using System.Runtime.Versioning;
 
 namespace LoipvRemote.Config.Serializers.MiscSerializers
 {
     [SupportedOSPlatform("windows")]
-    public class ActiveDirectoryDeserializer(string ldapPath, bool importSubOu)
+    public class ActiveDirectoryDeserializer(string ldapPath, bool importSubOu, MessageCollector messageCollector)
     {
         private readonly string _ldapPath = SanitizeLdapPath(ldapPath.ThrowIfNullOrEmpty(nameof(ldapPath)));
         private readonly bool _importSubOu = importSubOu;
+        private readonly MessageCollector _messageCollector = messageCollector ?? throw new ArgumentNullException(nameof(messageCollector));
 
         private static string SanitizeLdapPath(string ldapPath)
         {
@@ -79,8 +80,7 @@ namespace LoipvRemote.Config.Serializers.MiscSerializers
                                 // check/continue here so we don't create empty connection objects
                                 if (!_importSubOu) continue;
 
-                                // TODO - this is a circular call. A deserializer should not call an importer
-                                ActiveDirectoryImporter.Import(ldapResult.Path, parentContainer, _importSubOu);
+                                new ActiveDirectoryImporter(_messageCollector).Import(ldapResult.Path, parentContainer, _importSubOu);
                                 continue;
                             }
 
@@ -91,7 +91,7 @@ namespace LoipvRemote.Config.Serializers.MiscSerializers
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage("Config.Import.ActiveDirectory.ImportComputers() failed.", ex);
+                _messageCollector.AddExceptionMessage("Config.Import.ActiveDirectory.ImportComputers() failed.", ex);
             }
         }
 

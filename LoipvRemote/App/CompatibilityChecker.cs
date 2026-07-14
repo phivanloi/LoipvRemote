@@ -1,7 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.Windows.Forms;
-using Microsoft.Win32;
+using LoipvRemote.Infrastructure.Windows.Registry;
 using LoipvRemote.App.Info;
 using LoipvRemote.Messages;
 using LoipvRemote.Properties;
@@ -30,10 +30,10 @@ namespace LoipvRemote.App
             }
 
             messageCollector.AddMessage(MessageClass.InformationMsg, "Checking FIPS policy...", true);
-            messageCollector.AddMessage(MessageClass.InformationMsg, $"FIPS2003: {FipsPolicyEnabledForServer2003()}", true);
-            messageCollector.AddMessage(MessageClass.InformationMsg, $"FIPS2008+: {FipsPolicyEnabledForServer2008AndNewer()}", true);
+            bool fipsEnabled = WindowsFipsPolicy.IsEnabled();
+            messageCollector.AddMessage(MessageClass.InformationMsg, $"FIPS: {fipsEnabled}", true);
 
-            if (!FipsPolicyEnabledForServer2003() && !FipsPolicyEnabledForServer2008AndNewer()) return;
+            if (!fipsEnabled) return;
 
             string errorText = string.Format(Language.ErrorFipsPolicyIncompatible, GeneralAppInfo.ProductName);
             messageCollector.AddMessage(MessageClass.ErrorMsg, errorText, true);
@@ -52,22 +52,6 @@ namespace LoipvRemote.App
 
             if (ShouldIStayOrShouldIGo == DialogResult.Cancel)
                 Environment.Exit(1);
-        }
-
-        private static bool FipsPolicyEnabledForServer2003()
-        {
-            using RegistryKey? regKey = Registry.LocalMachine.OpenSubKey(@"System\CurrentControlSet\Control\Lsa");
-            if (!(regKey?.GetValue("FIPSAlgorithmPolicy") is int fipsPolicy))
-                return false;
-            return fipsPolicy != 0;
-        }
-
-        private static bool FipsPolicyEnabledForServer2008AndNewer()
-        {
-            using RegistryKey? regKey = Registry.LocalMachine.OpenSubKey(@"System\CurrentControlSet\Control\Lsa\FIPSAlgorithmPolicy");
-            if (!(regKey?.GetValue("Enabled") is int fipsPolicy))
-                return false;
-            return fipsPolicy != 0;
         }
 
         private static void CheckLenovoAutoScrollUtility(MessageCollector messageCollector)

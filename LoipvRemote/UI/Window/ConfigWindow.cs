@@ -6,6 +6,7 @@ using System.Net.NetworkInformation;
 using System.Threading;
 using System.Windows.Forms;
 using LoipvRemote.App;
+using LoipvRemote.App.Composition;
 using LoipvRemote.Connection;
 using LoipvRemote.Container;
 using LoipvRemote.Messages;
@@ -23,6 +24,14 @@ namespace LoipvRemote.UI.Window
     [SupportedOSPlatform("windows")]
     public class ConfigWindow : BaseWindow
     {
+        private MessageCollector? _messageCollector;
+        private ConnectionsService? _connectionsService;
+
+        private MessageCollector MessageCollector => _messageCollector
+            ?? throw new InvalidOperationException("ConfigWindow services must be attached before use.");
+
+        private ConnectionsService ConnectionsService => _connectionsService
+            ?? throw new InvalidOperationException("ConfigWindow services must be attached before use.");
         private bool _originalPropertyGridToolStripItemCountValid;
         private int _originalPropertyGridToolStripItemCount;
         private System.ComponentModel.Container _components;
@@ -237,6 +246,14 @@ namespace LoipvRemote.UI.Window
             ApplyLanguage();
         }
 
+        public void AttachRuntime(DesktopShellRuntime desktopShellRuntime)
+        {
+            ArgumentNullException.ThrowIfNull(desktopShellRuntime);
+            _messageCollector = desktopShellRuntime.MessageCollector;
+            _connectionsService = desktopShellRuntime.ConnectionsService;
+            _pGrid.AttachRuntime(desktopShellRuntime);
+        }
+
         #endregion
 
         #region Public Methods
@@ -341,7 +358,7 @@ namespace LoipvRemote.UI.Window
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddMessage(
+                MessageCollector.AddMessage(
                     MessageClass.ErrorMsg,
                     Language.ConfigPropertyGridObjectFailed + Environment.NewLine +
                     ex.Message, true);
@@ -426,7 +443,7 @@ namespace LoipvRemote.UI.Window
 
                 if (toolStrip == null)
                 {
-                    Runtime.MessageCollector.AddMessage(MessageClass.ErrorMsg,
+                    MessageCollector.AddMessage(MessageClass.ErrorMsg,
                                                         Language.CouldNotFindToolStripInFilteredPropertyGrid, true);
                     return;
                 }
@@ -449,7 +466,7 @@ namespace LoipvRemote.UI.Window
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddMessage(MessageClass.ErrorMsg,
+                MessageCollector.AddMessage(MessageClass.ErrorMsg,
                                                     Language.ConfigUiLoadFailed + Environment.NewLine + ex.Message,
                                                     true);
             }
@@ -487,7 +504,7 @@ namespace LoipvRemote.UI.Window
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddMessage(MessageClass.ErrorMsg,
+                MessageCollector.AddMessage(MessageClass.ErrorMsg,
                                                     Language.ConfigPropertyGridValueFailed + Environment.NewLine +
                                                     ex.Message, true);
             }
@@ -548,7 +565,7 @@ namespace LoipvRemote.UI.Window
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddMessage(MessageClass.ErrorMsg, Language.ConfigPropertyGridButtonIconClickFailed + Environment.NewLine + ex.Message, true);
+                MessageCollector.AddMessage(MessageClass.ErrorMsg, Language.ConfigPropertyGridButtonIconClickFailed + Environment.NewLine + ex.Message, true);
             }
         }
 
@@ -572,11 +589,11 @@ namespace LoipvRemote.UI.Window
                 connectionInfo.Icon = iconName;
                 _pGrid.Refresh();
 
-                Runtime.ConnectionsService.SaveConnectionsAsync();
+                ConnectionsService.SaveConnectionsAsync();
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddMessage(MessageClass.ErrorMsg, Language.ConfigPropertyGridMenuClickFailed + Environment.NewLine + ex.Message, true);
+                MessageCollector.AddMessage(MessageClass.ErrorMsg, Language.ConfigPropertyGridMenuClickFailed + Environment.NewLine + ex.Message, true);
             }
         }
 
@@ -670,7 +687,7 @@ namespace LoipvRemote.UI.Window
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddMessage(MessageClass.ErrorMsg,
+                MessageCollector.AddMessage(MessageClass.ErrorMsg,
                                                     Language.ConfigPropertyGridSetHostStatusFailed +
                                                     Environment.NewLine + ex.Message, true);
             }
@@ -692,7 +709,7 @@ namespace LoipvRemote.UI.Window
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage("UI.Window.Config.propertyGridContextMenu_Opening() failed.", ex);
+                MessageCollector.AddExceptionMessage("UI.Window.Config.propertyGridContextMenu_Opening() failed.", ex);
             }
         }
 
@@ -709,7 +726,7 @@ namespace LoipvRemote.UI.Window
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage("UI.Window.Config.propertyGridContextMenuReset_Click() failed.", ex);
+                MessageCollector.AddExceptionMessage("UI.Window.Config.propertyGridContextMenuReset_Click() failed.", ex);
             }
         }
 

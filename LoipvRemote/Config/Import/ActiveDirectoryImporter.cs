@@ -1,27 +1,29 @@
 using System;
 using System.Linq;
 using System.Runtime.Versioning;
-using LoipvRemote.App;
 using LoipvRemote.Config.Serializers.MiscSerializers;
 using LoipvRemote.Container;
 using LoipvRemote.Tools;
+using LoipvRemote.Messages;
 
 namespace LoipvRemote.Config.Import
 {
     [SupportedOSPlatform("windows")]
-    public class ActiveDirectoryImporter : IConnectionImporter<string>
+    public sealed class ActiveDirectoryImporter(MessageCollector messageCollector) : IConnectionImporter<string>
     {
+        private readonly MessageCollector _messageCollector = messageCollector ?? throw new ArgumentNullException(nameof(messageCollector));
+
         public void Import(string ldapPath, ContainerInfo destinationContainer)
         {
             Import(ldapPath, destinationContainer, false);
         }
 
-        public static void Import(string ldapPath, ContainerInfo destinationContainer, bool importSubOu)
+        public void Import(string ldapPath, ContainerInfo destinationContainer, bool importSubOu)
         {
             try
             {
                 ldapPath.ThrowIfNullOrEmpty(nameof(ldapPath));
-                ActiveDirectoryDeserializer deserializer = new(ldapPath, importSubOu);
+                ActiveDirectoryDeserializer deserializer = new(ldapPath, importSubOu, _messageCollector);
                 Tree.ConnectionTreeModel connectionTreeModel = deserializer.Deserialize();
                 ContainerInfo importedRootNode = connectionTreeModel.RootNodes.First();
                 if (importedRootNode == null) return;
@@ -30,7 +32,7 @@ namespace LoipvRemote.Config.Import
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage("Config.Import.ActiveDirectory.Import() failed.", ex);
+                _messageCollector.AddExceptionMessage("Config.Import.ActiveDirectory.Import() failed.", ex);
             }
         }
     }

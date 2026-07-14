@@ -1,6 +1,6 @@
-using LoipvRemote.App;
 using LoipvRemote.Connection.Protocol;
 using System;
+using System.Diagnostics;
 using System.Drawing;
 using System.Windows.Forms;
 using LoipvRemote.UI.Tabs;
@@ -62,9 +62,7 @@ namespace LoipvRemote.Connection
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddMessage(Messages.MessageClass.ErrorMsg,
-                                                    "Couldn\'t create new InterfaceControl" + Environment.NewLine +
-                                                    ex.Message);
+                Trace.TraceError($"Couldn't create new InterfaceControl.{Environment.NewLine}{ex}");
             }
         }
 
@@ -121,11 +119,8 @@ namespace LoipvRemote.Connection
 
         protected override void WndProc(ref Message m)
         {
-            if (Protocol is PuttyBase putty &&
-                putty.PuttyHandle != IntPtr.Zero &&
-                PuttyImeMessageRouter.ShouldForward(m.Msg))
+            if (Protocol.TryForwardInputMessage(m.Msg, m.WParam, m.LParam))
             {
-                NativeMethods.SendMessage(putty.PuttyHandle, (uint)m.Msg, m.WParam, m.LParam);
                 return;
             }
 

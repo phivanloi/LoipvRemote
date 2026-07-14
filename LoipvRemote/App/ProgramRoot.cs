@@ -1,23 +1,29 @@
 using Microsoft.IdentityModel.Tokens;
 
 using LoipvRemote.App.Update;
+using LoipvRemote.App.Composition;
+using LoipvRemote.App;
+using LoipvRemote.Desktop.Composition;
 using LoipvRemote.Config.Settings;
 using LoipvRemote.Messages;
 using LoipvRemote.Themes;
 using LoipvRemote.UI.Forms;
 using LoipvRemote.Resources.Language;
 using LoipvRemote.UI.DesignSystem;
+using LoipvRemote.UI.Adapters;
+using LoipvRemote.Properties;
 using System;
 using System.Diagnostics;
 using System.Drawing;
 using System.Globalization;
 using System.IO;
 using System.Reflection;
-using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.DependencyInjection;
 
 
 
@@ -26,22 +32,15 @@ namespace LoipvRemote.App
     [SupportedOSPlatform("windows")]
     public static class ProgramRoot
     {
-        private static Mutex? _mutex;
         private static string customResourcePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Languages");
         private const string AppUserModelId = "Loipv.LoipvRemote";
-
-        private static System.Threading.Thread? _wpfSplashThread;
-        private static FrmSplashScreenNew? _wpfSplash;
-
-        [DllImport("shell32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-        private static extern int SetCurrentProcessExplicitAppUserModelID(string appID);
 
         [STAThread]
         public static void Main(string[] args)
         {
             // Keep this process distinct from mRemoteNG in the taskbar and make
             // Windows resolve the taskbar button against LoipvRemote's icon.
-            _ = SetCurrentProcessExplicitAppUserModelID(AppUserModelId);
+            _ = Infrastructure.Windows.Interop.NativeMethods.SetCurrentProcessExplicitAppUserModelID(AppUserModelId);
 
             ApplyConfiguredUiCulture();
 
@@ -60,7 +59,7 @@ namespace LoipvRemote.App
 
         private static void ApplyConfiguredUiCulture()
         {
-            string cultureName = Properties.Settings.Default.OverrideUICulture;
+            string cultureName = LoipvRemote.Properties.Settings.Default.OverrideUICulture;
             if (string.IsNullOrWhiteSpace(cultureName) || !SupportedCultures.IsNameSupported(cultureName)) return;
 
             CultureInfo culture = new(cultureName);
@@ -68,7 +67,7 @@ namespace LoipvRemote.App
             Thread.CurrentThread.CurrentUICulture = culture;
         }
 
-        private static Task MainAsync(string[] args)
+        private static async Task MainAsync(string[] args)
         {
             AppDomain.CurrentDomain.AssemblyResolve += OnAssemblyResolve;
 
@@ -114,13 +113,29 @@ namespace LoipvRemote.App
             }
 #endif
 
-            Lazy<bool> singleInstanceOption = new(() => Properties.OptionsStartupExitPage.Default.SingleInstance);
-            if (singleInstanceOption.Value)
-                StartApplicationAsSingleInstance();
-            else
-                StartApplication();
+            using IHost host = DesktopApplicationHost.Create(args, DesktopServiceRegistration.Register);
+            Runtime.Initialize(host.Services);
+            try
+            {
+                await host.StartAsync(CancellationToken.None);
 
-            return Task.CompletedTask;
+                Lazy<bool> singleInstanceOption = new(() => LoipvRemote.Properties.OptionsStartupExitPage.Default.SingleInstance);
+                if (singleInstanceOption.Value)
+                    StartApplicationAsSingleInstance(host.Services);
+                else
+                    StartApplication(host.Services);
+            }
+            finally
+            {
+                try
+                {
+                    await host.StopAsync(CancellationToken.None);
+                }
+                finally
+                {
+                    Runtime.Uninitialize();
+                }
+            }
         }
 
         // Assembly resolve handler
@@ -145,8 +160,9 @@ namespace LoipvRemote.App
             return null;
         }
 
-        private static void StartApplication()
+        private static void StartApplication(IServiceProvider services)
         {
+            ArgumentNullException.ThrowIfNull(services);
             CatchAllUnhandledExceptions();
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
@@ -156,32 +172,35 @@ namespace LoipvRemote.App
             // Read the persisted flag instead of constructing ThemeManager here, so we avoid
             // any theme folder/file I/O before the splash is shown. The flag is kept in sync
             // by ThemeManager whenever the active theme or theming state changes.
-            Application.SetColorMode(Properties.OptionsThemePage.Default.IsActiveThemeDark
+            Application.SetColorMode(LoipvRemote.Properties.OptionsThemePage.Default.IsActiveThemeDark
                 ? SystemColorMode.Dark
                 : SystemColorMode.Classic);
 
             ShowSplashOnStaThread();
 
-            Application.Run(FrmMain.Default);
+            FrmMain mainWindow = FrmMain.Default;
+            mainWindow.AttachRuntime(services.GetRequiredService<DesktopShellRuntime>());
+            services.GetRequiredService<ConnectionWorkspaceAdapter>().Attach(mainWindow);
+            Application.Run(mainWindow);
         }
 
         public static void CloseSingletonInstanceMutex()
         {
-            _mutex?.Close();
+            AppStartupState.CloseSingletonInstanceMutex();
         }
 
-        private static void StartApplicationAsSingleInstance()
+        private static void StartApplicationAsSingleInstance(IServiceProvider services)
         {
             const string mutexID = "LoipvRemote_SingleInstanceMutex";
-            _mutex = new Mutex(false, mutexID, out bool newInstanceCreated);
+            AppStartupState.SingleInstanceMutex = new Mutex(false, mutexID, out bool newInstanceCreated);
             if (!newInstanceCreated)
             {
                 SwitchToCurrentInstance();
                 return;
             }
 
-            StartApplication();
-            GC.KeepAlive(_mutex);
+            StartApplication(services);
+            GC.KeepAlive(AppStartupState.SingleInstanceMutex);
         }
 
         private static void SwitchToCurrentInstance()
@@ -249,55 +268,26 @@ namespace LoipvRemote.App
 
         private static void ShowSplashOnStaThread()
         {
-            _wpfSplashThread = new System.Threading.Thread(() =>
+            AppStartupState.SplashThread = new System.Threading.Thread(() =>
             {
-                _wpfSplash = FrmSplashScreenNew.GetInstance();
+                AppStartupState.Splash = FrmSplashScreenNew.GetInstance();
 
                 // Center the splash screen on the primary screen before showing it
-                _wpfSplash.WindowStartupLocation = System.Windows.WindowStartupLocation.CenterScreen;
+                AppStartupState.Splash.WindowStartupLocation = System.Windows.WindowStartupLocation.CenterScreen;
 
-                _wpfSplash.ShowInTaskbar = false;
-                _wpfSplash.Show();
-                System.Windows.Forms.Integration.ElementHost.EnableModelessKeyboardInterop(_wpfSplash);
+                AppStartupState.Splash.ShowInTaskbar = false;
+                AppStartupState.Splash.Show();
+                System.Windows.Forms.Integration.ElementHost.EnableModelessKeyboardInterop(AppStartupState.Splash);
                 System.Windows.Threading.Dispatcher.Run(); // WPF message loop
             })
             { IsBackground = true };
-            _wpfSplashThread.SetApartmentState(System.Threading.ApartmentState.STA);
-            _wpfSplashThread.Start();
+            AppStartupState.SplashThread.SetApartmentState(System.Threading.ApartmentState.STA);
+            AppStartupState.SplashThread.Start();
         }
 
         internal static void CloseSplash()
         {
-            // Capture and clear the cached state up front so this is safe to call from
-            // multiple startup paths (e.g. the LoadConnections error handler) without
-            // acting on stale references or re-running against an already-closed splash.
-            FrmSplashScreenNew? splash = _wpfSplash;
-            System.Threading.Thread? splashThread = _wpfSplashThread;
-            _wpfSplash = null;
-            _wpfSplashThread = null;
-
-            if (splash != null)
-            {
-                try
-                {
-                    splash.Dispatcher.Invoke(() =>
-                    {
-                        splash.Close();
-                        // The splash runs its own STA message loop; ask it to exit so the
-                        // thread can actually be joined below instead of running forever.
-                        splash.Dispatcher.BeginInvokeShutdown(System.Windows.Threading.DispatcherPriority.Normal);
-                    });
-                }
-                catch (Exception ex)
-                {
-                    // Never let splash cleanup mask an in-progress startup error.
-                    Runtime.MessageCollector.AddExceptionMessage("Failed to close splash screen.", ex, MessageClass.WarningMsg);
-                }
-            }
-
-            // The splash thread is a background thread, so a bounded join keeps startup
-            // from hanging if the dispatcher did not shut down; it dies on process exit anyway.
-            splashThread?.Join(TimeSpan.FromSeconds(2));
+            AppStartupState.CloseSplash();
         }
 
         // Helper to show a dialog with "Download" and "Cancel" buttons.

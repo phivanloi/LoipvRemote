@@ -1,8 +1,8 @@
 using System;
 using System.ComponentModel;
 using System.Configuration;
+using System.Diagnostics;
 using System.Runtime.Versioning;
-using LoipvRemote.App;
 
 
 namespace LoipvRemote.Connection
@@ -46,7 +46,7 @@ namespace LoipvRemote.Connection
                 }
                 catch (Exception ex)
                 {
-                    Runtime.MessageCollector?.AddExceptionStackTrace($"Error loading default connectioninfo property {property.Name}", ex);
+                    Trace.TraceError($"Error loading default connection info property {property.Name}.{Environment.NewLine}{ex}");
                 }
             }
         }
@@ -75,7 +75,7 @@ namespace LoipvRemote.Connection
                 }
                 catch (Exception ex)
                 {
-                    Runtime.MessageCollector?.AddExceptionStackTrace($"Error saving default connectioninfo property {property.Name}", ex);
+                    Trace.TraceError($"Error saving default connection info property {property.Name}.{Environment.NewLine}{ex}");
                 }
             }
         }

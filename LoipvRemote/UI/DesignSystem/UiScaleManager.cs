@@ -258,7 +258,7 @@ namespace LoipvRemote.UI.DesignSystem
             string typeName = control.GetType().FullName ?? string.Empty;
             return typeName.Contains("AxMSTSCLib", StringComparison.OrdinalIgnoreCase) ||
                    typeName.Contains("VncSharp", StringComparison.OrdinalIgnoreCase) ||
-                   typeName.Contains("ConsoleControl", StringComparison.OrdinalIgnoreCase) ||
+                   typeName.Contains("ManagedTerminalControl", StringComparison.OrdinalIgnoreCase) ||
                    typeName.EndsWith("InterfaceControl", StringComparison.OrdinalIgnoreCase);
         }
     }

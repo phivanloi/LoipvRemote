@@ -16,6 +16,10 @@ namespace LoipvRemote.UI.Window
     [SupportedOSPlatform("windows")]
     public class SSHTransferWindow : BaseWindow
     {
+        private MessageCollector? _messageCollector;
+
+        private MessageCollector MessageCollector => _messageCollector
+            ?? throw new InvalidOperationException("SSHTransferWindow services must be attached before use.");
         #region Form Init
 
         private MrngProgressBar pbStatus;
@@ -383,20 +387,20 @@ namespace LoipvRemote.UI.Window
         {
             if (AllFieldsSet() == false)
             {
-                Runtime.MessageCollector.AddMessage(MessageClass.ErrorMsg, Language.PleaseFillAllFields);
+                MessageCollector.AddMessage(MessageClass.ErrorMsg, Language.PleaseFillAllFields);
                 return;
             }
 
             if (File.Exists(txtLocalFile.Text) == false)
             {
-                Runtime.MessageCollector.AddMessage(MessageClass.WarningMsg, Language.LocalFileDoesNotExist);
+                MessageCollector.AddMessage(MessageClass.WarningMsg, Language.LocalFileDoesNotExist);
                 return;
             }
 
             try
             {
                 st = new SecureTransfer(txtHost.Text, txtUser.Text, txtPassword.Text, int.Parse(txtPort.Text), Protocol,
-                                        txtLocalFile.Text, txtRemoteFile.Text);
+                                        txtLocalFile.Text, txtRemoteFile.Text, MessageCollector);
 
                 // Connect creates the protocol objects and makes the initial connection.
                 st.Connect();
@@ -418,7 +422,7 @@ namespace LoipvRemote.UI.Window
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionStackTrace(Language.SshTransferFailed, ex);
+                MessageCollector.AddExceptionStackTrace(Language.SshTransferFailed, ex);
                 st?.Disconnect();
                 st?.Dispose();
             }
@@ -426,7 +430,7 @@ namespace LoipvRemote.UI.Window
 
         private void AsyncCallback(IAsyncResult ar)
         {
-            Runtime.MessageCollector.AddMessage(MessageClass.InformationMsg, $"SFTP AsyncCallback completed.", true);
+            MessageCollector.AddMessage(MessageClass.InformationMsg, $"SFTP AsyncCallback completed.", true);
         }
 
         private void ScpClt_Uploading(object sender, Renci.SshNet.Common.ScpUploadEventArgs e)
@@ -445,7 +449,7 @@ namespace LoipvRemote.UI.Window
             try
             {
                 DisableButtons();
-                Runtime.MessageCollector.AddMessage(MessageClass.InformationMsg,
+                MessageCollector.AddMessage(MessageClass.InformationMsg,
                                                     $"Transfer of {Path.GetFileName(st.SrcFile)} started.", true);
                 st.Upload();
 
@@ -467,7 +471,7 @@ namespace LoipvRemote.UI.Window
                     }
                 }
 
-                Runtime.MessageCollector.AddMessage(MessageClass.InformationMsg,
+                MessageCollector.AddMessage(MessageClass.InformationMsg,
                                                     $"Transfer of {Path.GetFileName(st.SrcFile)} completed.", true);
                 st.Disconnect();
                 st.Dispose();
@@ -475,7 +479,7 @@ namespace LoipvRemote.UI.Window
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionStackTrace(Language.SshBackgroundTransferFailed, ex,
+                MessageCollector.AddExceptionStackTrace(Language.SshBackgroundTransferFailed, ex,
                                                                 MessageClass.ErrorMsg, false);
                 st?.Disconnect();
                 st?.Dispose();
@@ -489,7 +493,7 @@ namespace LoipvRemote.UI.Window
             {
                 if (txtPassword.Text == "")
                 {
-                    if (MessageBox.Show(FrmMain.Default, Language.EmptyPasswordContinue, @"Question?",
+                    if (MessageBox.Show(this, Language.EmptyPasswordContinue, @"Question?",
                                         MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.No)
                     {
                         return false;
@@ -583,6 +587,11 @@ namespace LoipvRemote.UI.Window
                 Filter = @"All Files (*.*)|*.*",
                 CheckFileExists = true
             };
+        }
+
+        public void AttachServices(MessageCollector messageCollector)
+        {
+            _messageCollector = messageCollector ?? throw new ArgumentNullException(nameof(messageCollector));
         }
 
         #endregion

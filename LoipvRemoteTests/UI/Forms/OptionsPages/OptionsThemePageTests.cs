@@ -13,14 +13,14 @@ namespace LoipvRemoteTests.UI.Forms.OptionsPages
         public void ThemePageLinkExistsInListView()
         {
             ListViewTester listViewTester = new("lstOptionPages", _optionsForm);
-            Assert.That(listViewTester.Items[8].Text, Does.Match("Theme"));
+            Assert.That(listViewTester.Items[7].Text, Does.Match("Theme"));
         }
 
         [Test]
         public void ThemeIconShownInListView()
         {
             ListViewTester listViewTester = new("lstOptionPages", _optionsForm);
-            Assert.That(listViewTester.Items[8].ImageList, Is.Not.Null);
+            Assert.That(listViewTester.Items[7].ImageList, Is.Not.Null);
         }
 
         [Test]

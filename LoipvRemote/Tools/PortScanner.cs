@@ -7,7 +7,6 @@ using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using System.Threading;
-using LoipvRemote.App;
 using LoipvRemote.Messages;
 
 
@@ -21,6 +20,7 @@ namespace LoipvRemote.Tools
         private Thread _scanThread;
         private readonly List<ScanHost> _scannedHosts = [];
         private readonly int _timeoutInMilliseconds;
+        private readonly MessageCollector _messageCollector;
 
         #region Public Methods
 
@@ -28,6 +28,7 @@ namespace LoipvRemote.Tools
                            IPAddress ipAddress2,
                            int port1,
                            int port2,
+                           MessageCollector messageCollector,
                            int timeoutInMilliseconds = 5000,
                            bool checkDefaultPortsOnly = false)
         {
@@ -43,6 +44,7 @@ namespace LoipvRemote.Tools
 
             if (timeoutInMilliseconds < 0)
                 throw new ArgumentOutOfRangeException(nameof(timeoutInMilliseconds));
+            _messageCollector = messageCollector ?? throw new ArgumentNullException(nameof(messageCollector));
 
             _timeoutInMilliseconds = timeoutInMilliseconds;
             _ports.Clear();
@@ -115,7 +117,7 @@ namespace LoipvRemote.Tools
             try
             {
                 _hostCount = 0;
-                Runtime.MessageCollector.AddMessage(MessageClass.InformationMsg, $"Tools.PortScan: Starting scan of {_ipAddresses.Count} hosts...", true);
+                _messageCollector.AddMessage(MessageClass.InformationMsg, $"Tools.PortScan: Starting scan of {_ipAddresses.Count} hosts...", true);
                 foreach (IPAddress ipAddress in _ipAddresses)
                 {
                     RaiseBeginHostScanEvent(ipAddress);
@@ -130,13 +132,13 @@ namespace LoipvRemote.Tools
                     }
                     catch (Exception ex)
                     {
-                        Runtime.MessageCollector.AddMessage(MessageClass.WarningMsg, $"Tools.PortScan: Ping failed for {ipAddress} {Environment.NewLine} {ex.Message}", true);
+                        _messageCollector.AddMessage(MessageClass.WarningMsg, $"Tools.PortScan: Ping failed for {ipAddress} {Environment.NewLine} {ex.Message}", true);
                     }
                 }
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddMessage(MessageClass.WarningMsg, $"StartScanBG failed (Tools.PortScan) {Environment.NewLine} {ex.Message}", true);
+                _messageCollector.AddMessage(MessageClass.WarningMsg, $"StartScanBG failed (Tools.PortScan) {Environment.NewLine} {ex.Message}", true);
             }
         }
 
@@ -153,14 +155,14 @@ namespace LoipvRemote.Tools
             ScanHost scanHost = new(ip);
             _hostCount++;
 
-            Runtime.MessageCollector.AddMessage(MessageClass.InformationMsg,
+            _messageCollector.AddMessage(MessageClass.InformationMsg,
                                                 $"Tools.PortScan: Scanning {_hostCount} of {_ipAddresses.Count} hosts: {scanHost.HostIp}",
                                                 true);
 
 
             if (e.Cancelled)
             {
-                Runtime.MessageCollector.AddMessage(MessageClass.InformationMsg,
+                _messageCollector.AddMessage(MessageClass.InformationMsg,
                                                     $"Tools.PortScan: CANCELLED host: {scanHost.HostIp}", true);
                 // cleanup
                 p.PingCompleted -= PingSender_PingCompleted;
@@ -170,7 +172,7 @@ namespace LoipvRemote.Tools
 
             if (e.Error != null)
             {
-                Runtime.MessageCollector.AddMessage(MessageClass.InformationMsg,
+                _messageCollector.AddMessage(MessageClass.InformationMsg,
                                                     $"Ping failed to {e.UserState} {Environment.NewLine} {e.Error.Message}",
                                                     true);
                 scanHost.ClosedPorts.AddRange(_ports);
@@ -185,7 +187,7 @@ namespace LoipvRemote.Tools
                 }
                 catch (Exception dnsex)
                 {
-                    Runtime.MessageCollector.AddMessage(MessageClass.InformationMsg,
+                    _messageCollector.AddMessage(MessageClass.InformationMsg,
                                                         $"Tools.PortScan: Could not resolve {scanHost.HostIp} {Environment.NewLine} {dnsex.Message}",
                                                         true);
                 }
@@ -243,7 +245,7 @@ namespace LoipvRemote.Tools
             }
             else if (e.Reply.Status != IPStatus.Success)
             {
-                Runtime.MessageCollector.AddMessage(MessageClass.InformationMsg,
+                _messageCollector.AddMessage(MessageClass.InformationMsg,
                                                     $"Ping did not complete to {e.UserState} : {e.Reply.Status}", true);
                 scanHost.ClosedPorts.AddRange(_ports);
                 scanHost.SetAllProtocols(false);
@@ -254,7 +256,7 @@ namespace LoipvRemote.Tools
             p.Dispose();
 
             string h = string.IsNullOrEmpty(scanHost.HostName) ? "HostNameNotFound" : scanHost.HostName;
-            Runtime.MessageCollector.AddMessage(MessageClass.InformationMsg,
+            _messageCollector.AddMessage(MessageClass.InformationMsg,
                                                 $"Tools.PortScan: Scan of {scanHost.HostIp} ({h}) complete.", true);
 
             _scannedHosts.Add(scanHost);

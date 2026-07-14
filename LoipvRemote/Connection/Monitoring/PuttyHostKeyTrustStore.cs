@@ -2,7 +2,7 @@ using System;
 using System.Linq;
 using System.Numerics;
 using System.Text;
-using Microsoft.Win32;
+using LoipvRemote.Infrastructure.Windows.Registry;
 using Renci.SshNet;
 
 namespace LoipvRemote.Connection.Monitoring
@@ -22,6 +22,17 @@ namespace LoipvRemote.Connection.Monitoring
 
         internal static bool IsTrusted(string hostname, int port, string hostKeyName, byte[] hostKey)
         {
+            return IsTrusted(hostname, port, hostKeyName, hostKey, new WindowsRegistryValueReader());
+        }
+
+        internal static bool IsTrusted(
+            string hostname,
+            int port,
+            string hostKeyName,
+            byte[] hostKey,
+            IWindowsRegistryValueReader registryReader)
+        {
+            ArgumentNullException.ThrowIfNull(registryReader);
             string? cacheKeyType;
             string? presentedKey;
             if (string.Equals(hostKeyName, "ssh-ed25519", StringComparison.Ordinal))
@@ -40,16 +51,26 @@ namespace LoipvRemote.Connection.Monitoring
                 return false;
             }
 
-            string? cachedKey = ReadCachedHostKey(hostname, port, cacheKeyType);
+            string? cachedKey = ReadCachedHostKey(hostname, port, cacheKeyType, registryReader);
             return cachedKey is not null && presentedKey is not null &&
                    string.Equals(cachedKey, presentedKey, StringComparison.OrdinalIgnoreCase);
         }
 
         internal static void PreferCachedHostKeyAlgorithms(Renci.SshNet.ConnectionInfo connectionInfo, string hostname, int port)
         {
+            PreferCachedHostKeyAlgorithms(connectionInfo, hostname, port, new WindowsRegistryValueReader());
+        }
+
+        internal static void PreferCachedHostKeyAlgorithms(
+            Renci.SshNet.ConnectionInfo connectionInfo,
+            string hostname,
+            int port,
+            IWindowsRegistryValueReader registryReader)
+        {
             ArgumentNullException.ThrowIfNull(connectionInfo);
-            bool hasRsaKey = ReadCachedHostKey(hostname, port, "rsa2") is not null;
-            bool hasEd25519Key = ReadCachedHostKey(hostname, port, "ssh-ed25519") is not null;
+            ArgumentNullException.ThrowIfNull(registryReader);
+            bool hasRsaKey = ReadCachedHostKey(hostname, port, "rsa2", registryReader) is not null;
+            bool hasEd25519Key = ReadCachedHostKey(hostname, port, "ssh-ed25519", registryReader) is not null;
             if (!hasRsaKey || hasEd25519Key) return;
 
             foreach (string algorithm in connectionInfo.HostKeyAlgorithms.Keys.ToArray())
@@ -126,11 +147,15 @@ namespace LoipvRemote.Connection.Monitoring
             return trimmed;
         }
 
-        private static string? ReadCachedHostKey(string hostname, int port, string keyType)
+        private static string? ReadCachedHostKey(
+            string hostname,
+            int port,
+            string keyType,
+            IWindowsRegistryValueReader registryReader)
         {
-            using RegistryKey? hostKeys = Registry.CurrentUser.OpenSubKey(PuttyHostKeyRegistryPath, writable: false);
-            return hostKeys?.GetValue($"{keyType}@{port}:{EscapeRegistryKey(hostname)}", null,
-                RegistryValueOptions.DoNotExpandEnvironmentNames) as string;
+            return registryReader.GetCurrentUserString(
+                PuttyHostKeyRegistryPath,
+                $"{keyType}@{port}:{EscapeRegistryKey(hostname)}");
         }
 
         private static string EscapeRegistryKey(string value)

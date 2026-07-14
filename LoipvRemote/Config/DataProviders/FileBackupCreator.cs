@@ -1,8 +1,7 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Runtime.Versioning;
-using LoipvRemote.App;
-using LoipvRemote.Messages;
 using LoipvRemote.Resources.Language;
 using LoipvRemote.Tools;
 
@@ -15,10 +14,12 @@ namespace LoipvRemote.Config.DataProviders
         {
             try
             {
+                // Validate before checking existence. Otherwise a traversal payload
+                // that happens not to exist bypasses validation entirely.
+                PathValidator.ValidatePathOrThrow(fileName, nameof(fileName));
+
                 if (WeDontNeedToBackup(fileName))
                     return;
-
-                PathValidator.ValidatePathOrThrow(fileName, nameof(fileName));
 
                 string backupFileName =
                     string.Format(Properties.OptionsBackupPage.Default.BackupFileNameFormat, fileName, DateTime.Now);
@@ -29,8 +30,7 @@ namespace LoipvRemote.Config.DataProviders
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage(Language.ConnectionsFileBackupFailed, ex,
-                                                             MessageClass.WarningMsg);
+                Trace.TraceWarning($"{Language.ConnectionsFileBackupFailed}{Environment.NewLine}{ex}");
                 throw;
             }
         }

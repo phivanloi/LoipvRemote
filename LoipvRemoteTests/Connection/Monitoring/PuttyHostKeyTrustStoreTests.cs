@@ -1,6 +1,7 @@
 using System;
 using System.Text;
 using LoipvRemote.Connection.Monitoring;
+using LoipvRemote.Infrastructure.Windows.Registry;
 using NUnit.Framework;
 
 namespace LoipvRemoteTests.Connection.Monitoring
@@ -39,6 +40,24 @@ namespace LoipvRemoteTests.Connection.Monitoring
             Assert.That(cacheValue, Is.EqualTo("0x10001,0xabcdef"));
         }
 
+        [Test]
+        public void TrustsOnlyMatchingPuTTYCachedHostKeyThroughRegistryBoundary()
+        {
+            byte[] exponent = [0x01, 0x00, 0x01];
+            byte[] modulus = [0x00, 0xab, 0xcd, 0xef];
+            byte[] hostKey = BuildHostKey("ssh-rsa", exponent, modulus);
+            var registry = new FakeRegistryValueReader("0x10001,0xabcdef");
+
+            bool trusted = PuttyHostKeyTrustStore.IsTrusted("host.example", 22, "rsa-sha2-512", hostKey, registry);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(trusted, Is.True);
+                Assert.That(registry.LastSubKeyPath, Is.EqualTo(@"Software\SimonTatham\PuTTY\SshHostKeys"));
+                Assert.That(registry.LastValueName, Is.EqualTo("rsa2@22:host.example"));
+            });
+        }
+
         private static byte[] BuildHostKey(string algorithm, byte[] publicKey)
         {
             byte[] algorithmBytes = Encoding.ASCII.GetBytes(algorithm);
@@ -72,6 +91,19 @@ namespace LoipvRemoteTests.Connection.Monitoring
             destination[offset + 1] = (byte)(length >> 16);
             destination[offset + 2] = (byte)(length >> 8);
             destination[offset + 3] = (byte)length;
+        }
+
+        private sealed class FakeRegistryValueReader(string? value) : IWindowsRegistryValueReader
+        {
+            public string? LastSubKeyPath { get; private set; }
+            public string? LastValueName { get; private set; }
+
+            public string? GetCurrentUserString(string subKeyPath, string valueName)
+            {
+                LastSubKeyPath = subKeyPath;
+                LastValueName = valueName;
+                return value;
+            }
         }
     }
 }

@@ -360,14 +360,10 @@ namespace LoipvRemote.Config.Serializers.MiscSerializers
 
             try
             {
-                byte[] plaintextData = ProtectedData.Unprotect(Convert.FromBase64String(ciphertext), new byte[] { },
-                                                            DataProtectionScope.LocalMachine);
-                char[] charArray = Encoding.Unicode.GetChars(plaintextData);
-                return new string(charArray);
+                return Infrastructure.Windows.Dpapi.WindowsDpapiCompatibility.UnprotectLocalMachineUnicode(ciphertext);
             }
-            catch (Exception /*ex*/)
+            catch (Exception)
             {
-                //Runtime.MessageCollector.AddExceptionMessage("RemoteDesktopConnectionManager.DecryptPassword() failed.", ex, logOnly: true);
                 return string.Empty;
             }
         }

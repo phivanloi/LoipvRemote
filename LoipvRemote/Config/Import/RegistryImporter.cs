@@ -1,20 +1,22 @@
 using System;
 using System.Runtime.Versioning;
-using Microsoft.Win32;
-using LoipvRemote.App;
 using LoipvRemote.Container;
+using LoipvRemote.Infrastructure.Windows.Registry;
+using LoipvRemote.Messages;
 
 namespace LoipvRemote.Config.Import
 {
     [SupportedOSPlatform("windows")]
-    internal class RegistryImporter : IConnectionImporter<string>
+    internal sealed class RegistryImporter(MessageCollector messageCollector) : IConnectionImporter<string>
     {
+        private readonly MessageCollector _messageCollector = messageCollector ?? throw new ArgumentNullException(nameof(messageCollector));
+
         public void Import(string regPath, ContainerInfo destinationContainer)
         {
-            Import(regPath, destinationContainer, false);
+            ImportFromRegistry(regPath, destinationContainer);
         }
 
-        public static void Import(string regPath, ContainerInfo destinationContainer, bool noop = false)
+        public void ImportFromRegistry(string regPath, ContainerInfo destinationContainer)
         {
             try
             {
@@ -24,58 +26,28 @@ namespace LoipvRemote.Config.Import
                     IsContainer = true
                 };
 
-                using (RegistryKey key = Registry.CurrentUser.OpenSubKey(regPath))
+                PuttyRegistrySessionStore store = new();
+                foreach (PuttyRegistrySession session in store.GetSessions())
                 {
-                    if (key != null)
+                    Connection.Protocol.ProtocolType protocol = session.Protocol.Equals("raw", StringComparison.OrdinalIgnoreCase)
+                        ? Connection.Protocol.ProtocolType.RAW
+                        : Connection.Protocol.ProtocolType.SSH2;
+                    importedNode.AddChild(new Connection.ConnectionInfo
                     {
-                        foreach (string sub in key.GetSubKeyNames())
-                        {
-                            if (sub.EndsWith("Default%20Settings")) continue;
-                            using RegistryKey subkey = key.OpenSubKey(sub);
-                            string Hostname = subkey.GetValue("HostName") as string;
-                            string connName = subkey.Name[(key.Name.Length + 1)..];
-                            if (!string.IsNullOrEmpty(Hostname))
-                            {
-                                int Port = 22;
-                                string Username = string.Empty;
-
-                                string ProtocolType = subkey.GetValue("Protocol") as string;
-                                Connection.Protocol.ProtocolType Protocol = Connection.Protocol.ProtocolType.SSH2;
-                                if (ProtocolType == "raw")
-                                {
-                                    Protocol = Connection.Protocol.ProtocolType.RAW;
-                                }
-
-                                try
-                                {
-                                    Port = int.Parse(subkey.GetValue("PortNumber") as string);
-                                }
-                                catch { }
-                                try
-                                {
-                                    Username = subkey.GetValue("UserName") as string;
-                                }
-                                catch { }
-
-                                importedNode.AddChild(new Connection.ConnectionInfo()
-                                {
-                                    Name = connName,
-                                    Hostname = Hostname,
-                                    Port = Port == 0 ? 22 : Port,
-                                    Protocol = Protocol,
-                                    Parent = destinationContainer,
-                                    Username = string.IsNullOrEmpty(Username) ? string.Empty : Username
-                                });
-                            }
-                        }
-                    }
+                        Name = session.Name,
+                        Hostname = session.Hostname,
+                        Port = session.Port == 0 ? 22 : session.Port,
+                        Protocol = protocol,
+                        Parent = destinationContainer,
+                        Username = session.Username
+                    });
                 }
 
                 destinationContainer.AddChild(importedNode);
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage("Config.Import.Registry.Import() failed.", ex);
+                _messageCollector.AddExceptionMessage("Config.Import.Registry.Import() failed.", ex);
             }
         }
 

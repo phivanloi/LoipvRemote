@@ -1,9 +1,9 @@
 using System;
 using System.Globalization;
+using System.Diagnostics;
+using System.IO;
 using System.Security;
-using System.Windows.Forms;
 using System.Xml;
-using LoipvRemote.App;
 using LoipvRemote.Connection;
 using LoipvRemote.Connection.Protocol;
 using LoipvRemote.Connection.Protocol.Http;
@@ -15,8 +15,6 @@ using LoipvRemote.Security;
 using LoipvRemote.Tools;
 using LoipvRemote.Tree;
 using LoipvRemote.Tree.Root;
-using LoipvRemote.UI.Forms;
-using LoipvRemote.UI.TaskDialog;
 using LoipvRemote.Resources.Language;
 using System.Runtime.Versioning;
 
@@ -28,11 +26,13 @@ namespace LoipvRemote.Config.Serializers.ConnectionSerializers.Xml
         private XmlDocument _xmlDocument;
         private double _confVersion;
         private XmlConnectionsDecryptor _decryptor;
-        private readonly string ConnectionFileName = "";
-        private const double MaxSupportedConfVersion = 2.8;
+        private const double CurrentConfVersion = 2.8;
         private readonly RootNodeInfo _rootNodeInfo = new(RootNodeType.Connection);
 
         public Func<Optional<SecureString>> AuthenticationRequestor { get; set; } = authenticationRequestor;
+
+        /// <summary>Optional password supplied by a non-interactive import caller.</summary>
+        public string? InitialAuthenticationPassword { get; init; }
 
         public ConnectionTreeModel Deserialize(string xml)
         {
@@ -54,95 +54,67 @@ namespace LoipvRemote.Config.Serializers.ConnectionSerializers.Xml
                 connectionTreeModel.AddRootNode(_rootNodeInfo);
 
 
-                if (_confVersion > 1.3)
+                string protectedString = _xmlDocument.DocumentElement?.Attributes["Protected"]?.Value;
+                if (!_decryptor.ConnectionsFileIsAuthentic(protectedString, _rootNodeInfo.PasswordString.ConvertToSecureString()))
                 {
-                    string protectedString = _xmlDocument.DocumentElement?.Attributes["Protected"]?.Value;
-                    if (!_decryptor.ConnectionsFileIsAuthentic(protectedString, _rootNodeInfo.PasswordString.ConvertToSecureString()))
-                    {
-                        return null;
-                    }
+                    return null;
                 }
 
-                if (_confVersion >= 2.6)
+                bool fullFileEncryptionValue = rootXmlElement.GetAttributeAsBool("FullFileEncryption");
+                if (fullFileEncryptionValue)
                 {
-                    bool fullFileEncryptionValue = rootXmlElement.GetAttributeAsBool("FullFileEncryption");
-                    if (fullFileEncryptionValue)
-                    {
-                        string decryptedContent = _decryptor.Decrypt(rootXmlElement.InnerText);
-                        rootXmlElement.InnerXml = decryptedContent;
-                    }
+                    string decryptedContent = _decryptor.Decrypt(rootXmlElement.InnerText);
+                    rootXmlElement.InnerXml = decryptedContent;
                 }
 
                 AddNodesFromXmlRecursive(_xmlDocument.DocumentElement, _rootNodeInfo);
-
-                if (!import)
-                    Runtime.ConnectionsService.IsConnectionsFileLoaded = true;
 
                 return connectionTreeModel;
             }
             catch (Exception ex)
             {
-                Runtime.ConnectionsService.IsConnectionsFileLoaded = false;
-                Runtime.MessageCollector.AddExceptionStackTrace(Language.LoadFromXmlFailed, ex);
+                Trace.TraceError($"{Language.LoadFromXmlFailed}{Environment.NewLine}{ex}");
                 throw;
             }
         }
 
         private void LoadXmlConnectionData(string connections)
         {
-            CreateDecryptor(new RootNodeInfo(RootNodeType.Connection));
-            connections = _decryptor.LegacyFullFileDecrypt(connections);
-            if (connections != "")
-            {
-                _xmlDocument = SecureXmlHelper.LoadXmlFromString(connections);
-            }
+            _xmlDocument = SecureXmlHelper.LoadXmlFromString(connections)
+                ?? throw new InvalidDataException("Connection XML could not be parsed.");
         }
 
         private void ValidateConnectionFileVersion()
         {
-            if (_xmlDocument.DocumentElement != null && _xmlDocument.DocumentElement.HasAttribute("ConfVersion"))
-                _confVersion = Convert.ToDouble(_xmlDocument.DocumentElement.Attributes["ConfVersion"]?.Value.Replace(",", "."), CultureInfo.InvariantCulture);
-            else
-                Runtime.MessageCollector.AddMessage(MessageClass.WarningMsg, Language.OldConffile);
+            XmlElement root = _xmlDocument?.DocumentElement
+                ?? throw new InvalidDataException("Connection XML has no root element.");
 
-            if (!(_confVersion > MaxSupportedConfVersion)) return;
-            ShowIncompatibleVersionDialogBox();
-            throw new Exception($"Incompatible connection file format (file format version {_confVersion}).");
-        }
-
-        private void ShowIncompatibleVersionDialogBox()
-        {
-            CTaskDialog.ShowTaskDialogBox(FrmMain.Default, Application.ProductName, "Incompatible connection file format", $"The format of this connection file is not supported. Please upgrade to a newer version of {Application.ProductName}.",
-                                          string .Format("{1}{0}File Format Version: {2}{0}Highest Supported Version: {3}", Environment.NewLine, ConnectionFileName, _confVersion, MaxSupportedConfVersion),
-                                          "", "", "", "", ETaskDialogButtons.Ok, ESysIcons.Error, ESysIcons.Error);
+            string? version = root.GetAttribute("ConfVersion");
+            if (!double.TryParse(version, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out _confVersion) ||
+                _confVersion != CurrentConfVersion)
+            {
+                throw new NotSupportedException(
+                    $"Only connection file format {CurrentConfVersion:0.0} is supported; received '{version}'.");
+            }
         }
 
         private void InitializeRootNode(XmlElement connectionsRootElement)
         {
             _rootNodeInfo.Name = connectionsRootElement?.Attributes["Name"]?.Value.Trim();
+            if (!string.IsNullOrEmpty(InitialAuthenticationPassword))
+                _rootNodeInfo.PasswordString = InitialAuthenticationPassword;
         }
-
-        private void CreateDecryptor(RootNodeInfo rootNodeInfo, XmlElement connectionsRootElement = null)
+        private void CreateDecryptor(RootNodeInfo rootNodeInfo, XmlElement connectionsRootElement)
         {
-            if (_confVersion >= 2.6)
-            {
-                BlockCipherEngines engine = connectionsRootElement.GetAttributeAsEnum<BlockCipherEngines>("EncryptionEngine");
-                BlockCipherModes mode = connectionsRootElement.GetAttributeAsEnum<BlockCipherModes>("BlockCipherMode");
-                int keyDerivationIterations = connectionsRootElement.GetAttributeAsInt("KdfIterations");
+            BlockCipherEngines engine = connectionsRootElement.GetAttributeAsEnum<BlockCipherEngines>("EncryptionEngine");
+            BlockCipherModes mode = connectionsRootElement.GetAttributeAsEnum<BlockCipherModes>("BlockCipherMode");
+            int keyDerivationIterations = connectionsRootElement.GetAttributeAsInt("KdfIterations");
 
-                _decryptor = new XmlConnectionsDecryptor(engine, mode, rootNodeInfo)
-                {
-                    AuthenticationRequestor = AuthenticationRequestor,
-                    KeyDerivationIterations = keyDerivationIterations
-                };
-            }
-            else
+            _decryptor = new XmlConnectionsDecryptor(engine, mode, rootNodeInfo)
             {
-                _decryptor = new XmlConnectionsDecryptor(_rootNodeInfo)
-                {
-                    AuthenticationRequestor = AuthenticationRequestor
-                };
-            }
+                AuthenticationRequestor = AuthenticationRequestor,
+                KeyDerivationIterations = keyDerivationIterations
+            };
         }
 
         private void AddNodesFromXmlRecursive(XmlNode parentXmlNode, ContainerInfo parentContainer)
@@ -179,7 +151,7 @@ namespace LoipvRemote.Config.Serializers.ConnectionSerializers.Xml
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionStackTrace(Language.AddNodeFromXmlFailed, ex);
+                Trace.TraceError($"{Language.AddNodeFromXmlFailed}{Environment.NewLine}{ex}");
                 throw;
             }
         }
@@ -212,13 +184,9 @@ namespace LoipvRemote.Config.Serializers.ConnectionSerializers.Xml
                             : RDPResolutions.SmartSize;
                     }
 
-                    if (!Runtime.UseCredentialManager || _confVersion <= 2.6) // 0.2 - 2.6
-                    {
-                        connectionInfo.Username = xmlnode.GetAttributeAsString("Username");
-                        connectionInfo.Password = _decryptor.Decrypt(xmlnode.GetAttributeAsString("Password"));
-                        //connectionInfo.Password = _decryptor.Decrypt(xmlnode.GetAttributeAsString("Password")).ConvertToSecureString();
-                        connectionInfo.Domain = xmlnode.GetAttributeAsString("Domain");
-                    }
+                    connectionInfo.Username = xmlnode.GetAttributeAsString("Username");
+                    connectionInfo.Password = _decryptor.Decrypt(xmlnode.GetAttributeAsString("Password"));
+                    connectionInfo.Domain = xmlnode.GetAttributeAsString("Domain");
                 }
 
                 if (_confVersion >= 0.3)
@@ -327,6 +295,7 @@ namespace LoipvRemote.Config.Serializers.ConnectionSerializers.Xml
                     connectionInfo.Inheritance.DisplayWallpaper = xmlnode.GetAttributeAsBool("InheritDisplayWallpaper");
                     connectionInfo.Inheritance.Icon = xmlnode.GetAttributeAsBool("InheritIcon");
                     connectionInfo.Inheritance.Panel = xmlnode.GetAttributeAsBool("InheritPanel");
+                    connectionInfo.Inheritance.Color = xmlnode.GetAttributeAsBool("InheritColor");
                     connectionInfo.Inheritance.TabColor = xmlnode.GetAttributeAsBool("InheritTabColor");
                     connectionInfo.Inheritance.ConnectionFrameColor = xmlnode.GetAttributeAsBool("InheritConnectionFrameColor");
                     connectionInfo.Inheritance.Port = xmlnode.GetAttributeAsBool("InheritPort");
@@ -342,15 +311,13 @@ namespace LoipvRemote.Config.Serializers.ConnectionSerializers.Xml
                     connectionInfo.Inheritance.Resolution = xmlnode.GetAttributeAsBool("InheritResolution");
                     connectionInfo.Inheritance.UseConsoleSession = xmlnode.GetAttributeAsBool("InheritUseConsoleSession");
 
-                    if (!Runtime.UseCredentialManager || _confVersion <= 2.6) // 1.3 - 2.6
-                    {
-                        connectionInfo.Inheritance.Domain = xmlnode.GetAttributeAsBool("InheritDomain");
-                        connectionInfo.Inheritance.Password = xmlnode.GetAttributeAsBool("InheritPassword");
-                        connectionInfo.Inheritance.Username = xmlnode.GetAttributeAsBool("InheritUsername");
-                    }
+                    connectionInfo.Inheritance.Domain = xmlnode.GetAttributeAsBool("InheritDomain");
+                    connectionInfo.Inheritance.Password = xmlnode.GetAttributeAsBool("InheritPassword");
+                    connectionInfo.Inheritance.Username = xmlnode.GetAttributeAsBool("InheritUsername");
 
                     connectionInfo.Icon = xmlnode.GetAttributeAsString("Icon");
                     connectionInfo.Panel = xmlnode.GetAttributeAsString("Panel");
+                    connectionInfo.Color = xmlnode.GetAttributeAsString("Color");
                     connectionInfo.TabColor = xmlnode.GetAttributeAsString("TabColor");
                     connectionInfo.ConnectionFrameColor = xmlnode.GetAttributeAsEnum<ConnectionFrameColor>("ConnectionFrameColor");
                 }
@@ -558,7 +525,7 @@ namespace LoipvRemote.Config.Serializers.ConnectionSerializers.Xml
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddMessage(MessageClass.ErrorMsg, string.Format(Language.GetConnectionInfoFromXmlFailed, connectionInfo.Name, ConnectionFileName, ex.Message));
+                Trace.TraceError(string.Format(Language.GetConnectionInfoFromXmlFailed, connectionInfo.Name, string.Empty, ex.Message));
             }
 
             return connectionInfo;

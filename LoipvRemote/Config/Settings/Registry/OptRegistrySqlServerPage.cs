@@ -128,20 +128,8 @@ namespace LoipvRemote.Config.Settings.Registry
         {
             if (SQLPassword.IsSet)
             {
-                // Prevents potential issues when using SQLPass later.
-                try
-                {
-                    LegacyRijndaelCryptographyProvider cryptographyProvider = new();
-                    string decryptedPassword;
-                    string sqlPassword = SQLPassword.Value;
-                    decryptedPassword = cryptographyProvider.Decrypt(sqlPassword, Runtime.EncryptionKey);
-
-                    Properties.OptionsDBsPage.Default.SQLPass = sqlPassword;
-                }
-                catch
-                {
-                    // Fire-and-forget: The password in the registry is not encrypted.
-                }
+                // Registry-provided legacy ciphertext is deliberately unsupported.
+                SQLPassword.Clear();
             }
         }
 

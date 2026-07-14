@@ -6,7 +6,7 @@
       <Value Profile="(Default)">AdminRole</Value>
     </Setting>
     <Setting Name="AdminRolePassword" Type="System.String" Scope="User">
-      <Value Profile="(Default)">mR3m0t3NG!</Value>
+      <Value Profile="(Default)" />
     </Setting>
   </Settings>
 </SettingsFile>

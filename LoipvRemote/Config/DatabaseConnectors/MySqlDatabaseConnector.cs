@@ -31,7 +31,6 @@ namespace LoipvRemote.Config.DatabaseConnectors
 
         public MySqlDatabaseConnector(string host, string database, string username, string password)
         {
-            // TODO: add custom port handling?
             string[] hostParts = host.Split(new char[]{':'}, 2);
             _dbHost = hostParts[0];
             _dbPort = (hostParts.Length == 2)?hostParts[1]:"3306";

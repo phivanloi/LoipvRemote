@@ -1,22 +1,21 @@
-using LoipvRemote.App;
 using LoipvRemote.Messages;
 using LoipvRemote.Resources.Language;
 using LoipvRemote.Security;
 using LoipvRemote.Security.SymmetricEncryption;
 using LoipvRemote.Tools;
-using LoipvRemote.Tools.Cmdline;
 using LoipvRemote.Tree.Root;
 using LoipvRemote.UI;
+using LoipvRemote.Infrastructure.Windows.WindowEmbedding;
+using LoipvRemote.Infrastructure.Windows.Process;
+using LoipvRemote.Protocols.Abstractions;
+using LoipvRemote.Protocols.Putty;
+using LoipvRemote.Connectors.Abstractions;
+using LoipvRemote.UseCases.Credentials;
 using System;
-using System.Diagnostics;
 using System.Drawing;
 using System.IO;
-using System.IO.Pipes;
 using System.Linq;
 using System.Runtime.Versioning;
-using System.Security.AccessControl;
-using System.Security.Principal;
-using System.Text;
 using System.Threading;
 using System.Windows.Forms;
 
@@ -25,10 +24,23 @@ using System.Windows.Forms;
 namespace LoipvRemote.Connection.Protocol
 {
     [SupportedOSPlatform("windows")]
-    public class PuttyBase : ProtocolBase
+    public class PuttyBase : ProtocolBase, IEmbeddedWindow
     {
+        private readonly ExternalCredentialConnectorRegistry _externalCredentialConnectors;
+        private readonly IStringSecretStore _userSecretStore;
         private const int IDM_RECONF = 0x50; // PuTTY Settings Menu ID
         private const int TitleMonitorIntervalMs = 500;
+        private static readonly EmbeddedWindowFocusController EmbeddedWindowInputFocusController =
+            WindowsEmbeddedWindowFocusControllerFactory.Create();
+
+        public PuttyBase(
+            ExternalCredentialConnectorRegistry externalCredentialConnectors,
+            IStringSecretStore userSecretStore)
+        {
+            _externalCredentialConnectors = externalCredentialConnectors
+                ?? throw new ArgumentNullException(nameof(externalCredentialConnectors));
+            _userSecretStore = userSecretStore ?? throw new ArgumentNullException(nameof(userSecretStore));
+        }
         private bool _isPuttyNg;
         private bool _usesHwndParentEmbedding;
         private readonly DisplayProperties _display = new();
@@ -37,23 +49,39 @@ namespace LoipvRemote.Connection.Protocol
         private int _titleMonitorCallbackActive;
         private string? _temporaryOpeningCommandPath;
         private bool _puttyProcessStarted;
-        private uint _hostInputThreadId;
-        private uint _puttyInputThreadId;
-        private bool _inputQueuesAttached;
+        private System.Windows.Forms.Timer? _puttyWindowTimer;
+        private long _puttyWindowEmbeddingDeadline;
 
         #region Public Properties
 
-        protected Putty_Protocol PuttyProtocol { private get; set; }
+        protected PuttyProtocolKind PuttyProtocol { private get; set; }
 
-        protected Putty_SSHVersion PuttySSHVersion { private get; set; }
+        protected PuttySshVersion PuttySSHVersion { private get; set; }
 
         public IntPtr PuttyHandle { get; set; }
 
-        private Process? PuttyProcess { get; set; }
+        private readonly PuttyProcessSession _puttySession = new();
 
         public static string? PuttyPath { get; set; }
 
-        public bool Focused => NativeMethods.GetForegroundWindow() == PuttyHandle;
+        public bool Focused => EmbeddedWindowOperations.IsForegroundWindow(PuttyHandle);
+
+        public bool IsAvailable => PuttyHandle != IntPtr.Zero && isRunning();
+
+        public override bool TryForwardInputMessage(int message, IntPtr wParam, IntPtr lParam)
+        {
+            if (PuttyHandle == IntPtr.Zero || !PuttyImeMessageRouter.ShouldForward(message))
+                return false;
+
+            EmbeddedWindowOperations.SendMessage(PuttyHandle, (uint)message, wParam, lParam);
+            return true;
+        }
+
+        public override ProtocolCapabilities Capabilities =>
+            ProtocolCapabilities.EmbeddedWindow |
+            ProtocolCapabilities.Resize |
+            ProtocolCapabilities.Reconnect |
+            ProtocolCapabilities.CredentialInjection;
 
         #endregion
 
@@ -61,6 +89,7 @@ namespace LoipvRemote.Connection.Protocol
 
         private void ProcessExited(object sender, EventArgs e)
         {
+            _puttySession.Stop();
             DeleteTemporaryOpeningCommandFile();
             Event_Closed(this);
         }
@@ -71,29 +100,20 @@ namespace LoipvRemote.Connection.Protocol
 
         public bool isRunning()
         {
-            return PuttyProcess?.HasExited == false;
-        }
-
-        public void CreatePipe(object oData)
-        {
-            string data = (string)oData;
-            string random = data[..8];
-            string password = data[8..];
-            using NamedPipeServerStream server = CreatePipeServer($"LoipvRemoteSecretPipe{random}");
-            server.WaitForConnection();
-            using StreamWriter writer = new(server);
-            writer.Write(password);
-            writer.Flush();
+            return _puttySession.IsRunning;
         }
 
         public override bool Connect()
         {
             string optionalTemporaryPrivateKeyPath = ""; // path to ppk file instead of password. only temporary (extracted from credential vault).
+            string username = string.Empty;
+            string passwordPipeName = string.Empty;
+            string authenticationPluginCommand = string.Empty;
             _puttyProcessStarted = false;
 
             try
             {
-                _isPuttyNg = PuttyTypeDetector.GetPuttyType() == PuttyTypeDetector.PuttyType.PuttyNg;
+                _isPuttyNg = PuttyTypeDetector.GetPuttyType(PuttyPath) == PuttyTypeDetector.PuttyType.PuttyNg;
                 // A Win32 child window cannot be created reliably across process boundaries.
                 // Keep PuTTYNG's authentication features, but embed its terminal using the
                 // same hidden top-level window and SetParent flow as regular PuTTY.
@@ -102,83 +122,49 @@ namespace LoipvRemote.Connection.Protocol
                 // Validate PuttyPath to prevent command injection
                 PathValidator.ValidateExecutablePathOrThrow(PuttyPath, nameof(PuttyPath));
 
-                PuttyProcess = new Process
-                {
-                    StartInfo =
-                    {
-                        UseShellExecute = false,
-                        FileName = PuttyPath
-                    }
-                };
-
-                CommandLineArguments arguments = new() { EscapeForShell = false };
-
-                arguments.Add("-load", InterfaceControl.Info.PuttySession);
-
                 if (!(InterfaceControl.Info is PuttySessionInfo))
                 {
-                    arguments.Add("-" + PuttyProtocol);
-
-                    if (PuttyProtocol == Putty_Protocol.ssh)
+                    if (PuttyProtocol == PuttyProtocolKind.Ssh)
                     {
-
-                        string username = InterfaceControl.Info?.Username ?? "";
+                        username = InterfaceControl.Info?.Username ?? "";
                         //string password = InterfaceControl.Info?.Password?.ConvertToUnsecureString() ?? "";
                         string password = InterfaceControl.Info?.Password ?? "";
                         string UserViaAPI = InterfaceControl.Info?.UserViaAPI ?? "";
                         string privatekey = "";
 
-                        // access secret server api if necessary
-                        if (InterfaceControl.Info?.ExternalCredentialProvider == ExternalCredentialProvider.DelineaSecretServer)
+                        ExternalCredentialProvider provider = InterfaceControl.Info?.ExternalCredentialProvider ?? ExternalCredentialProvider.None;
+                        if (provider is ExternalCredentialProvider.DelineaSecretServer
+                            or ExternalCredentialProvider.ClickstudiosPasswordState
+                            or ExternalCredentialProvider.OnePassword)
                         {
                             try
                             {
-                                ExternalConnectors.DSS.SecretServerInterface.FetchSecretFromServer($"{UserViaAPI}", out username, out password, out _, out privatekey);
+                                var credential = _externalCredentialConnectors.GetRequired(provider.ToString()).Resolve(UserViaAPI);
+                                username = credential.Username;
+                                password = credential.Password;
+                                privatekey = credential.PrivateKey;
 
                                 if (!string.IsNullOrEmpty(privatekey))
                                 {
-                                    optionalTemporaryPrivateKeyPath = WriteTemporaryPrivateKeyFile(privatekey);
+                                    optionalTemporaryPrivateKeyPath = PuttyTemporaryFileStore.WritePrivateKey(privatekey);
                                 }
                             }
                             catch (Exception ex)
                             {
-                                Event_ErrorOccured(this, "Secret Server Interface Error: " + ex.Message, 0);
-                            }
-                        }
-                        else if (InterfaceControl.Info?.ExternalCredentialProvider == ExternalCredentialProvider.ClickstudiosPasswordState)
-                        {
-                            try
-                            {
-                                ExternalConnectors.CPS.PasswordstateInterface.FetchSecretFromServer($"{UserViaAPI}", out username, out password, out _, out privatekey);
-
-                                if (!string.IsNullOrEmpty(privatekey))
-                                {
-                                    optionalTemporaryPrivateKeyPath = WriteTemporaryPrivateKeyFile(privatekey);
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                Event_ErrorOccured(this, "Passwordstate Interface Error: " + ex.Message, 0);
-                            }
-                        }
-                        else if (InterfaceControl.Info?.ExternalCredentialProvider == ExternalCredentialProvider.OnePassword) {
-                            try
-                            {
-                                ExternalConnectors.OP.OnePasswordCli.ReadPassword($"{UserViaAPI}", out username, out password, out _, out privatekey);
-                            }
-                            catch (ExternalConnectors.OP.OnePasswordCliException ex)
-                            {
-                                Runtime.MessageCollector.AddMessage(MessageClass.InformationMsg, Language.ECPOnePasswordCommandLine + ": " + ex.Arguments);
-                                Runtime.MessageCollector.AddMessage(MessageClass.ErrorMsg, Language.ECPOnePasswordReadFailed + Environment.NewLine + ex.Message);
+                                Event_ErrorOccured(this, $"{provider} credential connector error: {ex.Message}", 0);
                             }
                         }
                         else if (InterfaceControl.Info?.ExternalCredentialProvider == ExternalCredentialProvider.VaultOpenbao) {
                             try {
-                                if (InterfaceControl.Info?.VaultOpenbaoSecretEngine == VaultOpenbaoSecretEngine.SSHOTP)
-                                    ExternalConnectors.VO.VaultOpenbao.ReadOtpSSH($"{InterfaceControl.Info?.VaultOpenbaoMount}", $"{InterfaceControl.Info?.VaultOpenbaoRole}", $"{InterfaceControl.Info?.Username}", $"{InterfaceControl.Info?.Hostname}", out password);
-                                else
-                                    ExternalConnectors.VO.VaultOpenbao.ReadPasswordSSH((int)InterfaceControl.Info?.VaultOpenbaoSecretEngine, InterfaceControl.Info?.VaultOpenbaoMount ?? "", InterfaceControl.Info?.VaultOpenbaoRole ?? "", InterfaceControl.Info?.Username ?? "root", out password);
-                            } catch (ExternalConnectors.VO.VaultOpenbaoException ex) {
+                                var credential = _externalCredentialConnectors.Resolve(
+                                    ExternalCredentialProvider.VaultOpenbao.ToString(),
+                                    new("", InterfaceControl.Info?.Username ?? "root", InterfaceControl.Info?.Hostname ?? "",
+                                        InterfaceControl.Info?.VaultOpenbaoMount ?? "", InterfaceControl.Info?.VaultOpenbaoRole ?? "",
+                                        (int)(InterfaceControl.Info?.VaultOpenbaoSecretEngine ?? VaultOpenbaoSecretEngine.Kv),
+                                        LoipvRemote.Connectors.Abstractions.ExternalCredentialProtocol.Ssh));
+                                username = credential.Username;
+                                password = credential.Password;
+                            } catch (Exception ex) {
                                 Event_ErrorOccured(this, "Secret Server Interface Error: " + ex.Message, 0);
                             }
                         }
@@ -199,8 +185,12 @@ namespace LoipvRemote.Connection.Protocol
                                     {
                                         try
                                         {
-                                            ExternalConnectors.DSS.SecretServerInterface.FetchSecretFromServer(
-                                                $"{Properties.OptionsCredentialsPage.Default.UserViaAPIDefault}", out username, out password, out _, out privatekey);
+                                            var credential = _externalCredentialConnectors
+                                                .GetRequired(ExternalCredentialProvider.DelineaSecretServer.ToString())
+                                                .Resolve(Properties.OptionsCredentialsPage.Default.UserViaAPIDefault);
+                                            username = credential.Username;
+                                            password = credential.Password;
+                                            privatekey = credential.PrivateKey;
                                         }
                                         catch (Exception ex)
                                         {
@@ -217,204 +207,81 @@ namespace LoipvRemote.Connection.Protocol
                         {
                             if (Properties.OptionsCredentialsPage.Default.EmptyCredentials == "custom")
                             {
-                                LegacyRijndaelCryptographyProvider cryptographyProvider = new();
-                                password = cryptographyProvider.Decrypt(Properties.OptionsCredentialsPage.Default.DefaultPassword, Runtime.EncryptionKey);
+                                password = _userSecretStore.Unprotect(
+                                    Properties.OptionsCredentialsPage.Default.DefaultPassword,
+                                    SecretPurposes.DefaultCredentialPassword);
                             }
                         }
 
-                        arguments.Add("-" + (int)PuttySSHVersion);
-
                         if (!Force.HasFlag(ConnectionInfo.Force.NoCredentials))
                         {
-                            if (!string.IsNullOrEmpty(username))
-                            {
-                                arguments.Add("-l", username);
-                            }
-
                             if (!string.IsNullOrEmpty(password))
                             {
-                                string random = string.Join("", Guid.NewGuid().ToString("n").Take(8));
-                                // write data to pipe
-                                Thread thread = new(new ParameterizedThreadStart(CreatePipe));
-                                thread.Start($"{random}{password}");
-                                // start putty with piped password
-                                arguments.Add("-pwfile", $"\\\\.\\PIPE\\LoipvRemoteSecretPipe{random}");
-                                //arguments.Add("-pw", password);
+                                passwordPipeName = WindowsSecretPipeServer.StartPassword(
+                                    "LoipvRemoteSecretPipe",
+                                    password);
                             }
                         }
 
                         if (InterfaceControl.Info?.ExternalCredentialProvider == ExternalCredentialProvider.VaultOpenbao && InterfaceControl.Info?.VaultOpenbaoSecretEngine == VaultOpenbaoSecretEngine.SSHOTP) {
                             if (!_isPuttyNg) {
-                                Runtime.MessageCollector.AddMessage(MessageClass.ErrorMsg, "Cannot connect to VaultOpenbao ssh otp without using puttyng to inject authenticator plugin");
+                                MessageCollector.AddMessage(MessageClass.ErrorMsg, "Cannot connect to VaultOpenbao ssh otp without using puttyng to inject authenticator plugin");
                                 return false;
                             }
-                            arguments.Add("-auth-plugin");
                             string random = string.Join("", Guid.NewGuid().ToString("n").Take(8));
                             string pipename = $"LoipvRemoteSecretPipe{random}";
-                            arguments.Add($"{App.Info.GeneralAppInfo.HomePath}\\vault-ssh-helper-plugin.exe {username} --pipeName={pipename}");
-                            System.Threading.Tasks.Task.Run(async () => {
-                                using NamedPipeServerStream server = CreatePipeServer(pipename);
-                                var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10)).Token;
-                                await server.WaitForConnectionAsync(cts);
-                                using var reader = new StreamReader(server, Utf8NoBom, detectEncodingFromByteOrderMarks: false, bufferSize: 1024, leaveOpen: true);
-                                using var writer = new StreamWriter(server, Utf8NoBom, bufferSize: 1024, leaveOpen: true) { AutoFlush = true };
-                                string? pingMessage = await reader.ReadLineAsync(cts);
-                                if (pingMessage != "ping") throw new FormatException("Invalid ping from VaultOpenbao SSH OTP plugin");
-                                await writer.WriteLineAsync("pong");
-                                string dataRequest = await reader.ReadLineAsync(cts) ?? throw new FormatException("Invalid data request from VaultOpenbao SSH OTP plugin");
-                                var data = DeserializeData(dataRequest);
-                                if (data.Username != username || data.Hostname != InterfaceControl.Info.Hostname || data.Port != InterfaceControl.Info.Port)
-                                    throw new FormatException("Mismatched data request from VaultOpenbao SSH OTP plugin");
-                                await writer.WriteLineAsync(password);
-                            }).ConfigureAwait(false);
-                        }
-
-                        // use private key if specified
-                        if (!string.IsNullOrEmpty(optionalTemporaryPrivateKeyPath))
-                        {
-                            arguments.Add("-i", optionalTemporaryPrivateKeyPath);
+                            authenticationPluginCommand = $"{App.Info.GeneralAppInfo.HomePath}\\vault-ssh-helper-plugin.exe {username} --pipeName={pipename}";
+                            _ = WindowsSecretPipeServer.ServeVaultOtpWithTimeoutAsync(
+                                pipename,
+                                username,
+                                InterfaceControl.Info.Hostname,
+                                InterfaceControl.Info.Port,
+                                password,
+                                TimeSpan.FromSeconds(10));
                         }
 
                         // PuTTY reads -m only after SSH authentication completes. This avoids
                         // sending the command into an interactive username/password prompt.
                         if (!string.IsNullOrWhiteSpace(InterfaceControl.Info?.OpeningCommand))
                         {
-                            _temporaryOpeningCommandPath = WriteTemporaryOpeningCommandFile(InterfaceControl.Info.OpeningCommand);
-                            arguments.Add("-m", _temporaryOpeningCommandPath);
+                            _temporaryOpeningCommandPath = PuttyTemporaryFileStore.WriteOpeningCommand(InterfaceControl.Info.OpeningCommand);
                         }
 
                     }
 
-                    arguments.Add("-P", InterfaceControl.Info?.Port.ToString());
-                    arguments.Add(InterfaceControl.Info.Hostname);
                 }
 
-                if (_usesHwndParentEmbedding)
+                string arguments = PuttyLaunchArguments.Build(new PuttyLaunchOptions
                 {
-                    arguments.Add("-hwndparent", InterfaceControl.Handle.ToString());
-                }
+                    SavedSession = InterfaceControl.Info.PuttySession,
+                    UseSavedSessionOnly = InterfaceControl.Info is PuttySessionInfo,
+                    Protocol = PuttyProtocol,
+                    SshVersion = PuttySSHVersion,
+                    Username = username,
+                    PasswordPipeName = passwordPipeName,
+                    PrivateKeyPath = optionalTemporaryPrivateKeyPath,
+                    OpeningCommandPath = _temporaryOpeningCommandPath ?? string.Empty,
+                    AuthenticationPluginCommand = authenticationPluginCommand,
+                    SuppressCredentials = Force.HasFlag(ConnectionInfo.Force.NoCredentials),
+                    Port = InterfaceControl.Info.Port,
+                    Hostname = InterfaceControl.Info.Hostname,
+                    ParentWindowHandle = _usesHwndParentEmbedding ? InterfaceControl.Handle : 0,
+                    AdditionalOptions = InterfaceControl.Info.SSHOptions
+                });
 
-                PuttyProcess.StartInfo.Arguments = arguments.ToString();
-                // add additional SSH options, f.e. tunnel or noshell parameters that may be specified for the the connnection
-                if (!string.IsNullOrEmpty(InterfaceControl.Info.SSHOptions))
-                {
-                    PuttyProcess.StartInfo.Arguments += " " + InterfaceControl.Info.SSHOptions;
-                }
-
-                PuttyProcess.EnableRaisingEvents = true;
-                PuttyProcess.Exited += ProcessExited;
-
-                // Start the process minimized for non-PuTTYNG so the window
-                // does not flash at its default position on screen before
-                // being reparented into the LoipvRemote panel.
-                if (!_usesHwndParentEmbedding)
-                {
-                    PuttyProcess.StartInfo.WindowStyle = ProcessWindowStyle.Minimized;
-                }
-
-                PuttyProcess.Start();
+                if (!_puttySession.Start(new PuttyProcessStartOptions(
+                        PuttyPath!,
+                        arguments,
+                        StartMinimized: !_usesHwndParentEmbedding), ProcessExited))
+                    return false;
                 _puttyProcessStarted = true;
-                ChildProcessTracker.AddProcess(PuttyProcess);
-                PuttyProcess.WaitForInputIdle(Properties.OptionsAdvancedPage.Default.MaxPuttyWaitTime * 1000);
-
-                int startTicks = Environment.TickCount;
-                while (PuttyHandle.ToInt32() == 0 &
-                       Environment.TickCount < startTicks + Properties.OptionsAdvancedPage.Default.MaxPuttyWaitTime * 1000)
-                {
-                    if (PuttyProcess.HasExited)
-                        break;
-
-                    if (_usesHwndParentEmbedding)
-                    {
-                        PuttyHandle = NativeMethods.FindWindowEx(InterfaceControl.Handle, new IntPtr(0), null, null);
-                    }
-                    else
-                    {
-                        PuttyProcess.Refresh();
-                        IntPtr candidateHandle = PuttyProcess.MainWindowHandle;
-
-                        if (candidateHandle != IntPtr.Zero)
-                        {
-                            // Check the window class name to distinguish the actual PuTTY
-                            // terminal window ("PuTTY") from popup dialogs like the host key
-                            // verification alert (class "#32770"). Dialogs must remain as
-                            // top-level windows so the user can interact with them.
-                            StringBuilder className = new(256);
-                            NativeMethods.GetClassName(candidateHandle, className, className.Capacity);
-                            string cls = className.ToString();
-
-                            if (cls.Equals("PuTTY", StringComparison.OrdinalIgnoreCase))
-                            {
-                                PuttyHandle = candidateHandle;
-                                // Hide the window immediately so it doesn't flash
-                                // at its default position before being reparented.
-                                NativeMethods.ShowWindow(PuttyHandle, (int)NativeMethods.SW_HIDE);
-                            }
-                        }
-                    }
-
-                    if (PuttyHandle.ToInt32() == 0)
-                    {
-                        Thread.Sleep(100);
-                    }
-                }
-
-                if (!_usesHwndParentEmbedding)
-                {
-                    NativeMethods.SetParent(PuttyHandle, InterfaceControl.Handle);
-                }
-
-                AttachInputQueues();
-
-                // Apply a borderless child style after the cross-process
-                // SetParent operation so only terminal content is visible.
-                int style = NativeMethods.GetWindowLong(PuttyHandle, NativeMethods.GWL_STYLE);
-                int borderlessChildStyle = PuttyEmbeddedWindowLayout.CreateBorderlessChildStyle(style);
-                int previousStyle = NativeMethods.SetWindowLong(PuttyHandle, NativeMethods.GWL_STYLE, borderlessChildStyle);
-
-                // Check if SetWindowLong failed (returns 0 on error, but 0 could also be the previous value)
-                // If it returns 0 and the previous GetWindowLong succeeded, log a warning
-                if (previousStyle == 0)
-                {
-                    Runtime.MessageCollector.AddMessage(MessageClass.WarningMsg,
-                        Language.PuttyStuff + ": SetWindowLong returned 0, window style change may have failed", true);
-                }
-
-                // Force Windows to recalculate the non-client area so the
-                // removed caption and border actually disappear.
-                NativeMethods.SetWindowPos(PuttyHandle, IntPtr.Zero,
-                    0, 0, 0, 0,
-                    NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE |
-                    NativeMethods.SWP_NOZORDER | NativeMethods.SWP_FRAMECHANGED);
-
-                Runtime.MessageCollector.AddMessage(MessageClass.InformationMsg, Language.PuttyStuff, true);
-                Runtime.MessageCollector.AddMessage(MessageClass.InformationMsg, string.Format(Language.PuttyHandle, PuttyHandle), true);
-                Runtime.MessageCollector.AddMessage(MessageClass.InformationMsg, string.Format(Language.PuttyTitle, PuttyProcess.MainWindowTitle), true);
-                Runtime.MessageCollector.AddMessage(MessageClass.InformationMsg, string.Format(Language.PanelHandle, InterfaceControl.Parent.Handle), true);
-
-                if (!_usesHwndParentEmbedding)
-                {
-                    NativeMethods.ShowWindow(PuttyHandle, (int)NativeMethods.SW_RESTORE);
-                }
-
-                Resize(this, new EventArgs());
-                base.Connect();
-
-                if (Properties.OptionsTabsPanelsPage.Default.UseTerminalTitleForTabs)
-                {
-                    _lastWindowTitle = PuttyProcess.MainWindowTitle;
-                    _titleMonitorTimer = new System.Threading.Timer(
-                        MonitorPuttyTitle,
-                        null,
-                        TitleMonitorIntervalMs,
-                        TitleMonitorIntervalMs);
-                }
-
+                WindowsJobObjectProcessTracker.AddProcessHandle(_puttySession.ProcessHandle);
+                StartPuttyWindowEmbedding();
                 return true;
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddMessage(MessageClass.ErrorMsg, Language.ConnectionFailed + Environment.NewLine + ex.Message);
+                MessageCollector.AddMessage(MessageClass.ErrorMsg, Language.ConnectionFailed + Environment.NewLine + ex.Message);
                 return false;
             }
             finally
@@ -422,68 +289,188 @@ namespace LoipvRemote.Connection.Protocol
                 // make sure to remove the private key file we created
                 if (!string.IsNullOrEmpty(optionalTemporaryPrivateKeyPath))
                 {
-                    System.Threading.Thread.Sleep(500);
-                    System.IO.File.Delete(optionalTemporaryPrivateKeyPath);
+                    DeleteTemporaryPrivateKeyAfterStartup(optionalTemporaryPrivateKeyPath);
                 }
 
-                if (!_puttyProcessStarted || PuttyProcess == null || PuttyProcess.HasExited)
+                if (!_puttyProcessStarted || _puttySession.HasExited)
                     DeleteTemporaryOpeningCommandFile();
             }
         }
 
-        /// <summary>
-        /// Atomically writes private-key material to a uniquely named temporary
-        /// file and returns its path. Uses <see cref="FileMode.CreateNew"/> so an
-        /// existing file is never overwritten, retrying on the (extremely
-        /// unlikely) name collision. The caller owns the returned file and is
-        /// responsible for deleting it.
-        /// </summary>
-        private static string WriteTemporaryPrivateKeyFile(string privateKey)
+        private void StartPuttyWindowEmbedding()
         {
-            for (int attempt = 0; attempt < 5; attempt++)
+            StopPuttyWindowEmbedding();
+            _puttyWindowEmbeddingDeadline = Environment.TickCount64 +
+                Properties.OptionsAdvancedPage.Default.MaxPuttyWaitTime * 1000L;
+
+            _puttyWindowTimer = new System.Windows.Forms.Timer { Interval = 50 };
+            _puttyWindowTimer.Tick += PuttyWindowTimerOnTick;
+            _puttyWindowTimer.Start();
+        }
+
+        private void PuttyWindowTimerOnTick(object? sender, EventArgs e)
+        {
+            try
             {
-                string candidatePath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".ppk");
-                try
+                if (!TryFindPuttyWindow())
                 {
-                    using (FileStream stream = new(candidatePath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
-                    using (StreamWriter writer = new(stream))
+                    if (_puttySession.HasExited)
                     {
-                        writer.Write(privateKey);
+                        StopPuttyWindowEmbedding();
+                        ReportPuttyWindowEmbeddingFailure("PuTTY exited before its terminal window was ready.");
+                    }
+                    else if (Environment.TickCount64 >= _puttyWindowEmbeddingDeadline)
+                    {
+                        StopPuttyWindowEmbedding();
+                        ReportPuttyWindowEmbeddingFailure("PuTTY terminal window was not ready before the configured timeout.");
                     }
 
-                    File.SetAttributes(candidatePath, FileAttributes.Temporary);
-                    return candidatePath;
+                    return;
                 }
-                catch (IOException) when (File.Exists(candidatePath))
-                {
-                    // Name collided with a pre-existing file - try a different name.
-                }
-            }
 
-            throw new IOException("Unable to create a unique temporary private-key file.");
+                StopPuttyWindowEmbedding();
+                EmbedPuttyWindow();
+            }
+            catch (Exception ex)
+            {
+                StopPuttyWindowEmbedding();
+                ReportPuttyWindowEmbeddingFailure(ex.Message);
+            }
         }
 
-        private static string WriteTemporaryOpeningCommandFile(string openingCommand)
+        private bool TryFindPuttyWindow()
         {
-            for (int attempt = 0; attempt < 5; attempt++)
+            if (PuttyHandle != IntPtr.Zero)
+                return true;
+
+            if (_puttySession.HasExited)
+                return false;
+
+            if (_usesHwndParentEmbedding)
             {
-                string candidatePath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".txt");
+                PuttyHandle = EmbeddedWindowOperations.FindChildWindow(InterfaceControl.Handle);
+                return PuttyHandle != IntPtr.Zero;
+            }
+
+            _puttySession.Refresh();
+            IntPtr candidateHandle = _puttySession.MainWindowHandle;
+            if (candidateHandle == IntPtr.Zero)
+                return false;
+
+            // Do not reparent host-key or authentication dialogs. They must remain
+            // top-level windows so the user can see and interact with them.
+            if (!EmbeddedWindowOperations.HasClassName(candidateHandle, "PuTTY"))
+                return false;
+
+            PuttyHandle = candidateHandle;
+            EmbeddedWindowOperations.Hide(PuttyHandle);
+            return true;
+        }
+
+        private void EmbedPuttyWindow()
+        {
+            if (_puttySession.HasExited || PuttyHandle == IntPtr.Zero)
+                throw new InvalidOperationException("PuTTY terminal window is unavailable for embedding.");
+
+            if (!_usesHwndParentEmbedding)
+                EmbeddedWindowOperations.SetParent(PuttyHandle, InterfaceControl.Handle);
+
+            // Apply a borderless child style after the cross-process SetParent
+            // operation so only terminal content is visible.
+            if (!EmbeddedWindowOperations.TrySetWindowStyle(
+                    PuttyHandle,
+                    PuttyEmbeddedWindowLayout.CreateBorderlessChildStyle(EmbeddedWindowOperations.GetWindowStyle(PuttyHandle))))
+            {
+                MessageCollector.AddMessage(MessageClass.WarningMsg,
+                    Language.PuttyStuff + ": SetWindowLong returned 0, window style change may have failed", true);
+            }
+
+            EmbeddedWindowOperations.RefreshFrame(PuttyHandle);
+
+            MessageCollector.AddMessage(MessageClass.InformationMsg, Language.PuttyStuff, true);
+            MessageCollector.AddMessage(MessageClass.InformationMsg, string.Format(Language.PuttyHandle, PuttyHandle), true);
+            MessageCollector.AddMessage(MessageClass.InformationMsg, string.Format(Language.PuttyTitle, _puttySession.MainWindowTitle), true);
+            MessageCollector.AddMessage(MessageClass.InformationMsg, string.Format(Language.PanelHandle, InterfaceControl.Parent.Handle), true);
+
+            if (!_usesHwndParentEmbedding)
+                EmbeddedWindowOperations.Restore(PuttyHandle);
+
+            Resize(this, EventArgs.Empty);
+            base.Connect();
+            StartTitleMonitor();
+            FocusEmbeddedWindowWhenActive();
+        }
+
+        private void FocusEmbeddedWindowWhenActive()
+        {
+            if (!EmbeddedWindowActivationPolicy.ShouldRequestFocus(
+                    InterfaceControl.IsDisposed,
+                    InterfaceControl.IsHandleCreated,
+                    InterfaceControl.Visible))
+            {
+                return;
+            }
+
+            InterfaceControl.BeginInvoke((MethodInvoker)(() =>
+            {
+                if (EmbeddedWindowActivationPolicy.ShouldRequestFocus(
+                        InterfaceControl.IsDisposed,
+                        InterfaceControl.IsHandleCreated,
+                        InterfaceControl.Visible))
+                {
+                    Focus();
+                }
+            }));
+        }
+
+        private void StartTitleMonitor()
+        {
+            if (!Properties.OptionsTabsPanelsPage.Default.UseTerminalTitleForTabs || _puttySession.HasExited)
+                return;
+
+            _lastWindowTitle = _puttySession.MainWindowTitle;
+            _titleMonitorTimer = new System.Threading.Timer(
+                MonitorPuttyTitle,
+                null,
+                TitleMonitorIntervalMs,
+                TitleMonitorIntervalMs);
+        }
+
+        private void StopPuttyWindowEmbedding()
+        {
+            if (_puttyWindowTimer == null)
+                return;
+
+            _puttyWindowTimer.Stop();
+            _puttyWindowTimer.Tick -= PuttyWindowTimerOnTick;
+            _puttyWindowTimer.Dispose();
+            _puttyWindowTimer = null;
+        }
+
+        private void ReportPuttyWindowEmbeddingFailure(string details)
+        {
+            MessageCollector.AddMessage(MessageClass.ErrorMsg,
+                Language.ConnectionFailed + Environment.NewLine + details);
+            Event_ErrorOccured(this, details, null);
+            Close();
+        }
+
+        private static void DeleteTemporaryPrivateKeyAfterStartup(string path)
+        {
+            ThreadPool.QueueUserWorkItem(_ =>
+            {
+                Thread.Sleep(500);
                 try
                 {
-                    using FileStream stream = new(candidatePath, FileMode.CreateNew, FileAccess.Write, FileShare.Read);
-                    using StreamWriter writer = new(stream, Utf8NoBom);
-                    writer.WriteLine(openingCommand.TrimEnd());
-                    File.SetAttributes(candidatePath, FileAttributes.Temporary);
-                    return candidatePath;
+                    File.Delete(path);
                 }
-                catch (IOException) when (File.Exists(candidatePath))
+                catch (IOException)
                 {
-                    // Name collided with a pre-existing file; generate another one.
+                    // PuTTY can still be opening the key; cleanup is best effort.
                 }
-            }
-
-            throw new IOException("Unable to create a temporary opening-command file.");
+            });
         }
+
 
         private void DeleteTemporaryOpeningCommandFile()
         {
@@ -505,23 +492,20 @@ namespace LoipvRemote.Connection.Protocol
         {
             try
             {
-                ReattachInputQueues();
-
                 // PuTTY is embedded as a child of the connection panel. Promoting that
                 // child to the foreground changes Windows' Alt+Tab MRU ordering; setting
                 // keyboard focus keeps the main LoipvRemote window as the active task.
-                NativeMethods.SetFocus(PuttyHandle);
+                IntPtr ownerWindowHandle = InterfaceControl is { IsHandleCreated: true }
+                    ? InterfaceControl.Handle
+                    : IntPtr.Zero;
+                if (!EmbeddedWindowInputFocusController.TryFocus(ownerWindowHandle, PuttyHandle))
+                    return;
 
-                // Keep the queues attached while the child is active so the Windows IME
-                // can deliver composition messages to the cross-process PuTTY window.
-                NativeMethods.SendMessage(PuttyHandle,
-                                          (uint)NativeMethods.WM_INPUTLANGCHANGE,
-                                          IntPtr.Zero,
-                                          NativeMethods.GetKeyboardLayout(0));
+                EmbeddedWindowOperations.ForwardInputLanguageChange(PuttyHandle);
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddMessage(MessageClass.ErrorMsg, Language.PuttyFocusFailed + Environment.NewLine + ex.Message, true);
+                MessageCollector.AddMessage(MessageClass.ErrorMsg, Language.PuttyFocusFailed + Environment.NewLine + ex.Message, true);
             }
         }
 
@@ -532,14 +516,14 @@ namespace LoipvRemote.Connection.Protocol
 
             try
             {
-                if (PuttyProcess == null || PuttyProcess.HasExited)
+                if (_puttySession.HasExited)
                 {
                     StopTitleMonitor();
                     return;
                 }
 
-                PuttyProcess.Refresh();
-                string currentTitle = PuttyProcess.MainWindowTitle;
+                _puttySession.Refresh();
+                string currentTitle = _puttySession.MainWindowTitle;
                 if (currentTitle != _lastWindowTitle)
                 {
                     _lastWindowTitle = currentTitle;
@@ -549,7 +533,7 @@ namespace LoipvRemote.Connection.Protocol
             catch (Exception ex)
             {
                 StopTitleMonitor();
-                Runtime.MessageCollector.AddMessage(MessageClass.InformationMsg,
+                MessageCollector.AddMessage(MessageClass.InformationMsg,
                     "PuTTY title monitoring stopped: " + ex.Message, true);
             }
             finally
@@ -577,148 +561,52 @@ namespace LoipvRemote.Connection.Protocol
                 Rectangle contentBounds = PuttyEmbeddedWindowLayout.ContentBounds(
                     InterfaceControl.RemoteContentBounds,
                     titleStripHeight);
-                NativeMethods.MoveWindow(PuttyHandle,
-                                         contentBounds.X,
-                                         contentBounds.Y,
-                                         contentBounds.Width,
-                                         contentBounds.Height,
-                                         true);
+                EmbeddedWindowOperations.Move(PuttyHandle,
+                                              contentBounds.X,
+                                              contentBounds.Y,
+                                              contentBounds.Width,
+                                              contentBounds.Height);
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddMessage(MessageClass.ErrorMsg, Language.PuttyResizeFailed + Environment.NewLine + ex.Message, true);
+                MessageCollector.AddMessage(MessageClass.ErrorMsg, Language.PuttyResizeFailed + Environment.NewLine + ex.Message, true);
             }
         }
 
         public override void Close()
         {
+            EmbeddedWindowInputFocusController.Release(PuttyHandle);
+            StopPuttyWindowEmbedding();
             StopTitleMonitor();
-            DetachInputQueues();
-
             try
             {
-                if (PuttyProcess?.HasExited == false)
-                {
-                    PuttyProcess.Kill();
-                }
+                _puttySession.Stop();
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddMessage(MessageClass.ErrorMsg, Language.PuttyKillFailed + Environment.NewLine + ex.Message, true);
+                MessageCollector.AddMessage(MessageClass.ErrorMsg, Language.PuttyKillFailed + Environment.NewLine + ex.Message, true);
             }
             finally
             {
                 DeleteTemporaryOpeningCommandFile();
             }
 
-            try
-            {
-                PuttyProcess?.Dispose();
-            }
-            catch (Exception ex)
-            {
-                Runtime.MessageCollector.AddMessage(MessageClass.ErrorMsg, Language.PuttyDisposeFailed + Environment.NewLine + ex.Message, true);
-            }
-
             base.Close();
-        }
-
-        private void AttachInputQueues()
-        {
-            if (_inputQueuesAttached || PuttyHandle == IntPtr.Zero || InterfaceControl?.Handle == IntPtr.Zero)
-                return;
-
-            _hostInputThreadId = NativeMethods.GetWindowThreadProcessId(InterfaceControl.Handle, out _);
-            _puttyInputThreadId = NativeMethods.GetWindowThreadProcessId(PuttyHandle, out _);
-            _inputQueuesAttached = _hostInputThreadId != 0 && _puttyInputThreadId != 0 &&
-                                   _hostInputThreadId != _puttyInputThreadId &&
-                                   NativeMethods.AttachThreadInput(_hostInputThreadId, _puttyInputThreadId, true);
-        }
-
-        private void ReattachInputQueues()
-        {
-            // Switching away from a cross-process child can leave its input queue
-            // attached but without an active keyboard focus target. Rebinding on
-            // every explicit focus request makes Alt+Tab and mouse activation reliable.
-            DetachInputQueues();
-            AttachInputQueues();
-        }
-
-        private void DetachInputQueues()
-        {
-            if (!_inputQueuesAttached)
-                return;
-
-            NativeMethods.AttachThreadInput(_hostInputThreadId, _puttyInputThreadId, false);
-            _inputQueuesAttached = false;
-            _hostInputThreadId = 0;
-            _puttyInputThreadId = 0;
         }
 
         public void ShowSettingsDialog()
         {
             try
             {
-                NativeMethods.PostMessage(PuttyHandle, NativeMethods.WM_SYSCOMMAND, (IntPtr)IDM_RECONF, (IntPtr)0);
-                NativeMethods.SetForegroundWindow(PuttyHandle);
+                EmbeddedWindowOperations.ShowSettingsDialog(PuttyHandle, IDM_RECONF);
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddMessage(MessageClass.ErrorMsg, Language.PuttyShowSettingsDialogFailed + Environment.NewLine + ex.Message, true);
+                MessageCollector.AddMessage(MessageClass.ErrorMsg, Language.PuttyShowSettingsDialogFailed + Environment.NewLine + ex.Message, true);
             }
         }
 
         #endregion
 
-        #region Enums
-
-        protected enum Putty_Protocol
-        {
-            ssh = 0,
-            telnet = 1,
-            rlogin = 2,
-            raw = 3,
-            serial = 4
-        }
-
-        protected enum Putty_SSHVersion
-        {
-            ssh1 = 1,
-            ssh2 = 2
-        }
-
-        #endregion
-
-        #region VaultOpenbaoUtils
-        private static readonly Encoding Utf8NoBom = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
-        private static NamedPipeServerStream CreatePipeServer(string pipeName) {
-            var pipeSecurity = new PipeSecurity();
-            using var identity = WindowsIdentity.GetCurrent();
-            var sid = identity.Owner ?? identity.User ?? throw new InvalidOperationException("Unable to determine current user SID.");
-            pipeSecurity.SetAccessRuleProtection(isProtected: true, preserveInheritance: false);
-            pipeSecurity.AddAccessRule(new PipeAccessRule(sid, PipeAccessRights.FullControl, AccessControlType.Allow));
-
-            return NamedPipeServerStreamAcl.Create(
-                pipeName: pipeName,
-                direction: PipeDirection.InOut,
-                maxNumberOfServerInstances: 1,
-                transmissionMode: PipeTransmissionMode.Byte,
-                options: PipeOptions.Asynchronous,
-                inBufferSize: 0,
-                outBufferSize: 0,
-                pipeSecurity);
-        }
-        private static (string Username, string Hostname, uint Port) DeserializeData(string data) {
-            var strings = data.Split(':');
-            if (strings.Length != 3) {
-                throw new FormatException("Invalid data format");
-            }
-            return (
-                Encoding.UTF8.GetString(Convert.FromBase64String(strings[0])),
-                Encoding.UTF8.GetString(Convert.FromBase64String(strings[1])),
-                uint.Parse(Encoding.UTF8.GetString(Convert.FromBase64String(strings[2])))
-            );
-        }
-        #endregion
     }
 }

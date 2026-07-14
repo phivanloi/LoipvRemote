@@ -1,10 +1,10 @@
-using LoipvRemote.App;
 using LoipvRemote.Connection;
 using LoipvRemote.Connection.Protocol;
 using LoipvRemote.Container;
 using LoipvRemote.Security;
 using LoipvRemote.Tree;
 using LoipvRemote.Tree.Root;
+using LoipvRemote.Messages;
 using System;
 using System.IO;
 using System.Runtime.Versioning;
@@ -13,8 +13,9 @@ using System.Xml;
 namespace LoipvRemote.Config.Serializers.MiscSerializers
 {
     [SupportedOSPlatform("windows")]
-    public class SecureCRTFileDeserializer
+    public sealed class SecureCRTFileDeserializer(MessageCollector messageCollector)
     {
+        private readonly MessageCollector _messageCollector = messageCollector ?? throw new ArgumentNullException(nameof(messageCollector));
         enum SecureCRTNodeType { folder, session };
 
         public ConnectionTreeModel Deserialize(string content)
@@ -98,7 +99,7 @@ namespace LoipvRemote.Config.Serializers.MiscSerializers
             }
             catch (FileFormatException e)
             {
-                Runtime.MessageCollector.AddExceptionMessage("Error when parsing SecureCRT node: ", e);
+                _messageCollector.AddExceptionMessage("Error when parsing SecureCRT node: ", e);
                 return null;
             }
 

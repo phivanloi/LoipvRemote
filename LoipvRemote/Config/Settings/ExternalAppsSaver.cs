@@ -4,15 +4,17 @@ using System.IO;
 using System.Runtime.Versioning;
 using System.Text;
 using System.Xml;
-using LoipvRemote.App;
 using LoipvRemote.App.Info;
+using LoipvRemote.Messages;
 using LoipvRemote.Tools;
 
 namespace LoipvRemote.Config.Settings
 {
     [SupportedOSPlatform("windows")]
-    public class ExternalAppsSaver
+    public sealed class ExternalAppsSaver(MessageCollector messageCollector)
     {
+        private readonly MessageCollector _messageCollector = messageCollector ?? throw new ArgumentNullException(nameof(messageCollector));
+
         public void Save(IEnumerable<ExternalTool> externalTools)
         {
             try
@@ -54,7 +56,7 @@ namespace LoipvRemote.Config.Settings
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionStackTrace("SaveExternalAppsToXML failed", ex);
+                _messageCollector.AddExceptionStackTrace("SaveExternalAppsToXML failed", ex);
             }
         }
     }

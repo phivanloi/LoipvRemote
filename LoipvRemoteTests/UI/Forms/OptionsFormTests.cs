@@ -1,4 +1,5 @@
 using NUnit.Framework;
+using System.Collections.Generic;
 using System.Threading;
 using System.Windows.Forms;
 using LoipvRemoteTests.TestHelpers;
@@ -11,28 +12,30 @@ namespace LoipvRemoteTests.UI.Forms
     public class OptionsFormTests : OptionsFormSetupAndTeardown
     {
         [Test]
-        public void ClickingCloseButtonClosesTheForm()
+        public void ClickingCancelRaisesCloseRequested()
         {
             bool eventFired = false;
-            _optionsForm.FormClosed += (o, e) => eventFired = true;
+            _optionsForm.CloseRequested += (o, e) => eventFired = true;
             Button cancelButton = _optionsForm.FindControl<Button>("btnCancel");
             cancelButton.PerformClick();
             Assert.That(eventFired, Is.True);
         }
 
         [Test]
-        public void ClickingOKButtonSetsDialogResult()
+        public void ClickingOkRaisesCloseRequested()
         {
-            Button cancelButton = _optionsForm.FindControl<Button>("btnOK");
-            cancelButton.PerformClick();
-            Assert.That(_optionsForm.DialogResult, Is.EqualTo(DialogResult.OK));
+            bool eventFired = false;
+            _optionsForm.CloseRequested += (o, e) => eventFired = true;
+            Button okButton = _optionsForm.FindControl<Button>("btnOK");
+            okButton.PerformClick();
+            Assert.That(eventFired, Is.True);
         }
 
         [Test]
         public void ListViewContainsOptionsPages()
         {
             ListViewTester listViewTester = new("lstOptionPages", _optionsForm);
-            Assert.That(listViewTester.Items.Count, Is.EqualTo(12));
+            Assert.That(listViewTester.Items.Count, Is.EqualTo(11));
         }
 
         [Test]
@@ -52,7 +55,7 @@ namespace LoipvRemoteTests.UI.Forms
                 Assert.That(optionsPage, Is.Not.Null);
 
                 // Find a checkbox in the options page
-                var checkBoxes = optionsPage.Controls.Find("", true).OfType<CheckBox>().ToList();
+                var checkBoxes = GetDescendantControls(optionsPage).OfType<CheckBox>().ToList();
 
                 if (checkBoxes.Count > 0)
                 {
@@ -170,6 +173,16 @@ namespace LoipvRemoteTests.UI.Forms
                 _optionsForm.Show();
                 Application.DoEvents();
             });
+        }
+
+        private static IEnumerable<Control> GetDescendantControls(Control root)
+        {
+            foreach (Control child in root.Controls)
+            {
+                yield return child;
+                foreach (Control descendant in GetDescendantControls(child))
+                    yield return descendant;
+            }
         }
     }
 }

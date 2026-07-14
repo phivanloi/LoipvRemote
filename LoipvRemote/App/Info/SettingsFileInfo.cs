@@ -4,6 +4,7 @@ using System.Reflection;
 using System.Runtime.Versioning;
 using System.Windows.Forms;
 using LoipvRemote.Connection;
+using ApplicationEdition = LoipvRemote.UseCases.Hosting.ApplicationEdition;
 
 namespace LoipvRemote.App.Info
 {
@@ -13,7 +14,7 @@ namespace LoipvRemote.App.Info
         private static readonly string? ExePath = Path.GetDirectoryName(Assembly.GetAssembly(typeof(ConnectionInfo))?.Location);
 
         // ExePath resolves the running assembly's own directory and is always available at runtime.
-        public static string SettingsPath => Runtime.IsPortableEdition ? ExePath! : Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\" + Application.ProductName;
+        public static string SettingsPath => ApplicationEdition.IsPortable ? ExePath! : Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\" + Application.ProductName;
 
         public static string LayoutFileName { get; } = "pnlLayout.xml";
         public static string ExtAppsFilesName { get; } = "extApps.xml";

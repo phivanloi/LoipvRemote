@@ -2,6 +2,7 @@ using System;
 using System.ComponentModel;
 using System.Windows.Forms;
 using LoipvRemote.App;
+using LoipvRemote.App.Composition;
 using LoipvRemote.Messages;
 using LoipvRemote.Tools;
 using LoipvRemote.Tree;
@@ -16,12 +17,21 @@ namespace LoipvRemote.UI.Controls
         private IContainer components;
         private ContextMenuStrip _cMenExtAppsToolbar;
         internal ToolStripMenuItem CMenToolbarShowText;
+        private DesktopShellRuntime? _desktopShellRuntime;
 
         public ExternalToolsToolStrip()
         {
             Initialize();
-            Runtime.ExternalToolsService.ExternalTools.CollectionUpdated += (sender, args) => AddExternalToolsToToolBar();
         }
+
+        internal void AttachRuntime(DesktopShellRuntime desktopShellRuntime)
+        {
+            _desktopShellRuntime = desktopShellRuntime ?? throw new ArgumentNullException(nameof(desktopShellRuntime));
+            _desktopShellRuntime.ExternalToolsService.ExternalTools.CollectionUpdated += (_, _) => AddExternalToolsToToolBar();
+        }
+
+        private DesktopShellRuntime DesktopShellRuntime => _desktopShellRuntime
+            ?? throw new InvalidOperationException("The desktop shell runtime must be attached before using external tools.");
 
         private void Initialize()
         {
@@ -72,7 +82,7 @@ namespace LoipvRemote.UI.Controls
                     Items[index].Dispose();
                 Items.Clear();
 
-                foreach (ExternalTool tool in Runtime.ExternalToolsService.ExternalTools)
+                foreach (ExternalTool tool in DesktopShellRuntime.ExternalToolsService.ExternalTools)
                 {
                     if (!tool.ShowOnToolbar) continue;
                     ToolStripButton button = (ToolStripButton)Items.Add(tool.DisplayName, tool.Image, TsExtAppEntry_Click);
@@ -88,7 +98,7 @@ namespace LoipvRemote.UI.Controls
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionStackTrace(Language.ErrorAddExternalToolsToToolBarFailed, ex);
+                DesktopShellRuntime.MessageCollector.AddExceptionStackTrace(Language.ErrorAddExternalToolsToToolBarFailed, ex);
             }
             finally
             {
@@ -96,7 +106,7 @@ namespace LoipvRemote.UI.Controls
             }
         }
 
-        private static void TsExtAppEntry_Click(object sender, EventArgs e)
+        private void TsExtAppEntry_Click(object sender, EventArgs e)
         {
             ExternalTool extA = (ExternalTool)((ToolStripButton)sender).Tag;
 
@@ -106,7 +116,7 @@ namespace LoipvRemote.UI.Controls
                 extA.Start(selectedTreeNode);
             else
             {
-                Runtime.MessageCollector.AddMessage(MessageClass.InformationMsg, "No connection was selected, external tool may return errors.", true);
+                DesktopShellRuntime.MessageCollector.AddMessage(MessageClass.InformationMsg, "No connection was selected, external tool may return errors.", true);
                 extA.Start();
             }
         }

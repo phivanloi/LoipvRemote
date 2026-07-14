@@ -1,7 +1,7 @@
 using System;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Runtime.Versioning;
-using LoipvRemote.App;
 
 
 namespace LoipvRemote.Connection
@@ -30,7 +30,7 @@ namespace LoipvRemote.Connection
                 System.Reflection.PropertyInfo propertyFromSettings = typeof(TSource).GetProperty(propertyNameMutator(property.Name));
                 if (propertyFromSettings == null)
                 {
-                    Runtime.MessageCollector.AddMessage(Messages.MessageClass.ErrorMsg, $"DefaultConInherit-LoadFrom: Could not load {property.Name}", true);
+                    Trace.TraceError($"DefaultConInherit-LoadFrom: Could not load {property.Name}");
                     continue;
                 }
 
@@ -50,7 +50,7 @@ namespace LoipvRemote.Connection
                 object localValue = property.GetValue(Instance, null);
                 if (propertyFromSettings == null)
                 {
-                    Runtime.MessageCollector?.AddMessage(Messages.MessageClass.ErrorMsg, $"DefaultConInherit-SaveTo: Could not load {property.Name}", true);
+                    Trace.TraceError($"DefaultConInherit-SaveTo: Could not load {property.Name}");
                     continue;
                 }
 

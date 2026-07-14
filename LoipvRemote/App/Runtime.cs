@@ -1,22 +1,18 @@
-using LoipvRemote.App.Info;
-using LoipvRemote.Config.Putty;
+using LoipvRemote.App.Composition;
 using LoipvRemote.Connection;
 using LoipvRemote.Credential;
 using LoipvRemote.Credential.Repositories;
 using LoipvRemote.Messages;
-using LoipvRemote.Security;
 using LoipvRemote.Tools;
-using LoipvRemote.Tree.Root;
 using LoipvRemote.UI;
-using LoipvRemote.UI.Forms;
-using LoipvRemote.UI.TaskDialog;
+using LoipvRemote.Domain.Events;
+using LoipvRemote.Connectors.Abstractions;
+using LoipvRemote.UseCases.Sessions;
+using LoipvRemote.UseCases.Credentials;
 using System;
-using System.IO;
 using System.Security;
 using System.Threading;
-using System.Windows.Forms;
-using LoipvRemote.Properties;
-using LoipvRemote.Resources.Language;
+using Microsoft.Extensions.DependencyInjection;
 using System.Runtime.Versioning;
 
 namespace LoipvRemote.App
@@ -24,191 +20,82 @@ namespace LoipvRemote.App
     [SupportedOSPlatform("windows")]
     public static class Runtime
     {
-        public static bool IsPortableEdition
+        private static readonly object ServiceProviderLock = new();
+        private static IServiceProvider? _serviceProvider;
+        private static ConnectionSessionOrchestrator? _observedSessionOrchestrator;
+
+        public static WindowList WindowList
         {
-            get
+            get => State.WindowList!;
+            set => State.WindowList = value;
+        }
+
+        public static MessageCollector MessageCollector => GetRequiredService<MessageCollector>();
+
+        public static NotificationAreaIcon NotificationAreaIcon
+        {
+            get => State.NotificationAreaIcon!;
+            set => State.NotificationAreaIcon = value;
+        }
+
+        public static ExternalToolsService ExternalToolsService => GetRequiredService<ExternalToolsService>();
+
+        public static IStringSecretStore UserSecretStore => GetRequiredService<IStringSecretStore>();
+
+        public static ICredentialRepositoryList CredentialProviderCatalog =>
+            GetRequiredService<ICredentialRepositoryList>();
+
+        public static ConnectionInitiator ConnectionInitiator => GetRequiredService<ConnectionInitiator>();
+
+        public static ConnectionsService ConnectionsService => GetRequiredService<ConnectionsService>();
+
+        internal static void Initialize(IServiceProvider serviceProvider)
+        {
+            ArgumentNullException.ThrowIfNull(serviceProvider);
+
+            lock (ServiceProviderLock)
             {
-#if PORTABLE
-                return true;
-#else
-                return false;
-#endif
+                if (_serviceProvider is not null)
+                    throw new InvalidOperationException("Runtime has already been initialized.");
+
+                _serviceProvider = serviceProvider;
+                _observedSessionOrchestrator = GetRequiredService<ConnectionSessionOrchestrator>();
+                _observedSessionOrchestrator.StateChanged += OnConnectionSessionStateChanged;
             }
         }
 
-        /// <summary>
-        /// Feature flag to enable the credential manager feature
-        /// </summary>
-        public static bool UseCredentialManager => false;
-
-        public static WindowList WindowList { get; set; } = null!; // initialized during FrmMain startup
-        public static MessageCollector MessageCollector { get; } = new MessageCollector();
-        public static NotificationAreaIcon NotificationAreaIcon { get; set; } = null!; // initialized on demand by settings/UI
-        public static ExternalToolsService ExternalToolsService { get; } = new ExternalToolsService();
-
-        public static SecureString EncryptionKey { get; set; } = new RootNodeInfo(RootNodeType.Connection).PasswordString.ConvertToSecureString();
-
-        public static ICredentialRepositoryList CredentialProviderCatalog { get; } = new CredentialRepositoryList();
-
-        public static ConnectionInitiator ConnectionInitiator { get; set; } = new ConnectionInitiator();
-
-        public static ConnectionsService ConnectionsService { get; } = new ConnectionsService(PuttySessionsManager.Instance);
-
-        #region Connections Loading/Saving
-
-        public static void LoadConnectionsAsync()
+        internal static void Uninitialize()
         {
-            Thread t = new(LoadConnectionsBGd);
-            t.SetApartmentState(ApartmentState.STA);
-            t.Start();
-        }
-
-        private static void LoadConnectionsBGd()
-        {
-            LoadConnections();
-        }
-
-        /// <summary>
-        ///
-        /// </summary>
-        /// <param name="withDialog">
-        /// Should we show the file selection dialog to allow the user to select
-        /// a connection file
-        /// </param>
-        public static void LoadConnections(bool withDialog = false)
-        {
-            string connectionFileName = "";
-
-            try
+            lock (ServiceProviderLock)
             {
-                // disable sql update checking while we are loading updates
-                ConnectionsService.RemoteConnectionsSyncronizer?.Disable();
+                if (_observedSessionOrchestrator is not null)
+                    _observedSessionOrchestrator.StateChanged -= OnConnectionSessionStateChanged;
 
-                if (withDialog)
-                {
-                    OpenFileDialog loadDialog = DialogFactory.BuildLoadConnectionsDialog();
-                    if (loadDialog.ShowDialog() != DialogResult.OK)
-                        return;
-
-                    connectionFileName = loadDialog.FileName;
-                    Properties.OptionsDBsPage.Default.UseSQLServer = false;
-                    Properties.OptionsDBsPage.Default.Save();
-                }
-                else if (!Properties.OptionsDBsPage.Default.UseSQLServer)
-                {
-                    connectionFileName = ConnectionsService.GetStartupConnectionFileName();
-                }
-
-                ConnectionsService.LoadConnections(Properties.OptionsDBsPage.Default.UseSQLServer, false, connectionFileName);
-
-                if (Properties.OptionsDBsPage.Default.UseSQLServer)
-                {
-                    ConnectionsService.LastSqlUpdate = DateTime.Now.ToUniversalTime();
-                }
-				else
-                {
-                    ConnectionsService.LastFileUpdate =  System.IO.File.GetLastWriteTime(connectionFileName);
-                }
-
-                // re-enable sql update checking after updates are loaded
-                ConnectionsService.RemoteConnectionsSyncronizer?.Enable();
-            }
-            catch (Exception ex)
-            {
-                ProgramRoot.CloseSplash();
-
-                if (Properties.OptionsDBsPage.Default.UseSQLServer)
-                {
-                    MessageCollector.AddExceptionMessage(Language.LoadFromSqlFailed, ex);
-                    // Persist a safe recovery mode so a failed SQL configuration cannot
-                    // trap the application in a startup crash loop.
-                    string commandButtons = string.Join("|", Language._TryAgain, Language.CommandOpenConnectionFile, string.Format(Language.CommandExitProgram, Application.ProductName));
-                    CTaskDialog.ShowCommandBox(Application.ProductName ?? string.Empty, Language.LoadFromSqlFailed, Language.LoadFromSqlFailedContent, MiscTools.GetExceptionMessageRecursive(ex), "", "", commandButtons, false, ESysIcons.Error, ESysIcons.Error);
-                    switch (CTaskDialog.CommandButtonResult)
-                    {
-                        case 0:
-                            Properties.OptionsDBsPage.Default.UseSQLServer = true;
-                            LoadConnections(withDialog);
-                            return;
-                        case 1:
-                            Properties.OptionsDBsPage.Default.UseSQLServer = false;
-                            LoadConnections(true);
-                            return;
-                        default:
-                            Properties.OptionsDBsPage.Default.UseSQLServer = false;
-                            Properties.OptionsDBsPage.Default.Save();
-                            Application.Exit();
-                            return;
-                    }
-                }
-
-                if (ex is FileNotFoundException && !withDialog)
-                {
-                    MessageCollector.AddExceptionMessage(
-                                                         string.Format(Language.ConnectionsFileCouldNotBeLoadedNew,
-                                                                       connectionFileName), ex,
-                                                         MessageClass.InformationMsg);
-
-                    string[] commandButtons =
-                    {
-                        Language.ConfigurationCreateNew,
-                        Language.ConfigurationCustomPath,
-                        Language.ConfigurationImportFile,
-                        Language.Exit
-                    };
-
-                    bool answered = false;
-                    while (!answered)
-                    {
-                        try
-                        {
-                            CTaskDialog.ShowTaskDialogBox(GeneralAppInfo.ProductName ?? string.Empty, Language.ConnectionFileNotFound, "", "", "", "", "", string.Join(" | ", commandButtons), ETaskDialogButtons.None, ESysIcons.Question, ESysIcons.Question);
-
-                            switch (CTaskDialog.CommandButtonResult)
-                            {
-                                case 0:
-                                    ConnectionsService.NewConnectionsFile(connectionFileName);
-                                    answered = true;
-                                    break;
-                                case 1:
-                                    LoadConnections(true);
-                                    answered = true;
-                                    break;
-                                case 2:
-                                    ConnectionsService.NewConnectionsFile(connectionFileName);
-                                    Import.ImportFromFile(ConnectionsService.ConnectionTreeModel.RootNodes[0]);
-                                    answered = true;
-                                    break;
-                                case 3:
-                                    Application.Exit();
-                                    answered = true;
-                                    break;
-                            }
-                        }
-                        catch (Exception exc)
-                        {
-                            MessageCollector.AddExceptionMessage(string.Format(Language.ConnectionsFileCouldNotBeLoadedNew, connectionFileName), exc, MessageClass.InformationMsg);
-                        }
-                    }
-
-                    return;
-                }
-
-                MessageCollector.AddExceptionStackTrace(
-                                                        string.Format(Language.ConnectionsFileCouldNotBeLoaded,
-                                                                      connectionFileName), ex);
-                if (connectionFileName != ConnectionsService.GetStartupConnectionFileName())
-                {
-                    LoadConnections(withDialog);
-                }
-                else
-                {
-                    MessageBox.Show(FrmMain.Default, string.Format(Language.ErrorStartupConnectionFileLoad, Environment.NewLine, Application.ProductName, ConnectionsService.GetStartupConnectionFileName(), MiscTools.GetExceptionMessageRecursive(ex)), @"Could not load startup file.", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    Application.Exit();
-                }
+                _observedSessionOrchestrator = null;
+                _serviceProvider = null;
             }
         }
 
-        #endregion
+        private static RuntimeState State => GetRequiredService<RuntimeState>();
+
+        private static T GetRequiredService<T>() where T : notnull
+        {
+            IServiceProvider serviceProvider = Volatile.Read(ref _serviceProvider)
+                ?? throw new InvalidOperationException("Runtime has not been initialized from the desktop host.");
+            return serviceProvider.GetRequiredService<T>();
+        }
+
+        private static void OnConnectionSessionStateChanged(ConnectionSessionStateChanged stateChanged)
+        {
+            MessageCollector.AddMessage(
+                MessageClass.DebugMsg,
+                $"Connection session {stateChanged.ConnectionId} transitioned to {stateChanged.State}.");
+        }
+
+        public static void LoadConnectionsAsync() =>
+            GetRequiredService<ConnectionLoadingService>().LoadConnectionsAsync();
+
+        public static void LoadConnections(bool withDialog = false) =>
+            GetRequiredService<ConnectionLoadingService>().LoadConnections(withDialog);
     }
 }

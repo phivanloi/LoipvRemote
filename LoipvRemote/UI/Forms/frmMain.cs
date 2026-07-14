@@ -1,6 +1,7 @@
 #region Usings
 using Microsoft.Win32;
 using LoipvRemote.App;
+using LoipvRemote.App.Composition;
 using LoipvRemote.App.Info;
 using LoipvRemote.App.Initialization;
 using LoipvRemote.Config;
@@ -10,6 +11,7 @@ using LoipvRemote.Config.Putty;
 using LoipvRemote.Config.Settings;
 using LoipvRemote.Connection;
 using LoipvRemote.Connection.Protocol;
+using LoipvRemote.Tree;
 using LoipvRemote.Messages;
 using LoipvRemote.Messages.MessageWriters;
 using LoipvRemote.Themes;
@@ -25,7 +27,6 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Globalization;
 using System.IO;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -36,6 +37,9 @@ using LoipvRemote.UI.DesignSystem;
 using LoipvRemote.Resources.Language;
 using System.Runtime.Versioning;
 using LoipvRemote.Config.Settings.Registry;
+using LoipvRemote.Protocols.Putty;
+using LoipvRemote.UseCases.Credentials;
+using LoipvRemote.Desktop.Shell;
 using System.Threading; // ADDED
 #endregion
 
@@ -86,8 +90,54 @@ namespace LoipvRemote.UI.Forms
         private readonly ThemeManager _themeManager;
         private readonly FileBackupPruner _backupPruner = new();
         private readonly UnifiedWindowHeader _unifiedWindowHeader;
+        private DesktopShellRuntime? _desktopShellRuntime;
         private System.Windows.Forms.Timer? _startupMaximizeTimer;
         public static FrmOptions OptionsForm;
+
+        internal void AttachRuntime(DesktopShellRuntime desktopShellRuntime)
+        {
+            ArgumentNullException.ThrowIfNull(desktopShellRuntime);
+            if (_desktopShellRuntime is not null && !ReferenceEquals(_desktopShellRuntime, desktopShellRuntime))
+                throw new InvalidOperationException("The desktop shell runtime is already attached.");
+
+            _desktopShellRuntime = desktopShellRuntime;
+            viewMenu.AttachRuntime(desktopShellRuntime);
+            fileMenu.AttachRuntime(desktopShellRuntime);
+            _quickConnectToolStrip.AttachRuntime(desktopShellRuntime);
+            _multiSshToolStrip.AttachRuntime(desktopShellRuntime);
+            _externalToolsToolStrip.AttachRuntime(desktopShellRuntime);
+        }
+
+        private DesktopShellRuntime DesktopShellRuntime => _desktopShellRuntime
+            ?? throw new InvalidOperationException("The desktop shell runtime must be attached before the main window is used.");
+
+        internal void EnsureNotificationAreaIcon()
+        {
+            if (_desktopShellRuntime is null)
+                return;
+
+            _desktopShellRuntime.RuntimeState.NotificationAreaIcon ??= new NotificationAreaIcon(this, _desktopShellRuntime);
+        }
+
+        internal void DisposeNotificationAreaIcon()
+        {
+            if (_desktopShellRuntime?.RuntimeState.NotificationAreaIcon is { } notificationAreaIcon)
+                notificationAreaIcon.Dispose();
+
+            if (_desktopShellRuntime is not null)
+                _desktopShellRuntime.RuntimeState.NotificationAreaIcon = null;
+        }
+
+        internal ConnectionTreeModel? TryGetConnectionTreeModel() => _desktopShellRuntime?.ConnectionsService.ConnectionTreeModel;
+
+        internal void ReportUiError(MessageClass messageClass, string message) =>
+            _desktopShellRuntime?.MessageCollector.AddMessage(messageClass, message);
+
+        internal string UnprotectUserSecret(string protectedValue, string purpose) =>
+            _desktopShellRuntime?.UserSecretStore.Unprotect(protectedValue, purpose) ?? protectedValue;
+
+        internal string ProtectUserSecret(string plaintext, string purpose) =>
+            _desktopShellRuntime?.UserSecretStore.Protect(plaintext, purpose) ?? plaintext;
 
         /// <summary>
         /// Recreates the OptionsForm if it has been disposed.
@@ -235,15 +285,22 @@ namespace LoipvRemote.UI.Forms
 
         private void FrmMain_Load(object sender, EventArgs e)
         {
-            MessageCollector messageCollector = Runtime.MessageCollector;
+            MessageCollector messageCollector = DesktopShellRuntime.MessageCollector;
+            AppWindows.AttachRuntime(DesktopShellRuntime);
 
-            SettingsLoader settingsLoader = new(this, messageCollector, _quickConnectToolStrip, _externalToolsToolStrip, _multiSshToolStrip);
+            SettingsLoader settingsLoader = new(
+                this,
+                messageCollector,
+                _quickConnectToolStrip,
+                _externalToolsToolStrip,
+                _multiSshToolStrip,
+                DesktopShellRuntime);
             settingsLoader.LoadSettings();
 
             MessageCollectorSetup.SetupMessageCollector(messageCollector, _messageWriters);
             MessageCollectorSetup.BuildMessageWritersFromSettings(_messageWriters);
 
-            Startup.Instance.InitializeProgram(messageCollector);
+            DesktopShellRuntime.Startup.InitializeProgram(messageCollector);
 
             SetMenuDependencies();
 
@@ -257,7 +314,7 @@ namespace LoipvRemote.UI.Forms
 
             _fpChainedWindowHandle = NativeMethods.SetClipboardViewer(Handle);
 
-            Runtime.WindowList = [];
+            DesktopShellRuntime.RuntimeState.WindowList = [];
 
             if (Properties.App.Default.ResetPanels)
                 SetDefaultLayout();
@@ -267,13 +324,16 @@ namespace LoipvRemote.UI.Forms
             ApplyStartupShellLayout();
             ShowHidePanelTabs();
 
-            Runtime.ConnectionsService.ConnectionsLoaded += ConnectionsServiceOnConnectionsLoaded;
-            Runtime.ConnectionsService.ConnectionsSaved += ConnectionsServiceOnConnectionsSaved;
+            DesktopShellRuntime.ConnectionsService.ConnectionsLoaded += ConnectionsServiceOnConnectionsLoaded;
+            DesktopShellRuntime.ConnectionsService.ConnectionsSaved += ConnectionsServiceOnConnectionsSaved;
 
             // Close splash screen before loading connections to ensure password dialog appears on top
             ProgramRoot.CloseSplash();
 
-            CredsAndConsSetup credsAndConsSetup = new();
+            AppWindows.TreeForm.AttachRuntime(DesktopShellRuntime);
+            CredsAndConsSetup credsAndConsSetup = new(
+                DesktopShellRuntime.ConnectionsService,
+                DesktopShellRuntime.ConnectionLoadingService);
             credsAndConsSetup.LoadCredsAndCons();
 
             // Initialize panel binding for Connections and Config panels
@@ -283,7 +343,7 @@ namespace LoipvRemote.UI.Forms
 
             PuttySessionsManager.Instance.StartWatcher();
 
-            Startup.Instance.CreateConnectionsProvider(messageCollector);
+            DesktopShellRuntime.Startup.CreateConnectionsProvider(messageCollector, DesktopShellRuntime.ConnectionsService);
 
             _advancedWindowMenu.BuildAdditionalMenuItems();
             SystemEvents.DisplaySettingsChanged += _advancedWindowMenu.OnDisplayChanged;
@@ -315,7 +375,7 @@ namespace LoipvRemote.UI.Forms
             }
             string panelName = !string.IsNullOrEmpty(Properties.OptionsTabsPanelsPage.Default.StartUpPanelName) ? Properties.OptionsTabsPanelsPage.Default.StartUpPanelName : Language.NewPanel;
 
-            PanelAdder panelAdder = new();
+            PanelAdder panelAdder = DesktopShellRuntime.PanelAdder;
             if (!panelAdder.DoesPanelExist(panelName))
                 panelAdder.AddPanel(panelName);
         }
@@ -385,7 +445,7 @@ namespace LoipvRemote.UI.Forms
             viewMenu.MainForm = this;
 
             toolsMenu.MainForm = this;
-            toolsMenu.CredentialProviderCatalog = Runtime.CredentialProviderCatalog;
+            toolsMenu.CredentialProviderCatalog = DesktopShellRuntime.CredentialRepositoryList;
         }
 
         // Apply the dark/light title bar before the window is shown to avoid a white flash.
@@ -437,7 +497,7 @@ namespace LoipvRemote.UI.Forms
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionStackTrace("Error applying theme", ex, MessageClass.WarningMsg);
+                _desktopShellRuntime?.MessageCollector.AddExceptionStackTrace("Error applying theme", ex, MessageClass.WarningMsg);
             }
         }
 
@@ -476,9 +536,9 @@ namespace LoipvRemote.UI.Forms
 
         private void FrmMain_FormClosing(object sender, FormClosingEventArgs e)
         {
-            if (Runtime.WindowList != null)
+            if (DesktopShellRuntime.RuntimeState.WindowList != null)
             {
-                foreach (BaseWindow window in Runtime.WindowList)
+                foreach (BaseWindow window in DesktopShellRuntime.RuntimeState.WindowList)
                 {
                     window.Close();
                 }
@@ -490,7 +550,7 @@ namespace LoipvRemote.UI.Forms
 
             if (Properties.OptionsAppearancePage.Default.CloseToTray)
             {
-                Runtime.NotificationAreaIcon ??= new NotificationAreaIcon();
+                EnsureNotificationAreaIcon();
 
                 if (WindowState == FormWindowState.Normal || WindowState == FormWindowState.Maximized)
                 {
@@ -501,7 +561,7 @@ namespace LoipvRemote.UI.Forms
                 }
             }
 
-            if (!(Runtime.WindowList == null || Runtime.WindowList.Count == 0))
+            if (DesktopShellRuntime.RuntimeState.WindowList is { Count: > 0 })
             {
                 int openConnections = 0;
                 if (pnlDock.Contents.Count > 0)
@@ -537,7 +597,7 @@ namespace LoipvRemote.UI.Forms
 
             NativeMethods.ChangeClipboardChain(Handle, _fpChainedWindowHandle);
             SystemEvents.DisplaySettingsChanged -= _advancedWindowMenu.OnDisplayChanged;
-            Shutdown.Cleanup(_quickConnectToolStrip, _externalToolsToolStrip, _multiSshToolStrip, this);
+            Shutdown.Cleanup(_quickConnectToolStrip, _externalToolsToolStrip, _multiSshToolStrip, this, DesktopShellRuntime);
 
             Debug.Print("[END] - " + Convert.ToString(DateTime.Now, CultureInfo.InvariantCulture));
         }
@@ -548,8 +608,8 @@ namespace LoipvRemote.UI.Forms
 
         private void TmrAutoSave_Tick(object sender, EventArgs e)
         {
-            Runtime.MessageCollector.AddMessage(MessageClass.DebugMsg, "Doing AutoSave");
-            Runtime.ConnectionsService.SaveConnectionsAsync();
+            DesktopShellRuntime.MessageCollector.AddMessage(MessageClass.DebugMsg, "Doing AutoSave");
+            DesktopShellRuntime.ConnectionsService.SaveConnectionsAsync();
         }
 
         #endregion
@@ -570,7 +630,7 @@ namespace LoipvRemote.UI.Forms
             if (WindowState == FormWindowState.Minimized)
             {
                 if (!Properties.OptionsAppearancePage.Default.MinimizeToTray) return;
-                Runtime.NotificationAreaIcon ??= new NotificationAreaIcon();
+                EnsureNotificationAreaIcon();
 
                 Hide();
             }
@@ -589,14 +649,10 @@ namespace LoipvRemote.UI.Forms
 
         protected override void WndProc(ref System.Windows.Forms.Message m)
         {
-            if (PuttyImeMessageRouter.ShouldForward(m.Msg))
+            if (InterfaceControl.FindInterfaceControl(pnlDock)?.Protocol is { } activeProtocol &&
+                activeProtocol.TryForwardInputMessage(m.Msg, m.WParam, m.LParam))
             {
-                InterfaceControl activeInterface = InterfaceControl.FindInterfaceControl(pnlDock);
-                if (activeInterface?.Protocol is PuttyBase putty && putty.PuttyHandle != IntPtr.Zero)
-                {
-                    NativeMethods.SendMessage(putty.PuttyHandle, (uint)m.Msg, m.WParam, m.LParam);
-                    return;
-                }
+                return;
             }
 
             if (m.Msg == NativeMethods.WM_NCHITTEST)
@@ -669,8 +725,7 @@ namespace LoipvRemote.UI.Forms
                         break;
                     case NativeMethods.WM_WINDOWPOSCHANGED:
                         // Ignore this message if the window wasn't activated
-                        NativeMethods.WINDOWPOS windowPos =
-                            (NativeMethods.WINDOWPOS)Marshal.PtrToStructure(m.LParam, typeof(NativeMethods.WINDOWPOS));
+                        NativeMethods.WINDOWPOS windowPos = NativeMethods.ReadWindowPosition(m.LParam);
                         if ((windowPos.flags & NativeMethods.SWP_NOACTIVATE) == 0)
                         {
                             if (!_inMouseActivate && !_inSizeMove)
@@ -714,7 +769,7 @@ namespace LoipvRemote.UI.Forms
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionStackTrace("frmMain WndProc failed", ex);
+                _desktopShellRuntime?.MessageCollector.AddExceptionStackTrace("frmMain WndProc failed", ex);
             }
 
             base.WndProc(ref m);
@@ -821,19 +876,20 @@ namespace LoipvRemote.UI.Forms
             StringBuilder titleBuilder = new(Application.ProductName);
             const string separator = " - ";
 
-            if (Runtime.ConnectionsService.IsConnectionsFileLoaded)
+            ConnectionsService connectionsService = DesktopShellRuntime.ConnectionsService;
+            if (connectionsService.IsConnectionsFileLoaded)
             {
-                if (Runtime.ConnectionsService.UsingDatabase)
+                if (connectionsService.UsingDatabase)
                 {
                     titleBuilder.Append(separator);
                     titleBuilder.Append(Language.SQLServer.TrimEnd(':'));
                 }
                 else
                 {
-                    if (!string.IsNullOrEmpty(Runtime.ConnectionsService.ConnectionFileName))
+                    if (!string.IsNullOrEmpty(connectionsService.ConnectionFileName))
                     {
                         titleBuilder.Append(separator);
-                        titleBuilder.Append(Properties.OptionsAppearancePage.Default.ShowCompleteConsPathInTitle ? Runtime.ConnectionsService.ConnectionFileName : Path.GetFileName(Runtime.ConnectionsService.ConnectionFileName));
+                        titleBuilder.Append(Properties.OptionsAppearancePage.Default.ShowCompleteConsPathInTitle ? connectionsService.ConnectionFileName : Path.GetFileName(connectionsService.ConnectionFileName));
                     }
                 }
             }
@@ -874,26 +930,6 @@ namespace LoipvRemote.UI.Forms
                     ? DocumentStyle.DockingSdi
                     : DocumentStyle.DockingWindow;
             }
-
-            // TODO: See if we can get this to work with DPS
-#if false
-            foreach (var dockContent in pnlDock.Documents)
-			{
-				var document = (DockContent)dockContent;
-				if (document is ConnectionWindow)
-				{
-					var connectionWindow = (ConnectionWindow)document;
-					if (Settings.Default.AlwaysShowConnectionTabs == false)
-					{
-						connectionWindow.TabController.HideTabsMode = TabControl.HideTabsModes.HidepnlDock.DockLeftPortion = Always;
-					}
-					else
-					{
-						connectionWindow.TabController.HideTabsMode = TabControl.HideTabsModes.ShowAlways;
-					}
-				}
-			}
-#endif
 
             if (pnlDock.DocumentStyle == newDocumentStyle) return;
             pnlDock.DocumentStyle = newDocumentStyle;

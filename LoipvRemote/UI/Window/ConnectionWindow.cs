@@ -21,6 +21,8 @@ using WeifenLuo.WinFormsUI.Docking;
 using LoipvRemote.Resources.Language;
 using System.Runtime.Versioning;
 using LoipvRemote.Security;
+using LoipvRemote.UseCases.Navigation;
+using LoipvRemote.UI.Adapters;
 
 namespace LoipvRemote.UI.Window
 {
@@ -29,6 +31,22 @@ namespace LoipvRemote.UI.Window
     {
         private VisualStudioToolStripExtender _vsToolStripExtender;
         private readonly ToolStripRenderer _toolStripProfessionalRenderer = new ToolStripProfessionalRenderer();
+        private MessageCollector? _messageCollector;
+        private ExternalToolsService? _externalToolsService;
+        private IConnectionInitiator? _connectionInitiator;
+        private ConnectionWorkspaceAdapter? _connectionWorkspace;
+
+        private MessageCollector MessageCollector => _messageCollector
+            ?? throw new InvalidOperationException("ConnectionWindow services must be attached before use.");
+
+        private ExternalToolsService ExternalToolsService => _externalToolsService
+            ?? throw new InvalidOperationException("ConnectionWindow services must be attached before use.");
+
+        private IConnectionInitiator ConnectionInitiator => _connectionInitiator
+            ?? throw new InvalidOperationException("ConnectionWindow services must be attached before use.");
+
+        private ConnectionWorkspaceAdapter ConnectionWorkspace => _connectionWorkspace
+            ?? throw new InvalidOperationException("ConnectionWindow services must be attached before use.");
 
         #region Public Methods
 
@@ -50,6 +68,18 @@ namespace LoipvRemote.UI.Window
             connDock.ShowDocumentIcon = true;
 
             connDock.ActiveContentChanged += ConnDockOnActiveContentChanged;
+        }
+
+        public void AttachServices(
+            MessageCollector messageCollector,
+            ExternalToolsService externalToolsService,
+            IConnectionInitiator connectionInitiator,
+            ConnectionWorkspaceAdapter connectionWorkspace)
+        {
+            _messageCollector = messageCollector ?? throw new ArgumentNullException(nameof(messageCollector));
+            _externalToolsService = externalToolsService ?? throw new ArgumentNullException(nameof(externalToolsService));
+            _connectionInitiator = connectionInitiator ?? throw new ArgumentNullException(nameof(connectionInitiator));
+            _connectionWorkspace = connectionWorkspace ?? throw new ArgumentNullException(nameof(connectionWorkspace));
         }
 
         private InterfaceControl GetInterfaceControl()
@@ -139,16 +169,12 @@ namespace LoipvRemote.UI.Window
                     TabPageContextMenuStrip = cmenTab
                 };
 
-                //if (Settings.Default.AlwaysShowConnectionTabs == false)
-                // TODO: See if we can make this work with DPS...
-                //TabController.HideTabsMode = TabControl.HideTabsModes.HideAlways;
-
                 // Ensure the ConnectionWindow is visible before adding the tab
                 // This prevents visibility issues when the window was created but not yet shown
                 // Check DockState instead of Visible to properly detect if window is shown in DockPanel
                 if (DockState == DockState.Unknown || DockState == DockState.Hidden || !Visible)
                 {
-                    Show(FrmMain.Default.pnlDock, DockState.Document);
+                    ConnectionWorkspace.Show(this);
                 }
 
                 //Show the tab
@@ -158,7 +184,7 @@ namespace LoipvRemote.UI.Window
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage("AddConnectionTab (UI.Window.ConnectionWindow) failed", ex);
+                MessageCollector.AddExceptionMessage("AddConnectionTab (UI.Window.ConnectionWindow) failed", ex);
             }
 
             return null;
@@ -185,7 +211,7 @@ namespace LoipvRemote.UI.Window
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage("reconnectAll (UI.Window.ConnectionWindow) failed", ex);
+                MessageCollector.AddExceptionMessage("reconnectAll (UI.Window.ConnectionWindow) failed", ex);
             }
 
             // ReSharper disable once RedundantAssignment
@@ -216,7 +242,7 @@ namespace LoipvRemote.UI.Window
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage("UI.Window.ConnectionWindow.ApplyTheme() failed", ex);
+                MessageCollector.AddExceptionMessage("UI.Window.ConnectionWindow.ApplyTheme() failed", ex);
             }
 
             _vsToolStripExtender = new VisualStudioToolStripExtender(components)
@@ -240,8 +266,8 @@ namespace LoipvRemote.UI.Window
                     {
                         if (_documentHandlersAdded)
                         {
-                            FrmMain.Default.ResizeBegin -= Connection_ResizeBegin;
-                            FrmMain.Default.ResizeEnd -= Connection_ResizeEnd;
+                            ConnectionWorkspace.MainWindow.ResizeBegin -= Connection_ResizeBegin;
+                            ConnectionWorkspace.MainWindow.ResizeEnd -= Connection_ResizeEnd;
                             _documentHandlersAdded = false;
                         }
 
@@ -259,8 +285,8 @@ namespace LoipvRemote.UI.Window
                             _floatHandlersAdded = false;
                         }
 
-                        FrmMain.Default.ResizeBegin += Connection_ResizeBegin;
-                        FrmMain.Default.ResizeEnd += Connection_ResizeEnd;
+                        ConnectionWorkspace.MainWindow.ResizeBegin += Connection_ResizeBegin;
+                        ConnectionWorkspace.MainWindow.ResizeEnd += Connection_ResizeEnd;
                         _documentHandlersAdded = true;
                         break;
                     }
@@ -290,7 +316,7 @@ namespace LoipvRemote.UI.Window
 
         private void Connection_FormClosing(object sender, FormClosingEventArgs e)
         {
-            if (!FrmMain.Default.IsClosing &&
+            if (!ConnectionWorkspace.MainWindow.IsClosing &&
                 (Settings.Default.ConfirmCloseConnection == (int)ConfirmCloseEnum.All & connDock.Documents.Any() ||
                  Settings.Default.ConfirmCloseConnection == (int)ConfirmCloseEnum.Multiple &
                  connDock.Documents.Count() > 1))
@@ -321,7 +347,7 @@ namespace LoipvRemote.UI.Window
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage("UI.Window.Connection.Connection_FormClosing() failed", ex);
+                MessageCollector.AddExceptionMessage("UI.Window.Connection.Connection_FormClosing() failed", ex);
             }
         }
 
@@ -349,16 +375,18 @@ namespace LoipvRemote.UI.Window
                 var currentIndex = Array.IndexOf(documents, connDock.ActiveContent);
                 if (currentIndex == -1)
                 {
-                    Runtime.MessageCollector.AddMessage(MessageClass.DebugMsg, "NavigateToNextTab: ActiveContent not found in documents array");
+                    MessageCollector.AddMessage(MessageClass.DebugMsg, "NavigateToNextTab: ActiveContent not found in documents array");
                     return;
                 }
 
-                var nextIndex = (currentIndex + 1) % documents.Length;
+                if (!ConnectionTabNavigator.TryGetRelativeIndex(documents.Length, currentIndex, 1, out int nextIndex))
+                    return;
+
                 documents[nextIndex].DockHandler.Activate();
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage("NavigateToNextTab (UI.Window.ConnectionWindow) failed", ex);
+                MessageCollector.AddExceptionMessage("NavigateToNextTab (UI.Window.ConnectionWindow) failed", ex);
             }
         }
 
@@ -372,18 +400,18 @@ namespace LoipvRemote.UI.Window
                 var currentIndex = Array.IndexOf(documents, connDock.ActiveContent);
                 if (currentIndex == -1)
                 {
-                    Runtime.MessageCollector.AddMessage(MessageClass.DebugMsg, "NavigateToPreviousTab: ActiveContent not found in documents array");
+                    MessageCollector.AddMessage(MessageClass.DebugMsg, "NavigateToPreviousTab: ActiveContent not found in documents array");
                     return;
                 }
 
-                var previousIndex = currentIndex - 1;
-                if (previousIndex < 0)
-                    previousIndex = documents.Length - 1;
+                if (!ConnectionTabNavigator.TryGetRelativeIndex(documents.Length, currentIndex, -1, out int previousIndex))
+                    return;
+
                 documents[previousIndex].DockHandler.Activate();
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage("NavigateToPreviousTab (UI.Window.ConnectionWindow) failed", ex);
+                MessageCollector.AddExceptionMessage("NavigateToPreviousTab (UI.Window.ConnectionWindow) failed", ex);
             }
         }
 
@@ -392,13 +420,13 @@ namespace LoipvRemote.UI.Window
             try
             {
                 var documents = connDock.DocumentsToArray();
-                if (index < 0 || index >= documents.Length) return;
+                if (!ConnectionTabNavigator.IsValidIndex(documents.Length, index)) return;
 
                 documents[index].DockHandler.Activate();
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage("NavigateToTab (UI.Window.ConnectionWindow) failed", ex);
+                MessageCollector.AddExceptionMessage("NavigateToTab (UI.Window.ConnectionWindow) failed", ex);
             }
         }
 
@@ -410,7 +438,7 @@ namespace LoipvRemote.UI.Window
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage("GetDocuments (UI.Window.ConnectionWindow) failed", ex);
+                MessageCollector.AddExceptionMessage("GetDocuments (UI.Window.ConnectionWindow) failed", ex);
                 return Array.Empty<IDockContent>();
             }
         }
@@ -423,7 +451,7 @@ namespace LoipvRemote.UI.Window
         {
             InterfaceControl ic = GetInterfaceControl();
             if (ic?.Info == null) return;
-            FrmMain.Default.SelectedConnection = ic.Info;
+            ConnectionWorkspace.Select(ic.Info);
 
             foreach (IDockContent document in connDock.DocumentsToArray())
             {
@@ -431,6 +459,22 @@ namespace LoipvRemote.UI.Window
                 InterfaceControl candidate = InterfaceControl.FindInterfaceControl(tab);
                 candidate?.RemoteResourceBar?.SetIsActive(ReferenceEquals(candidate, ic));
             }
+
+            FocusActiveProtocolAfterDocking(ic);
+        }
+
+        private void FocusActiveProtocolAfterDocking(InterfaceControl expectedInterface)
+        {
+            if (IsDisposed || !IsHandleCreated)
+                return;
+
+            BeginInvoke((Action)(() =>
+            {
+                if (IsDisposed || !ReferenceEquals(GetInterfaceControl(), expectedInterface))
+                    return;
+
+                expectedInterface.Protocol.Focus();
+            }));
         }
 
         #endregion
@@ -497,7 +541,7 @@ namespace LoipvRemote.UI.Window
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage("ShowHideMenuButtons (UI.Window.ConnectionWindow) failed", ex);
+                MessageCollector.AddExceptionMessage("ShowHideMenuButtons (UI.Window.ConnectionWindow) failed", ex);
             }
         }
 
@@ -520,7 +564,7 @@ namespace LoipvRemote.UI.Window
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage("ToggleSmartSize (UI.Window.ConnectionWindow) failed", ex);
+                MessageCollector.AddExceptionMessage("ToggleSmartSize (UI.Window.ConnectionWindow) failed", ex);
             }
         }
 
@@ -539,7 +583,7 @@ namespace LoipvRemote.UI.Window
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage("TransferFile (UI.Window.ConnectionWindow) failed", ex);
+                MessageCollector.AddExceptionMessage("TransferFile (UI.Window.ConnectionWindow) failed", ex);
             }
         }
 
@@ -561,7 +605,7 @@ namespace LoipvRemote.UI.Window
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage("SSHTransferFile (UI.Window.ConnectionWindow) failed", ex);
+                MessageCollector.AddExceptionMessage("SSHTransferFile (UI.Window.ConnectionWindow) failed", ex);
             }
         }
 
@@ -575,7 +619,7 @@ namespace LoipvRemote.UI.Window
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage("VNCTransferFile (UI.Window.ConnectionWindow) failed", ex);
+                MessageCollector.AddExceptionMessage("VNCTransferFile (UI.Window.ConnectionWindow) failed", ex);
             }
         }
 
@@ -592,7 +636,7 @@ namespace LoipvRemote.UI.Window
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage("ToggleViewOnly (UI.Window.ConnectionWindow) failed", ex);
+                MessageCollector.AddExceptionMessage("ToggleViewOnly (UI.Window.ConnectionWindow) failed", ex);
             }
         }
 
@@ -606,7 +650,7 @@ namespace LoipvRemote.UI.Window
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage("StartChat (UI.Window.ConnectionWindow) failed", ex);
+                MessageCollector.AddExceptionMessage("StartChat (UI.Window.ConnectionWindow) failed", ex);
             }
         }
 
@@ -620,7 +664,7 @@ namespace LoipvRemote.UI.Window
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage("RefreshScreen (UI.Window.ConnectionWindow) failed", ex);
+                MessageCollector.AddExceptionMessage("RefreshScreen (UI.Window.ConnectionWindow) failed", ex);
             }
         }
 
@@ -634,7 +678,7 @@ namespace LoipvRemote.UI.Window
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage("SendSpecialKeys (UI.Window.ConnectionWindow) failed", ex);
+                MessageCollector.AddExceptionMessage("SendSpecialKeys (UI.Window.ConnectionWindow) failed", ex);
             }
         }
 
@@ -648,7 +692,7 @@ namespace LoipvRemote.UI.Window
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage("ToggleFullscreen (UI.Window.ConnectionWindow) failed",
+                MessageCollector.AddExceptionMessage("ToggleFullscreen (UI.Window.ConnectionWindow) failed",
                                                              ex);
             }
         }
@@ -663,7 +707,7 @@ namespace LoipvRemote.UI.Window
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage(
+                MessageCollector.AddExceptionMessage(
                                                              "ShowPuttySettingsDialog (UI.Window.ConnectionWindow) failed",
                                                              ex);
             }
@@ -682,7 +726,7 @@ namespace LoipvRemote.UI.Window
                 }
 
                 //add ext apps
-                foreach (ExternalTool externalTool in Runtime.ExternalToolsService.ExternalTools)
+                foreach (ExternalTool externalTool in ExternalToolsService.ExternalTools)
                 {
                     ToolStripMenuItem nItem = new()
                     {
@@ -700,7 +744,7 @@ namespace LoipvRemote.UI.Window
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionStackTrace("cMenTreeTools_DropDownOpening failed (UI.Window.ConnectionWindow)", ex);
+                MessageCollector.AddExceptionStackTrace("cMenTreeTools_DropDownOpening failed (UI.Window.ConnectionWindow)", ex);
             }
         }
 
@@ -713,7 +757,7 @@ namespace LoipvRemote.UI.Window
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage("cmenTabExternalAppsEntry_Click failed (UI.Window.ConnectionWindow)", ex);
+                MessageCollector.AddExceptionMessage("cmenTabExternalAppsEntry_Click failed (UI.Window.ConnectionWindow)", ex);
             }
         }
 
@@ -729,7 +773,7 @@ namespace LoipvRemote.UI.Window
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage("CloseTabMenu (UI.Window.ConnectionWindow) failed", ex);
+                MessageCollector.AddExceptionMessage("CloseTabMenu (UI.Window.ConnectionWindow) failed", ex);
             }
         }
 
@@ -794,7 +838,7 @@ namespace LoipvRemote.UI.Window
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage("CloseTabMenu (UI.Window.ConnectionWindow) failed", ex);
+                MessageCollector.AddExceptionMessage("CloseTabMenu (UI.Window.ConnectionWindow) failed", ex);
             }
         }
 
@@ -804,11 +848,11 @@ namespace LoipvRemote.UI.Window
             {
                 InterfaceControl interfaceControl = GetInterfaceControl();
                 if (interfaceControl == null) return;
-                Runtime.ConnectionInitiator.OpenConnection(interfaceControl.Info, ConnectionInfo.Force.DoNotJump);
+                ConnectionInitiator.OpenConnection(interfaceControl.Info, ConnectionInfo.Force.DoNotJump);
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage("DuplicateTab (UI.Window.ConnectionWindow) failed", ex);
+                MessageCollector.AddExceptionMessage("DuplicateTab (UI.Window.ConnectionWindow) failed", ex);
             }
         }
 
@@ -819,16 +863,16 @@ namespace LoipvRemote.UI.Window
                 InterfaceControl interfaceControl = GetInterfaceControl();
                 if (interfaceControl == null)
                 {
-                    Runtime.MessageCollector.AddMessage(MessageClass.WarningMsg, "Reconnect (UI.Window.ConnectionWindow) failed. Could not find InterfaceControl.");
+                    MessageCollector.AddMessage(MessageClass.WarningMsg, "Reconnect (UI.Window.ConnectionWindow) failed. Could not find InterfaceControl.");
                     return;
                 }
 
                 Invoke(new Action(() => Prot_Event_Closed(interfaceControl.Protocol)));
-                Runtime.ConnectionInitiator.OpenConnection(interfaceControl.Info, ConnectionInfo.Force.DoNotJump);
+                ConnectionInitiator.OpenConnection(interfaceControl.Info, ConnectionInfo.Force.DoNotJump);
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage("Reconnect (UI.Window.ConnectionWindow) failed", ex);
+                MessageCollector.AddExceptionMessage("Reconnect (UI.Window.ConnectionWindow) failed", ex);
             }
         }
 
@@ -849,7 +893,7 @@ namespace LoipvRemote.UI.Window
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage("RenameTab (UI.Window.ConnectionWindow) failed", ex);
+                MessageCollector.AddExceptionMessage("RenameTab (UI.Window.ConnectionWindow) failed", ex);
             }
         }
 

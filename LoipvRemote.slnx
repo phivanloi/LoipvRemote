@@ -1,0 +1,65 @@
+<Solution>
+  <Configurations>
+    <BuildType Name="Debug" />
+    <BuildType Name="Release" />
+    <BuildType Name="Release Self-Contained" />
+    <Platform Name="arm64" />
+    <Platform Name="x64" />
+  </Configurations>
+  <Project Path="LoipvRemote.Application/LoipvRemote.Application.csproj">
+    <BuildType Solution="Release Self-Contained|*" Project="Release" />
+  </Project>
+  <Project Path="LoipvRemote.Connectors/LoipvRemote.Connectors.csproj">
+    <Platform Solution="*|arm64" Project="arm64" />
+    <Platform Solution="*|x64" Project="x64" />
+  </Project>
+  <Project Path="LoipvRemote.Desktop/LoipvRemote.Desktop.csproj">
+    <BuildType Solution="Release Self-Contained|*" Project="Release" />
+    <Platform Solution="*|arm64" Project="arm64" />
+    <Platform Solution="*|x64" Project="x64" />
+  </Project>
+  <Project Path="LoipvRemote.Domain/LoipvRemote.Domain.csproj">
+    <BuildType Solution="Release Self-Contained|*" Project="Release" />
+  </Project>
+  <Project Path="LoipvRemote.Infrastructure.Persistence/LoipvRemote.Infrastructure.Persistence.csproj">
+    <BuildType Solution="Release Self-Contained|*" Project="Release" />
+  </Project>
+  <Project Path="LoipvRemote.Infrastructure.Windows/LoipvRemote.Infrastructure.Windows.csproj">
+    <BuildType Solution="Release Self-Contained|*" Project="Release" />
+  </Project>
+  <Project Path="LoipvRemote.Protocols.Abstractions/LoipvRemote.Protocols.Abstractions.csproj">
+    <BuildType Solution="Release Self-Contained|*" Project="Release" />
+  </Project>
+  <Project Path="LoipvRemote.Protocols.Browser/LoipvRemote.Protocols.Browser.csproj">
+    <BuildType Solution="Release Self-Contained|*" Project="Release" />
+  </Project>
+  <Project Path="LoipvRemote.Protocols.ExternalApps/LoipvRemote.Protocols.ExternalApps.csproj">
+    <BuildType Solution="Release Self-Contained|*" Project="Release" />
+  </Project>
+  <Project Path="LoipvRemote.Protocols.Putty/LoipvRemote.Protocols.Putty.csproj">
+    <BuildType Solution="Release Self-Contained|*" Project="Release" />
+  </Project>
+  <Project Path="LoipvRemote.Protocols.Rdp/LoipvRemote.Protocols.Rdp.csproj">
+    <BuildType Solution="Release Self-Contained|*" Project="Release" />
+  </Project>
+  <Project Path="LoipvRemote.Protocols.Vnc/LoipvRemote.Protocols.Vnc.csproj">
+    <BuildType Solution="Release Self-Contained|*" Project="Release" />
+  </Project>
+  <Project Path="LoipvRemoteInstaller/Installer/Installer.wixproj">
+    <BuildType Solution="Release Self-Contained|*" Project="Release" />
+    <Platform Solution="*|arm64" Project="arm64" />
+    <Platform Solution="*|x64" Project="x64" />
+  </Project>
+  <Project Path="LoipvRemote/LoipvRemote.csproj">
+    <Platform Solution="*|arm64" Project="arm64" />
+    <Platform Solution="*|x64" Project="x64" />
+  </Project>
+  <Project Path="LoipvRemoteTests/LoipvRemoteTests.csproj">
+    <BuildType Solution="Release Self-Contained|*" Project="Release" />
+    <Platform Solution="*|arm64" Project="arm64" />
+    <Platform Solution="*|x64" Project="x64" />
+  </Project>
+  <Project Path="ObjectListView/ObjectListView.NetCore.csproj">
+    <BuildType Solution="Release Self-Contained|*" Project="Release" />
+  </Project>
+</Solution>

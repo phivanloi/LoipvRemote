@@ -1,6 +1,6 @@
 using System;
 using System.IO;
-using LoipvRemote.App;
+using LoipvRemote.Messages;
 using Renci.SshNet;
 using Renci.SshNet.Sftp;
 using static System.IO.FileMode;
@@ -10,8 +10,9 @@ using System.Runtime.Versioning;
 namespace LoipvRemote.Tools
 {
     [SupportedOSPlatform("windows")]
-    internal class SecureTransfer : IDisposable
+    internal sealed class SecureTransfer : IDisposable
     {
+        private readonly MessageCollector _messageCollector;
         private readonly string Host;
         private readonly string User;
         private readonly string Password;
@@ -25,12 +26,14 @@ namespace LoipvRemote.Tools
         public AsyncCallback asyncCallback;
 
 
-        public SecureTransfer()
+        public SecureTransfer(MessageCollector messageCollector)
         {
+            _messageCollector = messageCollector ?? throw new ArgumentNullException(nameof(messageCollector));
         }
 
-        public SecureTransfer(string host, string user, string pass, int port, SSHTransferProtocol protocol)
+        public SecureTransfer(string host, string user, string pass, int port, SSHTransferProtocol protocol, MessageCollector messageCollector)
         {
+            _messageCollector = messageCollector ?? throw new ArgumentNullException(nameof(messageCollector));
             Host = host;
             User = user;
             Password = pass;
@@ -44,8 +47,10 @@ namespace LoipvRemote.Tools
             int port,
             SSHTransferProtocol protocol,
             string source,
-            string dest)
+            string dest,
+            MessageCollector messageCollector)
         {
+            _messageCollector = messageCollector ?? throw new ArgumentNullException(nameof(messageCollector));
             Host = host;
             User = user;
             Password = pass;
@@ -90,7 +95,7 @@ namespace LoipvRemote.Tools
             {
                 if (!ScpClt.IsConnected)
                 {
-                    Runtime.MessageCollector.AddMessage(Messages.MessageClass.ErrorMsg,
+                    _messageCollector.AddMessage(Messages.MessageClass.ErrorMsg,
                         Language.SshTransferFailed + Environment.NewLine +
                         "SCP Not Connected!");
                     return;
@@ -103,7 +108,7 @@ namespace LoipvRemote.Tools
             {
                 if (!SftpClt.IsConnected)
                 {
-                    Runtime.MessageCollector.AddMessage(Messages.MessageClass.ErrorMsg,
+                    _messageCollector.AddMessage(Messages.MessageClass.ErrorMsg,
                         Language.SshTransferFailed + Environment.NewLine +
                         "SFTP Not Connected!");
                     return;

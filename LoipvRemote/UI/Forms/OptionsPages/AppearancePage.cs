@@ -119,18 +119,11 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             Properties.OptionsAppearancePage.Default.ShowSystemTrayIcon = chkShowSystemTrayIcon.Checked;
             if (Properties.OptionsAppearancePage.Default.ShowSystemTrayIcon)
             {
-                if (Runtime.NotificationAreaIcon == null)
-                {
-                    Runtime.NotificationAreaIcon = new NotificationAreaIcon();
-                }
+                FrmMain.Default.EnsureNotificationAreaIcon();
             }
             else
             {
-                if (Runtime.NotificationAreaIcon != null)
-                {
-                    Runtime.NotificationAreaIcon.Dispose();
-                    Runtime.NotificationAreaIcon = null;
-                }
+                FrmMain.Default.DisposeNotificationAreaIcon();
             }
 
             Properties.OptionsAppearancePage.Default.MinimizeToTray = chkMinimizeToSystemTray.Checked;

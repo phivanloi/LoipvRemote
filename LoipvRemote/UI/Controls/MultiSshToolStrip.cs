@@ -5,6 +5,7 @@ using System;
 using System.Collections;
 using System.Linq;
 using LoipvRemote.App;
+using LoipvRemote.App.Composition;
 using LoipvRemote.Connection;
 using LoipvRemote.Connection.Protocol;
 using LoipvRemote.Resources.Language;
@@ -23,6 +24,7 @@ namespace LoipvRemote.UI.Controls
         private readonly ArrayList quickConnectConnections = [];
         private readonly ArrayList previousCommands = [];
         private readonly ThemeManager _themeManager;
+        private DesktopShellRuntime? _desktopShellRuntime;
 
         private int CommandHistoryLength { get; set; } = 100;
 
@@ -33,6 +35,12 @@ namespace LoipvRemote.UI.Controls
             _themeManager.ThemeChanged += ApplyTheme;
             ApplyTheme();
         }
+
+        internal void AttachRuntime(DesktopShellRuntime desktopShellRuntime) =>
+            _desktopShellRuntime = desktopShellRuntime ?? throw new ArgumentNullException(nameof(desktopShellRuntime));
+
+        private DesktopShellRuntime DesktopShellRuntime => _desktopShellRuntime
+            ?? throw new InvalidOperationException("The desktop shell runtime must be attached before using multi SSH.");
 
         private void ApplyTheme()
         {
@@ -76,7 +84,7 @@ namespace LoipvRemote.UI.Controls
                 processHandlers.AddRange(ProcessOpenConnections(connection));
             }
 
-            System.Collections.Generic.IEnumerable<ConnectionInfo> connectionTreeConnections = Runtime.ConnectionsService.ConnectionTreeModel.GetRecursiveChildList().Where(item => item.OpenConnections.Count > 0);
+            System.Collections.Generic.IEnumerable<ConnectionInfo> connectionTreeConnections = DesktopShellRuntime.ConnectionsService.ConnectionTreeModel.GetRecursiveChildList().Where(item => item.OpenConnections.Count > 0);
 
             foreach (ConnectionInfo connection in connectionTreeConnections)
             {

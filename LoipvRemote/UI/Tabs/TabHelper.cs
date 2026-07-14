@@ -1,6 +1,6 @@
-using LoipvRemote.App;
 using LoipvRemote.UI.Window;
 using System;
+using System.Diagnostics;
 using System.Runtime.Versioning;
 
 namespace LoipvRemote.UI.Tabs
@@ -25,7 +25,7 @@ namespace LoipvRemote.UI.Tabs
             {
                 currentTab = value;
                 findCurrentPanel();
-                Runtime.MessageCollector.AddMessage(Messages.MessageClass.DebugMsg, "Tab got focused: " + currentTab.TabText);
+                Trace.WriteLine("Tab got focused: " + currentTab.TabText);
             }
         }
 
@@ -49,8 +49,7 @@ namespace LoipvRemote.UI.Tabs
             set
             {
                 currentPanel = value;
-                Runtime.MessageCollector.AddMessage(Messages.MessageClass.DebugMsg,
-                                                    "Panel got focused: " + currentPanel.TabText);
+                Trace.WriteLine("Panel got focused: " + currentPanel.TabText);
             }
         }
     }

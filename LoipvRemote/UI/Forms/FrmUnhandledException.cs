@@ -7,6 +7,7 @@ using System.Windows.Forms;
 using LoipvRemote.App;
 using LoipvRemote.App.Info;
 using LoipvRemote.Resources.Language;
+using ApplicationEdition = LoipvRemote.UseCases.Hosting.ApplicationEdition;
 
 namespace LoipvRemote.UI.Forms
 {
@@ -39,7 +40,7 @@ namespace LoipvRemote.UI.Forms
             textBoxEnvironment.Text = new StringBuilder()
                 .AppendLine($"OS: {Environment.OSVersion}")
                 .AppendLine($"{GeneralAppInfo.ProductName} Version: {GeneralAppInfo.ApplicationVersion}")
-                .AppendLine("Edition: " + (Runtime.IsPortableEdition ? "Portable" : "MSI"))
+                .AppendLine("Edition: " + (ApplicationEdition.IsPortable ? "Portable" : "MSI"))
                 .AppendLine("Cmd line args: " + string.Join(" ", Environment.GetCommandLineArgs().Skip(1)))
                 .ToString();
         }

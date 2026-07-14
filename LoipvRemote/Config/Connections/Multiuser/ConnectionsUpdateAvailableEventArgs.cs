@@ -1,5 +1,4 @@
 using System;
-using LoipvRemote.Config.DatabaseConnectors;
 
 namespace LoipvRemote.Config.Connections.Multiuser
 {
@@ -8,16 +7,13 @@ namespace LoipvRemote.Config.Connections.Multiuser
 
     public class ConnectionsUpdateAvailableEventArgs : EventArgs
     {
-        public IDatabaseConnector DatabaseConnector { get; private set; }
-        public DateTime UpdateTime { get; private set; }
+        public string Revision { get; }
         public bool Handled { get; set; }
 
-        public ConnectionsUpdateAvailableEventArgs(IDatabaseConnector databaseConnector, DateTime updateTime)
+        public ConnectionsUpdateAvailableEventArgs(string revision)
         {
-            if (databaseConnector == null)
-                throw new ArgumentNullException(nameof(databaseConnector));
-            DatabaseConnector = databaseConnector;
-            UpdateTime = updateTime;
+            ArgumentException.ThrowIfNullOrWhiteSpace(revision);
+            Revision = revision;
         }
     }
 }

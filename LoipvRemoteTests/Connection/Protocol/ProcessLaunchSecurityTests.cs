@@ -1,8 +1,6 @@
 using System;
 using System.Text;
-using LoipvRemote.Connection.Protocol;
-using LoipvRemote.Connection.Protocol.PowerShell;
-using LoipvRemote.Connection.Protocol.Terminal;
+using LoipvRemote.Protocols.ExternalApps;
 using NUnit.Framework;
 
 namespace LoipvRemoteTests.Connection.Protocol

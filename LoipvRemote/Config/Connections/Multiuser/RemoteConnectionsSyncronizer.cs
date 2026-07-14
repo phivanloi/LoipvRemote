@@ -1,4 +1,4 @@
-using LoipvRemote.App;
+using LoipvRemote.Connection;
 using System;
 using System.Runtime.Versioning;
 using System.Timers;
@@ -12,15 +12,19 @@ namespace LoipvRemote.Config.Connections.Multiuser
     {
         private readonly System.Timers.Timer _updateTimer;
         private readonly IConnectionsUpdateChecker _updateChecker;
+        private readonly ConnectionsService _connectionsService;
 
         public double TimerIntervalInMilliseconds
         {
             get { return _updateTimer.Interval; }
         }
 
-        public RemoteConnectionsSyncronizer(IConnectionsUpdateChecker updateChecker)
+        public RemoteConnectionsSyncronizer(
+            IConnectionsUpdateChecker updateChecker,
+            ConnectionsService connectionsService)
         {
-            _updateChecker = updateChecker;
+            _updateChecker = updateChecker ?? throw new ArgumentNullException(nameof(updateChecker));
+            _connectionsService = connectionsService ?? throw new ArgumentNullException(nameof(connectionsService));
             _updateTimer = new System.Timers.Timer(3000);
             SetEventListeners();
         }
@@ -36,7 +40,7 @@ namespace LoipvRemote.Config.Connections.Multiuser
 
         private void Load(object sender, ConnectionsUpdateAvailableEventArgs args)
         {
-            Runtime.ConnectionsService.LoadConnections(true, false, "");
+            _connectionsService.LoadConnections(true, false, "");
             args.Handled = true;
         }
 

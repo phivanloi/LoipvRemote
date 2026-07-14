@@ -3,25 +3,25 @@
   <PropertyGroup>
     <Platforms>x64;arm64</Platforms>
     <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
-    <NoWarn>$(NoWarn);NU1701</NoWarn>
   </PropertyGroup>
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
-    <TransformOnBuild>true</TransformOnBuild>
-    <TransformOutOfDateOnly>false</TransformOutOfDateOnly>
-    <OverwriteReadOnlyOutputFiles>true</OverwriteReadOnlyOutputFiles>
     <ApplicationIcon>Icons\LoipvRemote.ico</ApplicationIcon>
     <AssemblyName>LoipvRemote</AssemblyName>
-    <Version>1.78.2-dev</Version>
+    <Version>2.0.35.0</Version>
+    <AssemblyVersion>2.0.35.0</AssemblyVersion>
+    <FileVersion>2.0.35.0</FileVersion>
+    <InformationalVersion>$(Version)</InformationalVersion>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <AssemblyConfiguration>$(Platform)</AssemblyConfiguration>
     <Description>LoipvRemote remote connections manager</Description>
     <Copyright>$([System.DateTime]::Now.Year) LoipvRemote</Copyright>
     <PackageLicenseFile>COPYING.TXT</PackageLicenseFile>
     <Platforms>x64;arm64</Platforms>
     <Configurations>Debug;Release;Release Self-Contained;Deploy to github</Configurations>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-    <LangVersion>latest</LangVersion>
     <PackageIcon>Header_dark.png</PackageIcon>
     <ProjectTypeGuids>{60dc8134-eba5-43b8-bcc9-bb4bc16c2548};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
     <UseWPF>True</UseWPF>
@@ -32,29 +32,17 @@
     <RepositoryType>git</RepositoryType>
     <StartupObject>LoipvRemote.App.ProgramRoot</StartupObject>
     <ProduceReferenceAssembly>True</ProduceReferenceAssembly>
-    <UserSecretsId>1307e3e3-38d6-41ee-8301-0a9bae87038b</UserSecretsId>
-    <NeutralLanguage>en</NeutralLanguage>
+    <NeutralLanguage>en-US</NeutralLanguage>
   </PropertyGroup>
-  <ItemGroup>
-    <Compile Remove="App\Checks\AppUpdater.cs;App\Checks\UpdateFile.cs;App\Checks\UpdateInfo.cs;App\Info\UpdateChannelInfo.cs;Config\Settings\Registry\OptRegistryUpdatesPage.cs;UI\Forms\OptionsPages\UpdatesPage.cs;UI\Forms\OptionsPages\UpdatesPage.Designer.cs;UI\Menu\msMain\HelpMenu.cs;UI\Window\UpdateWindow.cs;UI\Window\UpdateWindow.Designer.cs;Properties\OptionsUpdatesPage.Designer.cs" />
-    <EmbeddedResource Remove="UI\Forms\OptionsPages\UpdatesPage.resx;UI\Window\UpdateWindow.resx" />
-    <None Remove="Properties\OptionsUpdatesPage.settings" />
-  </ItemGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <DefineConstants>DEBUG</DefineConstants>
-    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-    <WarningsAsErrors />
     <OutputPath>bin\x64\Debug\</OutputPath>
-    <GenerateAssemblyInfo>False</GenerateAssemblyInfo>
     <Optimize>False</Optimize>
     <WarningLevel>8</WarningLevel>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|arm64'">
     <DefineConstants>DEBUG</DefineConstants>
-    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-    <WarningsAsErrors />
     <OutputPath>bin\arm64\Debug\</OutputPath>
-    <GenerateAssemblyInfo>False</GenerateAssemblyInfo>
     <Optimize>False</Optimize>
     <WarningLevel>8</WarningLevel>
   </PropertyGroup>
@@ -62,9 +50,6 @@
     <DefineConstants />
     <Optimize>True</Optimize>
     <OutputPath>bin\x64\Release\</OutputPath>
-    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-    <WarningsAsErrors />
-    <GenerateAssemblyInfo>False</GenerateAssemblyInfo>
     <WarningLevel>8</WarningLevel>
     <ResolveComReferenceSilent>True</ResolveComReferenceSilent>
   </PropertyGroup>
@@ -72,19 +57,14 @@
     <DefineConstants />
     <Optimize>True</Optimize>
     <OutputPath>bin\arm64\Release\</OutputPath>
-    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-    <WarningsAsErrors />
-    <GenerateAssemblyInfo>False</GenerateAssemblyInfo>
     <WarningLevel>8</WarningLevel>
     <ResolveComReferenceSilent>True</ResolveComReferenceSilent>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release Self-Contained|x64'">
-    <DefineConstants>PORTABLE</DefineConstants>
+    <!-- Self-contained is the installer runtime, not the portable edition. -->
+    <DefineConstants />
     <Optimize>True</Optimize>
     <PublishDir>bin\x64\Publish Self-Contained\</PublishDir>
-    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-    <WarningsAsErrors />
-    <GenerateAssemblyInfo>False</GenerateAssemblyInfo>
     <WarningLevel>8</WarningLevel>
     <ResolveComReferenceSilent>True</ResolveComReferenceSilent>
     <SelfContained>true</SelfContained>
@@ -96,13 +76,11 @@
     <RunArguments></RunArguments>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release Self-Contained|arm64'">
-    <DefineConstants>PORTABLE</DefineConstants>
+    <!-- Self-contained is the installer runtime, not the portable edition. -->
+    <DefineConstants />
     <Optimize>True</Optimize>
     <OutputPath>bin\arm64\Release Self-Contained\</OutputPath>
     <PublishDir>bin\arm64\Publish Self-Contained\</PublishDir>
-    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-    <WarningsAsErrors />
-    <GenerateAssemblyInfo>False</GenerateAssemblyInfo>
     <WarningLevel>8</WarningLevel>
     <ResolveComReferenceSilent>True</ResolveComReferenceSilent>
     <SelfContained>true</SelfContained>
@@ -114,39 +92,23 @@
     <RunArguments></RunArguments>
   </PropertyGroup>
   <ItemGroup>
-    <None Remove="buildenv.tmp" />
     <None Remove="UI\Font\HandelGotDBol.ttf" />
     <None Remove="Resources\LoipvRemote_Icon_new.png" />
   </ItemGroup>
   <ItemGroup>
-    <COMReference Include="MSTSCLib">
-      <WrapperTool>aximp</WrapperTool>
-      <VersionMinor>0</VersionMinor>
-      <VersionMajor>1</VersionMajor>
-      <Guid>8c11efa1-92c3-11d1-bc1e-00c04fa31489</Guid>
-      <Lcid>0</Lcid>
-      <Isolated>false</Isolated>
-      <EmbedInteropTypes>false</EmbedInteropTypes>
-    </COMReference>
-  </ItemGroup>
-  <ItemGroup>
     <PackageReference Include="BouncyCastle.Cryptography" />
-    <PackageReference Include="ConsoleControl" />
     <PackageReference Include="DockPanelSuite" />
     <PackageReference Include="DockPanelSuite.ThemeVS2015" />
     <PackageReference Include="log4net" />
     <PackageReference Include="Microsoft-WindowsAPICodePack-Shell" />
     <PackageReference Include="Microsoft.Data.SqlClient" />
     <PackageReference Include="Microsoft.Data.Sqlite" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" />
-    <PackageReference Include="Microsoft.Web.WebView2" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
     <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" />
     <PackageReference Include="MySql.Data" />
     <PackageReference Include="System.Data.Odbc" />
     <PackageReference Include="Newtonsoft.Json" />
     <PackageReference Include="SSH.NET" />
-    <PackageReference Include="System.Management" />
-    <PackageReference Include="VncSharpCore" />
   </ItemGroup>
   <ItemGroup>
     <Compile Update="Language\Language.Designer.cs">
@@ -154,11 +116,7 @@
       <AutoGen>True</AutoGen>
       <DependentUpon>Language.resx</DependentUpon>
     </Compile>
-    <Compile Update="Properties\AssemblyInfo.cs">
-      <DesignTime>True</DesignTime>
-      <AutoGen>True</AutoGen>
-      <DependentUpon>AssemblyInfo.tt</DependentUpon>
-    </Compile>
+    <Compile Remove="Properties\AssemblyInfo.cs" />
     <Compile Update="Properties\OptionsBackupPage.Designer.cs">
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
       <AutoGen>True</AutoGen>
@@ -234,11 +192,6 @@
       <AutoGen>True</AutoGen>
       <DependentUpon>App.settings</DependentUpon>
     </Compile>
-    <Compile Update="Properties\OptionsUpdatesPage.Designer.cs">
-      <DesignTimeSharedInput>True</DesignTimeSharedInput>
-      <AutoGen>True</AutoGen>
-      <DependentUpon>OptionsUpdatesPage.settings</DependentUpon>
-    </Compile>
     <Compile Update="UI\Forms\OptionsPages\AdvancedPage.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -278,15 +231,6 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <T4ParameterValues Include="platformType">
-      <Value>$(Platform)</Value>
-    </T4ParameterValues>
-  </ItemGroup>
-  <ItemGroup>
-    <None Update="Properties\AssemblyInfo.tt">
-      <LastGenOutput>AssemblyInfo.cs</LastGenOutput>
-      <Generator>TextTemplatingFileGenerator</Generator>
-    </None>
     <None Update="Icons\Admin.ico">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -470,10 +414,6 @@
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>App.Designer.cs</LastGenOutput>
     </None>
-    <None Update="Properties\OptionsUpdatesPage.settings">
-      <Generator>SettingsSingleFileGenerator</Generator>
-      <LastGenOutput>OptionsUpdatesPage.Designer.cs</LastGenOutput>
-    </None>
     <None Update="PuTTYNG.exe">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -529,8 +469,21 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\ExternalConnectors\ExternalConnectors.csproj" />
+    <InternalsVisibleTo Include="LoipvRemoteTests" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\LoipvRemote.Application\LoipvRemote.Application.csproj" />
+    <ProjectReference Include="..\LoipvRemote.Desktop\LoipvRemote.Desktop.csproj" />
+    <ProjectReference Include="..\LoipvRemote.Infrastructure.Windows\LoipvRemote.Infrastructure.Windows.csproj" />
+    <ProjectReference Include="..\LoipvRemote.Infrastructure.Persistence\LoipvRemote.Infrastructure.Persistence.csproj" />
+    <ProjectReference Include="..\LoipvRemote.Connectors\LoipvRemote.Connectors.csproj" />
     <ProjectReference Include="..\ObjectListView\ObjectListView.NetCore.csproj" />
+    <ProjectReference Include="..\LoipvRemote.Protocols.Abstractions\LoipvRemote.Protocols.Abstractions.csproj" />
+    <ProjectReference Include="..\LoipvRemote.Protocols.Rdp\LoipvRemote.Protocols.Rdp.csproj" />
+    <ProjectReference Include="..\LoipvRemote.Protocols.Vnc\LoipvRemote.Protocols.Vnc.csproj" />
+    <ProjectReference Include="..\LoipvRemote.Protocols.Browser\LoipvRemote.Protocols.Browser.csproj" />
+    <ProjectReference Include="..\LoipvRemote.Protocols.Putty\LoipvRemote.Protocols.Putty.csproj" />
+    <ProjectReference Include="..\LoipvRemote.Protocols.ExternalApps\LoipvRemote.Protocols.ExternalApps.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Resource Include="UI\Font\HandelGotDBol.ttf">
@@ -563,7 +516,6 @@
   </ItemGroup>
   <PropertyGroup Condition="'$(Platform)'=='x64'">
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-    <Nullable>enable</Nullable>
     <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Deploy to github|x64'">
@@ -571,7 +523,6 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Platform)'=='arm64'">
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-    <Nullable>enable</Nullable>
     <PlatformTarget>ARM64</PlatformTarget>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Deploy to github|ARM64'">
@@ -583,7 +534,7 @@
     </ItemGroup>
   </Target>
   <PropertyGroup>
-    <!-- Disable CET compatibility check in .NET 9 AppHost -->
+    <!-- Disable CET compatibility check for the Windows AppHost. -->
     <CETCompat>false</CETCompat>
   </PropertyGroup>
   <Target Name="PublishAfterBuild" AfterTargets="Build" Condition="'$(Configuration)' == 'Release Self-Contained'">
@@ -596,5 +547,4 @@
     <RemoveDir Directories="$(TempBuildDir)" />
     <RemoveDir Directories="$(ProjectDir)bin\x64\Release Self-Contained" />
   </Target>
-  <Import Project="$(MSBuildExtensionsPath)\Microsoft\VisualStudio\v18.0\TextTemplating\Microsoft.TextTemplating.targets" />
 </Project>

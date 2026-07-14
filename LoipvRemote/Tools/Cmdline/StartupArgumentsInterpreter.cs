@@ -32,7 +32,7 @@ namespace LoipvRemote.Tools.Cmdline
 
             try
             {
-                CmdArgumentsInterpreter args = new(cmdlineArgs);
+                CmdArgumentsInterpreter args = new(cmdlineArgs, _messageCollector);
 
                 ParseResetPositionArg(args);
                 ParseResetPanelsArg(args);

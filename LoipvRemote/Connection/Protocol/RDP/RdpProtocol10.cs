@@ -1,18 +1,17 @@
 using System.Runtime.Versioning;
-using System.Windows.Forms;
-using AxMSTSCLib;
+using LoipvRemote.Connectors.Abstractions;
+using LoipvRemote.UseCases.Credentials;
 
 namespace LoipvRemote.Connection.Protocol.RDP
 {
     [SupportedOSPlatform("windows")]
     public class RdpProtocol10 : RdpProtocol9
     {
-        protected override RdpVersion RdpProtocolVersion => RDP.RdpVersion.Rdc10;
-
-        protected override AxHost CreateActiveXRdpClientControl()
+        public RdpProtocol10(ExternalCredentialConnectorRegistry externalCredentialConnectors, IStringSecretStore userSecretStore) : base(externalCredentialConnectors, userSecretStore)
         {
-            return new AxMsRdpClient11NotSafeForScripting();
         }
+
+        protected override RdpVersion RdpProtocolVersion => global::LoipvRemote.Domain.Protocols.Rdp.RdpVersion.Rdc10;
 
         public override bool Initialize()
         {

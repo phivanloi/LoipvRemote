@@ -50,32 +50,30 @@ namespace LoipvRemote.Config.Serializers.ConnectionSerializers.Csv
 
         private void WriteCsvHeader(StringBuilder sb)
         {
-            sb.Append("Name;Id;Parent;NodeType;Description;Icon;Panel;TabColor;ConnectionFrameColor;");
+            sb.Append("Name;Id;Parent;NodeType;Description;Icon;Panel;Color;TabColor;ConnectionFrameColor;");
             if (_saveFilter.SaveUsername)
                 sb.Append("Username;");
-            if (_saveFilter.SavePassword)
-                sb.Append("Password;");
             if (_saveFilter.SaveDomain)
                 sb.Append("Domain;");
 
             sb.Append("Hostname;Port;VmId;Protocol;SSHTunnelConnectionName;OpeningCommand;SSHOptions;PuttySession;ConnectToConsole;UseCredSsp;UseRestrictedAdmin;UseRCG;UseRedirectionServerName;UseVmId;UseEnhancedMode;RenderingEngine;RDPAuthenticationLevel;" +
                       "LoadBalanceInfo;Colors;Resolution;AutomaticResize;DisplayWallpaper;DisplayThemes;EnableFontSmoothing;EnableDesktopComposition;DisableFullWindowDrag;DisableMenuAnimations;DisableCursorShadow;DisableCursorBlinking;" +
-                      "CacheBitmaps;RedirectDiskDrives;RedirectDiskDrivesCustomRedirectPorts;RedirectPrinters;RedirectClipboard;RedirectSmartCards;RedirectSound;RedirectKeys;" +
+                      "CacheBitmaps;RedirectDiskDrives;RedirectDiskDrivesCustom;RedirectPorts;RedirectPrinters;RedirectClipboard;RedirectSmartCards;RedirectSound;RedirectKeys;" +
                       "PreExtApp;PostExtApp;MacAddress;UserField;EnvironmentTags;ExtApp;Favorite;VNCCompression;VNCEncoding;VNCAuthMode;VNCProxyType;VNCProxyIP;" +
-                      "VNCProxyPort;VNCProxyUsername;VNCProxyPassword;VNCColors;VNCSmartSizeMode;VNCViewOnly;RDGatewayUsageMethod;RDGatewayHostname;" +
-                      "RDGatewayUseConnectionCredentials;RDGatewayUsername;RDGatewayPassword;RDGatewayDomain;RDGatewayExternalCredentialProvider;RDGatewayUserViaAPI;RedirectAudioCapture;RdpVersion;RDPStartProgram;RDPStartProgramWorkDir;UserViaAPI;EC2InstanceId;EC2Region;ExternalCredentialProvider;ExternalAddressProvider;");
+                      "VNCProxyPort;VNCProxyUsername;VNCColors;VNCSmartSizeMode;VNCViewOnly;RDGatewayUsageMethod;RDGatewayHostname;" +
+                      "RDGatewayUseConnectionCredentials;RDGatewayUsername;RDGatewayDomain;RDGatewayExternalCredentialProvider;RDGatewayUserViaAPI;RedirectAudioCapture;RdpVersion;RDPStartProgram;RDPStartProgramWorkDir;UserViaAPI;EC2InstanceId;EC2Region;ExternalCredentialProvider;ExternalAddressProvider;");
 
             if (_saveFilter.SaveInheritance)
                 sb.Append("InheritCacheBitmaps;InheritColors;InheritDescription;InheritDisplayThemes;InheritDisplayWallpaper;" +
-                          "InheritEnableFontSmoothing;InheritEnableDesktopComposition;InheritDisableFullWindowDrag;InheritDisableMenuAnimations;InheritDisableCursorShadow;InheritDisableCursorBlinking;InheritDomain;InheritIcon;InheritPanel;InheritTabColor;InheritConnectionFrameColor;InheritPassword;InheritPort;" +
+                          "InheritEnableFontSmoothing;InheritEnableDesktopComposition;InheritDisableFullWindowDrag;InheritDisableMenuAnimations;InheritDisableCursorShadow;InheritDisableCursorBlinking;InheritDomain;InheritIcon;InheritPanel;InheritColor;InheritTabColor;InheritConnectionFrameColor;InheritPort;" +
                           "InheritProtocol;InheritSSHTunnelConnectionName;InheritOpeningCommand;InheritSSHOptions;InheritPuttySession;InheritRedirectDiskDrives;InheritRedirectDiskDrivesCustom;InheritRedirectKeys;InheritRedirectPorts;InheritRedirectPrinters;" +
                           "InheritRedirectClipboard;InheritRedirectSmartCards;InheritRedirectSound;InheritResolution;InheritAutomaticResize;" +
                           "InheritUseConsoleSession;InheritUseCredSsp;InheritUseRestrictedAdmin;InheritUseRCG;InheritUseRedirectionServerName;InheritUseVmId;InheritUseEnhancedMode;InheritVmId;InheritRenderingEngine;InheritUsername;" +
                           "InheritRDPAuthenticationLevel;InheritLoadBalanceInfo;InheritPreExtApp;InheritPostExtApp;InheritMacAddress;InheritUserField;" +
                           "InheritEnvironmentTags;InheritFavorite;InheritExtApp;InheritVNCCompression;InheritVNCEncoding;InheritVNCAuthMode;InheritVNCProxyType;InheritVNCProxyIP;" +
-                          "InheritVNCProxyPort;InheritVNCProxyUsername;InheritVNCProxyPassword;InheritVNCColors;InheritVNCSmartSizeMode;InheritVNCViewOnly;" +
+                          "InheritVNCProxyPort;InheritVNCProxyUsername;InheritVNCColors;InheritVNCSmartSizeMode;InheritVNCViewOnly;" +
                           "InheritRDGatewayUsageMethod;InheritRDGatewayHostname;InheritRDGatewayUseConnectionCredentials;InheritRDGatewayUsername;" +
-                          "InheritRDGatewayPassword;InheritRDGatewayDomain;InheritRDGatewayExternalCredentialProvider;InheritRDGatewayUserViaAPI;InheritRDPAlertIdleTimeout;InheritRDPMinutesToIdleTimeout;InheritSoundQuality;InheritUserViaAPI;" +
+                          "InheritRDGatewayDomain;InheritRDGatewayExternalCredentialProvider;InheritRDGatewayUserViaAPI;InheritRDPAlertIdleTimeout;InheritRDPMinutesToIdleTimeout;InheritSoundQuality;InheritUserViaAPI;" +
                           "InheritRedirectAudioCapture;InheritRdpVersion;InheritExternalCredentialProvider");
         }
 
@@ -107,15 +105,12 @@ namespace LoipvRemote.Config.Serializers.ConnectionSerializers.Csv
               .Append(FormatForCsv(con.Description))
               .Append(FormatForCsv(con.Icon))
               .Append(FormatForCsv(con.Panel))
+              .Append(FormatForCsv(con.Color))
               .Append(FormatForCsv(con.TabColor))
               .Append(FormatForCsv(con.ConnectionFrameColor));
 
             if (_saveFilter.SaveUsername)
                 sb.Append(FormatForCsv(con.Username));
-
-            if (_saveFilter.SavePassword)
-                //sb.Append(con.Password?.ConvertToUnsecureString() + ";");
-                sb.Append(con.Password + ";");
 
             if (_saveFilter.SaveDomain)
                 sb.Append(FormatForCsv(con.Domain));
@@ -172,7 +167,6 @@ namespace LoipvRemote.Config.Serializers.ConnectionSerializers.Csv
               .Append(FormatForCsv(con.VNCProxyIP))
               .Append(FormatForCsv(con.VNCProxyPort))
               .Append(FormatForCsv(con.VNCProxyUsername))
-              .Append(FormatForCsv(con.VNCProxyPassword))
               .Append(FormatForCsv(con.VNCColors))
               .Append(FormatForCsv(con.VNCSmartSizeMode))
               .Append(FormatForCsv(con.VNCViewOnly))
@@ -180,7 +174,6 @@ namespace LoipvRemote.Config.Serializers.ConnectionSerializers.Csv
               .Append(FormatForCsv(con.RDGatewayHostname))
               .Append(FormatForCsv(con.RDGatewayUseConnectionCredentials))
               .Append(FormatForCsv(con.RDGatewayUsername))
-              .Append(FormatForCsv(con.RDGatewayPassword))
               .Append(FormatForCsv(con.RDGatewayDomain))
               .Append(FormatForCsv(con.RDGatewayExternalCredentialProvider))
               .Append(FormatForCsv(con.RDGatewayUserViaAPI))
@@ -213,9 +206,9 @@ namespace LoipvRemote.Config.Serializers.ConnectionSerializers.Csv
               .Append(FormatForCsv(con.Inheritance.Domain))
               .Append(FormatForCsv(con.Inheritance.Icon))
               .Append(FormatForCsv(con.Inheritance.Panel))
+              .Append(FormatForCsv(con.Inheritance.Color))
               .Append(FormatForCsv(con.Inheritance.TabColor))
               .Append(FormatForCsv(con.Inheritance.ConnectionFrameColor))
-              .Append(FormatForCsv(con.Inheritance.Password))
               .Append(FormatForCsv(con.Inheritance.Port))
               .Append(FormatForCsv(con.Inheritance.Protocol))
               .Append(FormatForCsv(con.Inheritance.SSHTunnelConnectionName))
@@ -258,7 +251,6 @@ namespace LoipvRemote.Config.Serializers.ConnectionSerializers.Csv
               .Append(FormatForCsv(con.Inheritance.VNCProxyIP))
               .Append(FormatForCsv(con.Inheritance.VNCProxyPort))
               .Append(FormatForCsv(con.Inheritance.VNCProxyUsername))
-              .Append(FormatForCsv(con.Inheritance.VNCProxyPassword))
               .Append(FormatForCsv(con.Inheritance.VNCColors))
               .Append(FormatForCsv(con.Inheritance.VNCSmartSizeMode))
               .Append(FormatForCsv(con.Inheritance.VNCViewOnly))
@@ -266,7 +258,6 @@ namespace LoipvRemote.Config.Serializers.ConnectionSerializers.Csv
               .Append(FormatForCsv(con.Inheritance.RDGatewayHostname))
               .Append(FormatForCsv(con.Inheritance.RDGatewayUseConnectionCredentials))
               .Append(FormatForCsv(con.Inheritance.RDGatewayUsername))
-              .Append(FormatForCsv(con.Inheritance.RDGatewayPassword))
               .Append(FormatForCsv(con.Inheritance.RDGatewayDomain))
               .Append(FormatForCsv(con.Inheritance.RDGatewayExternalCredentialProvider))
               .Append(FormatForCsv(con.Inheritance.RDGatewayUserViaAPI))

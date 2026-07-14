@@ -1,5 +1,5 @@
-using LoipvRemote.App;
-using LoipvRemote.Connection.Protocol;
+using LoipvRemote.Infrastructure.Windows.Interop;
+using LoipvRemote.Protocols.Putty;
 using NUnit.Framework;
 
 namespace LoipvRemoteTests.Connection.Protocol

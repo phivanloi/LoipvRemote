@@ -1,12 +1,12 @@
 using System;
-using System.Diagnostics;
 using System.Drawing;
-using System.Threading;
 using System.Windows.Forms;
-using LoipvRemote.App;
+using LoipvRemote.Infrastructure.Windows.ProcessManagement;
 using LoipvRemote.Messages;
 using LoipvRemote.Properties;
 using LoipvRemote.Tools;
+using LoipvRemote.Protocols.Abstractions;
+using LoipvRemote.Protocols.ExternalApps;
 using LoipvRemote.Resources.Language;
 using System.Runtime.Versioning;
 
@@ -18,10 +18,16 @@ namespace LoipvRemote.Connection.Protocol
         #region Private Fields
 
         private ExternalTool _externalTool;
-        private IntPtr _handle;
-        private Process _process;
+        private ExternalApplicationSession? _session;
+        private readonly IExternalApplicationHostFactory _externalApplicationHostFactory;
 
         #endregion
+
+        public IntegratedProgram(IExternalApplicationHostFactory externalApplicationHostFactory)
+        {
+            _externalApplicationHostFactory = externalApplicationHostFactory
+                ?? throw new ArgumentNullException(nameof(externalApplicationHostFactory));
+        }
 
         #region Public Methods
 
@@ -30,11 +36,11 @@ namespace LoipvRemote.Connection.Protocol
             if (InterfaceControl.Info == null)
                 return base.Initialize();
 
-            _externalTool = Runtime.ExternalToolsService.GetExtAppByName(InterfaceControl.Info.ExtApp);
+            _externalTool = ExternalToolsService.GetExtAppByName(InterfaceControl.Info.ExtApp);
 
             if (_externalTool == null)
             {
-                Runtime.MessageCollector?.AddMessage(MessageClass.ErrorMsg,
+                MessageCollector?.AddMessage(MessageClass.ErrorMsg,
                                                      string.Format(Language.CouldNotFindExternalTool,
                                                                    InterfaceControl.Info.ExtApp));
                 return false;
@@ -49,7 +55,7 @@ namespace LoipvRemote.Connection.Protocol
         {
             try
             {
-                Runtime.MessageCollector?.AddMessage(MessageClass.InformationMsg,
+                MessageCollector?.AddMessage(MessageClass.InformationMsg,
                                                      $"Attempting to start: {_externalTool.DisplayName}", true);
 
                 if (_externalTool.TryIntegrate == false)
@@ -60,62 +66,35 @@ namespace LoipvRemote.Connection.Protocol
                      * will be called - which is just going to call IntegratedProgram.Close() again anyway...
                      * Close();
                      */
-                    Runtime.MessageCollector?.AddMessage(MessageClass.InformationMsg,
+                    MessageCollector?.AddMessage(MessageClass.InformationMsg,
                                                          $"Assuming no other errors/exceptions occurred immediately before this message regarding {_externalTool.DisplayName}, the next \"closed by user\" message can be ignored",
                                                          true);
                     return false;
                 }
 
-                ExternalToolArgumentParser argParser = new(_externalTool.ConnectionInfo);
-                string parsedFileName = argParser.ParseArguments(_externalTool.FileName);
-                string parsedArguments = argParser.ParseArguments(_externalTool.Arguments);
+                _session = new ExternalApplicationSession(
+                    _externalTool.ToDefinition(InterfaceControl.Info),
+                    _externalApplicationHostFactory.Create());
+                _session.Exited += SessionOnExited;
 
-                // Validate the executable path to prevent command injection
-                PathValidator.ValidateExecutablePathOrThrow(parsedFileName, nameof(_externalTool.FileName));
+                if (!_session.Initialize() || !_session.Connect())
+                    return false;
 
-                _process = new Process
+                TimeSpan windowTimeout = TimeSpan.FromSeconds(Properties.OptionsAdvancedPage.Default.MaxPuttyWaitTime);
+                if (!_session.AttachTo(InterfaceControl.Handle, windowTimeout))
                 {
-                    StartInfo =
-                    {
-                        // Use UseShellExecute = false for better security
-                        // Only use true if we need runas for elevation (which IntegratedProgram doesn't use)
-                        UseShellExecute = false,
-                        FileName = parsedFileName,
-                        Arguments = parsedArguments
-                    },
-                    EnableRaisingEvents = true
-                };
-
-
-                _process.Exited += ProcessExited;
-
-                _process.Start();
-                _process.WaitForInputIdle(Properties.OptionsAdvancedPage.Default.MaxPuttyWaitTime * 1000);
-
-                int startTicks = Environment.TickCount;
-                while (_handle.ToInt32() == 0 &
-                       Environment.TickCount < startTicks + Properties.OptionsAdvancedPage.Default.MaxPuttyWaitTime * 1000)
-                {
-                    _process.Refresh();
-                    if (_process.MainWindowTitle != "Default IME")
-                    {
-                        _handle = _process.MainWindowHandle;
-                    }
-
-                    if (_handle.ToInt32() == 0)
-                    {
-                        Thread.Sleep(0);
-                    }
+                    _session.Dispose();
+                    _session = null;
+                    return false;
                 }
 
-                NativeMethods.SetParent(_handle, InterfaceControl.Handle);
-                Runtime.MessageCollector?.AddMessage(MessageClass.InformationMsg, Language.IntAppStuff, true);
-                Runtime.MessageCollector?.AddMessage(MessageClass.InformationMsg,
-                                                     string.Format(Language.IntAppHandle, _handle), true);
-                Runtime.MessageCollector?.AddMessage(MessageClass.InformationMsg,
-                                                     string.Format(Language.IntAppTitle, _process.MainWindowTitle),
+                MessageCollector?.AddMessage(MessageClass.InformationMsg, Language.IntAppStuff, true);
+                MessageCollector?.AddMessage(MessageClass.InformationMsg,
+                                                     string.Format(Language.IntAppHandle, _session.WindowHandle), true);
+                MessageCollector?.AddMessage(MessageClass.InformationMsg,
+                                                     string.Format(Language.IntAppTitle, _session.WindowTitle),
                                                      true);
-                Runtime.MessageCollector?.AddMessage(MessageClass.InformationMsg,
+                MessageCollector?.AddMessage(MessageClass.InformationMsg,
                                                      string.Format(Language.PanelHandle,
                                                                    InterfaceControl.Parent.Handle), true);
 
@@ -125,7 +104,7 @@ namespace LoipvRemote.Connection.Protocol
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector?.AddExceptionMessage(Language.ConnectionFailed, ex);
+                MessageCollector?.AddExceptionMessage(Language.ConnectionFailed, ex);
                 return false;
             }
         }
@@ -134,11 +113,11 @@ namespace LoipvRemote.Connection.Protocol
         {
             try
             {
-                NativeMethods.SetForegroundWindow(_handle);
+                _session?.Focus();
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage(Language.IntAppFocusFailed, ex);
+                MessageCollector.AddExceptionMessage(Language.IntAppFocusFailed, ex);
             }
         }
 
@@ -147,51 +126,37 @@ namespace LoipvRemote.Connection.Protocol
             try
             {
                 if (InterfaceControl.Size == Size.Empty) return;
-                // Use ClientRectangle to account for padding (for connection frame color)
+                // The shell owns the WinForms client bounds; the infrastructure adapter owns MoveWindow.
                 Rectangle clientRect = InterfaceControl.ClientRectangle;
-                NativeMethods.MoveWindow(_handle,
-                                         clientRect.X - SystemInformation.FrameBorderSize.Width,
-                                         clientRect.Y - (SystemInformation.CaptionHeight + SystemInformation.FrameBorderSize.Height),
-                                         clientRect.Width + SystemInformation.FrameBorderSize.Width * 2,
-                                         clientRect.Height + SystemInformation.CaptionHeight +
-                                         SystemInformation.FrameBorderSize.Height * 2, true);
+                _session?.Resize(new EmbeddedWindowBounds(
+                    clientRect.X - SystemInformation.FrameBorderSize.Width,
+                    clientRect.Y - (SystemInformation.CaptionHeight + SystemInformation.FrameBorderSize.Height),
+                    clientRect.Width + SystemInformation.FrameBorderSize.Width * 2,
+                    clientRect.Height + SystemInformation.CaptionHeight +
+                    SystemInformation.FrameBorderSize.Height * 2));
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage(Language.IntAppResizeFailed, ex);
+                MessageCollector.AddExceptionMessage(Language.IntAppResizeFailed, ex);
             }
         }
 
         public override void Close()
         {
-            /* only attempt this if we have a valid process object
-             * Non-integrated tools will still call base.Close() and don't have a valid process object.
-             * See Connect() above... This just muddies up the log.
-             */
-            if (_process != null)
+            if (_session is not null)
             {
                 try
                 {
-                    if (!_process.HasExited)
-                    {
-                        _process.Kill();
-                    }
+                    _session.Exited -= SessionOnExited;
+                    _session.Dispose();
                 }
                 catch (Exception ex)
                 {
-                    Runtime.MessageCollector.AddExceptionMessage(Language.IntAppKillFailed, ex);
+                    MessageCollector.AddExceptionMessage(Language.IntAppKillFailed, ex);
                 }
-
-                try
+                finally
                 {
-                    if (!_process.HasExited)
-                    {
-                        _process.Dispose();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Runtime.MessageCollector.AddExceptionMessage(Language.IntAppDisposeFailed, ex);
+                    _session = null;
                 }
             }
 
@@ -202,7 +167,7 @@ namespace LoipvRemote.Connection.Protocol
 
         #region Private Methods
 
-        private void ProcessExited(object sender, EventArgs e)
+        private void SessionOnExited(object? sender, EventArgs e)
         {
             Event_Closed(this);
         }

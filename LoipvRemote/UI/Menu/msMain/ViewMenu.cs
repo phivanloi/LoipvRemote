@@ -2,6 +2,7 @@ using System;
 using System.Runtime.Versioning;
 using System.Windows.Forms;
 using LoipvRemote.App;
+using LoipvRemote.App.Composition;
 using LoipvRemote.Properties;
 using LoipvRemote.Resources.Language;
 using LoipvRemote.UI.Forms;
@@ -26,7 +27,8 @@ namespace LoipvRemote.UI.Menu
         public ToolStripMenuItem _mMenViewMultiSshToolbar;
         private ToolStripMenuItem _mMenViewResetLayout;
         public ToolStripMenuItem _mMenViewLockToolbars;
-        private readonly PanelAdder _panelAdder;
+        private PanelAdder? _panelAdder;
+        private DesktopShellRuntime? _desktopShellRuntime;
 
 
         public ToolStrip TsExternalTools { get; set; }
@@ -39,8 +41,19 @@ namespace LoipvRemote.UI.Menu
         public ViewMenu()
         {
             Initialize();
-            _panelAdder = new PanelAdder();
         }
+
+        internal void AttachRuntime(DesktopShellRuntime desktopShellRuntime)
+        {
+            _desktopShellRuntime = desktopShellRuntime ?? throw new ArgumentNullException(nameof(desktopShellRuntime));
+            _panelAdder = desktopShellRuntime.PanelAdder;
+        }
+
+        private PanelAdder PanelAdder => _panelAdder
+            ?? throw new InvalidOperationException("ViewMenu runtime must be attached before use.");
+
+        private DesktopShellRuntime DesktopShellRuntime => _desktopShellRuntime
+            ?? throw new InvalidOperationException("ViewMenu runtime must be attached before use.");
 
         private void Initialize()
         {
@@ -207,10 +220,10 @@ namespace LoipvRemote.UI.Menu
 
             _mMenViewConnectionPanels.DropDownItems.Clear();
 
-            for (int i = 0; i <= Runtime.WindowList.Count - 1; i++)
+            foreach (BaseWindow window in PanelAdder.Panels)
             {
-                ToolStripMenuItem tItem = new(Runtime.WindowList[i].Text, Runtime.WindowList[i].Icon.ToBitmap(), ConnectionPanelMenuItem_Click)
-                { Tag = Runtime.WindowList[i] };
+                ToolStripMenuItem tItem = new(window.Text, window.Icon.ToBitmap(), ConnectionPanelMenuItem_Click)
+                { Tag = window };
                 _mMenViewConnectionPanels.DropDownItems.Add(tItem);
             }
 
@@ -274,7 +287,7 @@ namespace LoipvRemote.UI.Menu
 
         private void mMenViewAddConnectionPanel_Click(object sender, EventArgs e)
         {
-            _panelAdder.AddPanel();
+            PanelAdder.AddPanel();
         }
 
         private void mMenViewExtAppsToolbar_Click(object sender, EventArgs e)
@@ -333,13 +346,12 @@ namespace LoipvRemote.UI.Menu
 
         private void mMenReconnectAll_Click(object sender, EventArgs e)
         {
-            if (Runtime.WindowList == null || Runtime.WindowList.Count == 0) return;
-            foreach (BaseWindow window in Runtime.WindowList)
+            foreach (BaseWindow window in PanelAdder.Panels)
             {
                 if (!(window is ConnectionWindow connectionWindow))
                     return;
 
-                connectionWindow.ReconnectAll(Runtime.ConnectionInitiator);
+                connectionWindow.ReconnectAll(DesktopShellRuntime.ConnectionInitiator);
             }
         }
 

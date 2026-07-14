@@ -1,4 +1,4 @@
-using LoipvRemote.Tools;
+using LoipvRemote.Protocols.Putty;
 using NUnit.Framework;
 
 namespace LoipvRemoteTests.Tools

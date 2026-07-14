@@ -51,7 +51,8 @@ namespace LoipvRemoteTests.UI.Window.ConfigWindowTests
                         nameof(LoipvRemote.Connection.ConnectionInfo.RDGatewayUsername),
                         nameof(LoipvRemote.Connection.ConnectionInfo.RDGatewayPassword),
                         nameof(LoipvRemote.Connection.ConnectionInfo.RDGatewayDomain),
-                        nameof(LoipvRemote.Connection.ConnectionInfo.RDGatewayUseConnectionCredentials)
+                        nameof(LoipvRemote.Connection.ConnectionInfo.RDGatewayUseConnectionCredentials),
+                        nameof(LoipvRemote.Connection.ConnectionInfo.RDGatewayAccessToken)
                     });
                     break;
                 case RDGatewayUseConnectionCredentials.SmartCard:

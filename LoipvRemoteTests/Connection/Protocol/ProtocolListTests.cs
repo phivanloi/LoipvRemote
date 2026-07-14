@@ -4,6 +4,8 @@ using LoipvRemote.Connection.Protocol;
 using LoipvRemote.Connection.Protocol.SSH;
 using LoipvRemote.Connection.Protocol.Telnet;
 using LoipvRemote.Connection.Protocol.VNC;
+using LoipvRemote.Connectors.Abstractions;
+using LoipvRemoteTests.TestHelpers;
 using NUnit.Framework;
 
 
@@ -21,8 +23,9 @@ public class ProtocolListTests
     public void Setup()
     {
         _protocolList = new ProtocolList();
-        _protocol1 = new ProtocolTelnet();
-        _protocol2 = new ProtocolSSH2();
+        var externalCredentialConnectors = new ExternalCredentialConnectorRegistry([]);
+        _protocol1 = new ProtocolTelnet(externalCredentialConnectors, TestSecretStore.Instance);
+        _protocol2 = new ProtocolSSH2(externalCredentialConnectors, TestSecretStore.Instance);
         _protocol3 = new ProtocolVNC();
     }
 

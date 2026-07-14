@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Windows.Forms;
 using LoipvRemote.App;
+using LoipvRemote.App.Composition;
 using LoipvRemote.Connection;
 using LoipvRemote.Container;
 using LoipvRemote.Properties;
@@ -18,12 +19,15 @@ namespace LoipvRemote.Tools
         private readonly NotifyIcon _nI;
         private readonly ContextMenuStrip _cMen;
         private readonly ToolStripMenuItem _cMenCons;
-        private static readonly FrmMain FrmMain = FrmMain.Default;
+        private readonly FrmMain _mainForm;
+        private readonly DesktopShellRuntime _desktopShellRuntime;
 
         public bool Disposed { get; private set; }
 
-        public NotificationAreaIcon()
+        public NotificationAreaIcon(FrmMain mainForm, DesktopShellRuntime desktopShellRuntime)
         {
+            _mainForm = mainForm ?? throw new ArgumentNullException(nameof(mainForm));
+            _desktopShellRuntime = desktopShellRuntime ?? throw new ArgumentNullException(nameof(desktopShellRuntime));
             try
             {
                 _cMenCons = new ToolStripMenuItem
@@ -59,7 +63,7 @@ namespace LoipvRemote.Tools
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionStackTrace("Creating new SysTrayIcon failed", ex);
+                _desktopShellRuntime.MessageCollector.AddExceptionStackTrace("Creating new SysTrayIcon failed", ex);
             }
         }
 
@@ -74,7 +78,7 @@ namespace LoipvRemote.Tools
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionStackTrace("Disposing SysTrayIcon failed", ex);
+                _desktopShellRuntime.MessageCollector.AddExceptionStackTrace("Disposing SysTrayIcon failed", ex);
             }
         }
 
@@ -82,55 +86,55 @@ namespace LoipvRemote.Tools
         {
             if (e.Button != MouseButtons.Right) return;
             _cMenCons.DropDownItems.Clear();
-            ConnectionsTreeToMenuItemsConverter menuItemsConverter = new()
+            ConnectionsTreeToMenuItemsConverter menuItemsConverter = new(_desktopShellRuntime.MessageCollector)
             {
                 MouseUpEventHandler = ConMenItem_MouseUp
             };
 
             // ReSharper disable once CoVariantArrayConversion
             ToolStripItem[] rootMenuItems = menuItemsConverter
-                                            .CreateToolStripDropDownItems(Runtime.ConnectionsService
+                                            .CreateToolStripDropDownItems(_desktopShellRuntime.ConnectionsService
                                                                                  .ConnectionTreeModel).ToArray();
             _cMenCons.DropDownItems.AddRange(rootMenuItems);
         }
 
-        private static void nI_MouseDoubleClick(object sender, MouseEventArgs e)
+        private void nI_MouseDoubleClick(object sender, MouseEventArgs e)
         {
-            if (FrmMain.Visible)
+            if (_mainForm.Visible)
             {
                 HideForm();
-                FrmMain.ShowInTaskbar = false;
+                _mainForm.ShowInTaskbar = false;
             }
             else
             {
                 ShowForm();
-                FrmMain.ShowInTaskbar = true;
+                _mainForm.ShowInTaskbar = true;
             }
         }
 
-        private static void ShowForm()
+        private void ShowForm()
         {
-            FrmMain.Show();
-            FrmMain.WindowState = FrmMain.PreviousWindowState;
+            _mainForm.Show();
+            _mainForm.WindowState = _mainForm.PreviousWindowState;
 
             if (Properties.OptionsAppearancePage.Default.ShowSystemTrayIcon) return;
-            Runtime.NotificationAreaIcon.Dispose();
-            Runtime.NotificationAreaIcon = null;
+            _desktopShellRuntime.RuntimeState.NotificationAreaIcon?.Dispose();
+            _desktopShellRuntime.RuntimeState.NotificationAreaIcon = null;
         }
 
-        private static void HideForm()
+        private void HideForm()
         {
-            FrmMain.Hide();
-            FrmMain.PreviousWindowState = FrmMain.WindowState;
+            _mainForm.Hide();
+            _mainForm.PreviousWindowState = _mainForm.WindowState;
         }
 
         private void ConMenItem_MouseUp(object sender, MouseEventArgs e)
         {
             if (e.Button != MouseButtons.Left) return;
             if (((ToolStripMenuItem)sender).Tag is ContainerInfo) return;
-            if (FrmMain.Visible == false)
+            if (_mainForm.Visible == false)
                 ShowForm();
-            Runtime.ConnectionInitiator.OpenConnection((ConnectionInfo)((ToolStripMenuItem)sender).Tag);
+            _desktopShellRuntime.ConnectionInitiator.OpenConnection((ConnectionInfo)((ToolStripMenuItem)sender).Tag);
         }
 
         private static void cMenExit_Click(object sender, EventArgs e)

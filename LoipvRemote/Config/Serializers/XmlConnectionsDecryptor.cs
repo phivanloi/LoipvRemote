@@ -25,12 +25,6 @@ namespace LoipvRemote.Config.Serializers
         }
 
 
-        public XmlConnectionsDecryptor(RootNodeInfo rootNodeInfo)
-        {
-            _cryptographyProvider = new LegacyRijndaelCryptographyProvider();
-            _rootNodeInfo = rootNodeInfo;
-        }
-
         public XmlConnectionsDecryptor(BlockCipherEngines blockCipherEngine, BlockCipherModes blockCipherMode, RootNodeInfo rootNodeInfo)
         {
             _cryptographyProvider = new CryptoProviderFactory(blockCipherEngine, blockCipherMode).Build();
@@ -44,56 +38,24 @@ namespace LoipvRemote.Config.Serializers
                 : _cryptographyProvider.Decrypt(plainText, _rootNodeInfo.PasswordString.ConvertToSecureString());
         }
 
-        public string LegacyFullFileDecrypt(string xml)
-        {
-            if (string.IsNullOrEmpty(xml)) return "";
-            if (xml.Contains("<?xml version=\"1.0\" encoding=\"utf-8\"?>")) return xml;
-
-            string decryptedContent = "";
-            bool notDecr;
-
-            try
-            {
-                decryptedContent = _cryptographyProvider.Decrypt(xml, _rootNodeInfo.PasswordString.ConvertToSecureString());
-                notDecr = decryptedContent == xml;
-            }
-            catch (Exception)
-            {
-                notDecr = true;
-            }
-
-            if (notDecr)
-            {
-                if (Authenticate(xml, _rootNodeInfo.PasswordString.ConvertToSecureString()))
-                {
-                    decryptedContent =
-                        _cryptographyProvider.Decrypt(xml, _rootNodeInfo.PasswordString.ConvertToSecureString());
-                    notDecr = false;
-                }
-
-                if (notDecr == false)
-                    return decryptedContent;
-            }
-            else
-            {
-                return decryptedContent;
-            }
-
-            return "";
-        }
-
         public bool ConnectionsFileIsAuthentic(string protectedString, SecureString password)
         {
-            bool connectionsFileIsNotEncrypted = false;
+            if (string.IsNullOrEmpty(protectedString))
+                return password is null || password.Length == 0;
+
+            bool connectionsFileIsAuthentic = false;
             try
             {
-                connectionsFileIsNotEncrypted = _cryptographyProvider.Decrypt(protectedString, _rootNodeInfo.PasswordString.ConvertToSecureString()) == "ThisIsNotProtected";
+                connectionsFileIsAuthentic = _cryptographyProvider.Decrypt(
+                    protectedString,
+                    _rootNodeInfo.PasswordString.ConvertToSecureString()) == "ThisIsProtected";
             }
-            catch (EncryptionException)
+            catch (Exception ex) when (ex is EncryptionException or ArgumentException)
             {
             }
 
-            return connectionsFileIsNotEncrypted || Authenticate(protectedString, _rootNodeInfo.PasswordString.ConvertToSecureString());
+            return connectionsFileIsAuthentic ||
+                   (AuthenticationRequestor is not null && Authenticate(protectedString, _rootNodeInfo.PasswordString.ConvertToSecureString()));
         }
 
         private bool Authenticate(string cipherText, SecureString password)

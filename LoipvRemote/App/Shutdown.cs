@@ -4,6 +4,8 @@ using System.Diagnostics;
 using System.Windows.Forms;
 using LoipvRemote.Config.Connections;
 using LoipvRemote.Config.Putty;
+using LoipvRemote.Connection;
+using LoipvRemote.App.Composition;
 using LoipvRemote.Properties;
 using LoipvRemote.UI.Controls;
 using LoipvRemote.UI.Forms;
@@ -23,22 +25,23 @@ namespace LoipvRemote.App
             ProgramRoot.CloseSingletonInstanceMutex();
         }
 
-        public static void Cleanup(Control quickConnectToolStrip,
-                                   ExternalToolsToolStrip externalToolsToolStrip,
-                                   MultiSshToolStrip multiSshToolStrip,
-                                   FrmMain frmMain)
+        public static void Cleanup(
+            Control quickConnectToolStrip,
+            ExternalToolsToolStrip externalToolsToolStrip,
+            MultiSshToolStrip multiSshToolStrip,
+            FrmMain frmMain,
+            DesktopShellRuntime desktopShellRuntime)
         {
             try
             {
                 StopPuttySessionWatcher();
-                DisposeNotificationAreaIcon();
-                SaveConnections();
-                SaveSettings(quickConnectToolStrip, externalToolsToolStrip, multiSshToolStrip, frmMain);
-                UnregisterBrowsers();
+                DisposeNotificationAreaIcon(desktopShellRuntime.RuntimeState);
+                SaveConnections(desktopShellRuntime.ConnectionsService);
+                SaveSettings(quickConnectToolStrip, externalToolsToolStrip, multiSshToolStrip, frmMain, desktopShellRuntime);
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionStackTrace(Language.SettingsCouldNotBeSavedOrTrayDispose, ex);
+                desktopShellRuntime.MessageCollector.AddExceptionStackTrace(Language.SettingsCouldNotBeSavedOrTrayDispose, ex);
             }
         }
 
@@ -47,13 +50,13 @@ namespace LoipvRemote.App
             PuttySessionsManager.Instance.StopWatcher();
         }
 
-        private static void DisposeNotificationAreaIcon()
+        private static void DisposeNotificationAreaIcon(RuntimeState runtimeState)
         {
-            if (Runtime.NotificationAreaIcon != null && Runtime.NotificationAreaIcon.Disposed == false)
-                Runtime.NotificationAreaIcon.Dispose();
+            if (runtimeState.NotificationAreaIcon is { Disposed: false } notificationAreaIcon)
+                notificationAreaIcon.Dispose();
         }
 
-        private static void SaveConnections()
+        private static void SaveConnections(ConnectionsService connectionsService)
         {
             DateTime lastUpdate;
             DateTime updateDate;
@@ -61,10 +64,10 @@ namespace LoipvRemote.App
 
             if ((Properties.OptionsBackupPage.Default.SaveConnectionsFrequency == (int)ConnectionsBackupFrequencyEnum.OnExit))
             {
-                Runtime.ConnectionsService.SaveConnections();
+                connectionsService.SaveConnections();
 				return;
             }
-			lastUpdate = Runtime.ConnectionsService.UsingDatabase ? Runtime.ConnectionsService.LastSqlUpdate : Runtime.ConnectionsService.LastFileUpdate;
+			lastUpdate = connectionsService.UsingDatabase ? connectionsService.LastSqlUpdate : connectionsService.LastFileUpdate;
 
             switch (Properties.OptionsBackupPage.Default.SaveConnectionsFrequency)
             {
@@ -80,22 +83,19 @@ namespace LoipvRemote.App
 
             if (currentDate >= updateDate)
             {
-                Runtime.ConnectionsService.SaveConnections();
+                connectionsService.SaveConnections();
             }
         }
 
-        private static void SaveSettings(Control quickConnectToolStrip,
-                                         ExternalToolsToolStrip externalToolsToolStrip,
-                                         MultiSshToolStrip multiSshToolStrip,
-                                         FrmMain frmMain)
+        private static void SaveSettings(
+            Control quickConnectToolStrip,
+            ExternalToolsToolStrip externalToolsToolStrip,
+            MultiSshToolStrip multiSshToolStrip,
+            FrmMain frmMain,
+            DesktopShellRuntime desktopShellRuntime)
         {
             Config.Settings.SettingsSaver.SaveSettings(quickConnectToolStrip, externalToolsToolStrip, multiSshToolStrip,
-                                                       frmMain);
-        }
-
-        private static void UnregisterBrowsers()
-        {
-            IeBrowserEmulation.Unregister();
+                                                       frmMain, desktopShellRuntime.ExternalToolsService, desktopShellRuntime.MessageCollector);
         }
 
     }

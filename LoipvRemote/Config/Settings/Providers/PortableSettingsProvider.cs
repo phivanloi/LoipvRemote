@@ -33,8 +33,6 @@ using System.Xml;
 using System.IO;
 using LoipvRemote.Security;
 
-//using LoipvRemote.App;
-
 namespace LoipvRemote.Config.Settings.Providers
 {
     public class PortableSettingsProvider : SettingsProvider, IApplicationSettingsProvider
@@ -64,10 +62,9 @@ namespace LoipvRemote.Config.Settings.Providers
                 {
                     _xmlDocument = SecureXmlHelper.LoadXmlFromFile(_filePath);
                 }
-                catch (Exception /*ex*/)
+                catch (Exception)
                 {
-                    // This causes hundreds of unit tests to fail for some reason...
-                    //Runtime.MessageCollector.AddExceptionStackTrace("PortableSettingsProvider: Error getting XML", ex);
+                    // A missing or malformed portable settings file falls back to an empty document.
                 }
 
                 if (_xmlDocument?.SelectSingleNode(_rootNodeName) != null)

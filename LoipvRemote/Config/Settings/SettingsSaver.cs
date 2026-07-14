@@ -1,19 +1,25 @@
 using System;
 using System.Runtime.Versioning;
 using System.Windows.Forms;
-using LoipvRemote.App;
 using LoipvRemote.App.Info;
 using LoipvRemote.Config.DataProviders;
 using LoipvRemote.Tools;
 using LoipvRemote.UI.Controls;
 using LoipvRemote.UI.Forms;
+using LoipvRemote.Messages;
 
 namespace LoipvRemote.Config.Settings
 {
     [SupportedOSPlatform("windows")]
     public static class SettingsSaver
     {
-        public static void SaveSettings(Control quickConnectToolStrip, ExternalToolsToolStrip externalToolsToolStrip, MultiSshToolStrip multiSshToolStrip, FrmMain frmMain)
+        public static void SaveSettings(
+            Control quickConnectToolStrip,
+            ExternalToolsToolStrip externalToolsToolStrip,
+            MultiSshToolStrip multiSshToolStrip,
+            FrmMain frmMain,
+            ExternalToolsService externalToolsService,
+            MessageCollector messageCollector)
         {
             try
             {
@@ -64,12 +70,12 @@ namespace LoipvRemote.Config.Settings
 
                 Properties.Settings.Default.Save();
 
-                SaveDockPanelLayout();
-                SaveExternalApps();
+                SaveDockPanelLayout(messageCollector);
+                SaveExternalApps(externalToolsService, messageCollector);
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionStackTrace("Saving settings failed", ex);
+                messageCollector.AddExceptionStackTrace("Saving settings failed", ex);
             }
         }
 
@@ -107,20 +113,21 @@ namespace LoipvRemote.Config.Settings
             }
         }
 
-        private static void SaveDockPanelLayout()
+        private static void SaveDockPanelLayout(MessageCollector messageCollector)
         {
             string panelLayoutXmlFilePath = SettingsFileInfo.SettingsPath + "\\" + SettingsFileInfo.LayoutFileName;
             DockPanelLayoutSaver panelLayoutSaver = new(
                                                             new DockPanelLayoutSerializer(),
-                                                            new FileDataProvider(panelLayoutXmlFilePath)
+                                                            new FileDataProvider(panelLayoutXmlFilePath),
+                                                            messageCollector
                                                            );
             panelLayoutSaver.Save();
         }
 
-        private static void SaveExternalApps()
+        private static void SaveExternalApps(ExternalToolsService externalToolsService, MessageCollector messageCollector)
         {
-            ExternalAppsSaver externalAppsSaver = new();
-            externalAppsSaver.Save(Runtime.ExternalToolsService.ExternalTools);
+            ExternalAppsSaver externalAppsSaver = new(messageCollector);
+            externalAppsSaver.Save(externalToolsService.ExternalTools);
         }
     }
 }

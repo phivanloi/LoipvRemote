@@ -10,6 +10,7 @@ using LoipvRemote.Messages;
 using LoipvRemote.UI.Forms;
 using LoipvRemote.Themes;
 using LoipvRemote.Resources.Language;
+using LoipvRemote.UI.Adapters;
 using Message = LoipvRemote.Messages.Message;
 using System.Runtime.Versioning;
 
@@ -20,6 +21,14 @@ namespace LoipvRemote.UI.Window
     {
         private readonly ThemeManager _themeManager;
         private readonly DisplayProperties _display;
+        private MessageCollector? _messageCollector;
+        private ConnectionWorkspaceAdapter? _connectionWorkspace;
+
+        private MessageCollector MessageCollector => _messageCollector
+            ?? throw new InvalidOperationException("ErrorAndInfoWindow services must be attached before use.");
+
+        private ConnectionWorkspaceAdapter ConnectionWorkspace => _connectionWorkspace
+            ?? throw new InvalidOperationException("ErrorAndInfoWindow services must be attached before use.");
 
         public DockContent PreviousActiveForm { get; set; }
 
@@ -41,6 +50,12 @@ namespace LoipvRemote.UI.Window
             UpdateNotificationLayout();
             FillImageList();
             ApplyLanguage();
+        }
+
+        public void AttachServices(MessageCollector messageCollector, ConnectionWorkspaceAdapter connectionWorkspace)
+        {
+            _messageCollector = messageCollector ?? throw new ArgumentNullException(nameof(messageCollector));
+            _connectionWorkspace = connectionWorkspace ?? throw new ArgumentNullException(nameof(connectionWorkspace));
         }
 
         #region Form Stuff
@@ -114,7 +129,7 @@ namespace LoipvRemote.UI.Window
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddMessage(MessageClass.ErrorMsg,
+                MessageCollector.AddMessage(MessageClass.ErrorMsg,
                                                     "LayoutVertical (UI.Window.ErrorsAndInfos) failed" +
                                                     Environment.NewLine + ex.Message, true);
             }
@@ -145,7 +160,7 @@ namespace LoipvRemote.UI.Window
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddMessage(MessageClass.ErrorMsg,
+                MessageCollector.AddMessage(MessageClass.ErrorMsg,
                                                     "LayoutHorizontal (UI.Window.ErrorsAndInfos) failed" +
                                                     Environment.NewLine + ex.Message, true);
             }
@@ -159,7 +174,7 @@ namespace LoipvRemote.UI.Window
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddMessage(MessageClass.ErrorMsg,
+                MessageCollector.AddMessage(MessageClass.ErrorMsg,
                                                     "ErrorsAndInfos_Resize (UI.Window.ErrorsAndInfos) failed" +
                                                     Environment.NewLine + ex.Message, true);
             }
@@ -218,7 +233,7 @@ namespace LoipvRemote.UI.Window
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddMessage(MessageClass.ErrorMsg,
+                MessageCollector.AddMessage(MessageClass.ErrorMsg,
                                                     "pnlErrorMsg_ResetDefaultStyle (UI.Window.ErrorsAndInfos) failed" +
                                                     Environment.NewLine +
                                                     ex.Message, true);
@@ -233,9 +248,9 @@ namespace LoipvRemote.UI.Window
                 try
                 {
                     if (PreviousActiveForm != null)
-                        PreviousActiveForm.Show(FrmMain.Default.pnlDock);
+                        PreviousActiveForm.Show(ConnectionWorkspace.MainWindow.pnlDock);
                     else
-                        AppWindows.TreeForm.Show(FrmMain.Default.pnlDock);
+                        ConnectionWorkspace.Show(AppWindows.TreeForm);
                 }
                 catch (Exception)
                 {
@@ -244,7 +259,7 @@ namespace LoipvRemote.UI.Window
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddMessage(MessageClass.ErrorMsg,
+                MessageCollector.AddMessage(MessageClass.ErrorMsg,
                                                     "MC_KeyDown (UI.Window.ErrorsAndInfos) failed" +
                                                     Environment.NewLine + ex.Message, true);
             }
@@ -333,7 +348,7 @@ namespace LoipvRemote.UI.Window
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddMessage(MessageClass.ErrorMsg,
+                MessageCollector.AddMessage(MessageClass.ErrorMsg,
                                                     "lvErrorCollector_SelectedIndexChanged (UI.Window.ErrorsAndInfos) failed" +
                                                     Environment.NewLine +
                                                     ex.Message, true);
@@ -407,7 +422,7 @@ namespace LoipvRemote.UI.Window
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddMessage(MessageClass.ErrorMsg,
+                MessageCollector.AddMessage(MessageClass.ErrorMsg,
                                                     "UI.Window.ErrorsAndInfos.CopyMessagesToClipboard() failed." +
                                                     Environment.NewLine + ex.Message,
                                                     true);
@@ -448,7 +463,7 @@ namespace LoipvRemote.UI.Window
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddMessage(MessageClass.ErrorMsg,
+                MessageCollector.AddMessage(MessageClass.ErrorMsg,
                                                     "UI.Window.ErrorsAndInfos.DeleteMessages() failed" +
                                                     Environment.NewLine + ex.Message, true);
             }

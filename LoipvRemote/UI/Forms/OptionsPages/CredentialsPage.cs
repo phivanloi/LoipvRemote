@@ -1,10 +1,10 @@
 using System;
 using LoipvRemote.App;
 using LoipvRemote.Properties;
-using LoipvRemote.Security.SymmetricEncryption;
 using LoipvRemote.Resources.Language;
 using System.Runtime.Versioning;
 using LoipvRemote.Config.Settings.Registry;
+using LoipvRemote.UseCases.Credentials;
 
 namespace LoipvRemote.UI.Forms.OptionsPages
 {
@@ -56,8 +56,9 @@ namespace LoipvRemote.UI.Forms.OptionsPages
                 }
 
             txtCredentialsUsername.Text = Properties.OptionsCredentialsPage.Default.DefaultUsername;
-            LegacyRijndaelCryptographyProvider cryptographyProvider = new();
-            txtCredentialsPassword.Text = cryptographyProvider.Decrypt(Properties.OptionsCredentialsPage.Default.DefaultPassword, Runtime.EncryptionKey);
+            txtCredentialsPassword.Text = FrmMain.Default.UnprotectUserSecret(
+                Properties.OptionsCredentialsPage.Default.DefaultPassword,
+                SecretPurposes.DefaultCredentialPassword);
             txtCredentialsDomain.Text = Properties.OptionsCredentialsPage.Default.DefaultDomain;
             txtCredentialsUserViaAPI.Text = Properties.OptionsCredentialsPage.Default.UserViaAPIDefault;
         }
@@ -78,8 +79,9 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             }
 
             Properties.OptionsCredentialsPage.Default.DefaultUsername = txtCredentialsUsername.Text;
-            LegacyRijndaelCryptographyProvider cryptographyProvider = new();
-            Properties.OptionsCredentialsPage.Default.DefaultPassword = cryptographyProvider.Encrypt(txtCredentialsPassword.Text, Runtime.EncryptionKey);
+            Properties.OptionsCredentialsPage.Default.DefaultPassword = FrmMain.Default.ProtectUserSecret(
+                txtCredentialsPassword.Text,
+                SecretPurposes.DefaultCredentialPassword);
             Properties.OptionsCredentialsPage.Default.DefaultDomain = txtCredentialsDomain.Text;
             Properties.OptionsCredentialsPage.Default.UserViaAPIDefault = txtCredentialsUserViaAPI.Text;
         }

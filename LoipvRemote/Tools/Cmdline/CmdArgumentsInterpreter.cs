@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Runtime.Versioning;
 using System.Text.RegularExpressions;
-using LoipvRemote.App;
+using LoipvRemote.Messages;
 
 // ReSharper disable ArrangeAccessorOwnerBody
 
@@ -20,15 +20,17 @@ namespace LoipvRemote.Tools.Cmdline
     //*
     //* Version:		1.0
     //
-    public class CmdArgumentsInterpreter
+    public sealed class CmdArgumentsInterpreter
     {
         private readonly StringDictionary _parameters;
+        private readonly MessageCollector _messageCollector;
 
         // Retrieve a parameter value if it exists
         public string this[string param] => (_parameters[param]);
 
-        public CmdArgumentsInterpreter(IEnumerable<string> args)
+        public CmdArgumentsInterpreter(IEnumerable<string> args, MessageCollector messageCollector)
         {
+            _messageCollector = messageCollector ?? throw new ArgumentNullException(nameof(messageCollector));
             _parameters = [];
             Regex spliter = new("^-{1,2}|^/|=|:", RegexOptions.IgnoreCase | RegexOptions.Compiled);
             Regex remover = new("^[\'\"]?(.*?)[\'\"]?$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
@@ -105,7 +107,7 @@ namespace LoipvRemote.Tools.Cmdline
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage("Creating new Args failed", ex);
+                _messageCollector.AddExceptionMessage("Creating new Args failed", ex);
             }
         }
     }

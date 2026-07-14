@@ -4,6 +4,7 @@ using System.Linq;
 using System.Net;
 using System.Windows.Forms;
 using LoipvRemote.App;
+using LoipvRemote.App.Composition;
 using LoipvRemote.Connection;
 using LoipvRemote.Connection.Protocol;
 using LoipvRemote.Container;
@@ -21,8 +22,13 @@ namespace LoipvRemote.UI.Window
     {
         #region Constructors
 
-        public PortScanWindow()
+        private readonly MessageCollector _messageCollector;
+        private readonly ConnectionImportService _connectionImportService;
+
+        public PortScanWindow(MessageCollector messageCollector, ConnectionImportService connectionImportService)
         {
+            _messageCollector = messageCollector ?? throw new ArgumentNullException(nameof(messageCollector));
+            _connectionImportService = connectionImportService ?? throw new ArgumentNullException(nameof(connectionImportService));
             InitializeComponent();
             Icon = Resources.ImageConverter.GetImageAsIcon(Properties.Resources.SearchAndApps_16x);
             WindowType = WindowType.PortScan;
@@ -119,7 +125,7 @@ namespace LoipvRemote.UI.Window
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage(Language.PortScanCouldNotLoadPanel, ex);
+                _messageCollector.AddExceptionMessage(Language.PortScanCouldNotLoadPanel, ex);
             }
         }
 
@@ -147,7 +153,7 @@ namespace LoipvRemote.UI.Window
                 }
                 else
                 {
-                    Runtime.MessageCollector.AddMessage(MessageClass.WarningMsg, Language.CannotStartPortScan);
+                    _messageCollector.AddMessage(MessageClass.WarningMsg, Language.CannotStartPortScan);
                 }
             }
         }
@@ -200,10 +206,10 @@ namespace LoipvRemote.UI.Window
 
                 if (!ngCheckFirstPort.Checked && !ngCheckLastPort.Checked)
                     _portScanner = new PortScanner(ipAddressStart, ipAddressEnd, (int)portStart.Value,
-                                                   (int)portEnd.Value, (int)numericSelectorTimeout.Value * 1000, true);
+                                                   (int)portEnd.Value, _messageCollector, (int)numericSelectorTimeout.Value * 1000, true);
                 else
                     _portScanner = new PortScanner(ipAddressStart, ipAddressEnd, (int)portStart.Value,
-                                                   (int)portEnd.Value, (int)numericSelectorTimeout.Value * 1000);
+                                                   (int)portEnd.Value, _messageCollector, (int)numericSelectorTimeout.Value * 1000);
 
                 _portScanner.BeginHostScan += PortScanner_BeginHostScan;
                 _portScanner.HostScanned += PortScanner_HostScanned;
@@ -213,7 +219,7 @@ namespace LoipvRemote.UI.Window
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage("StartScan failed (UI.Window.PortScan)", ex);
+                _messageCollector.AddExceptionMessage("StartScan failed (UI.Window.PortScan)", ex);
             }
         }
 
@@ -236,9 +242,9 @@ namespace LoipvRemote.UI.Window
             prgBar.Value = 0;
         }
 
-        private static void PortScanner_BeginHostScan(string host)
+        private void PortScanner_BeginHostScan(string host)
         {
-            Runtime.MessageCollector.AddMessage(MessageClass.InformationMsg, "Scanning " + host, true);
+            _messageCollector.AddMessage(MessageClass.InformationMsg, "Scanning " + host, true);
         }
 
         private delegate void PortScannerHostScannedDelegate(ScanHost host, int scannedCount, int totalCount);
@@ -252,7 +258,7 @@ namespace LoipvRemote.UI.Window
                 return;
             }
 
-            Runtime.MessageCollector.AddMessage(MessageClass.InformationMsg, "Host scanned " + host.HostIp, true);
+            _messageCollector.AddMessage(MessageClass.InformationMsg, "Host scanned " + host.HostIp, true);
 
             olvHosts.AddObject(host);
             prgBar.Maximum = totalCount;
@@ -269,7 +275,7 @@ namespace LoipvRemote.UI.Window
                 return;
             }
 
-            Runtime.MessageCollector.AddMessage(MessageClass.InformationMsg, Language.PortScanComplete);
+            _messageCollector.AddMessage(MessageClass.InformationMsg, Language.PortScanComplete);
 
             _scanning = false;
             SwitchButtonText();
@@ -287,13 +293,13 @@ namespace LoipvRemote.UI.Window
 
             if (hosts.Count < 1)
             {
-                Runtime.MessageCollector.AddMessage(MessageClass.WarningMsg,
+                _messageCollector.AddMessage(MessageClass.WarningMsg,
                                                     "Could not import host(s) from port scan context menu");
                 return;
             }
 
             ContainerInfo destinationContainer = GetDestinationContainerForImportedHosts();
-            Import.ImportFromPortScan(hosts, protocol, destinationContainer);
+            _connectionImportService.ImportFromPortScan(hosts, protocol, destinationContainer);
         }
 
         /// <summary>

@@ -1,4 +1,3 @@
-using Mysqlx.Notice;
 using System.Runtime.Versioning;
 
 namespace LoipvRemote.Connection.Protocol.Http

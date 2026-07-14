@@ -1,13 +1,11 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Windows.Forms;
-using LoipvRemote.App;
 using LoipvRemote.Connection;
 using LoipvRemote.Connection.Protocol;
 using LoipvRemote.Connection.Protocol.RDP;
@@ -19,6 +17,7 @@ using LoipvRemote.Tools;
 using LoipvRemote.Tools.Attributes;
 using LoipvRemote.Tree.Root;
 using LoipvRemote.Resources.Language;
+using LoipvRemote.App.Composition;
 using System.Runtime.Versioning;
 
 namespace LoipvRemote.UI.Controls.ConnectionInfoPropertyGrid {
@@ -26,8 +25,9 @@ namespace LoipvRemote.UI.Controls.ConnectionInfoPropertyGrid {
     public partial class ConnectionInfoPropertyGrid : FilteredPropertyGrid.FilteredPropertyGrid {
         private readonly Dictionary<Type, IEnumerable<PropertyInfo>> _propertyCache = [];
         private readonly HashSet<Control> _editorControls = [];
-        private readonly Timer _editorFontTimer = new() { Interval = 50 };
+        private readonly System.Windows.Forms.Timer _editorFontTimer = new() { Interval = 50 };
         private bool _synchronizingEditorFont;
+        private DesktopShellRuntime? _desktopShellRuntime;
         private ConnectionInfo _selectedConnectionInfo;
         private PropertyMode _propertyMode;
 
@@ -90,6 +90,14 @@ namespace LoipvRemote.UI.Controls.ConnectionInfoPropertyGrid {
             _editorFontTimer.Tick += (_, _) => SynchronizeFocusedNativeEditorFont();
             Disposed += (_, _) => _editorFontTimer.Dispose();
         }
+
+        internal void AttachRuntime(DesktopShellRuntime desktopShellRuntime)
+        {
+            _desktopShellRuntime = desktopShellRuntime ?? throw new ArgumentNullException(nameof(desktopShellRuntime));
+        }
+
+        private DesktopShellRuntime DesktopShellRuntime => _desktopShellRuntime
+            ?? throw new InvalidOperationException("The desktop shell runtime must be attached before using the connection property grid.");
 
         protected override void OnFontChanged(EventArgs e)
         {
@@ -370,7 +378,7 @@ namespace LoipvRemote.UI.Controls.ConnectionInfoPropertyGrid {
                 HiddenProperties = strHide.ToArray();
                 Refresh();
             } catch (Exception ex) {
-                Runtime.MessageCollector.AddMessage(
+                DesktopShellRuntime.MessageCollector.AddMessage(
                     MessageClass.ErrorMsg,
                     Language.ConfigPropertyGridHideItemsFailed +
                     Environment.NewLine + ex.Message, true);
@@ -537,7 +545,7 @@ namespace LoipvRemote.UI.Controls.ConnectionInfoPropertyGrid {
                 return;
 
             if (rootInfo.Password) {
-                string passwordName = Properties.OptionsDBsPage.Default.UseSQLServer ? Language.SQLServer.TrimEnd(':') : Path.GetFileName(Runtime.ConnectionsService.GetStartupConnectionFileName());
+                string passwordName = Properties.OptionsDBsPage.Default.UseSQLServer ? Language.SQLServer.TrimEnd(':') : Path.GetFileName(DesktopShellRuntime.ConnectionsService.GetStartupConnectionFileName());
                 Optional<System.Security.SecureString> password = MiscTools.PasswordDialog(passwordName);
 
                 // operation cancelled, dont set a password
@@ -564,7 +572,7 @@ namespace LoipvRemote.UI.Controls.ConnectionInfoPropertyGrid {
                 UpdateInheritanceNode();
                 ShowHideGridItems();
             } catch (Exception ex) {
-                Runtime.MessageCollector.AddMessage(MessageClass.ErrorMsg,
+                DesktopShellRuntime.MessageCollector.AddMessage(MessageClass.ErrorMsg,
                     Language.ConfigPropertyGridValueFailed + Environment.NewLine +
                     ex.Message, true);
             }

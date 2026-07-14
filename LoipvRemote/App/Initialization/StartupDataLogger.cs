@@ -1,10 +1,11 @@
 using System;
-using System.Management;
 using System.Runtime.Versioning;
 using System.Threading;
 using System.Windows.Forms;
 using LoipvRemote.Messages;
 using LoipvRemote.Resources.Language;
+using ApplicationEdition = LoipvRemote.UseCases.Hosting.ApplicationEdition;
+using LoipvRemote.Infrastructure.Windows.SystemInfo;
 
 namespace LoipvRemote.App.Initialization
 {
@@ -33,63 +34,36 @@ namespace LoipvRemote.App.Initialization
 
         private string GetOperatingSystemData()
         {
-            string osVersion = string.Empty;
-            string servicePack = string.Empty;
-
             try
             {
-                foreach (ManagementBaseObject o in new ManagementObjectSearcher("SELECT * FROM Win32_OperatingSystem WHERE Primary=True")
-                    .Get())
-                {
-                    ManagementObject managementObject = (ManagementObject)o;
-                    osVersion = Convert.ToString(managementObject.GetPropertyValue("Caption"))?.Trim() ?? string.Empty;
-                    servicePack = GetOSServicePack(servicePack, managementObject);
-                }
+                return WindowsSystemInfo.GetOperatingSystemDescription();
             }
             catch (Exception ex)
             {
                 _messageCollector.AddExceptionMessage("Error retrieving operating system information from WMI.", ex);
             }
 
-            string osData = string.Join(" ", osVersion, servicePack);
-            return osData;
-        }
-
-        private string GetOSServicePack(string servicePack, ManagementObject managementObject)
-        {
-            int servicePackNumber = Convert.ToInt32(managementObject.GetPropertyValue("ServicePackMajorVersion"));
-            if (servicePackNumber != 0)
-            {
-                servicePack = $"Service Pack {servicePackNumber}";
-            }
-
-            return servicePack;
+            return string.Empty;
         }
 
         private string GetArchitectureData()
         {
-            string architecture = string.Empty;
             try
             {
-                foreach (ManagementBaseObject o in new ManagementObjectSearcher("SELECT AddressWidth FROM Win32_Processor WHERE DeviceID=\'CPU0\'").Get())
-                {
-                    ManagementObject managementObject = (ManagementObject)o;
-                    int addressWidth = Convert.ToInt32(managementObject.GetPropertyValue("AddressWidth"));
-                    architecture = $"{addressWidth}-bit";
-                }
+                return WindowsSystemInfo.GetProcessorArchitecture();
             }
             catch (Exception ex)
             {
                 _messageCollector.AddExceptionMessage("Error retrieving operating system address width from WMI.", ex);
             }
 
-            return architecture;
+            return string.Empty;
         }
 
         private void LogApplicationData()
         {
             string data = $"{Application.ProductName} {Application.ProductVersion}";
-            if (Runtime.IsPortableEdition)
+            if (ApplicationEdition.IsPortable)
                 data += $" {Language.PortableEdition}";
             data += " starting.";
             _messageCollector.AddMessage(MessageClass.InformationMsg, data, true);

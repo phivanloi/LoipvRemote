@@ -3,17 +3,18 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Versioning;
 using System.Windows.Forms;
-using LoipvRemote.App;
 using LoipvRemote.Connection;
 using LoipvRemote.Container;
 using LoipvRemote.Tree;
+using LoipvRemote.Messages;
 
 
 namespace LoipvRemote.Tools
 {
     [SupportedOSPlatform("windows")]
-    public class ConnectionsTreeToMenuItemsConverter
+    public sealed class ConnectionsTreeToMenuItemsConverter(MessageCollector messageCollector)
     {
+        private readonly MessageCollector _messageCollector = messageCollector ?? throw new ArgumentNullException(nameof(messageCollector));
         public MouseEventHandler MouseUpEventHandler { get; set; }
 
 
@@ -32,7 +33,7 @@ namespace LoipvRemote.Tools
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionMessage("frmMain.AddNodeToMenu() failed", ex);
+                _messageCollector.AddExceptionMessage("frmMain.AddNodeToMenu() failed", ex);
             }
 
             return dropDownList;

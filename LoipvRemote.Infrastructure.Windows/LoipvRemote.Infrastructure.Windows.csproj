@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.26100.0</SupportedOSPlatformVersion>
+    <UseWindowsForms>true</UseWindowsForms>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\LoipvRemote.Application\LoipvRemote.Application.csproj" />
+    <ProjectReference Include="..\LoipvRemote.Domain\LoipvRemote.Domain.csproj" />
+    <ProjectReference Include="..\LoipvRemote.Protocols.Abstractions\LoipvRemote.Protocols.Abstractions.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="System.Management" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="Interop.MSTSCLib">
+      <HintPath>..\LoipvRemote\Interop\Interop.MSTSCLib.dll</HintPath>
+      <EmbedInteropTypes>false</EmbedInteropTypes>
+    </Reference>
+    <Reference Include="AxInterop.MSTSCLib">
+      <HintPath>..\LoipvRemote\Interop\AxInterop.MSTSCLib.dll</HintPath>
+      <EmbedInteropTypes>false</EmbedInteropTypes>
+    </Reference>
+  </ItemGroup>
+</Project>

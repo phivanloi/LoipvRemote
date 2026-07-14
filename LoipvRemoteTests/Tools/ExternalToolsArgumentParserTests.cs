@@ -1,8 +1,6 @@
 using System;
 using System.Collections;
-using LoipvRemote.Connection;
-using LoipvRemote.Security;
-using LoipvRemote.Tools;
+using LoipvRemote.Protocols.ExternalApps;
 using NUnit.Framework;
 
 
@@ -10,7 +8,7 @@ namespace LoipvRemoteTests.Tools
 {
     public class ExternalToolsArgumentParserTests
     {
-        private ExternalToolArgumentParser _argumentParser;
+        private ExternalApplicationArgumentParser _argumentParser;
         private const string TestString = @"()%!^abc123*<>&|""'\";
         private const string StringAfterMetacharacterEscaping = @"^(^)^%^!^^abc123*^<^>^&^|^""'\";
         private const string StringAfterAllEscaping = @"^(^)^%^!^^abc123*^<^>^&^|\^""'\";
@@ -23,20 +21,10 @@ namespace LoipvRemoteTests.Tools
         [OneTimeSetUp]
         public void Setup()
         {
-            var connectionInfo = new ConnectionInfo
-            {
-                Name = TestString,
-                Hostname = TestString,
-                Port = Port,
-                Username = TestString,
-                //Password = TestString.ConvertToSecureString(),
-                Password = TestString,
-                Domain = TestString,
-                Description = TestString,
-                MacAddress = TestString,
-                UserField = TestString
-            };
-            _argumentParser = new ExternalToolArgumentParser(connectionInfo);
+            var context = new ExternalApplicationArgumentContext(
+                TestString, TestString, Port, TestString, TestString, TestString,
+                TestString, TestString, TestString);
+            _argumentParser = new ExternalApplicationArgumentParser(context);
         }
 
         [OneTimeTearDown]
@@ -54,7 +42,7 @@ namespace LoipvRemoteTests.Tools
         [Test]
         public void NullConnectionInfoResultsInEmptyVariables()
         {
-            var parser = new ExternalToolArgumentParser(null);
+            var parser = new ExternalApplicationArgumentParser(null);
             var parsedText = parser.ParseArguments("test %USERNAME% test");
             Assert.That(parsedText, Is.EqualTo("test  test"));
         }

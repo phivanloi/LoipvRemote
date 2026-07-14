@@ -5,6 +5,7 @@ using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
 using LoipvRemote.App;
+using LoipvRemote.App.Composition;
 using LoipvRemote.Config.Connections;
 using LoipvRemote.Connection;
 using LoipvRemote.Container;
@@ -29,6 +30,8 @@ namespace LoipvRemote.UI.Window
     {
         private ThemeManager _themeManager;
         private bool _sortedAz = true;
+        private DesktopShellRuntime? _desktopShellRuntime;
+        private bool _runtimeHandlersAttached;
 
         public ConnectionInfo SelectedNode => ConnectionTree.SelectedNode;
 
@@ -49,19 +52,45 @@ namespace LoipvRemote.UI.Window
             ApplyToolbarLayout();
             msMain.Paint += SidebarToolbarOnPaint;
             UiScaleManager.Instance.Changed += UiScaleManagerOnChanged;
-            Disposed += (_, _) => UiScaleManager.Instance.Changed -= UiScaleManagerOnChanged;
+            Disposed += (_, _) =>
+            {
+                UiScaleManager.Instance.Changed -= UiScaleManagerOnChanged;
+                if (_runtimeHandlersAttached)
+                    ShellRuntime.ConnectionsService.ConnectionsLoaded -= ConnectionsServiceOnConnectionsLoaded;
+            };
             SetMenuEventHandlers();
             SetConnectionTreeEventHandlers();
             Settings.Default.PropertyChanged += OnAppSettingsChanged;
             ApplyLanguage();
         }
 
+        internal void AttachRuntime(DesktopShellRuntime desktopShellRuntime)
+        {
+            ArgumentNullException.ThrowIfNull(desktopShellRuntime);
+            if (_desktopShellRuntime is not null && !ReferenceEquals(_desktopShellRuntime, desktopShellRuntime))
+                throw new InvalidOperationException("The connection-tree runtime is already attached.");
+
+            _desktopShellRuntime = desktopShellRuntime;
+            if (_runtimeHandlersAttached)
+                return;
+
+            ConnectionTree.AttachRuntime(desktopShellRuntime);
+            SetTreePostSetupActions();
+            SetConnectionTreeClickHandlers();
+            ShellRuntime.ConnectionsService.ConnectionsLoaded += ConnectionsServiceOnConnectionsLoaded;
+            _runtimeHandlersAttached = true;
+        }
+
+        private DesktopShellRuntime ShellRuntime => _desktopShellRuntime
+            ?? throw new InvalidOperationException("The connection-tree runtime must be attached before it handles commands.");
+
         private void OnAppSettingsChanged(object o, PropertyChangedEventArgs propertyChangedEventArgs)
         {
             if (propertyChangedEventArgs.PropertyName == nameof(Settings.SlowClickRenameEnabled))
                 ConnectionTree.SetupSlowClickRename();
 
-            SetConnectionTreeClickHandlers();
+            if (_runtimeHandlersAttached)
+                SetConnectionTreeClickHandlers();
         }
 
         private void UiScaleManagerOnChanged(object? sender, EventArgs e)
@@ -153,9 +182,6 @@ namespace LoipvRemote.UI.Window
                 new SelectedConnectionDeletionConfirmer(prompt => CTaskDialog.MessageBox(
                     Application.ProductName, prompt, "", ETaskDialogButtons.YesNo, ESysIcons.Question));
             ConnectionTree.KeyDown += TvConnections_KeyDown;
-            SetTreePostSetupActions();
-            SetConnectionTreeClickHandlers();
-            Runtime.ConnectionsService.ConnectionsLoaded += ConnectionsServiceOnConnectionsLoaded;
         }
 
         private void SetTreePostSetupActions()
@@ -167,7 +193,7 @@ namespace LoipvRemote.UI.Window
             };
 
             if (Properties.OptionsStartupExitPage.Default.OpenConsFromLastSession && !Properties.OptionsAdvancedPage.Default.NoReconnect)
-                actions.Add(new PreviousSessionOpener(Runtime.ConnectionInitiator));
+                actions.Add(new PreviousSessionOpener(ShellRuntime.ConnectionInitiator));
 
             ConnectionTree.PostSetupActions = actions;
         }
@@ -181,12 +207,12 @@ namespace LoipvRemote.UI.Window
             };
 
             if (Settings.Default.SingleClickOnConnectionOpensIt)
-                singleClickHandlers.Add(new OpenConnectionClickHandler(Runtime.ConnectionInitiator));
+                singleClickHandlers.Add(new OpenConnectionClickHandler(ShellRuntime.ConnectionInitiator));
             else
-                doubleClickHandlers.Add(new OpenConnectionClickHandler(Runtime.ConnectionInitiator));
+                doubleClickHandlers.Add(new OpenConnectionClickHandler(ShellRuntime.ConnectionInitiator));
 
             if (Settings.Default.SingleClickSwitchesToOpenConnection)
-                singleClickHandlers.Add(new SwitchToConnectionClickHandler(Runtime.ConnectionInitiator));
+                singleClickHandlers.Add(new SwitchToConnectionClickHandler(ShellRuntime.ConnectionInitiator));
 
             ConnectionTree.SingleClickHandler = new TreeNodeCompositeClickHandler { ClickHandlers = singleClickHandlers };
             ConnectionTree.DoubleClickHandler = new TreeNodeCompositeClickHandler { ClickHandlers = doubleClickHandlers };
@@ -234,12 +260,12 @@ namespace LoipvRemote.UI.Window
             mMenFavorites.Click += (sender, args) =>
             {
                 mMenFavorites.DropDownItems.Clear();
-                List<ContainerInfo> rootNodes = Runtime.ConnectionsService.ConnectionTreeModel.RootNodes;
+                List<ContainerInfo> rootNodes = ShellRuntime.ConnectionsService.ConnectionTreeModel.RootNodes;
                 List<ToolStripMenuItem> favoritesList = new();
 
                 foreach (ContainerInfo node in rootNodes)
                 {
-                    foreach (ConnectionInfo containerInfo in Runtime.ConnectionsService.ConnectionTreeModel.GetRecursiveFavoriteChildList(node))
+                    foreach (ConnectionInfo containerInfo in ShellRuntime.ConnectionsService.ConnectionTreeModel.GetRecursiveFavoriteChildList(node))
                     {
                         ToolStripMenuItem favoriteMenuItem = new()
                         {
@@ -260,7 +286,7 @@ namespace LoipvRemote.UI.Window
         private void FavoriteMenuItem_MouseUp(object sender, MouseEventArgs e)
         {
             if (((ToolStripMenuItem)sender).Tag is ContainerInfo) return;
-            Runtime.ConnectionInitiator.OpenConnection((ConnectionInfo)((ToolStripMenuItem)sender).Tag);
+            ShellRuntime.ConnectionInitiator.OpenConnection((ConnectionInfo)((ToolStripMenuItem)sender).Tag);
         }
 
         #endregion
@@ -320,13 +346,13 @@ namespace LoipvRemote.UI.Window
                     {
                         if (SelectedNode == null)
                             return;
-                        Runtime.ConnectionInitiator.OpenConnection(SelectedNode);
+                        ShellRuntime.ConnectionInitiator.OpenConnection(SelectedNode);
                     }
                 }
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionStackTrace("tvConnections_KeyDown (UI.Window.ConnectionTreeWindow) failed", ex);
+                ShellRuntime.MessageCollector.AddExceptionStackTrace("tvConnections_KeyDown (UI.Window.ConnectionTreeWindow) failed", ex);
             }
         }
 
@@ -345,7 +371,7 @@ namespace LoipvRemote.UI.Window
 
             foreach (var connection in connectionsToOpen)
             {
-                Runtime.ConnectionInitiator.OpenConnection(connection);
+                ShellRuntime.ConnectionInitiator.OpenConnection(connection);
             }
         }
 

@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Windows.Forms;
 using LoipvRemote.App;
+using LoipvRemote.App.Composition;
 using LoipvRemote.App.Info;
 using LoipvRemote.Config;
 using LoipvRemote.Connection;
@@ -18,6 +19,7 @@ using LoipvRemote.Resources.Language;
 using System.Runtime.Versioning;
 using LoipvRemote.Security;
 using LoipvRemote.UI.TaskDialog;
+using LoipvRemote.Infrastructure.Windows.Dpapi;
 
 // ReSharper disable UnusedParameter.Local
 
@@ -67,6 +69,7 @@ namespace LoipvRemote.UI.Controls
         private ToolStripMenuItem _cMenTreeApplyInheritanceToChildren;
         private ToolStripMenuItem _cMenTreeApplyDefaultInheritance;
         private readonly ConnectionTree.ConnectionTree _connectionTree;
+        private DesktopShellRuntime? _desktopShellRuntime;
 
 
         public ConnectionContextMenu(ConnectionTree.ConnectionTree connectionTree)
@@ -87,6 +90,18 @@ namespace LoipvRemote.UI.Controls
                 ShowHideMenuItems();
             };
         }
+
+        internal void AttachRuntime(DesktopShellRuntime desktopShellRuntime)
+        {
+            ArgumentNullException.ThrowIfNull(desktopShellRuntime);
+            if (_desktopShellRuntime is not null && !ReferenceEquals(_desktopShellRuntime, desktopShellRuntime))
+                throw new InvalidOperationException("The connection context-menu runtime is already attached.");
+
+            _desktopShellRuntime = desktopShellRuntime;
+        }
+
+        private DesktopShellRuntime ShellRuntime => _desktopShellRuntime
+            ?? throw new InvalidOperationException("The connection context-menu runtime must be attached before it handles commands.");
 
         private void InitializeComponent()
         {
@@ -555,7 +570,7 @@ namespace LoipvRemote.UI.Controls
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionStackTrace(
+                ShellRuntime.MessageCollector.AddExceptionStackTrace(
                                                                 "ShowHideMenuItems (UI.Controls.ConnectionContextMenu) failed",
                                                                 ex);
             }
@@ -717,7 +732,7 @@ namespace LoipvRemote.UI.Controls
             {
                 ResetExternalAppMenu();
 
-                foreach (ExternalTool extA in Runtime.ExternalToolsService.ExternalTools)
+                foreach (ExternalTool extA in ShellRuntime.ExternalToolsService.ExternalTools)
                 {
                     ToolStripMenuItem menuItem = new()
                     {
@@ -732,7 +747,7 @@ namespace LoipvRemote.UI.Controls
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionStackTrace(
+                ShellRuntime.MessageCollector.AddExceptionStackTrace(
                                                                 "cMenTreeTools_DropDownOpening failed (UI.Window.ConnectionTreeWindow)",
                                                                 ex);
             }
@@ -753,20 +768,20 @@ namespace LoipvRemote.UI.Controls
         {
             ContainerInfo selectedNodeAsContainer = _connectionTree.SelectedNode as ContainerInfo;
             if (selectedNodeAsContainer != null)
-                Runtime.ConnectionInitiator.OpenConnection(selectedNodeAsContainer, ConnectionInfo.Force.DoNotJump);
+            ShellRuntime.ConnectionInitiator.OpenConnection(selectedNodeAsContainer, ConnectionInfo.Force.DoNotJump);
             else
-                Runtime.ConnectionInitiator.OpenConnection(_connectionTree.SelectedNode, ConnectionInfo.Force.DoNotJump);
+            ShellRuntime.ConnectionInitiator.OpenConnection(_connectionTree.SelectedNode, ConnectionInfo.Force.DoNotJump);
         }
 
         private void OnConnectToConsoleSessionClicked(object sender, EventArgs e)
         {
             ContainerInfo selectedNodeAsContainer = _connectionTree.SelectedNode as ContainerInfo;
             if (selectedNodeAsContainer != null)
-                Runtime.ConnectionInitiator.OpenConnection(selectedNodeAsContainer,
+            ShellRuntime.ConnectionInitiator.OpenConnection(selectedNodeAsContainer,
                                                            ConnectionInfo.Force.UseConsoleSession |
                                                            ConnectionInfo.Force.DoNotJump);
             else
-                Runtime.ConnectionInitiator.OpenConnection(_connectionTree.SelectedNode,
+            ShellRuntime.ConnectionInitiator.OpenConnection(_connectionTree.SelectedNode,
                                                            ConnectionInfo.Force.UseConsoleSession |
                                                            ConnectionInfo.Force.DoNotJump);
 
@@ -776,11 +791,11 @@ namespace LoipvRemote.UI.Controls
         {
             ContainerInfo selectedNodeAsContainer = _connectionTree.SelectedNode as ContainerInfo;
             if (selectedNodeAsContainer != null)
-                Runtime.ConnectionInitiator.OpenConnection(selectedNodeAsContainer,
+            ShellRuntime.ConnectionInitiator.OpenConnection(selectedNodeAsContainer,
                                                            ConnectionInfo.Force.DontUseConsoleSession |
                                                            ConnectionInfo.Force.DoNotJump);
             else
-                Runtime.ConnectionInitiator.OpenConnection(_connectionTree.SelectedNode,
+            ShellRuntime.ConnectionInitiator.OpenConnection(_connectionTree.SelectedNode,
                                                            ConnectionInfo.Force.DontUseConsoleSession |
                                                            ConnectionInfo.Force.DoNotJump);
         }
@@ -789,10 +804,10 @@ namespace LoipvRemote.UI.Controls
         {
             ContainerInfo selectedNodeAsContainer = _connectionTree.SelectedNode as ContainerInfo;
             if (selectedNodeAsContainer != null)
-                Runtime.ConnectionInitiator.OpenConnection(selectedNodeAsContainer,
+            ShellRuntime.ConnectionInitiator.OpenConnection(selectedNodeAsContainer,
                                                            ConnectionInfo.Force.Fullscreen | ConnectionInfo.Force.DoNotJump);
             else
-                Runtime.ConnectionInitiator.OpenConnection(_connectionTree.SelectedNode,
+            ShellRuntime.ConnectionInitiator.OpenConnection(_connectionTree.SelectedNode,
                                                            ConnectionInfo.Force.Fullscreen | ConnectionInfo.Force.DoNotJump);
         }
 
@@ -800,20 +815,20 @@ namespace LoipvRemote.UI.Controls
         {
             ContainerInfo selectedNodeAsContainer = _connectionTree.SelectedNode as ContainerInfo;
             if (selectedNodeAsContainer != null)
-                Runtime.ConnectionInitiator.OpenConnection(selectedNodeAsContainer, ConnectionInfo.Force.NoCredentials);
+            ShellRuntime.ConnectionInitiator.OpenConnection(selectedNodeAsContainer, ConnectionInfo.Force.NoCredentials);
             else
-                Runtime.ConnectionInitiator.OpenConnection(_connectionTree.SelectedNode, ConnectionInfo.Force.NoCredentials);
+            ShellRuntime.ConnectionInitiator.OpenConnection(_connectionTree.SelectedNode, ConnectionInfo.Force.NoCredentials);
         }
 
         private void OnChoosePanelBeforeConnectingClicked(object sender, EventArgs e)
         {
             ContainerInfo selectedNodeAsContainer = _connectionTree.SelectedNode as ContainerInfo;
             if (selectedNodeAsContainer != null)
-                Runtime.ConnectionInitiator.OpenConnection(selectedNodeAsContainer,
+            ShellRuntime.ConnectionInitiator.OpenConnection(selectedNodeAsContainer,
                                                            ConnectionInfo.Force.OverridePanel |
                                                            ConnectionInfo.Force.DoNotJump);
             else
-                Runtime.ConnectionInitiator.OpenConnection(_connectionTree.SelectedNode,
+            ShellRuntime.ConnectionInitiator.OpenConnection(_connectionTree.SelectedNode,
                                                            ConnectionInfo.Force.OverridePanel |
                                                            ConnectionInfo.Force.DoNotJump);
         }
@@ -822,7 +837,7 @@ namespace LoipvRemote.UI.Controls
         {
             ConnectionInfo connectionTarget = _connectionTree.SelectedNode as ContainerInfo
                                    ?? _connectionTree.SelectedNode;
-            Runtime.ConnectionInitiator.OpenConnection(connectionTarget, ConnectionInfo.Force.ViewOnly);
+            ShellRuntime.ConnectionInitiator.OpenConnection(connectionTarget, ConnectionInfo.Force.ViewOnly);
         }
 
         private void OnDisconnectClicked(object sender, EventArgs e)
@@ -878,7 +893,7 @@ namespace LoipvRemote.UI.Controls
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionStackTrace(
+                ShellRuntime.MessageCollector.AddExceptionStackTrace(
                                                                 "DisconnectConnection (UI.Window.ConnectionTreeWindow) failed",
                                                                 ex);
             }
@@ -901,7 +916,7 @@ namespace LoipvRemote.UI.Controls
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionStackTrace(
+                ShellRuntime.MessageCollector.AddExceptionStackTrace(
                     "Show password (UI.Controls.ConnectionContextMenu) failed", ex);
             }
         }
@@ -980,7 +995,7 @@ namespace LoipvRemote.UI.Controls
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionStackTrace(
+                ShellRuntime.MessageCollector.AddExceptionStackTrace(
                                                                 "SSHTransferFile (UI.Window.ConnectionTreeWindow) failed",
                                                                 ex);
             }
@@ -1031,10 +1046,10 @@ namespace LoipvRemote.UI.Controls
 
             if (confirm != DialogResult.Yes) return;
 
-            ClearCachedCredentialsResult outcome = RdpCredentialCacheCleaner.ClearCachedCredentials(hostname);
+            ClearWindowsCredentialResult outcome = WindowsRdpCredentialCache.Clear(hostname);
             switch (outcome)
             {
-                case ClearCachedCredentialsResult.Deleted:
+                case ClearWindowsCredentialResult.Deleted:
                     CTaskDialog.MessageBox(
                         this,
                         Language.ClearCachedRdpCredentials,
@@ -1042,7 +1057,7 @@ namespace LoipvRemote.UI.Controls
                         "", "", "", "",
                         ETaskDialogButtons.Ok, ESysIcons.Information, ESysIcons.Information);
                     break;
-                case ClearCachedCredentialsResult.NotFound:
+                case ClearWindowsCredentialResult.NotFound:
                     CTaskDialog.MessageBox(
                         this,
                         Language.ClearCachedRdpCredentials,
@@ -1050,7 +1065,7 @@ namespace LoipvRemote.UI.Controls
                         "", "", "", "",
                         ETaskDialogButtons.Ok, ESysIcons.Information, ESysIcons.Information);
                     break;
-                case ClearCachedCredentialsResult.Failed:
+                case ClearWindowsCredentialResult.Failed:
                     CTaskDialog.MessageBox(
                         this,
                         Language.ClearCachedRdpCredentials,
@@ -1065,33 +1080,33 @@ namespace LoipvRemote.UI.Controls
         {
             ContainerInfo selectedNodeAsContainer;
             if (_connectionTree.SelectedNode == null)
-                selectedNodeAsContainer = Runtime.ConnectionsService.ConnectionTreeModel.RootNodes.First();
+                selectedNodeAsContainer = ShellRuntime.ConnectionsService.ConnectionTreeModel.RootNodes.First();
             else
                 selectedNodeAsContainer =
                     _connectionTree.SelectedNode as ContainerInfo ?? _connectionTree.SelectedNode.Parent;
-            Import.ImportFromFile(selectedNodeAsContainer);
+            ShellRuntime.ConnectionImportService.ImportFromFile(selectedNodeAsContainer);
         }
 
         private void OnImportPuttyClicked(object sender, EventArgs e)
         {
             ContainerInfo selectedNodeAsContainer;
             if (_connectionTree.SelectedNode == null)
-                selectedNodeAsContainer = Runtime.ConnectionsService.ConnectionTreeModel.RootNodes.First();
+                selectedNodeAsContainer = ShellRuntime.ConnectionsService.ConnectionTreeModel.RootNodes.First();
             else
                 selectedNodeAsContainer =
                     _connectionTree.SelectedNode as ContainerInfo ?? _connectionTree.SelectedNode.Parent;
-            Import.ImportFromPutty(selectedNodeAsContainer);
+            ShellRuntime.ConnectionImportService.ImportFromPutty(selectedNodeAsContainer);
         }
 
         private void OnImportRemoteDesktopManagerClicked(object sender, EventArgs e)
         {
             ContainerInfo selectedNodeAsContainer;
             if (_connectionTree.SelectedNode == null)
-                selectedNodeAsContainer = Runtime.ConnectionsService.ConnectionTreeModel.RootNodes.First();
+                selectedNodeAsContainer = ShellRuntime.ConnectionsService.ConnectionTreeModel.RootNodes.First();
             else
                 selectedNodeAsContainer =
                     _connectionTree.SelectedNode as ContainerInfo ?? _connectionTree.SelectedNode.Parent;
-            Import.ImportFromRemoteDesktopManagerCsv(selectedNodeAsContainer);
+            ShellRuntime.ConnectionImportService.ImportFromRemoteDesktopManagerCsv(selectedNodeAsContainer);
         }
 
         private void OnImportActiveDirectoryClicked(object sender, EventArgs e)
@@ -1106,7 +1121,9 @@ namespace LoipvRemote.UI.Controls
 
         private void OnExportFileClicked(object sender, EventArgs e)
         {
-            Export.ExportToFile(_connectionTree.SelectedNode, Runtime.ConnectionsService.ConnectionTreeModel);
+            ShellRuntime.ConnectionExportService.ExportToFile(
+                _connectionTree.SelectedNode,
+                ShellRuntime.ConnectionsService.ConnectionTreeModel);
         }
 
         private void OnAddConnectionClicked(object sender, EventArgs e)
@@ -1155,7 +1172,7 @@ namespace LoipvRemote.UI.Controls
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddExceptionStackTrace(
+                ShellRuntime.MessageCollector.AddExceptionStackTrace(
                                                                 "cMenTreeToolsExternalAppsEntry_Click failed (UI.Window.ConnectionTreeWindow)",
                                                                 ex);
             }

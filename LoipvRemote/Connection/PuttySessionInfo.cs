@@ -1,14 +1,17 @@
-using LoipvRemote.App;
 using LoipvRemote.Messages;
 using LoipvRemote.Tools;
 using System;
 using System.ComponentModel;
+using System.Diagnostics;
 using LoipvRemote.Connection.Protocol;
 using LoipvRemote.Tree;
 using LoipvRemote.Tree.Root;
 using LoipvRemote.Resources.Language;
 using System.Runtime.Versioning;
 using System.Security;
+using LoipvRemote.App.Info;
+using LoipvRemote.Infrastructure.Windows.ProcessManagement;
+using LoipvRemote.Properties;
 
 namespace LoipvRemote.Connection
 {
@@ -64,8 +67,12 @@ namespace LoipvRemote.Connection
         {
             try
             {
-                PuttyProcessController puttyProcess = new();
-                if (!puttyProcess.Start())
+                string fileName = OptionsAdvancedPage.Default.UseCustomPuttyPath
+                    ? OptionsAdvancedPage.Default.CustomPuttyPath
+                    : GeneralAppInfo.PuttyPath;
+                using WindowsProcessController puttyProcess = new(
+                    TimeSpan.FromSeconds(OptionsAdvancedPage.Default.MaxPuttyWaitTime));
+                if (!puttyProcess.Start(fileName))
                 {
                     return;
                 }
@@ -80,7 +87,7 @@ namespace LoipvRemote.Connection
             }
             catch (Exception ex)
             {
-                Runtime.MessageCollector.AddMessage(MessageClass.ErrorMsg, Language.ErrorCouldNotLaunchPutty + Environment.NewLine + ex.Message);
+                Trace.TraceError($"{Language.ErrorCouldNotLaunchPutty}{Environment.NewLine}{ex}");
             }
         }
 

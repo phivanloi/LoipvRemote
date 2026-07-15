@@ -137,6 +137,26 @@ namespace LoipvRemoteTests.UI.Controls
             Assert.That(nativeEditor.Font.SizeInPoints, Is.EqualTo(numericUpDown.Font.SizeInPoints));
         }
 
+        [Test]
+        [Apartment(ApartmentState.STA)]
+        public void AbsoluteTableRowsExpandToFitScaledInputs()
+        {
+            using TableLayoutPanel table = new()
+            {
+                RowCount = 1,
+                ColumnCount = 1,
+                AutoSize = true
+            };
+            table.RowStyles.Add(new RowStyle(SizeType.Absolute, 12));
+            using MrngTextBox input = new() { Margin = new Padding(3) };
+            table.Controls.Add(input, 0, 0);
+
+            UiScaleManager.Instance.Apply(table);
+
+            Assert.That(table.RowStyles[0].Height,
+                Is.GreaterThanOrEqualTo(input.Height + input.Margin.Vertical));
+        }
+
         private sealed class TestableTextBox : MrngTextBox
         {
             public void RaiseMouseEnter() => OnMouseEnter(System.EventArgs.Empty);

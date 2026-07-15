@@ -66,6 +66,18 @@ public class XmlConnectionDefinitionStoreTests
     }
 
     [Test]
+    public async Task RejectsLegacyConnectionsRootInsteadOfAttemptingImplicitMigration()
+    {
+        string filePath = CreateTemporaryFilePath();
+        await File.WriteAllTextAsync(filePath, "<Connections />");
+        var store = new XmlConnectionDefinitionStore(filePath);
+
+        InvalidDataException exception = Assert.ThrowsAsync<InvalidDataException>(async () => await store.LoadAsync())!;
+
+        Assert.That(exception.Message, Does.Contain("connections"));
+    }
+
+    [Test]
     public async Task RoundTripsExternalApplicationDefinition()
     {
         var externalApplication = new ExternalApplicationDefinition(

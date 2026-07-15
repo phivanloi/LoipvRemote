@@ -25,7 +25,6 @@
     <PackageReference Include="System.Windows.Extensions" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\LoipvRemote\LoipvRemote.csproj" />
     <ProjectReference Include="..\LoipvRemote.Application\LoipvRemote.Application.csproj" />
     <ProjectReference Include="..\LoipvRemote.Domain\LoipvRemote.Domain.csproj" />
     <ProjectReference Include="..\LoipvRemote.Desktop\LoipvRemote.Desktop.csproj" />
@@ -37,6 +36,9 @@
     <ProjectReference Include="..\LoipvRemote.Protocols.Browser\LoipvRemote.Protocols.Browser.csproj" />
     <ProjectReference Include="..\LoipvRemote.Protocols.Putty\LoipvRemote.Protocols.Putty.csproj" />
     <ProjectReference Include="..\LoipvRemote.Protocols.ExternalApps\LoipvRemote.Protocols.ExternalApps.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\LoipvRemote.Desktop\log4net.config" Link="log4net.config" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
     <Compile Update="Properties\Resources.Designer.cs">

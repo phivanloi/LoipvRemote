@@ -30,7 +30,7 @@ public class SecretServerInterface
             if (initdone == true)
                 return;
 
-                RegistryKey key = Registry.CurrentUser.CreateSubKey(@"SOFTWARE\mRemoteSSInterface");
+                RegistryKey key = Registry.CurrentUser.CreateSubKey(@"SOFTWARE\LoipvRemote\SecretServer");
                 try
                 {
                     // display gui and ask for data

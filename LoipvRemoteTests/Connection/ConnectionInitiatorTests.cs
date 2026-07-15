@@ -3,20 +3,15 @@ using System.Linq;
 using LoipvRemote.App;
 using LoipvRemote.App.Composition;
 using LoipvRemote.Connection;
-using LoipvRemote.Connection.Protocol;
-using LoipvRemote.Config.Putty;
 using LoipvRemote.UseCases.Configuration;
-using LoipvRemoteTests.TestHelpers;
+using LoipvRemote.Protocols.Abstractions;
+using NSubstitute;
 using LoipvRemote.Connectors.Abstractions;
-using LoipvRemote.Infrastructure.Persistence;
-using LoipvRemote.Infrastructure.Windows.Dpapi;
-using LoipvRemote.Infrastructure.Windows.ProcessManagement;
 using LoipvRemoteTests.TestHelpers;
 using LoipvRemote.Messages;
 using LoipvRemote.Tools;
 using LoipvRemote.UI.Adapters;
 using LoipvRemote.UI.Panels;
-using LoipvRemote.UseCases.Configuration;
 using NUnit.Framework;
 
 namespace LoipvRemoteTests.Connection
@@ -30,23 +25,17 @@ namespace LoipvRemoteTests.Connection
         [SetUp]
         public void Setup()
         {
-            _messageCollector = Runtime.MessageCollector;
+            _messageCollector = new MessageCollector();
             RuntimeState runtimeState = new() { WindowList = [] };
             ConnectionWorkspaceAdapter connectionWorkspace = new();
             ExternalToolsService externalToolsService = new();
             _connectionInitiator = new ConnectionInitiator(
-                new ProtocolFactory(new ExternalCredentialConnectorRegistry([]), TestSecretStore.Instance, _messageCollector, connectionWorkspace, externalToolsService, new WindowsExternalApplicationHostFactory()),
+                Substitute.For<IProtocolFactory>(),
                 externalToolsService,
                 runtimeState,
                 _messageCollector,
                 connectionWorkspace,
-                new ConnectionsService(
-                    PuttySessionsManager.Instance,
-                    new ConnectionStoreRuntime(
-                        new ConnectionDefinitionPersistenceRuntime(new ConnectionStoreConfigurationService(new ConnectionDefinitionStoreFactory())),
-                        new XmlConnectionStoreOptionsProvider(),
-                        new DpapiStringSecretStore(new WindowsDpapiSecretProtector())),
-                    _messageCollector),
+                _ => null,
                 new PanelAdder(runtimeState, _messageCollector, connectionWorkspace));
             _messageCollector.ClearMessages();
         }
@@ -65,7 +54,7 @@ namespace LoipvRemoteTests.Connection
             {
                 Name = "Test Connection",
                 Hostname = "", // Empty hostname
-                Protocol = ProtocolType.RDP // RDP doesn't support blank hostname
+                Protocol = ProtocolKind.Rdp // RDP doesn't support blank hostname
             };
 
             // Act
@@ -85,7 +74,7 @@ namespace LoipvRemoteTests.Connection
             {
                 Name = "Test Connection",
                 Hostname = null, // Null hostname
-                Protocol = ProtocolType.SSH2 // SSH doesn't support blank hostname
+                Protocol = ProtocolKind.Ssh2 // SSH doesn't support blank hostname
             };
 
             // Act
@@ -105,7 +94,7 @@ namespace LoipvRemoteTests.Connection
             {
                 Name = "Test Connection",
                 Hostname = "192.168.1.1", // Valid hostname
-                Protocol = ProtocolType.RDP
+                Protocol = ProtocolKind.Rdp
             };
 
             // Act

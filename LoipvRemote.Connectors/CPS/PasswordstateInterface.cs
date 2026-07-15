@@ -39,7 +39,7 @@ public class PasswordstateInterface
             if (initdone == true)
                 return;
 
-            RegistryKey key = Registry.CurrentUser.CreateSubKey(@"SOFTWARE\mRemoteCPSInterface");
+            RegistryKey key = Registry.CurrentUser.CreateSubKey(@"SOFTWARE\LoipvRemote\Passwordstate");
             try
             {
                 // display gui and ask for data
@@ -119,7 +119,7 @@ public class PasswordstateInterface
 
             using HttpClient client = new HttpClient(new HttpClientHandler() { UseDefaultCredentials = true });
             client.DefaultRequestHeaders.Accept.Clear();
-            client.DefaultRequestHeaders.Add("User-Agent", "mRemote");
+            client.DefaultRequestHeaders.Add("User-Agent", "LoipvRemote");
             client.DefaultRequestHeaders.Add("OTP", CPSConnectionData.ssOTP);
 
             var json = client.GetStringAsync(url).Result;
@@ -133,7 +133,7 @@ public class PasswordstateInterface
             string url = $"{CPSConnectionData.ssUrl}/api/passwordlists/";
             using HttpClient client = new HttpClient();
             client.DefaultRequestHeaders.Accept.Clear();
-            client.DefaultRequestHeaders.Add("User-Agent", "mRemote");
+            client.DefaultRequestHeaders.Add("User-Agent", "LoipvRemote");
             client.DefaultRequestHeaders.Add("APIKey", CPSConnectionData.ssPassword);
             client.DefaultRequestHeaders.Add("OTP", CPSConnectionData.ssOTP);
 
@@ -151,7 +151,7 @@ public class PasswordstateInterface
 
         using HttpClient client = new HttpClient(new HttpClientHandler() { UseDefaultCredentials = true });
         client.DefaultRequestHeaders.Accept.Clear();
-        client.DefaultRequestHeaders.Add("User-Agent", "mRemote");
+        client.DefaultRequestHeaders.Add("User-Agent", "LoipvRemote");
         client.DefaultRequestHeaders.Add("OTP", CPSConnectionData.ssOTP);
 
         var json = client.GetStringAsync(url).Result;
@@ -167,7 +167,7 @@ public class PasswordstateInterface
 
         using HttpClient client = new HttpClient();
         client.DefaultRequestHeaders.Accept.Clear();
-        client.DefaultRequestHeaders.Add("User-Agent", "mRemote");
+        client.DefaultRequestHeaders.Add("User-Agent", "LoipvRemote");
         client.DefaultRequestHeaders.Add("APIKey", CPSConnectionData.ssPassword);
         client.DefaultRequestHeaders.Add("OTP", CPSConnectionData.ssOTP);
 

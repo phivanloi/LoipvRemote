@@ -3,9 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using LoipvRemote.Connection;
-using LoipvRemote.Connection.Protocol;
-using LoipvRemote.Connection.Protocol.RDP;
-using LoipvRemote.Connection.Protocol.VNC;
 using LoipvRemote.Container;
 using LoipvRemote.Tree.Root;
 using LoipvRemote.UI.Window;
@@ -124,7 +121,7 @@ namespace LoipvRemoteTests.UI.Window.ConfigWindowTests
 
 		private static IEnumerable<TestCaseData> ConnectionInfoGeneralTestCases()
         {
-            var protocolTypes = typeof(ProtocolType).GetEnumValues().OfType<ProtocolType>();
+            var protocolTypes = typeof(ProtocolKind).GetEnumValues().OfType<ProtocolKind>();
             var testCases = new List<TestCaseData>();
 
             foreach (var protocol in protocolTypes)
@@ -147,7 +144,7 @@ namespace LoipvRemoteTests.UI.Window.ConfigWindowTests
 
 		private static IEnumerable<TestCaseData> EveryNodeType()
 		{
-			var protocolTypes = typeof(ProtocolType).GetEnumValues().OfType<ProtocolType>().ToList();
+			var protocolTypes = typeof(ProtocolKind).GetEnumValues().OfType<ProtocolKind>().ToList();
 			var container = new ContainerInfo();
 			var connections = protocolTypes
 				.Select(protocolType =>
@@ -176,7 +173,7 @@ namespace LoipvRemoteTests.UI.Window.ConfigWindowTests
 				});
 		}
 
-        internal static ConnectionInfo ConstructConnectionInfo(ProtocolType protocol, bool isContainer)
+        internal static ConnectionInfo ConstructConnectionInfo(ProtocolKind protocol, bool isContainer)
         {
             // build connection info. set certain connection properties so
             // that toggled properties are hidden in the property grid. We
@@ -190,15 +187,15 @@ namespace LoipvRemoteTests.UI.Window.ConfigWindowTests
             node.RDGatewayUsageMethod = RDGatewayUsageMethod.Never;
             node.RDGatewayUseConnectionCredentials = RDGatewayUseConnectionCredentials.Yes;
             node.RedirectSound = RDPSounds.DoNotPlay;
-            node.VNCAuthMode = ProtocolVNC.AuthMode.AuthVNC;
-            node.VNCProxyType = ProtocolVNC.ProxyType.ProxyNone;
+            node.VNCAuthMode = VncAuthMode.AuthVNC;
+            node.VNCProxyType = VncProxyType.ProxyNone;
             node.UseVmId = false;
             node.Inheritance.TurnOffInheritanceCompletely();
 
             return node;
         }
 
-        internal static List<string> BuildExpectedConnectionInfoPropertyList(ProtocolType protocol, bool isContainer)
+        internal static List<string> BuildExpectedConnectionInfoPropertyList(ProtocolKind protocol, bool isContainer)
         {
             var expectedProperties = new List<string>
             {
@@ -229,7 +226,7 @@ namespace LoipvRemoteTests.UI.Window.ConfigWindowTests
 
             switch (protocol)
             {
-                case ProtocolType.RDP:
+                case ProtocolKind.Rdp:
                     expectedProperties.AddRange(new []
                     {
                         nameof(ConnectionInfo.Username),
@@ -274,8 +271,8 @@ namespace LoipvRemoteTests.UI.Window.ConfigWindowTests
                         nameof(ConnectionInfo.ExternalAddressProvider),
                     });
                     break;
-                case ProtocolType.VNC:
-                case ProtocolType.ARD:
+                case ProtocolKind.Vnc:
+                case ProtocolKind.Ard:
                     expectedProperties.AddRange(new []
                     {
                         nameof(ConnectionInfo.Password),
@@ -284,7 +281,7 @@ namespace LoipvRemoteTests.UI.Window.ConfigWindowTests
                         nameof(ConnectionInfo.VNCViewOnly)
                     });
                     break;
-                case ProtocolType.SSH1:
+                case ProtocolKind.Ssh1:
                     expectedProperties.AddRange(new[]
                     {
                         nameof(ConnectionInfo.Username),
@@ -296,7 +293,7 @@ namespace LoipvRemoteTests.UI.Window.ConfigWindowTests
                         nameof(ConnectionInfo.ExternalCredentialProvider),
                     });
                     break;
-                case ProtocolType.SSH2:
+                case ProtocolKind.Ssh2:
                     expectedProperties.AddRange(new []
                     {
                         nameof(ConnectionInfo.Username),
@@ -309,17 +306,18 @@ namespace LoipvRemoteTests.UI.Window.ConfigWindowTests
                         nameof(ConnectionInfo.ExternalCredentialProvider),
                     });
                     break;
-                case ProtocolType.Telnet:
-                case ProtocolType.Rlogin:
-                case ProtocolType.RAW:
+                case ProtocolKind.Telnet:
+                case ProtocolKind.Rlogin:
+                case ProtocolKind.Raw:
                     expectedProperties.AddRange(new[]
                     {
                         nameof(ConnectionInfo.Port),
                         nameof(ConnectionInfo.PuttySession),
                     });
                     break;
-                case ProtocolType.HTTP:
-                case ProtocolType.HTTPS:
+                case ProtocolKind.Http:
+                case ProtocolKind.Https:
+                case ProtocolKind.Browser:
                     expectedProperties.AddRange(new []
                     {
                         nameof(ConnectionInfo.Username),
@@ -328,7 +326,7 @@ namespace LoipvRemoteTests.UI.Window.ConfigWindowTests
                         nameof(ConnectionInfo.RenderingEngine),
                     });
                     break;
-                case ProtocolType.PowerShell:
+                case ProtocolKind.PowerShell:
                     expectedProperties.AddRange(new[]
                     {
                         nameof(ConnectionInfo.Password),
@@ -336,7 +334,7 @@ namespace LoipvRemoteTests.UI.Window.ConfigWindowTests
                         nameof(ConnectionInfo.Port),
                     });
                     break;
-                case ProtocolType.WSL:
+                case ProtocolKind.Wsl:
                     expectedProperties.AddRange(new[]
                     {
                         nameof(ConnectionInfo.Password),
@@ -344,21 +342,21 @@ namespace LoipvRemoteTests.UI.Window.ConfigWindowTests
                         nameof(ConnectionInfo.Port),
                     });
                     break;
-                case ProtocolType.Terminal:
+                case ProtocolKind.Terminal:
                     expectedProperties.AddRange(new[]
                     {
                         nameof(ConnectionInfo.Password),
                         nameof(ConnectionInfo.Port),
                     });
                     break;
-                case ProtocolType.AnyDesk:
+                case ProtocolKind.AnyDesk:
                     expectedProperties.AddRange(new[]
                     {
                         nameof(ConnectionInfo.Port),
                         nameof(ConnectionInfo.Password),
                     });
                     break;
-                case ProtocolType.IntApp:
+                case ProtocolKind.ExternalApplication:
                     expectedProperties.AddRange(new[]
                     {
                         nameof(ConnectionInfo.Username),

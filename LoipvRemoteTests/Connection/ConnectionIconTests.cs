@@ -8,8 +8,8 @@ namespace LoipvRemoteTests.Connection
     {
         [TestCase(null)]
         [TestCase("")]
-        [TestCase("mRemote")]
-        [TestCase("mRemoteNG")]
+        [TestCase("Unknown")]
+        [TestCase("Custom")]
         public void UsesLoipvRemoteForEveryConnectionIcon(string? iconName)
         {
             Assert.That(ConnectionIcon.GetConnectionDisplayIcon(iconName), Is.EqualTo(ConnectionIcon.LoipvRemoteIconName));

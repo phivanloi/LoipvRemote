@@ -17,7 +17,7 @@ public static class ConnectionDefinitionValidator
         definition.Credential.Validate();
         definition.GatewayCredential?.Validate();
         definition.Options?.Validate();
-        if (string.IsNullOrWhiteSpace(definition.Host) && definition.Protocol != ProtocolKind.ExternalApplication)
+        if (string.IsNullOrWhiteSpace(definition.Host) && !AllowsBlankHost(definition.Protocol))
             throw new ArgumentException("Connection host is required.", nameof(definition));
         if (definition.Port is < 0 or > 65535)
             throw new ArgumentOutOfRangeException(nameof(definition), "Connection port must be between 0 and 65535.");
@@ -29,4 +29,10 @@ public static class ConnectionDefinitionValidator
         if (definition.ExternalApplication is { IsValid: false })
             throw new ArgumentException("External application definition is invalid.", nameof(definition));
     }
+
+    private static bool AllowsBlankHost(ProtocolKind protocol) => protocol is
+        ProtocolKind.ExternalApplication or
+        ProtocolKind.PowerShell or
+        ProtocolKind.Terminal or
+        ProtocolKind.Wsl;
 }

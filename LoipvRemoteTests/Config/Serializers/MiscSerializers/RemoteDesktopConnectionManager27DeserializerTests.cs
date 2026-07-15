@@ -4,8 +4,6 @@ using System.IO;
 using System.Linq;
 using LoipvRemote.Config.Serializers.MiscSerializers;
 using LoipvRemote.Connection;
-using LoipvRemote.Connection.Protocol;
-using LoipvRemote.Connection.Protocol.RDP;
 using LoipvRemote.Container;
 using LoipvRemoteTests.Properties;
 using NUnit.Framework;
@@ -156,7 +154,7 @@ public class RemoteDesktopConnectionManager27DeserializerTests
                 nameof(ConnectionInfo.Username)),
             new TestCaseData((Func<ConnectionInfo, object>)(con => con.Domain), ExpectedDomain).SetName(
                 nameof(ConnectionInfo.Domain)),
-            new TestCaseData((Func<ConnectionInfo, object>)(con => con.Protocol), ProtocolType.RDP).SetName(
+            new TestCaseData((Func<ConnectionInfo, object>)(con => con.Protocol), ProtocolKind.Rdp).SetName(
                 nameof(ConnectionInfo.Protocol)),
             new TestCaseData((Func<ConnectionInfo, object>)(con => con.UseConsoleSession), ExpectedUseConsoleSession)
                 .SetName(nameof(ConnectionInfo.UseConsoleSession)),

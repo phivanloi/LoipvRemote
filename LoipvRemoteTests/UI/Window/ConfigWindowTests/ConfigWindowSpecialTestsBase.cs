@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using LoipvRemote.Connection;
-using LoipvRemote.Connection.Protocol;
 using LoipvRemote.UI.Window;
 using NUnit.Framework;
 
@@ -8,7 +7,7 @@ namespace LoipvRemoteTests.UI.Window.ConfigWindowTests
 {
 	public abstract class ConfigWindowSpecialTestsBase
     {
-        protected abstract ProtocolType Protocol { get; }
+        protected abstract ProtocolKind Protocol { get; }
         protected bool TestAgainstContainerInfo { get; set; } = false;
         protected ConfigWindow ConfigWindow;
         protected ConnectionInfo ConnectionInfo;

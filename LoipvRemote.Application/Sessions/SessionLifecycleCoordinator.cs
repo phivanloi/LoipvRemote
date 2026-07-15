@@ -37,6 +37,28 @@ public sealed class SessionLifecycleCoordinator
         return SessionStartResult.Started;
     }
 
+    public async ValueTask<SessionStartResult> StartAsync(
+        IProtocolSession session,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+
+        if (!await session.InitializeAsync(cancellationToken).ConfigureAwait(false))
+        {
+            await session.CloseAsync(cancellationToken).ConfigureAwait(false);
+            return SessionStartResult.InitializationFailed;
+        }
+
+        if (!await session.ConnectAsync(cancellationToken).ConfigureAwait(false))
+        {
+            await session.CloseAsync(cancellationToken).ConfigureAwait(false);
+            return SessionStartResult.ConnectionFailed;
+        }
+
+        _activeSessions.TryAdd(session, 0);
+        return SessionStartResult.Started;
+    }
+
     public void Stop(IProtocolSession session)
     {
         ArgumentNullException.ThrowIfNull(session);
@@ -44,7 +66,14 @@ public sealed class SessionLifecycleCoordinator
         session.Disconnect();
     }
 
-    public Task StopAllAsync(CancellationToken cancellationToken)
+    public async ValueTask StopAsync(IProtocolSession session, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        _activeSessions.TryRemove(session, out _);
+        await session.DisconnectAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task StopAllAsync(CancellationToken cancellationToken)
     {
         foreach (IProtocolSession session in _activeSessions.Keys)
         {
@@ -54,13 +83,13 @@ public sealed class SessionLifecycleCoordinator
 
             try
             {
-                session.Disconnect();
+                    await session.DisconnectAsync(cancellationToken).ConfigureAwait(false);
             }
             finally
             {
                 try
                 {
-                    session.Close();
+                    await session.CloseAsync(cancellationToken).ConfigureAwait(false);
                 }
                 finally
                 {
@@ -69,6 +98,5 @@ public sealed class SessionLifecycleCoordinator
             }
         }
 
-        return Task.CompletedTask;
     }
 }

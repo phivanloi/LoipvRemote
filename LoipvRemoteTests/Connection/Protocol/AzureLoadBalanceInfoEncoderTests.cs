@@ -9,7 +9,7 @@ public class AzureLoadBalanceInfoEncoderTests
     [Test]
     public void EncodesOddLengthInputWithRequiredPaddingAndLineEnding()
     {
-        var encoded = new AzureLoadBalanceInfoEncoder().Encode("abc");
+        var encoded = AzureLoadBalanceInfoEncoder.Encode("abc");
 
         var payloadSeenByTheActiveXControl = Encoding.UTF8.GetString(Encoding.Unicode.GetBytes(encoded));
 

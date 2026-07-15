@@ -8,6 +8,10 @@ internal sealed class SessionLifecycleShutdownService(
     SessionLifecycleCoordinator lifecycleCoordinator,
     ILogger<SessionLifecycleShutdownService> logger) : IHostedService
 {
+    private static readonly Action<ILogger, int, Exception?> ClosingSessions =
+        LoggerMessage.Define<int>(LogLevel.Information, new EventId(1, nameof(ClosingSessions)),
+            "Closing {ActiveSessionCount} active connection session(s).");
+
     public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
     public async Task StopAsync(CancellationToken cancellationToken)
@@ -16,7 +20,7 @@ internal sealed class SessionLifecycleShutdownService(
         if (activeSessions == 0)
             return;
 
-        logger.LogInformation("Closing {ActiveSessionCount} active connection session(s).", activeSessions);
+        ClosingSessions(logger, activeSessions, null);
         await lifecycleCoordinator.StopAllAsync(cancellationToken).ConfigureAwait(false);
     }
 }

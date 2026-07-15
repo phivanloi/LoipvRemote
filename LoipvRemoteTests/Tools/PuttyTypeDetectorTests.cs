@@ -11,8 +11,8 @@ namespace LoipvRemoteTests.Tools
         {
             PuttyTypeDetector.PuttyType result = PuttyTypeDetector.Classify(
                 "C:\\Program Files\\LoipvRemote\\PuTTYNG.exe",
-                "PuTTY",
-                "Release 0.84 mRemoteNG (LoipvRemote)",
+                "PuTTYNG",
+                "Release 0.84",
                 "");
 
             Assert.That(result, Is.EqualTo(PuttyTypeDetector.PuttyType.PuttyNg));
@@ -30,16 +30,5 @@ namespace LoipvRemoteTests.Tools
             Assert.That(result, Is.EqualTo(PuttyTypeDetector.PuttyType.Putty));
         }
 
-        [Test]
-        public void ClassifyKeepsTheLegacyPuttyNgBuildOnTheFallbackPath()
-        {
-            PuttyTypeDetector.PuttyType result = PuttyTypeDetector.Classify(
-                "C:\\Program Files\\LoipvRemote\\PuTTYNG.exe",
-                "PuTTY",
-                "Release 0.83 mRemoteNG",
-                "");
-
-            Assert.That(result, Is.EqualTo(PuttyTypeDetector.PuttyType.Putty));
-        }
     }
 }

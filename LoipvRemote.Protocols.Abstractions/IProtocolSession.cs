@@ -13,4 +13,5 @@ public interface IProtocolSession : IDisposable
     void Disconnect();
     void Focus();
     void Close();
+
 }

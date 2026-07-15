@@ -40,6 +40,49 @@ jobs:
           --logger "trx;LogFileName=tests.trx"
           --results-directory TestResults
 
+      - name: Verify refactor boundaries
+        shell: pwsh
+        run: |
+          git diff --check
+          [xml]$project = Get-Content 'LoipvRemote.Desktop/LoipvRemote.Desktop.csproj'
+          $version = @($project.Project.PropertyGroup | ForEach-Object Version | Where-Object { $_ })[0]
+          if ([string]::IsNullOrWhiteSpace($version) -or $version -notmatch '^\d+\.\d+\.\d+\.\d+$') {
+            throw "Version must be numeric four-part SemVer-compatible value; got '$version'."
+          }
+          if ($version -match '[+ ]') {
+            throw "Version must not contain source/build metadata: '$version'."
+          }
+          $legacy = rg -n --glob '*.cs' '\b(ProtocolVNC|PuttyBase|HTTPBase|XmlConnectionsLoader|SqlConnectionsLoader)\b' LoipvRemote.Application LoipvRemote.Desktop LoipvRemote.Domain LoipvRemote.Infrastructure.Persistence LoipvRemote.Infrastructure.Windows LoipvRemote.Protocols.Abstractions LoipvRemote.Protocols.Browser LoipvRemote.Protocols.ExternalApps LoipvRemote.Protocols.Putty LoipvRemote.Protocols.Rdp LoipvRemote.Protocols.Vnc
+          if ($LASTEXITCODE -eq 0 -and $legacy) {
+            $legacy | Write-Host
+            throw 'Legacy protocol/persistence implementation marker detected.'
+          }
+          $runtimeLeaks = @(rg -n --pcre2 '(?<!System\.)\bRuntime\.' LoipvRemote.Desktop/Tools/ExternalTool.cs LoipvRemote.Desktop/UI/DialogFactory.cs)
+          if ($runtimeLeaks.Count -gt 0) {
+            $runtimeLeaks | Write-Host
+            throw 'Desktop adapters must not resolve Runtime static services.'
+          }
+          if (Test-Path 'LoipvRemote.Desktop/App/Runtime.cs') {
+            throw 'The Runtime service locator must remain removed.'
+          }
+          if (Test-Path 'LoipvRemote.Desktop/Connection/Protocol/ProtocolBase.cs') {
+            throw 'Protocol lifecycle host must live in LoipvRemote.Desktop.'
+          }
+          if (Test-Path 'LoipvRemote.Desktop/Connection/Protocol/ProtocolList.cs') {
+            throw 'Protocol session collection must live in LoipvRemote.Desktop.'
+          }
+          if (Test-Path 'LoipvRemote.Desktop/Config/DatabaseConnectors') {
+            throw 'Database connector implementations must live in LoipvRemote.Infrastructure.Persistence.'
+          }
+          if (Test-Path '.github/workflows/Build_mR-NB.yml') {
+            throw 'Obsolete NB/mRemote release workflow must remain removed.'
+          }
+          $todo = @(rg -n --glob '*.cs' --glob '*.resx' --glob '!**/bin/**' --glob '!**/obj/**' '\bTODO\b|NotImplementedException|#if false' LoipvRemote.Application LoipvRemote.Desktop LoipvRemote.Domain LoipvRemote.Infrastructure.Persistence LoipvRemote.Infrastructure.Windows LoipvRemote.Protocols.Abstractions LoipvRemote.Protocols.Browser LoipvRemote.Protocols.ExternalApps LoipvRemote.Protocols.Putty LoipvRemote.Protocols.Rdp LoipvRemote.Protocols.Vnc)
+          if ($todo.Count -gt 0) {
+            $todo | Write-Host
+            throw 'Dead-code marker detected.'
+          }
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v7
@@ -94,7 +137,8 @@ jobs:
         shell: pwsh
         run: |
           $msi = Get-ChildItem "LoipvRemoteInstaller\Installer\bin\${{ matrix.platform }}\Release" -Filter '*.msi' | Select-Object -First 1
-          & .\LoipvRemoteInstaller\Installer\SmokeTest-Installer.ps1 -MsiPath $msi.FullName -InstallDirectory "$env:LOCALAPPDATA\Programs\LoipvRemote" -LogDirectory $env:RUNNER_TEMP
+          $installDirectory = Join-Path $env:RUNNER_TEMP "LoipvRemote-${{ matrix.platform }}-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+          & .\LoipvRemoteInstaller\Installer\SmokeTest-Installer.ps1 -MsiPath $msi.FullName -InstallDirectory $installDirectory -LogDirectory $env:RUNNER_TEMP
 
       - name: Upload installer
         uses: actions/upload-artifact@v7

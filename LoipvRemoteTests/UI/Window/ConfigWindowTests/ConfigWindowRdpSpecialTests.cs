@@ -1,6 +1,4 @@
 using System.Threading;
-using LoipvRemote.Connection.Protocol;
-using LoipvRemote.Connection.Protocol.RDP;
 using NUnit.Framework;
 
 namespace LoipvRemoteTests.UI.Window.ConfigWindowTests
@@ -8,7 +6,7 @@ namespace LoipvRemoteTests.UI.Window.ConfigWindowTests
     [Apartment(ApartmentState.STA)]
     public class ConfigWindowRdpSpecialTests : ConfigWindowSpecialTestsBase
     {
-        protected override ProtocolType Protocol => ProtocolType.RDP;
+        protected override ProtocolKind Protocol => ProtocolKind.Rdp;
 
         [Test]
         public void PropertyShownWhenActive_RdpMinutesToIdleTimeout()

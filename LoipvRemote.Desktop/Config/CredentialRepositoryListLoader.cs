@@ -1,0 +1,31 @@
+using System;
+using System.Collections.Generic;
+using System.Runtime.Versioning;
+using LoipvRemote.Config.DataProviders;
+using LoipvRemote.Config.Serializers.CredentialProviderSerializer;
+using LoipvRemote.Credential;
+
+namespace LoipvRemote.Config
+{
+    public class CredentialRepositoryListLoader : ILoader<IEnumerable<ICredentialRepository>>
+    {
+        private readonly IDataProvider<string> _dataProvider;
+        private readonly CredentialRepositoryListDeserializer _deserializer;
+
+        public CredentialRepositoryListLoader(IDataProvider<string> dataProvider, CredentialRepositoryListDeserializer deserializer)
+        {
+            ArgumentNullException.ThrowIfNull(dataProvider);
+            ArgumentNullException.ThrowIfNull(deserializer);
+
+            _dataProvider = dataProvider;
+            _deserializer = deserializer;
+        }
+
+        [SupportedOSPlatform("windows")]
+        public IEnumerable<ICredentialRepository> Load()
+        {
+            string data = _dataProvider.Load();
+            return _deserializer.Deserialize(data);
+        }
+    }
+}

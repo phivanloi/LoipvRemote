@@ -4,7 +4,7 @@ using LoipvRemote.Domain.Protocols;
 namespace LoipvRemote.Protocols.Putty;
 
 /// <summary>Owns the child PuTTY process lifecycle independently of the desktop host.</summary>
-public sealed class PuttyProcessSession : IDisposable
+public sealed class PuttyProcessSession : IPuttyProcessHost
 {
     private Process? Process { get; set; }
 
@@ -13,8 +13,23 @@ public sealed class PuttyProcessSession : IDisposable
     public bool IsRunning => Process?.HasExited == false;
     public bool HasExited => Process?.HasExited != false;
     public nint ProcessHandle => Process is { HasExited: false } process ? process.Handle : 0;
-    public nint MainWindowHandle => Process?.MainWindowHandle ?? 0;
-    public string MainWindowTitle => Process?.MainWindowTitle ?? string.Empty;
+    public nint MainWindowHandle
+    {
+        get
+        {
+            Process?.Refresh();
+            return Process?.MainWindowHandle ?? 0;
+        }
+    }
+
+    public string MainWindowTitle
+    {
+        get
+        {
+            Process?.Refresh();
+            return Process?.MainWindowTitle ?? string.Empty;
+        }
+    }
 
     public bool Start(PuttyProcessStartOptions options, EventHandler exited)
     {
@@ -40,6 +55,19 @@ public sealed class PuttyProcessSession : IDisposable
         }
 
         Process = process;
+        try
+        {
+            // PuTTY creates its top-level window asynchronously. Waiting for the
+            // GUI input queue and refreshing the process snapshot prevents the
+            // first tab activation from observing a zero window handle.
+            process.WaitForInputIdle(5000);
+        }
+        catch (InvalidOperationException)
+        {
+            // The process may exit before creating a GUI queue; IsRunning and the
+            // next attachment retry remain the source of truth.
+        }
+        process.Refresh();
         State = ProtocolSessionState.Connected;
         return true;
     }
@@ -64,6 +92,8 @@ public sealed class PuttyProcessSession : IDisposable
             State = ProtocolSessionState.Closed;
         }
     }
+
+    public void StopProcess() => Stop();
 
     public void Dispose() => Stop();
 

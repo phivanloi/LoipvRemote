@@ -22,10 +22,7 @@ public static class DesktopApplicationHost
 
         builder.Services.Configure<HostOptions>(options =>
             options.ShutdownTimeout = TimeSpan.FromSeconds(10));
-        builder.Services.AddSingleton<SessionLifecycleCoordinator>();
-        builder.Services.AddSingleton<ConnectionSessionOrchestrator>();
-        builder.Services.AddSingleton<DesktopCompositionRoot>();
-        builder.Services.AddHostedService<SessionLifecycleShutdownService>();
+        DesktopHostServiceRegistration.Register(builder.Services);
 
         configureApplicationServices(builder.Services);
         ValidateRequiredRegistrations(builder.Services);
@@ -36,6 +33,6 @@ public static class DesktopApplicationHost
     private static void ValidateRequiredRegistrations(IServiceCollection services)
     {
         if (!services.Any(descriptor => descriptor.ServiceType == typeof(IProtocolFactory)))
-            throw new InvalidOperationException($"{nameof(IProtocolFactory)} must be registered by the application composition callback.");
+            throw new InvalidOperationException($"{nameof(IProtocolFactory)} must be registered by the desktop composition.");
     }
 }

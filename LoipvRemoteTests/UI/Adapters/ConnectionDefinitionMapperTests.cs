@@ -1,7 +1,6 @@
 using System;
 using System.Linq;
 using LoipvRemote.Connection;
-using LoipvRemote.Connection.Protocol;
 using LoipvRemote.Container;
 using LoipvRemote.Domain.Connections;
 using LoipvRemote.UI.Adapters;
@@ -21,7 +20,7 @@ public class ConnectionDefinitionMapperTests
             Name = "ssh-prod",
             Hostname = "server.example",
             Port = 22,
-            Protocol = ProtocolType.SSH2,
+            Protocol = ProtocolKind.Ssh2,
             Password = "must-not-cross-domain-boundary"
         };
 
@@ -45,12 +44,21 @@ public class ConnectionDefinitionMapperTests
             Throws.ArgumentException);
     }
 
-    [TestCase(ProtocolType.ARD, ProtocolKind.Ard)]
-    [TestCase(ProtocolType.PowerShell, ProtocolKind.PowerShell)]
-    [TestCase(ProtocolType.Terminal, ProtocolKind.Terminal)]
-    [TestCase(ProtocolType.WSL, ProtocolKind.Wsl)]
-    [TestCase(ProtocolType.AnyDesk, ProtocolKind.AnyDesk)]
-    public void MapsEachLegacyProtocolToItsMatchingDomainProtocol(ProtocolType legacyProtocol, ProtocolKind expectedProtocol)
+    [TestCase(ProtocolKind.Rdp, ProtocolKind.Rdp)]
+    [TestCase(ProtocolKind.Vnc, ProtocolKind.Vnc)]
+    [TestCase(ProtocolKind.Ssh1, ProtocolKind.Ssh1)]
+    [TestCase(ProtocolKind.Ssh2, ProtocolKind.Ssh2)]
+    [TestCase(ProtocolKind.Telnet, ProtocolKind.Telnet)]
+    [TestCase(ProtocolKind.Rlogin, ProtocolKind.Rlogin)]
+    [TestCase(ProtocolKind.Raw, ProtocolKind.Raw)]
+    [TestCase(ProtocolKind.Http, ProtocolKind.Http)]
+    [TestCase(ProtocolKind.Https, ProtocolKind.Https)]
+    [TestCase(ProtocolKind.Ard, ProtocolKind.Ard)]
+    [TestCase(ProtocolKind.PowerShell, ProtocolKind.PowerShell)]
+    [TestCase(ProtocolKind.Terminal, ProtocolKind.Terminal)]
+    [TestCase(ProtocolKind.Wsl, ProtocolKind.Wsl)]
+    [TestCase(ProtocolKind.AnyDesk, ProtocolKind.AnyDesk)]
+    public void MapsEachDesktopProtocolToItsDomainProtocol(ProtocolKind legacyProtocol, ProtocolKind expectedProtocol)
     {
         var connection = new ConnectionInfo(Guid.NewGuid().ToString())
         {
@@ -73,7 +81,7 @@ public class ConnectionDefinitionMapperTests
             Name = "support-tool",
             Hostname = "host.example",
             Port = 0,
-            Protocol = ProtocolType.IntApp,
+            Protocol = ProtocolKind.ExternalApplication,
             ExtApp = "Support Tool"
         };
         var expected = new ExternalApplicationDefinition(
@@ -103,7 +111,7 @@ public class ConnectionDefinitionMapperTests
         var production = new ContainerInfo(Guid.NewGuid().ToString()) { Name = "Production" };
         var ssh = new ConnectionInfo(Guid.NewGuid().ToString())
         {
-            Name = "ssh-prod", Hostname = "host.example", Port = 22, Protocol = ProtocolType.SSH2
+            Name = "ssh-prod", Hostname = "host.example", Port = 22, Protocol = ProtocolKind.Ssh2
         };
         production.AddChild(ssh);
         root.AddChild(production);
@@ -161,7 +169,7 @@ public class ConnectionDefinitionMapperTests
             Name = "persisted-ssh",
             Hostname = "host.example",
             Port = 22,
-            Protocol = ProtocolType.SSH2
+            Protocol = ProtocolKind.Ssh2
         });
 
         var puttySessions = new RootPuttySessionsNodeInfo();
@@ -184,7 +192,7 @@ public class ConnectionDefinitionMapperTests
         var production = new ContainerInfo(Guid.NewGuid().ToString())
         {
             Name = "Production",
-            Protocol = ProtocolType.SSH2,
+            Protocol = ProtocolKind.Ssh2,
             PuttySession = "prod-defaults"
         };
         var ssh = new ConnectionInfo(Guid.NewGuid().ToString())
@@ -192,7 +200,7 @@ public class ConnectionDefinitionMapperTests
             Name = "ssh-prod",
             Hostname = "host.example",
             Port = 22,
-            Protocol = ProtocolType.SSH2,
+            Protocol = ProtocolKind.Ssh2,
             ExternalCredentialProvider = ExternalCredentialProvider.DelineaSecretServer,
             UserViaAPI = "folder/prod/ssh",
             Inheritance = { PuttySession = true, ExternalCredentialProvider = false, UserViaAPI = false }

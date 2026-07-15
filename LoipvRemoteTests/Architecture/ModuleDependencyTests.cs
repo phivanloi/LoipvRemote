@@ -1,4 +1,5 @@
 using System.Xml.Linq;
+using System.Text.RegularExpressions;
 using NUnit.Framework;
 
 namespace LoipvRemoteTests.Architecture;
@@ -25,13 +26,232 @@ public sealed class ModuleDependencyTests
     }
 
     [Test]
-    public void ConnectionStoreRuntime_UsesApplicationAndHostPortsInsteadOfWindowsImplementations()
+    public void ExecutableRootUsesDomainProtocolKindWithoutLegacyProtocolBoundary()
+    {
+        string root = FindRepositoryRoot();
+        string executableRoot = Path.Combine(root, "LoipvRemote.Desktop");
+        string[] violations = Directory.EnumerateFiles(executableRoot, "*.cs", SearchOption.AllDirectories)
+            .Where(path => !path.Contains(Path.Combine("bin", string.Empty), StringComparison.OrdinalIgnoreCase))
+            .Where(path => !path.Contains(Path.Combine("obj", string.Empty), StringComparison.OrdinalIgnoreCase))
+            .Where(path => Regex.IsMatch(File.ReadAllText(path), @"(?<!Sockets\.)\bProtocolType\b|ProtocolKindBoundaryMapper|ISupportsViewOnly"))
+            .Select(path => Path.GetRelativePath(root, path))
+            .ToArray();
+
+        Assert.That(violations, Is.Empty,
+            "Executable root must use Domain.ProtocolKind and Protocols.Abstractions directly.");
+    }
+
+    [Test]
+    public void CompositionRootRoutesExternalApplicationsThroughTheirModuleFactory()
     {
         string source = File.ReadAllText(Path.Combine(
             FindRepositoryRoot(),
-            "LoipvRemote",
+            "LoipvRemote.Desktop",
+            "Composition",
+            "ProtocolServiceRegistration.cs"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(source, Does.Contain("ExternalApplicationProtocolFactory"));
+            Assert.That(source, Does.Contain("BrowserProtocolFactory"));
+            Assert.That(source, Does.Contain("RdpProtocolFactory"));
+            Assert.That(source, Does.Contain("VncProtocolFactory"));
+            Assert.That(source, Does.Contain("PuttyProtocolFactory"));
+            Assert.That(source, Does.Contain("LocalProtocolFactory"));
+            Assert.That(source, Does.Contain("ProtocolFactoryRouter"));
+            Assert.That(source, Does.Not.Match("AddSingleton<IProtocolFactory>\\(provider => provider.GetRequiredService<ProtocolFactory>\\(\\)\\)"));
+        });
+    }
+
+    [Test]
+    public void ExecutableRegistrationDelegatesProtocolCompositionToDesktopHost()
+    {
+        string root = FindRepositoryRoot();
+        string applicationRegistration = File.ReadAllText(Path.Combine(
+            root,
+            "LoipvRemote.Desktop",
             "App",
-            "ConnectionStoreRuntime.cs"));
+            "Composition",
+            "ApplicationServiceRegistration.cs"));
+        string desktopHostRegistration = File.ReadAllText(Path.Combine(
+            root,
+            "LoipvRemote.Desktop",
+            "Composition",
+            "DesktopHostServiceRegistration.cs"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(applicationRegistration, Does.Not.Contain("ProtocolServiceRegistration.Register"));
+            Assert.That(desktopHostRegistration, Does.Contain("ProtocolServiceRegistration.Register"));
+        });
+    }
+
+    [Test]
+    public void DesktopHostOwnsHostLifecycleRegistration()
+    {
+        string root = FindRepositoryRoot();
+        string desktopRegistration = File.ReadAllText(Path.Combine(
+            root,
+            "LoipvRemote.Desktop",
+            "Composition",
+            "DesktopHostServiceRegistration.cs"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(desktopRegistration, Does.Contain("SessionLifecycleCoordinator"));
+            Assert.That(desktopRegistration, Does.Contain("SessionLifecycleShutdownService"));
+            Assert.That(File.Exists(Path.Combine(root, "LoipvRemote.Desktop", "App", "Composition", "DesktopServiceRegistration.cs")), Is.False);
+        });
+    }
+
+    [Test]
+    public void CompositionRootDoesNotPublishConcreteConnectionStoreService()
+    {
+        string source = File.ReadAllText(Path.Combine(
+            FindRepositoryRoot(),
+            "LoipvRemote.Desktop",
+            "App",
+            "Composition",
+            "ApplicationServiceRegistration.cs"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(source, Does.Contain("IConnectionTreeWorkspace"));
+            Assert.That(source, Does.Contain("IConnectionWorkspace"));
+            Assert.That(source, Does.Not.Contain("AddSingleton<ConnectionsService>"));
+        });
+    }
+
+    [TestCase("Tools", "ExternalTool.cs")]
+    [TestCase("UI", "DialogFactory.cs")]
+    public void DesktopAdaptersDoNotResolveRuntimeStaticServices(params string[] relativePath)
+    {
+        string root = FindRepositoryRoot();
+        string source = File.ReadAllText(Path.Combine([root, "LoipvRemote.Desktop", .. relativePath]));
+
+        Assert.That(source, Does.Not.Match("(?<!System\\.)\\bRuntime\\."));
+    }
+
+    [Test]
+    public void DesktopCompositionReferencesConcreteProtocolModules()
+    {
+        string root = FindRepositoryRoot();
+        string project = File.ReadAllText(Path.Combine(root, "LoipvRemote.Desktop", "LoipvRemote.Desktop.csproj"));
+        string[] required = [
+            "LoipvRemote.Protocols.Rdp",
+            "LoipvRemote.Protocols.Vnc",
+            "LoipvRemote.Protocols.Browser",
+            "LoipvRemote.Protocols.Putty"
+        ];
+
+        Assert.That(required.All(project.Contains), Is.True);
+    }
+
+    [Test]
+    public void DesktopCompositionReferencesExternalApplicationProtocolModule()
+    {
+        string root = FindRepositoryRoot();
+        string project = File.ReadAllText(Path.Combine(root, "LoipvRemote.Desktop", "LoipvRemote.Desktop.csproj"));
+
+        Assert.That(project, Does.Contain("LoipvRemote.Protocols.ExternalApps"));
+    }
+
+    [Test]
+    public void ExecutableRootDoesNotOwnDatabaseConnectorImplementations()
+    {
+        string root = FindRepositoryRoot();
+        string executableDatabaseRoot = Path.Combine(root, "LoipvRemote.Desktop", "Config", "DatabaseConnectors");
+        string persistenceConnectorRoot = Path.Combine(root, "LoipvRemote.Infrastructure.Persistence", "Connectors");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(Directory.Exists(executableDatabaseRoot), Is.False,
+                "Database connector implementations must not remain in the WinForms executable.");
+            Assert.That(File.Exists(Path.Combine(persistenceConnectorRoot, "DatabaseConnectorFactory.cs")), Is.True);
+            Assert.That(File.Exists(Path.Combine(persistenceConnectorRoot, "IDatabaseConnector.cs")), Is.True);
+        });
+    }
+
+    [Test]
+    public void RepositoryDoesNotCarryReadTheDocsConfigurationWithoutDocumentationSources()
+    {
+        string root = FindRepositoryRoot();
+        Assert.That(File.Exists(Path.Combine(root, ".readthedocs.yaml")), Is.False);
+    }
+
+    [Test]
+    public void ExecutableRootUsesWinFormsWithoutWpfComposition()
+    {
+        string root = FindRepositoryRoot();
+        string project = File.ReadAllText(Path.Combine(root, "LoipvRemote.Desktop", "LoipvRemote.Desktop.csproj"));
+        string[] sourceFiles = Directory.EnumerateFiles(Path.Combine(root, "LoipvRemote.Desktop"), "*.cs", SearchOption.AllDirectories)
+            .Where(path => !path.Contains(Path.Combine("bin", string.Empty), StringComparison.OrdinalIgnoreCase))
+            .Where(path => !path.Contains(Path.Combine("obj", string.Empty), StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(project, Does.Not.Contain("UseWPF"));
+            Assert.That(project, Does.Not.Contain("Microsoft.Xaml.Behaviors.Wpf"));
+            Assert.That(project, Does.Not.Contain("ProjectTypeGuids"));
+            Assert.That(sourceFiles.Select(File.ReadAllText)
+                .Any(source => Regex.IsMatch(source, @"System\\.Windows\\.(?!Forms)|using System\\.Windows;")), Is.False);
+            Assert.That(File.Exists(Path.Combine(root, "LoipvRemote.Desktop", "UI", "Forms", "FrmSplashScreen.cs")), Is.True);
+        });
+    }
+
+    [Test]
+    public void ProtocolRouterHasNoLegacyFallback()
+    {
+        string source = File.ReadAllText(Path.Combine(
+            FindRepositoryRoot(),
+            "LoipvRemote.Desktop",
+            "Composition",
+            "ProtocolFactoryRouter.cs"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(source, Does.Not.Contain("fallbackFactory"));
+            Assert.That(source, Does.Not.Contain("_fallbackFactory"));
+            Assert.That(source, Does.Contain("no registered protocol module"));
+        });
+    }
+
+    [Test]
+    public void RemovedLegacyXmlPersistencePipelineHasNoProductionArtifacts()
+    {
+        string root = FindRepositoryRoot();
+        string[] removedFiles =
+        [
+            Path.Combine(root, "LoipvRemote.Desktop", "Config", "CredentialHarvester.cs"),
+            Path.Combine(root, "LoipvRemote.Desktop", "Config", "Serializers", "XmlConnectionsDecryptor.cs"),
+            Path.Combine(root, "LoipvRemote.Desktop", "Config", "Serializers", "ConnectionSerializers", "Xml", "XmlConnectionsSerializer.cs"),
+        ];
+
+        Assert.That(removedFiles.Where(File.Exists), Is.Empty);
+
+        string[] productionSources = Directory.EnumerateFiles(
+                Path.Combine(root, "LoipvRemote.Desktop"),
+                "*.cs",
+                SearchOption.AllDirectories)
+            .Where(path => !path.Contains(Path.Combine("bin", string.Empty), StringComparison.OrdinalIgnoreCase))
+            .Where(path => !path.Contains(Path.Combine("obj", string.Empty), StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+
+        Assert.That(productionSources.Select(File.ReadAllText)
+            .Any(source => source.Contains("XmlConnectionsSerializer", StringComparison.Ordinal)
+                || source.Contains("XmlConnectionsDeserializer", StringComparison.Ordinal)
+                || source.Contains("XmlConnectionNodeSerializer28", StringComparison.Ordinal)), Is.False);
+    }
+
+    [Test]
+    public void ConnectionWorkspace_UsesApplicationAndHostPortsInsteadOfWindowsImplementations()
+    {
+        string source = File.ReadAllText(Path.Combine(
+            FindRepositoryRoot(),
+            "LoipvRemote.Desktop",
+            "Connection",
+            "ConnectionWorkspace.cs"));
 
         string[] forbiddenMarkers =
         [
@@ -43,16 +263,40 @@ public sealed class ModuleDependencyTests
             "OdbcConnectionStringBuilder"
         ];
 
-        Assert.That(forbiddenMarkers.Where(source.Contains), Is.Empty);
+        Assert.Multiple(() =>
+        {
+            Assert.That(forbiddenMarkers.Where(source.Contains), Is.Empty);
+            Assert.That(source, Does.Contain("ConnectionDefinitionPersistenceRuntime"));
+            Assert.That(source, Does.Contain("IConnectionStoreOptionsProvider"));
+            Assert.That(source, Does.Contain("IStringSecretStore"));
+        });
     }
 
     [Test]
-    public void Runtime_DoesNotExposeTheConcreteDpapiStore()
+    public void DesktopShellRuntime_DoesNotExposeTheConcreteDpapiStore()
     {
-        string source = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "LoipvRemote", "App", "Runtime.cs"));
+        string source = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "LoipvRemote.Desktop", "App", "Composition", "DesktopShellRuntime.cs"));
 
         Assert.That(source, Does.Not.Contain("DpapiStringSecretStore"));
         Assert.That(source, Does.Contain("IStringSecretStore UserSecretStore"));
+    }
+
+    [Test]
+    public void RuntimeServiceLocatorBridgeHasBeenRemoved()
+    {
+        string root = FindRepositoryRoot();
+        Assert.That(File.Exists(Path.Combine(root, "LoipvRemote.Desktop", "App", "Runtime.cs")), Is.False);
+
+        string[] runtimeReferences = Directory.EnumerateFiles(Path.Combine(root, "LoipvRemote.Desktop"), "*.cs", SearchOption.AllDirectories)
+            .Where(path => !path.Contains(Path.Combine("bin", string.Empty), StringComparison.OrdinalIgnoreCase))
+            .Where(path => !path.Contains(Path.Combine("obj", string.Empty), StringComparison.OrdinalIgnoreCase))
+            .SelectMany(path => File.ReadLines(path).Select((line, index) => (path, line, index)))
+            .Where(item => Regex.IsMatch(item.line, "(?<!System\\.)(?<![A-Za-z0-9_])Runtime\\.[A-Z][A-Za-z0-9_]*"))
+            .Select(item => Path.GetRelativePath(root, item.path))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        Assert.That(runtimeReferences, Is.Empty, string.Join(Environment.NewLine, runtimeReferences));
     }
 
     [Test]
@@ -60,14 +304,14 @@ public sealed class ModuleDependencyTests
     {
         string source = File.ReadAllText(Path.Combine(
             FindRepositoryRoot(),
-            "LoipvRemote",
+            "LoipvRemote.Desktop",
             "Config",
             "Connections",
             "Multiuser",
             "RemoteConnectionsSyncronizer.cs"));
 
         Assert.That(source, Does.Not.Match("(?<!System\\.)\\bRuntime\\."));
-        Assert.That(source, Does.Contain("ConnectionsService connectionsService"));
+        Assert.That(source, Does.Contain("IConnectionWorkspace workspace"));
     }
 
     [TestCase("Config", "Settings", "SettingsLoader.cs")]
@@ -84,7 +328,6 @@ public sealed class ModuleDependencyTests
     [TestCase("Config", "Import", "LoipvRemoteXmlImporter.cs")]
     [TestCase("Config", "Import", "LoipvRemoteCsvImporter.cs")]
     [TestCase("Config", "Import", "SecureCRTImporter.cs")]
-    [TestCase("Config", "Import", "RemoteDesktopManagerImporter.cs")]
     [TestCase("Config", "Import", "RegistryImporter.cs")]
     [TestCase("Config", "Import", "ActiveDirectoryImporter.cs")]
     [TestCase("Config", "Serializers", "MiscSerializers", "ActiveDirectoryDeserializer.cs")]
@@ -100,7 +343,6 @@ public sealed class ModuleDependencyTests
     [TestCase("UI", "Forms", "OptionsPages", "AppearancePage.cs")]
     [TestCase("Config", "Serializers", "MiscSerializers", "SecureCRTFileDeserializer.cs")]
     [TestCase("Config", "Serializers", "MiscSerializers", "RemoteDesktopConnectionManagerDeserializer.cs")]
-    [TestCase("Config", "Serializers", "ConnectionSerializers", "Xml", "XmlConnectionsDeserializer.cs")]
     [TestCase("Tools", "Cmdline", "CmdArgumentsInterpreter.cs")]
     [TestCase("Tools", "ScanHost.cs")]
     [TestCase("Tools", "SecureTransfer.cs")]
@@ -122,7 +364,7 @@ public sealed class ModuleDependencyTests
     [TestCase("UI", "Forms", "OptionsPages", "CredentialsPage.cs")]
     public void SettingsAndShutdownComponents_DoNotReachIntoRuntimeStatic(params string[] relativePath)
     {
-        string source = File.ReadAllText(Path.Combine([FindRepositoryRoot(), "LoipvRemote", .. relativePath]));
+        string source = File.ReadAllText(Path.Combine([FindRepositoryRoot(), "LoipvRemote.Desktop", .. relativePath]));
 
         Assert.That(source, Does.Not.Match("(?<!System\\.)\\bRuntime\\."));
     }

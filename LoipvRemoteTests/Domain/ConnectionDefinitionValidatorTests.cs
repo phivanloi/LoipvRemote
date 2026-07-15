@@ -60,4 +60,15 @@ public class ConnectionDefinitionValidatorTests
 
         Assert.DoesNotThrow(() => ConnectionDefinitionValidator.Validate(definition));
     }
+
+    [TestCase(ProtocolKind.PowerShell)]
+    [TestCase(ProtocolKind.Terminal)]
+    [TestCase(ProtocolKind.Wsl)]
+    public void AcceptsLocalShellProtocolsWithoutHostname(ProtocolKind protocol)
+    {
+        var definition = new ConnectionDefinition(
+            Guid.NewGuid(), protocol.ToString(), string.Empty, 0, protocol, CredentialReference.None);
+
+        Assert.DoesNotThrow(() => ConnectionDefinitionValidator.Validate(definition));
+    }
 }

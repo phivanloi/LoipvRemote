@@ -17,5 +17,7 @@ public interface IEmbeddedWindowOperations
     void Move(IntPtr windowHandle, int x, int y, int width, int height);
     void ShowSettingsDialog(IntPtr windowHandle, int commandId);
     void Activate(IntPtr windowHandle);
+    void SetFocus(IntPtr windowHandle);
+    bool TryFocus(IntPtr ownerWindowHandle, IntPtr embeddedWindowHandle);
     void Close(IntPtr windowHandle);
 }

@@ -14,11 +14,11 @@
   </ItemGroup>
   <ItemGroup>
     <Reference Include="Interop.MSTSCLib">
-      <HintPath>..\LoipvRemote\Interop\Interop.MSTSCLib.dll</HintPath>
+      <HintPath>Interop\Interop.MSTSCLib.dll</HintPath>
       <EmbedInteropTypes>false</EmbedInteropTypes>
     </Reference>
     <Reference Include="AxInterop.MSTSCLib">
-      <HintPath>..\LoipvRemote\Interop\AxInterop.MSTSCLib.dll</HintPath>
+      <HintPath>Interop\AxInterop.MSTSCLib.dll</HintPath>
       <EmbedInteropTypes>false</EmbedInteropTypes>
     </Reference>
   </ItemGroup>

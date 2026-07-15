@@ -12,7 +12,7 @@ using NUnit.Framework;
 
 namespace LoipvRemoteTests.Config.Serializers.ConnectionSerializers.Csv;
 
-public class CsvConnectionsSerializerMremotengFormatTests
+public class CsvConnectionsSerializerTests
 {
     private ICredentialRepositoryList _credentialRepositoryList;
     private const string ConnectionName = "myconnection";
@@ -34,7 +34,7 @@ public class CsvConnectionsSerializerMremotengFormatTests
     [Test]
     public void SerializesNodeId()
     {
-        var serializer = new CsvConnectionsSerializerMremotengFormat(new SaveFilter(), _credentialRepositoryList);
+        var serializer = new CsvConnectionsSerializer(new SaveFilter(), _credentialRepositoryList);
         var connectionInfo = BuildConnectionInfo();
         var csv = serializer.Serialize(connectionInfo);
         Assert.That(csv, Does.Match(connectionInfo.ConstantID));
@@ -43,7 +43,7 @@ public class CsvConnectionsSerializerMremotengFormatTests
     [Test]
     public void DoesntSerializeTheRootNode()
     {
-        var serializer = new CsvConnectionsSerializerMremotengFormat(new SaveFilter(), _credentialRepositoryList);
+        var serializer = new CsvConnectionsSerializer(new SaveFilter(), _credentialRepositoryList);
         var treeModel = new ConnectionTreeModelBuilder().Build();
         var csv = serializer.Serialize(treeModel);
         Assert.That(csv, Does.Not.Match($"{treeModel.RootNodes[0].ConstantID};.*;{TreeNodeType.Root}"));
@@ -54,7 +54,7 @@ public class CsvConnectionsSerializerMremotengFormatTests
     [TestCase("InheritColors")]
     public void CreatesCsv(string valueThatShouldExist)
     {
-        var serializer = new CsvConnectionsSerializerMremotengFormat(new SaveFilter(), _credentialRepositoryList);
+        var serializer = new CsvConnectionsSerializer(new SaveFilter(), _credentialRepositoryList);
         var connectionInfo = BuildConnectionInfo();
         var csv = serializer.Serialize(connectionInfo);
         Assert.That(csv, Does.Match(valueThatShouldExist));
@@ -66,7 +66,7 @@ public class CsvConnectionsSerializerMremotengFormatTests
     public void SerializerRespectsSaveFilterSettings(string valueThatShouldntExist)
     {
         var saveFilter = new SaveFilter(true);
-        var serializer = new CsvConnectionsSerializerMremotengFormat(saveFilter, _credentialRepositoryList);
+        var serializer = new CsvConnectionsSerializer(saveFilter, _credentialRepositoryList);
         var connectionInfo = BuildConnectionInfo();
         var csv = serializer.Serialize(connectionInfo);
         Assert.That(csv, Does.Not.Match(valueThatShouldntExist));
@@ -75,7 +75,7 @@ public class CsvConnectionsSerializerMremotengFormatTests
     [Test]
     public void CanSerializeEmptyConnectionInfo()
     {
-        var serializer = new CsvConnectionsSerializerMremotengFormat(new SaveFilter(), _credentialRepositoryList);
+        var serializer = new CsvConnectionsSerializer(new SaveFilter(), _credentialRepositoryList);
         var connectionInfo = new ConnectionInfo();
         var csv = serializer.Serialize(connectionInfo);
         Assert.That(csv, Is.Not.Empty);
@@ -85,27 +85,27 @@ public class CsvConnectionsSerializerMremotengFormatTests
     public void CantPassNullToConstructor()
     {
         Assert.Throws<ArgumentNullException>(() =>
-            new CsvConnectionsSerializerMremotengFormat(null, _credentialRepositoryList));
+            new CsvConnectionsSerializer(null, _credentialRepositoryList));
     }
 
     [Test]
     public void CantPassNullToSerializeConnectionInfo()
     {
-        var serializer = new CsvConnectionsSerializerMremotengFormat(new SaveFilter(), _credentialRepositoryList);
+        var serializer = new CsvConnectionsSerializer(new SaveFilter(), _credentialRepositoryList);
         Assert.Throws<ArgumentNullException>(() => serializer.Serialize((ConnectionInfo)null));
     }
 
     [Test]
     public void CantPassNullToSerializeConnectionTreeModel()
     {
-        var serializer = new CsvConnectionsSerializerMremotengFormat(new SaveFilter(), _credentialRepositoryList);
+        var serializer = new CsvConnectionsSerializer(new SaveFilter(), _credentialRepositoryList);
         Assert.Throws<ArgumentNullException>(() => serializer.Serialize((ConnectionTreeModel)null));
     }
 
     [Test]
     public void FoldersAreSerialized()
     {
-        var serializer = new CsvConnectionsSerializerMremotengFormat(new SaveFilter(), _credentialRepositoryList);
+        var serializer = new CsvConnectionsSerializer(new SaveFilter(), _credentialRepositoryList);
         var container = BuildContainer();
         var csv = serializer.Serialize(container);
         Assert.That(csv, Does.Match(container.Name));
@@ -118,7 +118,7 @@ public class CsvConnectionsSerializerMremotengFormatTests
     [Test]
     public void SerializationIncludesRawInheritedValuesIfObjectInheritsFromParentOutsideOfSerializationScope()
     {
-        var serializer = new CsvConnectionsSerializerMremotengFormat(new SaveFilter(), _credentialRepositoryList);
+        var serializer = new CsvConnectionsSerializer(new SaveFilter(), _credentialRepositoryList);
         var treeModel = new ConnectionTreeModelBuilder().Build();
         var serializationTarget = treeModel.GetRecursiveChildList().First(info => info.Name == "folder3");
         var csv = serializer.Serialize(serializationTarget);
@@ -132,7 +132,7 @@ public class CsvConnectionsSerializerMremotengFormatTests
     [Test]
     public void CsvExportNeverContainsSecrets()
     {
-        var serializer = new CsvConnectionsSerializerMremotengFormat(new SaveFilter(), _credentialRepositoryList);
+        var serializer = new CsvConnectionsSerializer(new SaveFilter(), _credentialRepositoryList);
         var connectionInfo = BuildConnectionInfo();
         connectionInfo.VNCProxyPassword = "vnc-secret";
         connectionInfo.RDGatewayPassword = "gateway-secret";

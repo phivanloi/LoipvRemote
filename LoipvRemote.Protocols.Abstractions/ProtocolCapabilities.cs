@@ -9,5 +9,6 @@ public enum ProtocolCapabilities
     Reconnect = 4,
     Clipboard = 8,
     FileTransfer = 16,
-    CredentialInjection = 32
+    CredentialInjection = 32,
+    InputForwarding = 64
 }

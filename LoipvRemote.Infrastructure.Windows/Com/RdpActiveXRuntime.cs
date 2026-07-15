@@ -2,11 +2,12 @@ using AxMSTSCLib;
 using LoipvRemote.Domain.Protocols.Rdp;
 using LoipvRemote.Protocols.Abstractions;
 using MSTSCLib;
+using System.ComponentModel;
 using System.Windows.Forms;
 
 namespace LoipvRemote.Infrastructure.Windows.Com;
 
-public sealed class RdpActiveXRuntime : IRdpClient, IDisposable
+public sealed class RdpActiveXRuntime : IRdpClient, IRdpCredentialClient, IRdpRuntimeClient, IRdpDisplayClient, IRdpEventClient, IManagedEmbeddedWindow, IDisposable
 {
     private MsRdpClient6NotSafeForScripting? _client;
     private bool _eventsSubscribed;
@@ -19,6 +20,8 @@ public sealed class RdpActiveXRuntime : IRdpClient, IDisposable
 
     public RdpVersion Version { get; }
     public AxHost Control { get; }
+    public IntPtr WindowHandle => Control.IsHandleCreated ? Control.Handle : IntPtr.Zero;
+    public bool IsAvailable => _client is not null && !Control.IsDisposed;
     public System.Version ClientVersion => new(Client.Version);
     public bool SmartSize
     {
@@ -49,12 +52,59 @@ public sealed class RdpActiveXRuntime : IRdpClient, IDisposable
 
     public void Initialize()
     {
+        if (Control.Parent is null)
+            throw new InvalidOperationException("The RDP ActiveX control must be hosted before initialization.");
+
         Control.CreateControl();
         _client = (MsRdpClient6NotSafeForScripting)Control.GetOcx();
     }
 
+    public bool AttachTo(IntPtr parentWindowHandle, TimeSpan timeout)
+    {
+        if (parentWindowHandle == IntPtr.Zero || Control.IsDisposed)
+            return false;
+
+        System.Windows.Forms.Control? parent = System.Windows.Forms.Control.FromHandle(parentWindowHandle);
+        if (parent is null || parent.IsDisposed)
+            return false;
+
+        if (ReferenceEquals(Control.Parent, parent))
+            return true;
+
+        ISupportInitialize initializer = Control;
+        initializer.BeginInit();
+        try
+        {
+            Control.Name = "RdpActiveX";
+            Control.Dock = DockStyle.Fill;
+            parent.Controls.Add(Control);
+            Control.BringToFront();
+        }
+        finally
+        {
+            initializer.EndInit();
+        }
+
+        return ReferenceEquals(Control.Parent, parent);
+    }
+
+    public void ConfigureEndpoint(string host, int port)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(host);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(port);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(port, 65535);
+        Client.Server = host;
+        Client.AdvancedSettings2.RDPPort = port;
+    }
+
     public void Connect() => Client.Connect();
     public void Disconnect() => Client.Disconnect();
+
+    public void Focus()
+    {
+        if (!Control.IsDisposed)
+            Control.Focus();
+    }
 
     public string GetErrorDescription(int disconnectReason) =>
         Client.GetErrorDescription((uint)disconnectReason, (uint)Client.ExtendedDisconnectReason);
@@ -274,9 +324,13 @@ public sealed class RdpActiveXRuntime : IRdpClient, IDisposable
     {
         try
         {
-            using AxHost control = CreateControl(version);
-            control.CreateControl();
-            return true;
+            using Panel host = new();
+            _ = host.Handle;
+            using RdpActiveXRuntime runtime = new(version);
+            if (!runtime.AttachTo(host.Handle, TimeSpan.FromSeconds(1)))
+                return false;
+            runtime.Initialize();
+            return runtime.IsAvailable;
         }
         catch
         {
@@ -294,10 +348,11 @@ public sealed class RdpActiveXRuntime : IRdpClient, IDisposable
     private static AxHost CreateControl(RdpVersion version) => version switch
     {
         RdpVersion.Rdc6 => new AxMsRdpClient6NotSafeForScripting(),
-        RdpVersion.Rdc7 => new AxMsRdpClient11NotSafeForScripting(),
+        RdpVersion.Rdc7 => new AxMsRdpClient7NotSafeForScripting(),
         RdpVersion.Rdc8 => new AxMsRdpClient8NotSafeForScripting(),
         RdpVersion.Rdc9 => new AxMsRdpClient9NotSafeForScripting(),
-        RdpVersion.Rdc10 or RdpVersion.Rdc11 => new AxMsRdpClient11NotSafeForScripting(),
+        RdpVersion.Rdc10 => new AxMsRdpClient10NotSafeForScripting(),
+        RdpVersion.Rdc11 => new AxMsRdpClient11NotSafeForScripting(),
         _ => throw new ArgumentOutOfRangeException(nameof(version), version, null)
     };
 

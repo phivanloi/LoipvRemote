@@ -16,6 +16,8 @@ public class ExternalApplicationSessionTests
         FakeExternalApplicationHost host = new();
         using ExternalApplicationSession session = new(CreateEmbeddedPlan(), host);
 
+        Assert.That(session, Is.AssignableTo<IAsyncProtocolSession>());
+
         Assert.That(session.Initialize(), Is.True);
         Assert.That(session.Connect(), Is.True);
         session.Focus();

@@ -3,6 +3,7 @@ using LoipvRemote.App.Composition;
 using LoipvRemote.Desktop.Composition;
 using Microsoft.Extensions.Hosting;
 using NUnit.Framework;
+using System;
 
 namespace LoipvRemoteTests;
 
@@ -10,12 +11,16 @@ namespace LoipvRemoteTests;
 public sealed class RuntimeHostFixture
 {
     private IHost? _host;
+    public static IServiceProvider Services => Instance._host?.Services
+        ?? throw new InvalidOperationException("The test host has not been started.");
+
+    private static RuntimeHostFixture Instance { get; } = new();
 
     [OneTimeSetUp]
     public async Task StartHostAsync()
     {
-        _host = DesktopApplicationHost.Create([], DesktopServiceRegistration.Register);
-        Runtime.Initialize(_host.Services);
+        Instance._host = DesktopApplicationHost.Create([], ApplicationServiceRegistration.Register);
+        _host = Instance._host;
         await _host.StartAsync();
     }
 
@@ -31,8 +36,8 @@ public sealed class RuntimeHostFixture
         }
         finally
         {
-            Runtime.Uninitialize();
             _host.Dispose();
+            Instance._host = null;
         }
     }
 }

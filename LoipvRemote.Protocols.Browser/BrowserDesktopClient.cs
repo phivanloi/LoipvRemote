@@ -1,10 +1,11 @@
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
 using System.Windows.Forms;
+using LoipvRemote.Protocols.Abstractions;
 
 namespace LoipvRemote.Protocols.Browser;
 
-public sealed class BrowserDesktopClient : IBrowserClient, IDisposable
+public sealed class BrowserDesktopClient : IBrowserClient, IEmbeddedWindow, IDisposable
 {
     private readonly bool _useEdge;
     private readonly string? _userDataFolder;
@@ -39,6 +40,8 @@ public sealed class BrowserDesktopClient : IBrowserClient, IDisposable
     public event EventHandler<Exception>? InitializationFailed;
 
     public Control Control { get; }
+    public bool IsAvailable => !Control.IsDisposed;
+    public IntPtr WindowHandle => Control.IsHandleCreated ? Control.Handle : IntPtr.Zero;
 
     public void Navigate(Uri endpoint)
     {
@@ -60,6 +63,8 @@ public sealed class BrowserDesktopClient : IBrowserClient, IDisposable
         }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously,
             scheduler);
     }
+
+    public void Focus() => Control.Focus();
 
     public void Dispose()
     {

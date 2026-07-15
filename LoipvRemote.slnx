@@ -50,10 +50,6 @@
     <Platform Solution="*|arm64" Project="arm64" />
     <Platform Solution="*|x64" Project="x64" />
   </Project>
-  <Project Path="LoipvRemote/LoipvRemote.csproj">
-    <Platform Solution="*|arm64" Project="arm64" />
-    <Platform Solution="*|x64" Project="x64" />
-  </Project>
   <Project Path="LoipvRemoteTests/LoipvRemoteTests.csproj">
     <BuildType Solution="Release Self-Contained|*" Project="Release" />
     <Platform Solution="*|arm64" Project="arm64" />

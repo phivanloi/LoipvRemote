@@ -4,5 +4,15 @@ namespace LoipvRemote.Protocols.Abstractions;
 public interface IEmbeddedWindow
 {
     bool IsAvailable { get; }
+    IntPtr WindowHandle => IntPtr.Zero;
     void Focus();
+
+    /// <summary>Focuses the embedded window while preserving the shell input queue.</summary>
+    void Focus(IntPtr ownerWindowHandle) => Focus();
+
+    bool AttachTo(IntPtr parentWindowHandle, TimeSpan timeout) => false;
+
+    void Resize(EmbeddedWindowBounds bounds)
+    {
+    }
 }

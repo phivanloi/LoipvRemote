@@ -58,5 +58,4 @@ public sealed class EmbeddedWindowFocusController
         }
     }
 
-    public void Release(IntPtr embeddedWindowHandle) { }
 }

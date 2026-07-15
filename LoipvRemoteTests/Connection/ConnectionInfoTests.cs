@@ -1,12 +1,13 @@
 using System.Collections.Generic;
 using System.Reflection;
 using LoipvRemote.Connection;
-using LoipvRemote.Connection.Protocol;
-using LoipvRemote.Connection.Protocol.SSH;
+using LoipvRemote.UI.Adapters;
 using LoipvRemote.Container;
+using LoipvRemote.Domain.Connections;
+using LoipvRemote.Domain.Credentials;
+using LoipvRemote.Domain.Protocols;
+using LoipvRemote.Protocols.Abstractions;
 using LoipvRemote.Tree.Root;
-using LoipvRemote.Connectors.Abstractions;
-using LoipvRemoteTests.TestHelpers;
 using NUnit.Framework;
 
 
@@ -82,7 +83,7 @@ namespace LoipvRemoteTests.Connection
         {
             var eventWasCalled = false;
             _connectionInfo.PropertyChanged += (sender, args) => eventWasCalled = true;
-            _connectionInfo.OpenConnections.Add(new ProtocolSSH2(new ExternalCredentialConnectorRegistry([]), TestSecretStore.Instance));
+            _connectionInfo.OpenConnections.Add(CreateProtocol());
             Assert.That(eventWasCalled);
         }
 
@@ -91,7 +92,7 @@ namespace LoipvRemoteTests.Connection
         {
             var nameOfModifiedProperty = "";
             _connectionInfo.PropertyChanged += (sender, args) => nameOfModifiedProperty = args.PropertyName;
-            _connectionInfo.OpenConnections.Add(new ProtocolSSH2(new ExternalCredentialConnectorRegistry([]), TestSecretStore.Instance));
+            _connectionInfo.OpenConnections.Add(CreateProtocol());
             Assert.That(nameOfModifiedProperty, Is.EqualTo("OpenConnections"));
         }
 
@@ -107,18 +108,18 @@ namespace LoipvRemoteTests.Connection
 		    Assert.That(propertyValue, Is.True);
 	    }
 
-		[TestCase(ProtocolType.HTTP, ExpectedResult = 80)]
-        [TestCase(ProtocolType.HTTPS, ExpectedResult = 443)]
-        [TestCase(ProtocolType.IntApp, ExpectedResult = 0)]
-        [TestCase(ProtocolType.RAW, ExpectedResult = 23)]
-        [TestCase(ProtocolType.RDP, ExpectedResult = 3389)]
-        [TestCase(ProtocolType.Rlogin, ExpectedResult = 513)]
-        [TestCase(ProtocolType.SSH1, ExpectedResult = 22)]
-        [TestCase(ProtocolType.SSH2, ExpectedResult = 22)]
-        [TestCase(ProtocolType.Telnet, ExpectedResult = 23)]
-        [TestCase(ProtocolType.VNC, ExpectedResult = 5900)]
-        [TestCase(ProtocolType.ARD, ExpectedResult = 5900)]
-        public int GetDefaultPortReturnsCorrectPortForProtocol(ProtocolType protocolType)
+		[TestCase(ProtocolKind.Http, ExpectedResult = 80)]
+        [TestCase(ProtocolKind.Https, ExpectedResult = 443)]
+        [TestCase(ProtocolKind.ExternalApplication, ExpectedResult = 0)]
+        [TestCase(ProtocolKind.Raw, ExpectedResult = 23)]
+        [TestCase(ProtocolKind.Rdp, ExpectedResult = 3389)]
+        [TestCase(ProtocolKind.Rlogin, ExpectedResult = 513)]
+        [TestCase(ProtocolKind.Ssh1, ExpectedResult = 22)]
+        [TestCase(ProtocolKind.Ssh2, ExpectedResult = 22)]
+        [TestCase(ProtocolKind.Telnet, ExpectedResult = 23)]
+        [TestCase(ProtocolKind.Vnc, ExpectedResult = 5900)]
+        [TestCase(ProtocolKind.Ard, ExpectedResult = 5900)]
+        public int GetDefaultPortReturnsCorrectPortForProtocol(ProtocolKind protocolType)
         {
             _connectionInfo.Protocol = protocolType;
             return _connectionInfo.GetDefaultPort();
@@ -131,5 +132,23 @@ namespace LoipvRemoteTests.Connection
 			    return new ConnectionInfoInheritance(new ConnectionInfo()).GetProperties();
 		    }
 	    }
+
+        private static ProtocolSessionBridge CreateProtocol() => new(
+            new ConnectionDefinition(
+                Guid.NewGuid(), "test", "localhost", 22, ProtocolKind.Ssh2, CredentialReference.None),
+            new TestSession());
+
+        private sealed class TestSession : IProtocolSession
+        {
+            public ProtocolSessionState State { get; private set; } = ProtocolSessionState.Created;
+            public ProtocolCapabilities Capabilities => ProtocolCapabilities.None;
+            public bool Initialize() => true;
+            public bool Connect() => true;
+            public void Disconnect() { }
+            public void Focus() { }
+            public void Close() => State = ProtocolSessionState.Closed;
+            public void Dispose() { }
+        }
+
     }
 }

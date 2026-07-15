@@ -128,25 +128,22 @@ public sealed class SqliteConnectionDefinitionStore(string connectionString) : I
             """;
         await command.ExecuteNonQueryAsync(cancellationToken);
 
+        command.Parameters.Clear();
+        command.CommandText = "SELECT id, name, host, port, protocol, credential_provider, credential_identifier, external_display_name, external_executable_path, external_arguments, external_working_directory, external_run_elevated, external_embed_window, external_wait_for_exit, parent_folder_id, sort_order, options_json, gateway_credential_provider, gateway_credential_identifier FROM connection_definitions WHERE 1 = 0;";
+        try
+        {
+            await using SqliteDataReader shapeReader = await command.ExecuteReaderAsync(cancellationToken);
+        }
+        catch (SqliteException exception)
+        {
+            throw new InvalidDataException("SQLite connection database uses an unsupported legacy schema.", exception);
+        }
+
         command.CommandText = "SELECT version FROM schema_version LIMIT 1;";
         object? versionValue = await command.ExecuteScalarAsync(cancellationToken);
         long version = Convert.ToInt64(versionValue, System.Globalization.CultureInfo.InvariantCulture);
-        if (version == 2)
-        {
-            command.CommandText = """
-                ALTER TABLE connection_definitions ADD COLUMN options_json TEXT NULL;
-                ALTER TABLE connection_definitions ADD COLUMN gateway_credential_provider TEXT NULL;
-                ALTER TABLE connection_definitions ADD COLUMN gateway_credential_identifier TEXT NULL;
-                ALTER TABLE connection_folders ADD COLUMN options_json TEXT NULL;
-                ALTER TABLE connection_folders ADD COLUMN is_root INTEGER NOT NULL DEFAULT 0;
-                UPDATE schema_version SET version = 3;
-                """;
-            await command.ExecuteNonQueryAsync(cancellationToken);
-            version = SchemaVersion;
-        }
-
         if (version != SchemaVersion)
-            throw new InvalidDataException("SQLite connection database uses a newer unsupported schema version.");
+            throw new InvalidDataException($"SQLite connection database uses unsupported schema version {version}; expected {SchemaVersion}.");
     }
 
     private static async Task InsertAsync(

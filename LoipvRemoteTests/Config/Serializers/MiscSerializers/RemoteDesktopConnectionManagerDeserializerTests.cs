@@ -1,8 +1,6 @@
 using System.IO;
 using System.Linq;
 using LoipvRemote.Config.Serializers.MiscSerializers;
-using LoipvRemote.Connection.Protocol;
-using LoipvRemote.Connection.Protocol.RDP;
 using LoipvRemote.Container;
 using LoipvRemote.Tree;
 using LoipvRemoteTests.Properties;
@@ -139,7 +137,7 @@ public class RemoteDesktopConnectionManagerDeserializerTests
         var importedRdcmanRootNode = rootNode.Children.OfType<ContainerInfo>().First();
         var group1 = importedRdcmanRootNode.Children.OfType<ContainerInfo>().First(node => node.Name == "Group1");
         var connection = group1.Children.First();
-        Assert.That(connection.Protocol, Is.EqualTo(ProtocolType.RDP));
+        Assert.That(connection.Protocol, Is.EqualTo(ProtocolKind.Rdp));
     }
 
     [Test]

@@ -30,7 +30,7 @@ namespace LoipvRemoteTests
             "";
             #endif
             var path = Path.GetDirectoryName(sourceFilePath);
-            var filePath = $"{path}\\..\\LoipvRemote\\bin\\x64\\{debugOrRelease}{normalOrPortable}\\LoipvRemote.exe";
+            var filePath = $"{path}\\..\\LoipvRemote.Desktop\\bin\\x64\\{debugOrRelease}{normalOrPortable}\\LoipvRemote.exe";
             return filePath;
         }
 

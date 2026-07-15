@@ -47,7 +47,7 @@ public sealed class XmlConnectionDefinitionStore : IConnectionDefinitionStore
             bufferSize: 4096,
             FileOptions.Asynchronous | FileOptions.SequentialScan);
 
-        var document = await XDocument.LoadAsync(source, LoadOptions.None, cancellationToken);
+        var document = await XDocument.LoadAsync(source, LoadOptions.None, cancellationToken).ConfigureAwait(false);
         if (document.Root?.Name != RootName)
             throw new InvalidDataException($"Expected '{RootName}' as the XML root element.");
 
@@ -85,8 +85,8 @@ public sealed class XmlConnectionDefinitionStore : IConnectionDefinitionStore
                         RootName,
                         tree.Folders.OrderBy(folder => folder.SortOrder).Select(SerializeFolder),
                         tree.Connections.OrderBy(connection => connection.SortOrder).Select(SerializeConnection)));
-                await document.SaveAsync(destination, SaveOptions.None, cancellationToken);
-                await destination.FlushAsync(cancellationToken);
+                await document.SaveAsync(destination, SaveOptions.None, cancellationToken).ConfigureAwait(false);
+                await destination.FlushAsync(cancellationToken).ConfigureAwait(false);
             }
 
             File.Move(temporaryPath, _filePath, overwrite: true);

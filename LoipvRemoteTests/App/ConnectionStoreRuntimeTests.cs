@@ -3,9 +3,10 @@ using LoipvRemote.Container;
 using LoipvRemote.Infrastructure.Persistence;
 using LoipvRemote.Infrastructure.Windows.Dpapi;
 using LoipvRemote.Messages;
+using LoipvRemote.Security;
 using LoipvRemote.UseCases.Configuration;
 using LoipvRemote.Connection;
-using LoipvRemote.Connection.Protocol;
+using LoipvRemote.Config.Connections;
 using LoipvRemote.Config.Putty;
 using LoipvRemote.Domain.Connections;
 using LoipvRemote.Tree;
@@ -16,7 +17,7 @@ using NUnit.Framework;
 
 namespace LoipvRemoteTests.App;
 
-public sealed class ConnectionStoreRuntimeTests
+public sealed class ConnectionWorkspacePersistenceTests
 {
     private readonly List<string> _temporaryFiles = [];
 
@@ -35,10 +36,7 @@ public sealed class ConnectionStoreRuntimeTests
     {
         string filePath = Path.Combine(Path.GetTempPath(), $"loipvremote-runtime-{Guid.NewGuid():N}.xml");
         _temporaryFiles.Add(filePath);
-        var runtime = new ConnectionStoreRuntime(
-            new ConnectionDefinitionPersistenceRuntime(new ConnectionStoreConfigurationService(new ConnectionDefinitionStoreFactory())),
-            new XmlConnectionStoreOptionsProvider(),
-            new DpapiStringSecretStore(new WindowsDpapiSecretProtector()));
+        var workspace = CreateWorkspace();
         var source = new ConnectionTreeModel();
         var root = new RootNodeInfo(RootNodeType.Connection, Guid.NewGuid().ToString());
         var folder = new ContainerInfo(Guid.NewGuid().ToString()) { Name = "Production", PuttySession = "prod" };
@@ -47,7 +45,7 @@ public sealed class ConnectionStoreRuntimeTests
             Name = "ssh-prod",
             Hostname = "host.example",
             Port = 22,
-            Protocol = ProtocolType.SSH2,
+            Protocol = ProtocolKind.Ssh2,
             ExternalCredentialProvider = ExternalCredentialProvider.DelineaSecretServer,
             UserViaAPI = "secret/ssh",
             Inheritance = { PuttySession = true, ExternalCredentialProvider = false, UserViaAPI = false }
@@ -56,9 +54,9 @@ public sealed class ConnectionStoreRuntimeTests
         folder.AddChild(connection);
         source.AddRootNode(root);
 
-        runtime.Save(false, filePath, source);
-        ConnectionTreeModel restored = runtime.Load(false, filePath);
-        RootNodeInfo restoredRoot = restored.RootNodes.OfType<RootNodeInfo>().Single();
+        workspace.SaveConnections(source, false, new SaveFilter(), filePath, forceSave: true);
+        workspace.LoadConnections(useDatabase: false, import: true, connectionFileName: filePath);
+        RootNodeInfo restoredRoot = workspace.ConnectionTreeModel.RootNodes.OfType<RootNodeInfo>().Single();
         ContainerInfo restoredFolder = restoredRoot.Children.OfType<ContainerInfo>().Single();
         ConnectionInfo restoredConnection = restoredFolder.Children.Single();
 
@@ -72,14 +70,11 @@ public sealed class ConnectionStoreRuntimeTests
     }
 
     [Test]
-    public void ConnectionsServiceLoadsXmlThroughTheDomainStoreRuntime()
+    public void ConnectionWorkspaceLoadsXmlThroughTheDomainStoreRuntime()
     {
         string filePath = Path.Combine(Path.GetTempPath(), $"loipvremote-runtime-{Guid.NewGuid():N}.xml");
         _temporaryFiles.Add(filePath);
-        var runtime = new ConnectionStoreRuntime(
-            new ConnectionDefinitionPersistenceRuntime(new ConnectionStoreConfigurationService(new ConnectionDefinitionStoreFactory())),
-            new XmlConnectionStoreOptionsProvider(),
-            new DpapiStringSecretStore(new WindowsDpapiSecretProtector()));
+        var workspace = CreateWorkspace();
         var source = new ConnectionTreeModel();
         var root = new RootNodeInfo(RootNodeType.Connection, Guid.NewGuid().ToString());
         root.AddChild(new ConnectionInfo(Guid.NewGuid().ToString())
@@ -87,31 +82,27 @@ public sealed class ConnectionStoreRuntimeTests
             Name = "ssh",
             Hostname = "host.example",
             Port = 22,
-            Protocol = ProtocolType.SSH2
+            Protocol = ProtocolKind.Ssh2
         });
         source.AddRootNode(root);
-        runtime.Save(false, filePath, source);
+        workspace.SaveConnections(source, false, new SaveFilter(), filePath, forceSave: true);
 
-        var service = new ConnectionsService(PuttySessionsManager.Instance, runtime, new MessageCollector());
-        service.LoadConnections(useDatabase: false, import: true, connectionFileName: filePath);
+        workspace.LoadConnections(useDatabase: false, import: true, connectionFileName: filePath);
 
-        Assert.That(service.ConnectionTreeModel.RootNodes.Single().Children.Single().Hostname, Is.EqualTo("host.example"));
+        Assert.That(workspace.ConnectionTreeModel.RootNodes.Single().Children.Single().Hostname, Is.EqualTo("host.example"));
     }
 
     [Test]
     public void LoadDoesNotDeadlockWhenCalledFromANonPumpingSynchronizationContext()
     {
-        var runtime = new ConnectionStoreRuntime(
-            new ConnectionDefinitionPersistenceRuntime(new ConnectionStoreConfigurationService(new YieldingStoreFactory())),
-            new XmlConnectionStoreOptionsProvider(),
-            new DpapiStringSecretStore(new WindowsDpapiSecretProtector()));
+        var workspace = CreateWorkspace(new YieldingStoreFactory());
         SynchronizationContext? originalContext = SynchronizationContext.Current;
         SynchronizationContext.SetSynchronizationContext(new NonPumpingSynchronizationContext());
 
         try
         {
-            ConnectionTreeModel result = runtime.Load(useDatabase: false, connectionFileName: "ignored.xml");
-            Assert.That(result, Is.Not.Null);
+            workspace.LoadConnections(useDatabase: false, import: true, connectionFileName: "ignored.xml");
+            Assert.That(workspace.ConnectionTreeModel, Is.Not.Null);
         }
         finally
         {
@@ -129,7 +120,7 @@ public sealed class ConnectionStoreRuntimeTests
             Name = "ssh",
             Hostname = "host.example",
             Port = 22,
-            Protocol = ProtocolType.SSH2,
+            Protocol = ProtocolKind.Ssh2,
             Password = "connection-password"
         });
         source.AddRootNode(root);
@@ -142,6 +133,17 @@ public sealed class ConnectionStoreRuntimeTests
             (_, _, protectedValue) => protectedValue["protected:".Length..]);
 
         Assert.That(restored.RootNodes.Single().Children.Single().Password, Is.EqualTo("connection-password"));
+    }
+
+    private static ConnectionWorkspace CreateWorkspace(IConnectionDefinitionStoreFactory? factory = null)
+    {
+        return new ConnectionWorkspace(
+            PuttySessionsManager.Instance,
+            new ConnectionDefinitionPersistenceRuntime(
+                new ConnectionStoreConfigurationService(factory ?? new ConnectionDefinitionStoreFactory())),
+            new XmlConnectionStoreOptionsProvider(),
+            new DpapiStringSecretStore(new WindowsDpapiSecretProtector()),
+            new MessageCollector());
     }
 
     private sealed class YieldingStoreFactory : IConnectionDefinitionStoreFactory

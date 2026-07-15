@@ -5,6 +5,8 @@ using LoipvRemote.Connectors.Abstractions;
 using LoipvRemote.Desktop.Composition;
 using LoipvRemote.Infrastructure.Persistence.Xml;
 using LoipvRemote.Infrastructure.Windows.Registry;
+using LoipvRemote.Infrastructure.Windows.ApplicationIdentity;
+using LoipvRemote.Infrastructure.Windows.WindowActivation;
 using LoipvRemote.Protocols.Abstractions;
 using LoipvRemote.Protocols.ExternalApps;
 using LoipvRemote.UseCases.Configuration;
@@ -41,7 +43,7 @@ public class DesktopApplicationHostTests
     [Test]
     public async Task ProductionRegistrationResolvesProtocolPersistenceAndConnectorServices()
     {
-        using IHost host = DesktopApplicationHost.Create([], DesktopServiceRegistration.Register);
+        using IHost host = DesktopApplicationHost.Create([], ApplicationServiceRegistration.Register);
 
         await host.StartAsync();
 
@@ -50,13 +52,15 @@ public class DesktopApplicationHostTests
             Assert.That(host.Services.GetRequiredService<IProtocolFactory>(), Is.Not.Null);
             Assert.That(host.Services.GetRequiredService<ExternalCredentialConnectorRegistry>(), Is.Not.Null);
             Assert.That(host.Services.GetRequiredService<IWindowsRegistryValueReader>(), Is.Not.Null);
+            Assert.That(host.Services.GetRequiredService<IApplicationIdentityService>(), Is.Not.Null);
+            Assert.That(host.Services.GetRequiredService<IWindowActivationService>(), Is.Not.Null);
             Assert.That(host.Services.GetRequiredService<IExternalApplicationHostFactory>(), Is.Not.Null);
             Assert.That(host.Services.GetRequiredService<IConnectionDefinitionStoreFactory>()
                 .Create(new ConnectionDefinitionStoreOptions(ConnectionDefinitionStoreKind.Xml, "connections.xml")),
                 Is.TypeOf<XmlConnectionDefinitionStore>());
             Assert.That(host.Services.GetRequiredService<ConnectionStoreConfigurationService>(), Is.Not.Null);
-            Assert.That(host.Services.GetRequiredService<ConnectionStoreRuntime>(), Is.Not.Null);
-            Assert.That(host.Services.GetRequiredService<ConnectionsService>(), Is.Not.Null);
+            Assert.That(host.Services.GetRequiredService<IConnectionTreeWorkspace>(), Is.TypeOf<ConnectionWorkspace>());
+            Assert.That(host.Services.GetRequiredService<IConnectionTreeWorkspace>(), Is.Not.Null);
             Assert.That(host.Services.GetRequiredService<ConnectionExportService>(), Is.Not.Null);
             Assert.That(host.Services.GetRequiredService<DesktopShellRuntime>(), Is.Not.Null);
             Assert.That(host.Services.GetRequiredService<ConnectionInitiator>(), Is.Not.Null);

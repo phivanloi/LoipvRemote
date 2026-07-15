@@ -1,6 +1,11 @@
 namespace LoipvRemote.Protocols.Vnc;
 
-public sealed record VncConnectionOptions(string Host, int Port, bool ViewOnly, bool SmartSize)
+public sealed record VncConnectionOptions(
+    string Host,
+    int Port,
+    bool ViewOnly,
+    bool SmartSize,
+    string? Password = null)
 {
     public void Validate()
     {

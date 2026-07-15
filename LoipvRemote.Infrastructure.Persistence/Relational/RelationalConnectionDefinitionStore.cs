@@ -1,4 +1,5 @@
 using System.Data.Common;
+using System.Globalization;
 using LoipvRemote.Domain.Connections;
 using LoipvRemote.Domain.Credentials;
 using LoipvRemote.Domain.Validation;
@@ -10,6 +11,7 @@ namespace LoipvRemote.Infrastructure.Persistence.Relational;
 /// <summary>Provider-neutral transactional store for secret-free connection definitions.</summary>
 public abstract class RelationalConnectionDefinitionStore : IConnectionDefinitionStore
 {
+    private const int SchemaVersion = 3;
     private readonly string _connectionString;
 
     protected RelationalConnectionDefinitionStore(string connectionString)
@@ -20,6 +22,7 @@ public abstract class RelationalConnectionDefinitionStore : IConnectionDefinitio
     }
 
     protected abstract DbConnection CreateConnection(string connectionString);
+    protected abstract string CreateSchemaVersionTableSql { get; }
     protected abstract string CreateTableSql { get; }
     protected abstract string CreateFoldersTableSql { get; }
     protected virtual bool IgnoreExistingTableError => false;
@@ -41,7 +44,7 @@ public abstract class RelationalConnectionDefinitionStore : IConnectionDefinitio
 
             var definition = new ConnectionDefinition(id, reader.GetString(1), reader.GetString(2), reader.GetInt32(3), protocol,
                 new CredentialReference(reader.GetString(5), reader.GetString(6)), ReadExternalApplication(reader, protocol),
-                reader.IsDBNull(14) ? null : Guid.Parse(reader.GetString(14)), Convert.ToInt32(reader.GetValue(15)),
+                reader.IsDBNull(14) ? null : Guid.Parse(reader.GetString(14)), Convert.ToInt32(reader.GetValue(15), CultureInfo.InvariantCulture),
                 reader.IsDBNull(16) ? null : ConnectionNodeOptionsJson.Deserialize(reader.GetString(16)),
                 ReadGatewayCredential(reader));
             ConnectionDefinitionValidator.Validate(definition);
@@ -54,9 +57,9 @@ public abstract class RelationalConnectionDefinitionStore : IConnectionDefinitio
         await using DbDataReader foldersReader = await foldersCommand.ExecuteReaderAsync(cancellationToken);
         while (await foldersReader.ReadAsync(cancellationToken))
             folders.Add(new ConnectionFolderDefinition(Guid.Parse(foldersReader.GetString(0)), foldersReader.GetString(1),
-                foldersReader.IsDBNull(2) ? null : Guid.Parse(foldersReader.GetString(2)), Convert.ToInt32(foldersReader.GetValue(3)),
+                foldersReader.IsDBNull(2) ? null : Guid.Parse(foldersReader.GetString(2)), Convert.ToInt32(foldersReader.GetValue(3), CultureInfo.InvariantCulture),
                 foldersReader.IsDBNull(4) ? null : ConnectionNodeOptionsJson.Deserialize(foldersReader.GetString(4)),
-                !foldersReader.IsDBNull(5) && Convert.ToInt32(foldersReader.GetValue(5)) != 0));
+                !foldersReader.IsDBNull(5) && Convert.ToInt32(foldersReader.GetValue(5), CultureInfo.InvariantCulture) != 0));
 
         var tree = new ConnectionTreeDefinition(folders, definitions);
         tree.Validate();
@@ -135,7 +138,7 @@ public abstract class RelationalConnectionDefinitionStore : IConnectionDefinitio
     private async Task EnsureSchemaAsync(DbConnection connection, CancellationToken cancellationToken)
     {
         await using DbCommand command = connection.CreateCommand();
-        foreach (string createTableSql in new[] { CreateTableSql, CreateFoldersTableSql })
+        foreach (string createTableSql in new[] { CreateSchemaVersionTableSql, CreateTableSql, CreateFoldersTableSql })
         {
             command.CommandText = createTableSql;
             try
@@ -147,6 +150,35 @@ public abstract class RelationalConnectionDefinitionStore : IConnectionDefinitio
                 // ODBC has no portable CREATE TABLE IF NOT EXISTS syntax.
             }
         }
+
+        // The application deliberately does not migrate the removed legacy schema.
+        // Validate the complete current column shape before registering a new version
+        // marker, otherwise an older database could be mistaken for the current model.
+        command.Parameters.Clear();
+        command.CommandText = "SELECT id, name, host, port, protocol, credential_provider, credential_identifier, external_display_name, external_executable_path, external_arguments, external_working_directory, external_run_elevated, external_embed_window, external_wait_for_exit, parent_folder_id, sort_order, options_json, gateway_credential_provider, gateway_credential_identifier FROM connection_definitions WHERE 1 = 0";
+        try
+        {
+            await using DbDataReader shapeReader = await command.ExecuteReaderAsync(cancellationToken);
+        }
+        catch (DbException exception)
+        {
+            throw new InvalidDataException("The relational connection database uses an unsupported legacy schema.", exception);
+        }
+
+        command.Parameters.Clear();
+        command.CommandText = "SELECT version FROM connection_schema_version WHERE id = 1";
+        object? versionValue = await command.ExecuteScalarAsync(cancellationToken);
+        if (versionValue is null or DBNull)
+        {
+            command.CommandText = "INSERT INTO connection_schema_version (id, version) VALUES (1, @version)";
+            AddParameter(command, "@version", SchemaVersion);
+            await command.ExecuteNonQueryAsync(cancellationToken);
+            return;
+        }
+
+        int version = Convert.ToInt32(versionValue, System.Globalization.CultureInfo.InvariantCulture);
+        if (version != SchemaVersion)
+            throw new InvalidDataException($"Relational connection database uses schema version {version}; expected {SchemaVersion}.");
     }
 
     private static void AddParameter(DbCommand command, string name, object value)
@@ -171,7 +203,9 @@ public abstract class RelationalConnectionDefinitionStore : IConnectionDefinitio
             throw new InvalidDataException("External application connection is missing application settings.");
 
         return new ExternalApplicationDefinition(reader.GetString(7), reader.GetString(8), reader.GetString(9), reader.GetString(10),
-            Convert.ToInt32(reader.GetValue(11)) != 0, Convert.ToInt32(reader.GetValue(12)) != 0, Convert.ToInt32(reader.GetValue(13)) != 0);
+            Convert.ToInt32(reader.GetValue(11), CultureInfo.InvariantCulture) != 0,
+            Convert.ToInt32(reader.GetValue(12), CultureInfo.InvariantCulture) != 0,
+            Convert.ToInt32(reader.GetValue(13), CultureInfo.InvariantCulture) != 0);
     }
 
     private static CredentialReference? ReadGatewayCredential(DbDataReader reader)

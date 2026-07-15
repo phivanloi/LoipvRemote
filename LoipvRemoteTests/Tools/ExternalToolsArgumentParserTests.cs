@@ -1,6 +1,6 @@
 using System;
 using System.Collections;
-using LoipvRemote.Protocols.ExternalApps;
+using LoipvRemote.ApplicationServices.Configuration;
 using NUnit.Framework;
 
 

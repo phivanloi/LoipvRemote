@@ -1,5 +1,4 @@
 using LoipvRemote.Connection;
-using LoipvRemote.Connection.Protocol.RDP;
 using LoipvRemote.Tree;
 using LoipvRemoteTests.Properties;
 using NUnit.Framework;

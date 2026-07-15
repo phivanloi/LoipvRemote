@@ -3,9 +3,9 @@ using System.Text;
 namespace LoipvRemote.Protocols.Rdp;
 
 /// <summary>Encodes Azure load-balance data for the Windows RDP ActiveX control.</summary>
-public sealed class AzureLoadBalanceInfoEncoder
+public static class AzureLoadBalanceInfoEncoder
 {
-    public string Encode(string loadBalanceInfo)
+    public static string Encode(string loadBalanceInfo)
     {
         ArgumentNullException.ThrowIfNull(loadBalanceInfo);
 

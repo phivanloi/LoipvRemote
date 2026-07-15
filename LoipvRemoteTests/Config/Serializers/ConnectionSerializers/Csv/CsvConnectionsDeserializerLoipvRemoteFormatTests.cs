@@ -3,10 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using LoipvRemote.Config.Serializers.ConnectionSerializers.Csv;
 using LoipvRemote.Connection;
-using LoipvRemote.Connection.Protocol;
-using LoipvRemote.Connection.Protocol.Http;
-using LoipvRemote.Connection.Protocol.RDP;
-using LoipvRemote.Connection.Protocol.VNC;
 using LoipvRemote.Credential;
 using LoipvRemote.Security;
 using LoipvRemoteTests.TestHelpers;
@@ -15,17 +11,17 @@ using NUnit.Framework;
 
 namespace LoipvRemoteTests.Config.Serializers.ConnectionSerializers.Csv
 {
-    public class CsvConnectionsDeserializerMremotengFormatTests
+    public class CsvConnectionsDeserializerTests
     {
-        private CsvConnectionsDeserializerMremotengFormat _deserializer;
-        private CsvConnectionsSerializerMremotengFormat _serializer;
+        private CsvConnectionsDeserializer _deserializer;
+        private CsvConnectionsSerializer _serializer;
 
         [SetUp]
         public void Setup()
         {
-            _deserializer = new CsvConnectionsDeserializerMremotengFormat();
+            _deserializer = new CsvConnectionsDeserializer();
             var credentialRepositoryList = Substitute.For<ICredentialRepositoryList>();
-            _serializer = new CsvConnectionsSerializerMremotengFormat(new SaveFilter(), credentialRepositoryList);
+            _serializer = new CsvConnectionsSerializer(new SaveFilter(), credentialRepositoryList);
         }
 
         [TestCaseSource(typeof(DeserializationTestSource), nameof(DeserializationTestSource.ConnectionPropertyTestCases))]
@@ -95,7 +91,7 @@ namespace LoipvRemoteTests.Config.Serializers.ConnectionSerializers.Csv
                 RDGatewayHostname = "SomeRDGatewayHostname",
                 RDGatewayExternalCredentialProvider = ExternalCredentialProvider.None,
                 RDGatewayUserViaAPI = "123",
-                Protocol = ProtocolType.RDP,
+                Protocol = ProtocolKind.Rdp,
                 Port = 999,
                 Favorite = true,
                 UseConsoleSession = true,
@@ -104,7 +100,7 @@ namespace LoipvRemoteTests.Config.Serializers.ConnectionSerializers.Csv
                 UseRCG = true,
                 UseVmId = false,
                 UseEnhancedMode = false,
-                RenderingEngine = HTTPBase.RenderingEngine.EdgeChromium,
+                RenderingEngine = BrowserRenderingEngine.EdgeChromium,
                 RDPAuthenticationLevel = AuthenticationLevel.WarnOnFailedAuth,
                 Colors = RDPColors.Colors16Bit,
                 Resolution = RDPResolutions.SmartSize,
@@ -126,13 +122,13 @@ namespace LoipvRemoteTests.Config.Serializers.ConnectionSerializers.Csv
                 RedirectSound = RDPSounds.LeaveAtRemoteComputer,
                 RedirectAudioCapture = true,
                 RedirectKeys = true,
-                VNCCompression = ProtocolVNC.Compression.Comp4,
-                VNCEncoding = ProtocolVNC.Encoding.EncRRE,
-                VNCAuthMode = ProtocolVNC.AuthMode.AuthVNC,
-                VNCProxyType = ProtocolVNC.ProxyType.ProxySocks5,
+                VNCCompression = VncCompression.Comp4,
+                VNCEncoding = VncEncoding.EncRRE,
+                VNCAuthMode = VncAuthMode.AuthVNC,
+                VNCProxyType = VncProxyType.ProxySocks5,
                 VNCProxyPort = 123,
-                VNCColors = ProtocolVNC.Colors.Col8Bit,
-                VNCSmartSizeMode = ProtocolVNC.SmartSizeMode.SmartSAspect,
+                VNCColors = VncColors.Col8Bit,
+                VNCSmartSizeMode = VncSmartSizeMode.SmartSAspect,
                 VNCViewOnly = true,
                 RDGatewayUsageMethod = RDGatewayUsageMethod.Detect,
                 RDGatewayUseConnectionCredentials = RDGatewayUseConnectionCredentials.SmartCard,

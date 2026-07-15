@@ -1,7 +1,6 @@
 using System.Linq;
 using LoipvRemote.Config.Serializers.MiscSerializers;
 using LoipvRemote.Connection;
-using LoipvRemote.Connection.Protocol;
 using LoipvRemote.Container;
 using LoipvRemote.Security;
 using LoipvRemoteTests.Properties;
@@ -18,7 +17,7 @@ public class PuttyConnectionManagerDeserializerTests
     private const string ExpectedConnectionHostname = "server1.mydomain.com";
     private const string ExpectedConnectionDescription = "My Description Here";
     private const int ExpectedConnectionPort = 22;
-    private const ProtocolType ExpectedProtocolType = ProtocolType.SSH2;
+    private const ProtocolKind ExpectedProtocolType = ProtocolKind.Ssh2;
     private const string ExpectedPuttySession = "MyCustomPuttySession";
     private const string ExpectedConnectionUsername = "mysshusername";
     private const string ExpectedConnectionPassword = "password123";

@@ -13,7 +13,7 @@
     <SuppressIces>ICE38;ICE64</SuppressIces>
     <UpgradeCode Condition="'$(Platform)' == 'arm64'">A9A04950-7B0D-4C55-93C9-2290A1CBBE3D</UpgradeCode>
     <UpgradeCode Condition="'$(Platform)' != 'arm64'">6ACDB9DC-74CC-42C4-85F7-0D0288F894DD</UpgradeCode>
-    <ApplicationProject>$(MSBuildThisFileDirectory)..\..\LoipvRemote\LoipvRemote.csproj</ApplicationProject>
+    <ApplicationProject>$(MSBuildThisFileDirectory)..\..\LoipvRemote.Desktop\LoipvRemote.Desktop.csproj</ApplicationProject>
     <ApplicationPublishDir>$(MSBuildProjectDirectory)\obj\$(Platform)\$(Configuration)\payload\</ApplicationPublishDir>
     <DefineConstants>UpgradeCode=$(UpgradeCode);ApplicationPublishDir=$(ApplicationPublishDir)</DefineConstants>
   </PropertyGroup>

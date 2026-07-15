@@ -5,7 +5,7 @@ using LoipvRemote.Protocols.Abstractions;
 namespace LoipvRemote.Protocols.ExternalApps;
 
 /// <summary>Lifecycle implementation for a configured external application.</summary>
-public sealed class ExternalApplicationSession : IProtocolSession, IEmbeddedWindow
+public sealed class ExternalApplicationSession : IAsyncProtocolSession, IEmbeddedWindow
 {
     private readonly ExternalApplicationDefinition _definition;
     private readonly IExternalApplicationHost _host;
@@ -42,6 +42,12 @@ public sealed class ExternalApplicationSession : IProtocolSession, IEmbeddedWind
         return true;
     }
 
+    public ValueTask<bool> InitializeAsync(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return ValueTask.FromResult(Initialize());
+    }
+
     public bool Connect()
     {
         if (State != ProtocolSessionState.Initialized || !_host.Start(_definition))
@@ -54,7 +60,20 @@ public sealed class ExternalApplicationSession : IProtocolSession, IEmbeddedWind
         return true;
     }
 
+    public ValueTask<bool> ConnectAsync(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return ValueTask.FromResult(Connect());
+    }
+
     public void Disconnect() => Close();
+
+    public ValueTask DisconnectAsync(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        Disconnect();
+        return ValueTask.CompletedTask;
+    }
 
     public void Focus()
     {
@@ -88,6 +107,13 @@ public sealed class ExternalApplicationSession : IProtocolSession, IEmbeddedWind
         State = ProtocolSessionState.Closed;
     }
 
+    public ValueTask CloseAsync(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        Close();
+        return ValueTask.CompletedTask;
+    }
+
     public void Dispose()
     {
         if (_disposed)
@@ -97,6 +123,13 @@ public sealed class ExternalApplicationSession : IProtocolSession, IEmbeddedWind
         _host.Exited -= HostOnExited;
         _host.Dispose();
         _disposed = true;
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        Dispose();
+        GC.SuppressFinalize(this);
+        return ValueTask.CompletedTask;
     }
 
     private void HostOnExited(object? sender, EventArgs e)

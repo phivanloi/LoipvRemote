@@ -1,6 +1,4 @@
 using System.Threading;
-using LoipvRemote.Connection.Protocol;
-using LoipvRemote.Connection.Protocol.VNC;
 using NUnit.Framework;
 
 namespace LoipvRemoteTests.UI.Window.ConfigWindowTests
@@ -8,12 +6,12 @@ namespace LoipvRemoteTests.UI.Window.ConfigWindowTests
     [Apartment(ApartmentState.STA)]
     public class ConfigWindowVncSpecialTests : ConfigWindowSpecialTestsBase
     {
-        protected override ProtocolType Protocol => ProtocolType.VNC;
+        protected override ProtocolKind Protocol => ProtocolKind.Vnc;
 
         [Test]
         public void UserDomainPropertiesShown_WhenAuthModeIsWindows()
         {
-            ConnectionInfo.VNCAuthMode = ProtocolVNC.AuthMode.AuthWin;
+            ConnectionInfo.VNCAuthMode = VncAuthMode.AuthWin;
             ExpectedPropertyList.AddRange(new []
             {
                 nameof(ConnectionInfo.Username),
@@ -21,10 +19,10 @@ namespace LoipvRemoteTests.UI.Window.ConfigWindowTests
             });
         }
 
-        [TestCase(ProtocolVNC.ProxyType.ProxyHTTP)]
-        [TestCase(ProtocolVNC.ProxyType.ProxySocks5)]
-        [TestCase(ProtocolVNC.ProxyType.ProxyUltra)]
-        public void ProxyPropertiesShown_WhenProxyModeIsNotNone(ProtocolVNC.ProxyType proxyType)
+        [TestCase(VncProxyType.ProxyHTTP)]
+        [TestCase(VncProxyType.ProxySocks5)]
+        [TestCase(VncProxyType.ProxyUltra)]
+        public void ProxyPropertiesShown_WhenProxyModeIsNotNone(VncProxyType proxyType)
         {
             ConnectionInfo.VNCProxyType = proxyType;
             ExpectedPropertyList.AddRange(new[]

@@ -1,5 +1,4 @@
 using LoipvRemote.Connection;
-using LoipvRemote.Connection.Protocol;
 using LoipvRemote.Container;
 using LoipvRemote.Tree.Root;
 using NUnit.Framework;
@@ -48,7 +47,7 @@ namespace LoipvRemoteTests.IntegrationTests
         [Test]
         public void ConnectionWillInheritAllFromFolder()
         {
-            var folder = new ContainerInfo {Protocol = ProtocolType.SSH2, Icon = "someicon", CacheBitmaps = true};
+            var folder = new ContainerInfo {Protocol = ProtocolKind.Ssh2, Icon = "someicon", CacheBitmaps = true};
             var connection = new ConnectionInfo {Inheritance = {EverythingInherited = true}};
             _rootNode.AddChild(folder);
             folder.AddChild(connection);

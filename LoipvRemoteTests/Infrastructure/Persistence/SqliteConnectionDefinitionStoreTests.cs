@@ -61,7 +61,9 @@ public class SqliteConnectionDefinitionStoreTests
     }
 
     [Test]
-    public async Task RejectsDatabaseFromNewerSchemaVersion()
+    [TestCase(2)]
+    [TestCase(4)]
+    public async Task RejectsDatabaseFromUnsupportedSchemaVersion(long schemaVersion)
     {
         string databasePath = Path.Combine(Path.GetTempPath(), $"loipvremote-{Guid.NewGuid():N}.db");
         try
@@ -70,7 +72,32 @@ public class SqliteConnectionDefinitionStoreTests
             {
                 await connection.OpenAsync();
                 await using SqliteCommand command = connection.CreateCommand();
-                command.CommandText = "CREATE TABLE schema_version(version INTEGER NOT NULL); INSERT INTO schema_version(version) VALUES (4);";
+                command.CommandText = $"CREATE TABLE schema_version(version INTEGER NOT NULL); INSERT INTO schema_version(version) VALUES ({schemaVersion});";
+                await command.ExecuteNonQueryAsync();
+            }
+
+            var store = new SqliteConnectionDefinitionStore($"Data Source={databasePath};Pooling=False");
+
+            Assert.That(async () => await store.LoadAsync(), Throws.InstanceOf<InvalidDataException>());
+        }
+        finally
+        {
+            if (File.Exists(databasePath))
+                File.Delete(databasePath);
+        }
+    }
+
+    [Test]
+    public async Task RejectsDatabaseWithRemovedLegacyShape()
+    {
+        string databasePath = Path.Combine(Path.GetTempPath(), $"loipvremote-{Guid.NewGuid():N}.db");
+        try
+        {
+            await using (var connection = new SqliteConnection($"Data Source={databasePath};Pooling=False"))
+            {
+                await connection.OpenAsync();
+                await using SqliteCommand command = connection.CreateCommand();
+                command.CommandText = "CREATE TABLE connection_definitions(id TEXT NOT NULL, name TEXT NOT NULL);";
                 await command.ExecuteNonQueryAsync();
             }
 

@@ -19,7 +19,7 @@ public static class PuttyTypeDetector
     {
         bool isPutty = Contains(internalName, "PuTTY");
         bool isBundledPuttyNg = Path.GetFileName(filename).Equals("PuTTYNG.exe", StringComparison.OrdinalIgnoreCase) &&
-                                (Contains(internalName, "PuTTYNG") || Contains(productVersion, "mRemoteNG (LoipvRemote)"));
+                                Contains(internalName, "PuTTYNG");
 
         if (isBundledPuttyNg) return PuttyType.PuttyNg;
         if (isPutty && Contains(comments, "KiTTY")) return PuttyType.Kitty;

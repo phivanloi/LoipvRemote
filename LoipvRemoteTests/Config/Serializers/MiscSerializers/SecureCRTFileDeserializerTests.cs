@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.Linq;
 using LoipvRemote.Config.Serializers.MiscSerializers;
 using LoipvRemote.Connection;
-using LoipvRemote.Connection.Protocol;
 using LoipvRemote.Container;
 using LoipvRemote.Messages;
 using NUnit.Framework;
@@ -46,7 +45,7 @@ public class SecureCRTFileDeserializerTests
         var rawNode = GetConnectionNamed("rawsession", allConnectionTypesNode.Children);
         Assert.That(rawNode.Name, Is.EqualTo("rawsession"));
         Assert.That(rawNode.Hostname, Is.EqualTo("rawhost"));
-        Assert.That(rawNode.Protocol, Is.EqualTo(ProtocolType.RAW));
+        Assert.That(rawNode.Protocol, Is.EqualTo(ProtocolKind.Raw));
         Assert.That(rawNode.Port, Is.EqualTo(23));
         Assert.That(rawNode.Username, Is.EqualTo(""));
     }
@@ -60,7 +59,7 @@ public class SecureCRTFileDeserializerTests
         var rdpNode = GetConnectionNamed("RDPsession", allConnectionTypesNode.Children);
         Assert.That(rdpNode.Name, Is.EqualTo("RDPsession"));
         Assert.That(rdpNode.Hostname, Is.EqualTo("RDPhost"));
-        Assert.That(rdpNode.Protocol, Is.EqualTo(ProtocolType.RDP));
+        Assert.That(rdpNode.Protocol, Is.EqualTo(ProtocolKind.Rdp));
         Assert.That(rdpNode.Port, Is.EqualTo(3389));
         Assert.That(rdpNode.Username, Is.EqualTo("RDP\\rdp"));
     }
@@ -74,7 +73,7 @@ public class SecureCRTFileDeserializerTests
         var rloginNode = GetConnectionNamed("rloginsession", allConnectionTypesNode.Children);
         Assert.That(rloginNode.Name, Is.EqualTo("rloginsession"));
         Assert.That(rloginNode.Hostname, Is.EqualTo("rloginhost"));
-        Assert.That(rloginNode.Protocol, Is.EqualTo(ProtocolType.Rlogin));
+        Assert.That(rloginNode.Protocol, Is.EqualTo(ProtocolKind.Rlogin));
         Assert.That(rloginNode.Port, Is.EqualTo(0));
         Assert.That(rloginNode.Username, Is.EqualTo("rloginuser"));
     }
@@ -89,7 +88,7 @@ public class SecureCRTFileDeserializerTests
         var ssh1Node = GetConnectionNamed("ssh1session", allConnectionTypesNode.Children);
         Assert.That(ssh1Node.Name, Is.EqualTo("ssh1session"));
         Assert.That(ssh1Node.Hostname, Is.EqualTo("ssh1host"));
-        Assert.That(ssh1Node.Protocol, Is.EqualTo(ProtocolType.SSH1));
+        Assert.That(ssh1Node.Protocol, Is.EqualTo(ProtocolKind.Ssh1));
         Assert.That(ssh1Node.Port, Is.EqualTo(22));
         Assert.That(ssh1Node.Username, Is.EqualTo("ssh1user"));
     }
@@ -104,7 +103,7 @@ public class SecureCRTFileDeserializerTests
         var ssh1Node = GetConnectionNamed("ssh2session", allConnectionTypesNode.Children);
         Assert.That(ssh1Node.Name, Is.EqualTo("ssh2session"));
         Assert.That(ssh1Node.Hostname, Is.EqualTo("ssh2host"));
-        Assert.That(ssh1Node.Protocol, Is.EqualTo(ProtocolType.SSH2));
+        Assert.That(ssh1Node.Protocol, Is.EqualTo(ProtocolKind.Ssh2));
         Assert.That(ssh1Node.Port, Is.EqualTo(22));
         Assert.That(ssh1Node.Username, Is.EqualTo("ssh2user"));
     }
@@ -119,7 +118,7 @@ public class SecureCRTFileDeserializerTests
         var ssh1Node = GetConnectionNamed("telnetsession", allConnectionTypesNode.Children);
         Assert.That(ssh1Node.Name, Is.EqualTo("telnetsession"));
         Assert.That(ssh1Node.Hostname, Is.EqualTo("telnethost"));
-        Assert.That(ssh1Node.Protocol, Is.EqualTo(ProtocolType.Telnet));
+        Assert.That(ssh1Node.Protocol, Is.EqualTo(ProtocolKind.Telnet));
         Assert.That(ssh1Node.Port, Is.EqualTo(23));
         Assert.That(ssh1Node.Username, Is.EqualTo("telnetuser"));
     }

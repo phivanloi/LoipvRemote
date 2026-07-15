@@ -7,6 +7,9 @@ namespace LoipvRemote.Infrastructure.Windows.WindowEmbedding;
 /// <summary>Owns the Win32 operations required by embedded third-party windows.</summary>
 public sealed class WindowsEmbeddedWindowOperations : IEmbeddedWindowOperations
 {
+    private readonly EmbeddedWindowFocusController _focusController =
+        WindowsEmbeddedWindowFocusControllerFactory.Create();
+
     public bool IsForegroundWindow(IntPtr windowHandle) =>
         NativeMethods.GetForegroundWindow() == windowHandle;
 
@@ -62,6 +65,11 @@ public sealed class WindowsEmbeddedWindowOperations : IEmbeddedWindowOperations
     }
 
     public void Activate(IntPtr windowHandle) => NativeMethods.SetForegroundWindow(windowHandle);
+
+    public void SetFocus(IntPtr windowHandle) => NativeMethods.SetFocus(windowHandle);
+
+    public bool TryFocus(IntPtr ownerWindowHandle, IntPtr embeddedWindowHandle) =>
+        _focusController.TryFocus(ownerWindowHandle, embeddedWindowHandle);
 
     public void Close(IntPtr windowHandle) =>
         NativeMethods.SendMessage(windowHandle, 0x0010, IntPtr.Zero, IntPtr.Zero);

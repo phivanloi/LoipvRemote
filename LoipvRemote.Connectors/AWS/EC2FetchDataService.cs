@@ -79,7 +79,7 @@ namespace LoipvRemote.Connectors.AWS
 
         public static class AWSConnectionData
         {
-            private static readonly RegistryKey key = Registry.CurrentUser.CreateSubKey(@"SOFTWARE\mRemoteAWSInterface");
+            private static readonly RegistryKey key = Registry.CurrentUser.CreateSubKey(@"SOFTWARE\LoipvRemote\AWS");
 
             public static string awsKeyID = "";
             public static string awsKey = "";

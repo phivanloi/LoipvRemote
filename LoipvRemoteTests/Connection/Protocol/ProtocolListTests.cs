@@ -1,32 +1,33 @@
 using System.Collections;
 using System.Collections.Specialized;
-using LoipvRemote.Connection.Protocol;
-using LoipvRemote.Connection.Protocol.SSH;
-using LoipvRemote.Connection.Protocol.Telnet;
-using LoipvRemote.Connection.Protocol.VNC;
+using LoipvRemote.UI.Adapters;
 using LoipvRemote.Connectors.Abstractions;
+using LoipvRemote.Desktop.Sessions;
+using LoipvRemote.Domain.Connections;
+using LoipvRemote.Domain.Credentials;
+using LoipvRemote.Domain.Protocols;
+using LoipvRemote.Protocols.Abstractions;
 using LoipvRemoteTests.TestHelpers;
 using NUnit.Framework;
 
 
 namespace LoipvRemoteTests.Connection.Protocol;
 
-public class ProtocolListTests
+public class ProtocolSessionCollectionTests
 {
-    private ProtocolList _protocolList;
-    private ProtocolBase _protocol1;
-    private ProtocolBase _protocol2;
-    private ProtocolBase _protocol3;
+    private ProtocolSessionCollection _protocolList;
+    private ProtocolSessionBridge _protocol1;
+    private ProtocolSessionBridge _protocol2;
+    private ProtocolSessionBridge _protocol3;
 
 
     [SetUp]
     public void Setup()
     {
-        _protocolList = new ProtocolList();
-        var externalCredentialConnectors = new ExternalCredentialConnectorRegistry([]);
-        _protocol1 = new ProtocolTelnet(externalCredentialConnectors, TestSecretStore.Instance);
-        _protocol2 = new ProtocolSSH2(externalCredentialConnectors, TestSecretStore.Instance);
-        _protocol3 = new ProtocolVNC();
+        _protocolList = new ProtocolSessionCollection();
+        _protocol1 = CreateProtocol();
+        _protocol2 = CreateProtocol();
+        _protocol3 = CreateProtocol();
     }
 
     [TearDown]
@@ -216,5 +217,38 @@ public class ProtocolListTests
         _protocolList.CollectionChanged += (sender, args) => collectionChangedAction = args.Action;
         _protocolList.Clear();
         Assert.That(collectionChangedAction, Is.EqualTo(NotifyCollectionChangedAction.Reset));
+    }
+
+    private static ProtocolSessionBridge CreateProtocol() => new(
+        new ConnectionDefinition(
+            Guid.NewGuid(),
+            "test",
+            "localhost",
+            22,
+            ProtocolKind.Ssh2,
+            CredentialReference.None),
+        new TestSession());
+
+    private sealed class TestSession : IProtocolSession
+    {
+        public ProtocolSessionState State { get; private set; } = ProtocolSessionState.Created;
+        public ProtocolCapabilities Capabilities => ProtocolCapabilities.None;
+
+        public bool Initialize()
+        {
+            State = ProtocolSessionState.Initialized;
+            return true;
+        }
+
+        public bool Connect()
+        {
+            State = ProtocolSessionState.Connected;
+            return true;
+        }
+
+        public void Disconnect() => State = ProtocolSessionState.Closing;
+        public void Focus() { }
+        public void Close() => State = ProtocolSessionState.Closed;
+        public void Dispose() { }
     }
 }

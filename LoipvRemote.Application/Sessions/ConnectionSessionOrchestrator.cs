@@ -49,6 +49,32 @@ public sealed class ConnectionSessionOrchestrator(
         return StartValidated(definition, session);
     }
 
+    public async ValueTask<ConnectionSessionStartOutcome> StartAsync(
+        ConnectionDefinition definition,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(definition);
+
+        if (!IsValid(definition))
+        {
+            PublishState(definition.Id, ProtocolSessionState.Faulted);
+            return new ConnectionSessionStartOutcome(ConnectionSessionStartStatus.InvalidDefinition, null);
+        }
+
+        IProtocolSession session;
+        try
+        {
+            session = _protocolFactory.Create(definition);
+        }
+        catch (NotSupportedException)
+        {
+            PublishState(definition.Id, ProtocolSessionState.Faulted);
+            return new ConnectionSessionStartOutcome(ConnectionSessionStartStatus.ProtocolUnavailable, null);
+        }
+
+        return await StartValidatedAsync(definition, session, cancellationToken).ConfigureAwait(false);
+    }
+
     /// <summary>
     /// Starts a session already created and bound by a host adapter.
     /// </summary>
@@ -84,6 +110,29 @@ public sealed class ConnectionSessionOrchestrator(
             null);
     }
 
+    private async ValueTask<ConnectionSessionStartOutcome> StartValidatedAsync(
+        ConnectionDefinition definition,
+        IProtocolSession session,
+        CancellationToken cancellationToken)
+    {
+        SessionStartResult result = await _lifecycleCoordinator
+            .StartAsync(session, cancellationToken)
+            .ConfigureAwait(false);
+        if (result == SessionStartResult.Started)
+        {
+            PublishState(definition.Id, session.State);
+            return new ConnectionSessionStartOutcome(ConnectionSessionStartStatus.Started, session);
+        }
+
+        await session.DisposeAsyncSafe().ConfigureAwait(false);
+        PublishState(definition.Id, session.State);
+        return new ConnectionSessionStartOutcome(
+            result == SessionStartResult.InitializationFailed
+                ? ConnectionSessionStartStatus.InitializationFailed
+                : ConnectionSessionStartStatus.ConnectionFailed,
+            null);
+    }
+
     private static bool IsValid(ConnectionDefinition definition)
     {
         try
@@ -105,6 +154,13 @@ public sealed class ConnectionSessionOrchestrator(
         ArgumentNullException.ThrowIfNull(session);
         _lifecycleCoordinator.Stop(session);
         session.Dispose();
+    }
+
+    public async ValueTask StopAsync(IProtocolSession session, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        await _lifecycleCoordinator.StopAsync(session, cancellationToken).ConfigureAwait(false);
+        await session.DisposeAsyncSafe().ConfigureAwait(false);
     }
 }
 

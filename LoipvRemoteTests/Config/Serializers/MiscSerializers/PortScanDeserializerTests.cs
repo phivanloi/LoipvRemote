@@ -1,7 +1,6 @@
 using System.Linq;
 using LoipvRemote.Config.Serializers.MiscSerializers;
 using LoipvRemote.Connection;
-using LoipvRemote.Connection.Protocol;
 using LoipvRemote.Tools;
 using NUnit.Framework;
 
@@ -13,7 +12,7 @@ public class PortScanDeserializerTests
     private ConnectionInfo _importedConnectionInfo;
     private const string ExpectedHostName = "server1.domain.com";
     private const string ExpectedDisplayName = "server1";
-    private const ProtocolType ExpectedProtocolType = ProtocolType.SSH2;
+    private const ProtocolKind ExpectedProtocolType = ProtocolKind.Ssh2;
 
 
     [OneTimeSetUp]
@@ -24,7 +23,7 @@ public class PortScanDeserializerTests
             HostName = "server1.domain.com",
             Ssh = true
         };
-        _deserializer = new PortScanDeserializer(ProtocolType.SSH2);
+        _deserializer = new PortScanDeserializer(ProtocolKind.Ssh2);
         var connectionTreeModel = _deserializer.Deserialize(new[] { host });
         var root = connectionTreeModel.RootNodes.First();
         _importedConnectionInfo = root.Children.First();

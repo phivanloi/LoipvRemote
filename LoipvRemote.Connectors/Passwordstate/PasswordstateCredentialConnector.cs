@@ -1,14 +1,25 @@
 using LoipvRemote.Connectors.Abstractions;
+using LoipvRemote.Protocols.Abstractions;
 
 namespace LoipvRemote.Connectors.Passwordstate;
 
 public sealed class PasswordstateCredentialConnector : IExternalCredentialConnector
 {
+    private readonly PasswordstateInterface _client;
+
+    public PasswordstateCredentialConnector(
+        IExternalCredentialPrompt prompt,
+        IExternalCredentialSettingsStore settings)
+    {
+        _client = new PasswordstateInterface(prompt, settings);
+    }
+
     public string Provider => "ClickstudiosPasswordState";
 
-    public ExternalCredential Resolve(string secretReference)
+    public Task<ExternalCredential> ResolveAsync(
+        string secretReference,
+        CancellationToken cancellationToken = default)
     {
-        PasswordstateInterface.FetchSecretFromServer(secretReference, out string username, out string password, out string domain, out string privateKey);
-        return new ExternalCredential(username, password, domain, privateKey);
+        return _client.FetchSecretFromServerAsync(secretReference, cancellationToken);
     }
 }

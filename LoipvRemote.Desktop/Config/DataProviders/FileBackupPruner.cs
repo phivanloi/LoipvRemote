@@ -6,17 +6,17 @@ namespace LoipvRemote.Config.DataProviders
 {
     public class FileBackupPruner
     {
-        public void PruneBackupFiles(string filePath, int maxBackupsToKeep)
+        public static void PruneBackupFiles(string filePath, int maxBackupsToKeep)
         {
             PathValidator.ValidatePathOrThrow(filePath, nameof(filePath));
 
             string fileName = Path.GetFileName(filePath);
-            string directoryName = Path.GetDirectoryName(filePath);
+            string? directoryName = Path.GetDirectoryName(filePath);
 
             if (string.IsNullOrEmpty(fileName) || string.IsNullOrEmpty(directoryName))
                 return;
 
-            string searchPattern = string.Format(Properties.OptionsBackupPage.Default.BackupFileNameFormat, fileName, "*");
+            string searchPattern = FormatText(Properties.OptionsBackupPage.Default.BackupFileNameFormat, fileName, "*");
             string[] files = Directory.GetFiles(directoryName, searchPattern);
 
             if (files.Length <= maxBackupsToKeep)

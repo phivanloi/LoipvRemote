@@ -132,7 +132,7 @@ namespace LoipvRemote.Connection.Monitoring
 
         private static string FormatUnsignedHex(BigInteger value)
         {
-            string hex = value.ToString("x").TrimStart('0');
+            string hex = value.ToString("x", CultureInfo.InvariantCulture).TrimStart('0');
             return hex.Length == 0 ? "0" : hex;
         }
 
@@ -167,7 +167,7 @@ namespace LoipvRemote.Connection.Monitoring
                 if (character == ' ' || character == '\\' || character == '*' || character == '?' ||
                     character == '%' || character < ' ' || character > '~' || (character == '.' && !canWriteDot))
                 {
-                    escaped.Append('%').Append(((int)character).ToString("X2"));
+                    escaped.Append('%').Append(((int)character).ToString("X2", CultureInfo.InvariantCulture));
                 }
                 else
                 {

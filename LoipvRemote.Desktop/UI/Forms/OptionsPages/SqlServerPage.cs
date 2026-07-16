@@ -34,7 +34,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             pageRegSettingsInstance = new OptRegistrySqlServerPage(); // Initialize the field to avoid nullability issues
         }
 
-        public void AttachRuntime(DesktopShellRuntime desktopShellRuntime)
+        public override void AttachRuntime(DesktopShellRuntime desktopShellRuntime)
         {
             ArgumentNullException.ThrowIfNull(desktopShellRuntime);
             _connectionWorkspace = desktopShellRuntime.ConnectionTreeWorkspace;
@@ -188,7 +188,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             workspace.RemoteConnectionsSyncronizer = new RemoteConnectionsSyncronizer(
                 new ConnectionStoreUpdateChecker(workspace, _messageCollector),
                 workspace);
-            workspace.LoadConnections(true, false, "");
+            _ = workspace.LoadConnectionsAsync(true, false, "");
         }
 
         private void DisableSql()
@@ -198,7 +198,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
 
             _connectionWorkspace.RemoteConnectionsSyncronizer?.Dispose();
             _connectionWorkspace.RemoteConnectionsSyncronizer = null!;
-            _connectionLoadingService.LoadConnections(true);
+            _ = _connectionLoadingService.LoadConnectionsAsync(true);
         }
 
         private IStringSecretStore UserSecretStore => _userSecretStore
@@ -211,7 +211,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             public string Unprotect(string protectedValue, string purpose) => protectedValue;
         }
 
-        private void chkUseSQLServer_CheckedChanged(object sender, EventArgs e)
+        private void chkUseSQLServer_CheckedChanged(object? sender, EventArgs e)
         {
             toggleSQLPageControls(chkUseSQLServer.Checked);
         }
@@ -228,7 +228,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             pnlServerBlock.Visible = useSQLServer;
         }
 
-        private void btnExpandOptions_Click(object sender, EventArgs e)
+        private void btnExpandOptions_Click(object? sender, EventArgs e)
         {
             if (btnExpandOptions.Text == "Advanced >>")
             {
@@ -242,7 +242,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             }
         }
 
-        private async void btnTestConnection_Click(object sender, EventArgs e)
+        private async void btnTestConnection_Click(object? sender, EventArgs e)
         {
             string type = txtSQLType.Text;
             string server = txtSQLServer.Text;
@@ -269,17 +269,17 @@ namespace LoipvRemote.UI.Forms.OptionsPages
                 case ConnectionTestResult.ServerNotAccessible:
                     UpdateConnectionImage(false);
                     lblTestConnectionResults.Text =
-                        BuildTestFailedMessage(string.Format(Language.ServerNotAccessible, server));
+                        BuildTestFailedMessage(FormatText(Language.ServerNotAccessible, server));
                     break;
                 case ConnectionTestResult.CredentialsRejected:
                     UpdateConnectionImage(false);
                     lblTestConnectionResults.Text =
-                        BuildTestFailedMessage(string.Format(Language.LoginFailedForUser, username));
+                        BuildTestFailedMessage(FormatText(Language.LoginFailedForUser, username));
                     break;
                 case ConnectionTestResult.UnknownDatabase:
                     UpdateConnectionImage(false);
                     lblTestConnectionResults.Text =
-                        BuildTestFailedMessage(string.Format(Language.DatabaseNotAvailable, database));
+                        BuildTestFailedMessage(FormatText(Language.DatabaseNotAvailable, database));
                     break;
                 case ConnectionTestResult.UnknownError:
                     UpdateConnectionImage(false);
@@ -297,12 +297,12 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             imgConnectionStatus.Image = connectionSuccess ? Properties.Resources.Test_16x : Properties.Resources.LogError_16x;
         }
 
-        private string BuildTestFailedMessage(string specificMessage)
+        private static string BuildTestFailedMessage(string specificMessage)
         {
             return Language.ConnectionOpenFailed + Environment.NewLine + specificMessage;
         }
 
-        private void txtSQLAuthType_SelectedIndexChanged(object sender, EventArgs e)
+        private void txtSQLAuthType_SelectedIndexChanged(object? sender, EventArgs e)
         {
             // Ensure SelectedItem is not null before accessing it
             if (txtSQLAuthType.SelectedItem != null)

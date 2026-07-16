@@ -31,10 +31,10 @@ namespace LoipvRemote.UI.Forms
         /// password box is shown which must match the first password
         /// to continue.
         /// </param>
-        public FrmPassword(string passwordName = null, bool newPasswordMode = true)
+        public FrmPassword(string? passwordName = null, bool newPasswordMode = true)
         {
             InitializeComponent();
-            _passwordName = passwordName;
+            _passwordName = passwordName ?? string.Empty;
             NewPasswordMode = newPasswordMode;
         }
 
@@ -43,22 +43,23 @@ namespace LoipvRemote.UI.Forms
         /// enter their password.
         /// </summary>
         /// <returns></returns>
-        public Optional<SecureString> GetKey()
+        public OptionalValue<SecureString> GetKey()
         {
             DialogResult dialog = ShowDialog();
             return dialog == DialogResult.OK
                 ? _password
-                : Optional<SecureString>.Empty;
+                : new OptionalValue<SecureString>();
         }
 
         #region Event Handlers
 
-        private void FrmPassword_Load(object sender, EventArgs e)
+        private void FrmPassword_Load(object? sender, EventArgs e)
         {
             ApplyLanguage();
             ApplyTheme();
             DisplayProperties display = new();
-            pbLock.Image = display.ScaleImage(pbLock.Image);
+            if (pbLock.Image is not null)
+                pbLock.Image = display.ScaleImage(pbLock.Image);
             Height = tableLayoutPanel1.Height;
 
             if (NewPasswordMode)
@@ -71,20 +72,20 @@ namespace LoipvRemote.UI.Forms
             txtPassword.Focus();
         }
 
-        private void PasswordForm_FormClosed(object sender, FormClosedEventArgs e)
+        private void PasswordForm_FormClosed(object? sender, FormClosedEventArgs e)
         {
             _password = txtPassword.Text.ConvertToSecureString();
             txtPassword.Text = "";
             txtVerify.Text = "";
         }
 
-        private void BtnCancel_Click(object sender, EventArgs e)
+        private void BtnCancel_Click(object? sender, EventArgs e)
         {
             DialogResult = DialogResult.Cancel;
             Close();
         }
 
-        private void BtnOK_Click(object sender, EventArgs e)
+        private void BtnOK_Click(object? sender, EventArgs e)
         {
             if (NewPasswordMode)
                 VerifyNewPassword();
@@ -92,7 +93,7 @@ namespace LoipvRemote.UI.Forms
             DialogResult = DialogResult.OK;
         }
 
-        private void TxtPassword_TextChanged(object sender, EventArgs e)
+        private void TxtPassword_TextChanged(object? sender, EventArgs e)
         {
             HideStatus();
         }
@@ -105,7 +106,7 @@ namespace LoipvRemote.UI.Forms
         {
             Text = string.IsNullOrEmpty(_passwordName)
                 ? Language.TitlePassword
-                : string.Format(Language.TitlePasswordWithName, _passwordName);
+                : FormatText(Language.TitlePasswordWithName, _passwordName);
 
             lblPassword.Text = Language.Password;
             lblVerify.Text = Language.Verify;

@@ -108,7 +108,7 @@ namespace LoipvRemote.UI.Window
             //
             // btnTransfer
             //
-            btnTransfer._mice = MrngButton.MouseState.HOVER;
+            btnTransfer.MouseInteractionState = MrngButton.MouseState.HOVER;
             btnTransfer.FlatStyle = FlatStyle.Flat;
             btnTransfer.Image = Properties.Resources.SyncArrow_16x;
             btnTransfer.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
@@ -141,7 +141,7 @@ namespace LoipvRemote.UI.Window
             //
             // btnBrowse
             //
-            btnBrowse._mice = MrngButton.MouseState.HOVER;
+            btnBrowse.MouseInteractionState = MrngButton.MouseState.HOVER;
             btnBrowse.FlatStyle = FlatStyle.Flat;
             btnBrowse.Location = new System.Drawing.Point(566, 28);
             btnBrowse.Name = "btnBrowse";
@@ -357,7 +357,8 @@ namespace LoipvRemote.UI.Window
             ApplyLanguage();
             Icon = Resources.ImageConverter.GetImageAsIcon(Properties.Resources.SyncArrow_16x);
             DisplayProperties display = new();
-            btnTransfer.Image = display.ScaleImage(btnTransfer.Image);
+            if (btnTransfer.Image is Image transferImage)
+                btnTransfer.Image = display.ScaleImage(transferImage);
         }
 
         private void ApplyLanguage()
@@ -399,7 +400,7 @@ namespace LoipvRemote.UI.Window
 
             try
             {
-                st = new SecureTransfer(txtHost.Text, txtUser.Text, txtPassword.Text, int.Parse(txtPort.Text), Protocol,
+                st = new SecureTransfer(txtHost.Text, txtUser.Text, txtPassword.Text, int.Parse(txtPort.Text, CultureInfo.InvariantCulture), Protocol,
                                         txtLocalFile.Text, txtRemoteFile.Text, MessageCollector);
 
                 // Connect creates the protocol objects and makes the initial connection.
@@ -500,10 +501,10 @@ namespace LoipvRemote.UI.Window
                     }
                 }
 
-                if (txtRemoteFile.Text.EndsWith("/") || txtRemoteFile.Text.EndsWith("\\"))
+                if (txtRemoteFile.Text.EndsWith('/') || txtRemoteFile.Text.EndsWith('\\'))
                 {
                     txtRemoteFile.Text +=
-                        txtLocalFile.Text.Substring(txtLocalFile.Text.LastIndexOf("\\", StringComparison.Ordinal) + 1);
+                        txtLocalFile.Text.Substring(txtLocalFile.Text.LastIndexOf('\\') + 1);
                 }
 
                 return true;

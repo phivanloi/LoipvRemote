@@ -201,7 +201,7 @@ namespace LoipvRemote.Connection
         public virtual string Hostname
         {
             get => _hostname?.Trim() ?? string.Empty;
-            set => SetField(ref _hostname, value?.Trim(), nameof(Hostname));
+            set => SetField(ref _hostname, value?.Trim() ?? string.Empty, nameof(Hostname));
         }
 
         [LocalizedAttributes.LocalizedCategory(nameof(Language.Connection), 2),
@@ -219,7 +219,7 @@ namespace LoipvRemote.Connection
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.ExternalCredentialProvider)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionExternalCredentialProvider)),
          TypeConverter(typeof(MiscTools.EnumTypeConverter)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp, ProtocolKind.Ssh1, ProtocolKind.Ssh2)]
+         UsedInProtocolAttribute(ProtocolKind.Rdp, ProtocolKind.Ssh1, ProtocolKind.Ssh2)]
         public ExternalCredentialProvider ExternalCredentialProvider
         {
             get => GetPropertyValue(nameof(ExternalCredentialProvider), _externalCredentialProvider);
@@ -230,7 +230,7 @@ namespace LoipvRemote.Connection
         [LocalizedAttributes.LocalizedCategory(nameof(Language.Connection), 2),
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.UserViaAPI)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionUserViaAPI)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp, ProtocolKind.Ssh1, ProtocolKind.Ssh2)]
+         UsedInProtocolAttribute(ProtocolKind.Rdp, ProtocolKind.Ssh1, ProtocolKind.Ssh2)]
         public virtual string UserViaAPI
         {
             get => GetPropertyValue(nameof(UserViaAPI), _userViaAPI);
@@ -240,11 +240,11 @@ namespace LoipvRemote.Connection
         [LocalizedAttributes.LocalizedCategory(nameof(Language.Connection), 2),
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.Username)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionUsername)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp, ProtocolKind.Ssh1, ProtocolKind.Ssh2, ProtocolKind.Http, ProtocolKind.Https, ProtocolKind.ExternalApplication)]
+         UsedInProtocolAttribute(ProtocolKind.Rdp, ProtocolKind.Ssh1, ProtocolKind.Ssh2, ProtocolKind.Http, ProtocolKind.Https, ProtocolKind.ExternalApplication)]
         public virtual string Username
         {
             get => GetPropertyValue(nameof(Username), _username);
-            set => SetField(ref _username, Settings.Default.DoNotTrimUsername ? value : value?.Trim(), nameof(Username));
+            set => SetField(ref _username, Settings.Default.DoNotTrimUsername ? value : value?.Trim() ?? string.Empty, nameof(Username));
         }
 
         [LocalizedAttributes.LocalizedCategory(nameof(Language.Connection), 2),
@@ -262,8 +262,9 @@ namespace LoipvRemote.Connection
         [LocalizedAttributes.LocalizedCategory(nameof(Language.Connection), 2),
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.VaultOpenbaoMount)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.VaultOpenbaoMountDescription)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp, ProtocolKind.Ssh1, ProtocolKind.Ssh2)]
-        public virtual string VaultOpenbaoMount {
+         UsedInProtocolAttribute(ProtocolKind.Rdp, ProtocolKind.Ssh1, ProtocolKind.Ssh2)]
+        public virtual string VaultOpenbaoMount
+        {
             get => GetPropertyValue(nameof(VaultOpenbaoMount), _vaultMount);
             set => SetField(ref _vaultMount, value, nameof(VaultOpenbaoMount));
         }
@@ -271,8 +272,9 @@ namespace LoipvRemote.Connection
         [LocalizedAttributes.LocalizedCategory(nameof(Language.Connection), 2),
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.VaultOpenbaoRole)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.VaultOpenbaoRoleDescription)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp, ProtocolKind.Ssh1, ProtocolKind.Ssh2)]
-        public virtual string VaultOpenbaoRole {
+         UsedInProtocolAttribute(ProtocolKind.Rdp, ProtocolKind.Ssh1, ProtocolKind.Ssh2)]
+        public virtual string VaultOpenbaoRole
+        {
             get => GetPropertyValue(nameof(VaultOpenbaoRole), _vaultRole);
             set => SetField(ref _vaultRole, value, nameof(VaultOpenbaoRole));
         }
@@ -282,8 +284,9 @@ namespace LoipvRemote.Connection
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.VaultOpenbaoSecretEngine)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionVaultOpenbaoSecretEngine)),
          TypeConverter(typeof(MiscTools.EnumTypeConverter)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp, ProtocolKind.Ssh1, ProtocolKind.Ssh2)]
-        public VaultOpenbaoSecretEngine VaultOpenbaoSecretEngine {
+         UsedInProtocolAttribute(ProtocolKind.Rdp, ProtocolKind.Ssh1, ProtocolKind.Ssh2)]
+        public VaultOpenbaoSecretEngine VaultOpenbaoSecretEngine
+        {
             get => GetPropertyValue(nameof(VaultOpenbaoSecretEngine), _vaultSecretEngine);
             set => SetField(ref _vaultSecretEngine, value, nameof(VaultOpenbaoSecretEngine));
         }
@@ -292,11 +295,11 @@ namespace LoipvRemote.Connection
         [LocalizedAttributes.LocalizedCategory(nameof(Language.Connection), 2),
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.Domain)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionDomain)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp, ProtocolKind.ExternalApplication, ProtocolKind.PowerShell, ProtocolKind.Wsl)]
+         UsedInProtocolAttribute(ProtocolKind.Rdp, ProtocolKind.ExternalApplication, ProtocolKind.PowerShell, ProtocolKind.Wsl)]
         public string Domain
         {
             get => GetPropertyValue(nameof(Domain), _domain).Trim();
-            set => SetField(ref _domain, value?.Trim(), nameof(Domain));
+            set => SetField(ref _domain, value?.Trim() ?? string.Empty, nameof(Domain));
         }
 
 
@@ -305,7 +308,7 @@ namespace LoipvRemote.Connection
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.ExternalAddressProvider)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionExternalAddressProvider)),
          TypeConverter(typeof(MiscTools.EnumTypeConverter)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp, ProtocolKind.Ssh2)]
+         UsedInProtocolAttribute(ProtocolKind.Rdp, ProtocolKind.Ssh2)]
         public ExternalAddressProvider ExternalAddressProvider
         {
             get => GetPropertyValue(nameof(ExternalAddressProvider), _externalAddressProvider);
@@ -315,31 +318,31 @@ namespace LoipvRemote.Connection
         [LocalizedAttributes.LocalizedCategory(nameof(Language.Connection), 2),
         LocalizedAttributes.LocalizedDisplayName(nameof(Language.EC2InstanceId)),
         LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionEC2InstanceId)),
-        AttributeUsedInProtocol(ProtocolKind.Rdp, ProtocolKind.Ssh2)]
+        UsedInProtocolAttribute(ProtocolKind.Rdp, ProtocolKind.Ssh2)]
         public string EC2InstanceId
         {
             get => GetPropertyValue(nameof(EC2InstanceId), _ec2InstanceId).Trim();
-            set => SetField(ref _ec2InstanceId, value?.Trim(), nameof(EC2InstanceId));
+            set => SetField(ref _ec2InstanceId, value?.Trim() ?? string.Empty, nameof(EC2InstanceId));
         }
 
         [LocalizedAttributes.LocalizedCategory(nameof(Language.Connection), 2),
         LocalizedAttributes.LocalizedDisplayName(nameof(Language.EC2Region)),
         LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionEC2Region)),
-        AttributeUsedInProtocol(ProtocolKind.Rdp, ProtocolKind.Ssh2)]
+        UsedInProtocolAttribute(ProtocolKind.Rdp, ProtocolKind.Ssh2)]
         public string EC2Region
         {
             get => GetPropertyValue(nameof(EC2Region), _ec2Region).Trim();
-            set => SetField(ref _ec2Region, value?.Trim(), nameof(EC2Region));
+            set => SetField(ref _ec2Region, value?.Trim() ?? string.Empty, nameof(EC2Region));
         }
 
         [LocalizedAttributes.LocalizedCategory(nameof(Language.Connection), 2),
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.VmId)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionVmId)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp)]
+         UsedInProtocolAttribute(ProtocolKind.Rdp)]
         public string VmId
         {
             get => GetPropertyValue(nameof(VmId), _vmId).Trim();
-            set => SetField(ref _vmId, value?.Trim(), nameof(VmId));
+            set => SetField(ref _vmId, value?.Trim() ?? string.Empty, nameof(VmId));
         }
 
         [LocalizedAttributes.LocalizedCategory(nameof(Language.Connection), 2),
@@ -350,13 +353,13 @@ namespace LoipvRemote.Connection
         public string SSHTunnelConnectionName
         {
             get => GetPropertyValue(nameof(SSHTunnelConnectionName), _sshTunnelConnectionName).Trim();
-            set => SetField(ref _sshTunnelConnectionName, value?.Trim(), nameof(SSHTunnelConnectionName));
+            set => SetField(ref _sshTunnelConnectionName, value?.Trim() ?? string.Empty, nameof(SSHTunnelConnectionName));
         }
 
         [LocalizedAttributes.LocalizedCategory(nameof(Language.Miscellaneous), 7),
         LocalizedAttributes.LocalizedDisplayName(nameof(Language.OpeningCommand)),
         LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionOpeningCommand)),
-           AttributeUsedInProtocol(ProtocolKind.Ssh1, ProtocolKind.Ssh2)]
+           UsedInProtocolAttribute(ProtocolKind.Ssh1, ProtocolKind.Ssh2)]
         public virtual string OpeningCommand
         {
             get => GetPropertyValue(nameof(OpeningCommand), _openingCommand);
@@ -380,7 +383,7 @@ namespace LoipvRemote.Connection
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.RdpVersion)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionRdpVersion)),
          TypeConverter(typeof(MiscTools.EnumTypeConverter)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp)]
+         UsedInProtocolAttribute(ProtocolKind.Rdp)]
         public virtual RdpVersion RdpVersion
         {
             get => GetPropertyValue(nameof(RdpVersion), _rdpProtocolVersion);
@@ -391,7 +394,7 @@ namespace LoipvRemote.Connection
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.ExternalTool)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionExternalTool)),
          TypeConverter(typeof(ExternalToolsTypeConverter)),
-         AttributeUsedInProtocol(ProtocolKind.ExternalApplication)]
+         UsedInProtocolAttribute(ProtocolKind.ExternalApplication)]
         public string ExtApp
         {
             get => GetPropertyValue(nameof(ExtApp), _extApp);
@@ -402,7 +405,7 @@ namespace LoipvRemote.Connection
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.PuttySession)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionPuttySession)),
          TypeConverter(typeof(Config.Putty.PuttySessionsManager.SessionList)),
-         AttributeUsedInProtocol(ProtocolKind.Ssh1, ProtocolKind.Ssh2, ProtocolKind.Telnet,
+         UsedInProtocolAttribute(ProtocolKind.Ssh1, ProtocolKind.Ssh2, ProtocolKind.Telnet,
             ProtocolKind.Raw, ProtocolKind.Rlogin)]
         public virtual string PuttySession
         {
@@ -413,7 +416,7 @@ namespace LoipvRemote.Connection
         [LocalizedAttributes.LocalizedCategory(nameof(Language.Protocol), 3),
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.SshOptions)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionSshOptions)),
-         AttributeUsedInProtocol(ProtocolKind.Ssh1, ProtocolKind.Ssh2)]
+         UsedInProtocolAttribute(ProtocolKind.Ssh1, ProtocolKind.Ssh2)]
         public virtual string SSHOptions
         {
             get => GetPropertyValue(nameof(SSHOptions), _sshOptions);
@@ -424,7 +427,7 @@ namespace LoipvRemote.Connection
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.UseConsoleSession)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionUseConsoleSession)),
          TypeConverter(typeof(MiscTools.YesNoTypeConverter)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp)]
+         UsedInProtocolAttribute(ProtocolKind.Rdp)]
         public bool UseConsoleSession
         {
             get => GetPropertyValue(nameof(UseConsoleSession), _useConsoleSession);
@@ -435,7 +438,7 @@ namespace LoipvRemote.Connection
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.AuthenticationLevel)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionAuthenticationLevel)),
          TypeConverter(typeof(MiscTools.EnumTypeConverter)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp)]
+         UsedInProtocolAttribute(ProtocolKind.Rdp)]
         public AuthenticationLevel RDPAuthenticationLevel
         {
             get => GetPropertyValue(nameof(RDPAuthenticationLevel), _rdpAuthenticationLevel);
@@ -445,7 +448,7 @@ namespace LoipvRemote.Connection
         [LocalizedAttributes.LocalizedCategory(nameof(Language.Protocol), 3),
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.MinutesToIdleTimeout)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionRDPMinutesToIdleTimeout)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp)]
+         UsedInProtocolAttribute(ProtocolKind.Rdp)]
         public virtual int RDPMinutesToIdleTimeout
         {
             get => GetPropertyValue(nameof(RDPMinutesToIdleTimeout), _rdpMinutesToIdleTimeout);
@@ -462,7 +465,7 @@ namespace LoipvRemote.Connection
         [LocalizedAttributes.LocalizedCategory(nameof(Language.Protocol), 3),
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.MinutesToIdleTimeout)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionRDPAlertIdleTimeout)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp)]
+         UsedInProtocolAttribute(ProtocolKind.Rdp)]
         public bool RDPAlertIdleTimeout
         {
             get => GetPropertyValue(nameof(RDPAlertIdleTimeout), _rdpAlertIdleTimeout);
@@ -472,18 +475,18 @@ namespace LoipvRemote.Connection
         [LocalizedAttributes.LocalizedCategory(nameof(Language.Protocol), 3),
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.LoadBalanceInfo)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionLoadBalanceInfo)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp)]
+         UsedInProtocolAttribute(ProtocolKind.Rdp)]
         public string LoadBalanceInfo
         {
             get => GetPropertyValue(nameof(LoadBalanceInfo), _loadBalanceInfo).Trim();
-            set => SetField(ref _loadBalanceInfo, value?.Trim(), nameof(LoadBalanceInfo));
+            set => SetField(ref _loadBalanceInfo, value?.Trim() ?? string.Empty, nameof(LoadBalanceInfo));
         }
 
         [LocalizedAttributes.LocalizedCategory(nameof(Language.Protocol), 3),
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.RenderingEngine)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionRenderingEngine)),
          TypeConverter(typeof(MiscTools.EnumTypeConverter)),
-         AttributeUsedInProtocol(ProtocolKind.Http, ProtocolKind.Https)]
+         UsedInProtocolAttribute(ProtocolKind.Http, ProtocolKind.Https)]
         public BrowserRenderingEngine RenderingEngine
         {
             get => GetPropertyValue(nameof(RenderingEngine), _renderingEngine);
@@ -494,7 +497,7 @@ namespace LoipvRemote.Connection
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.UseCredSsp)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionUseCredSsp)),
          TypeConverter(typeof(MiscTools.YesNoTypeConverter)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp)]
+         UsedInProtocolAttribute(ProtocolKind.Rdp)]
         public bool UseCredSsp
         {
             get => GetPropertyValue(nameof(UseCredSsp), _useCredSsp);
@@ -505,7 +508,7 @@ namespace LoipvRemote.Connection
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.UseRestrictedAdmin)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionUseRestrictedAdmin)),
          TypeConverter(typeof(MiscTools.YesNoTypeConverter)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp)]
+         UsedInProtocolAttribute(ProtocolKind.Rdp)]
         public bool UseRestrictedAdmin
         {
             get => GetPropertyValue(nameof(UseRestrictedAdmin), _useRestrictedAdmin);
@@ -516,7 +519,7 @@ namespace LoipvRemote.Connection
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.UseRCG)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionUseRCG)),
          TypeConverter(typeof(MiscTools.YesNoTypeConverter)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp)]
+         UsedInProtocolAttribute(ProtocolKind.Rdp)]
         public bool UseRCG
         {
             get => GetPropertyValue(nameof(UseRCG), _useRCG);
@@ -527,7 +530,7 @@ namespace LoipvRemote.Connection
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.UseRedirectionServerName)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionUseRedirectionServerName)),
          TypeConverter(typeof(MiscTools.YesNoTypeConverter)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp)]
+         UsedInProtocolAttribute(ProtocolKind.Rdp)]
         public bool UseRedirectionServerName
         {
             get => GetPropertyValue(nameof(UseRedirectionServerName), _useRedirectionServerName);
@@ -538,7 +541,7 @@ namespace LoipvRemote.Connection
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.UseVmId)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionUseVmId)),
          TypeConverter(typeof(MiscTools.YesNoTypeConverter)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp)]
+         UsedInProtocolAttribute(ProtocolKind.Rdp)]
         public bool UseVmId
         {
             get => GetPropertyValue(nameof(UseVmId), _useVmId);
@@ -549,7 +552,7 @@ namespace LoipvRemote.Connection
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.UseEnhancedMode)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionUseEnhancedMode)),
          TypeConverter(typeof(MiscTools.YesNoTypeConverter)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp)]
+         UsedInProtocolAttribute(ProtocolKind.Rdp)]
         public bool UseEnhancedMode
         {
             get => GetPropertyValue(nameof(UseEnhancedMode), _useEnhancedMode);
@@ -563,7 +566,7 @@ namespace LoipvRemote.Connection
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.RdpGatewayUsageMethod)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionRdpGatewayUsageMethod)),
          TypeConverter(typeof(MiscTools.EnumTypeConverter)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp)]
+         UsedInProtocolAttribute(ProtocolKind.Rdp)]
         public RDGatewayUsageMethod RDGatewayUsageMethod
         {
             get => GetPropertyValue(nameof(RDGatewayUsageMethod), _rdGatewayUsageMethod);
@@ -573,18 +576,18 @@ namespace LoipvRemote.Connection
         [LocalizedAttributes.LocalizedCategory(nameof(Language.RDPGateway), 4),
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.RdpGatewayHostname)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionRDGatewayHostname)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp)]
+         UsedInProtocolAttribute(ProtocolKind.Rdp)]
         public string RDGatewayHostname
         {
             get => GetPropertyValue(nameof(RDGatewayHostname), _rdGatewayHostname).Trim();
-            set => SetField(ref _rdGatewayHostname, value?.Trim(), nameof(RDGatewayHostname));
+            set => SetField(ref _rdGatewayHostname, value?.Trim() ?? string.Empty, nameof(RDGatewayHostname));
         }
 
         [LocalizedAttributes.LocalizedCategory(nameof(Language.RDPGateway), 4),
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.RdpGatewayUseConnectionCredentials)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionRDGatewayUseConnectionCredentials)),
          TypeConverter(typeof(MiscTools.EnumTypeConverter)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp)]
+         UsedInProtocolAttribute(ProtocolKind.Rdp)]
         public RDGatewayUseConnectionCredentials RDGatewayUseConnectionCredentials
         {
             get => GetPropertyValue(nameof(RDGatewayUseConnectionCredentials), _rdGatewayUseConnectionCredentials);
@@ -594,18 +597,18 @@ namespace LoipvRemote.Connection
         [LocalizedAttributes.LocalizedCategory(nameof(Language.RDPGateway), 4),
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.RdpGatewayUsername)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionRDGatewayUsername)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp)]
+         UsedInProtocolAttribute(ProtocolKind.Rdp)]
         public string RDGatewayUsername
         {
             get => GetPropertyValue(nameof(RDGatewayUsername), _rdGatewayUsername).Trim();
-            set => SetField(ref _rdGatewayUsername, value?.Trim(), nameof(RDGatewayUsername));
+            set => SetField(ref _rdGatewayUsername, value?.Trim() ?? string.Empty, nameof(RDGatewayUsername));
         }
 
         [LocalizedAttributes.LocalizedCategory(nameof(Language.RDPGateway), 4),
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.RdpGatewayPassword)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionRdpGatewayPassword)),
          PasswordPropertyText(true),
-         AttributeUsedInProtocol(ProtocolKind.Rdp)]
+         UsedInProtocolAttribute(ProtocolKind.Rdp)]
         public string RDGatewayPassword
         {
             get => GetPropertyValue(nameof(RDGatewayPassword), _rdGatewayPassword);
@@ -616,7 +619,7 @@ namespace LoipvRemote.Connection
         LocalizedAttributes.LocalizedDisplayName(nameof(Language.RdpGatewayAccessToken)),
         LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionRdpGatewayAccessToken)),
         PasswordPropertyText(true),
-        AttributeUsedInProtocol(ProtocolKind.Rdp)]
+        UsedInProtocolAttribute(ProtocolKind.Rdp)]
         public string RDGatewayAccessToken
         {
             get => GetPropertyValue(nameof(RDGatewayAccessToken), _rdGatewayAccessToken);
@@ -626,18 +629,18 @@ namespace LoipvRemote.Connection
         [LocalizedAttributes.LocalizedCategory(nameof(Language.RDPGateway), 4),
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.RdpGatewayDomain)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionRDGatewayDomain)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp)]
+         UsedInProtocolAttribute(ProtocolKind.Rdp)]
         public string RDGatewayDomain
         {
             get => GetPropertyValue(nameof(RDGatewayDomain), _rdGatewayDomain).Trim();
-            set => SetField(ref _rdGatewayDomain, value?.Trim(), nameof(RDGatewayDomain));
+            set => SetField(ref _rdGatewayDomain, value?.Trim() ?? string.Empty, nameof(RDGatewayDomain));
         }
         // external credential provider selector for rd gateway
         [LocalizedAttributes.LocalizedCategory(nameof(Language.RDPGateway), 4),
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.ExternalCredentialProvider)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionExternalCredentialProvider)),
          TypeConverter(typeof(MiscTools.EnumTypeConverter)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp)]
+         UsedInProtocolAttribute(ProtocolKind.Rdp)]
         public ExternalCredentialProvider RDGatewayExternalCredentialProvider
         {
             get => GetPropertyValue(nameof(RDGatewayExternalCredentialProvider), _rdGatewayExternalCredentialProvider);
@@ -648,7 +651,7 @@ namespace LoipvRemote.Connection
         [LocalizedAttributes.LocalizedCategory(nameof(Language.RDPGateway), 4),
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.UserViaAPI)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionUserViaAPI)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp)]
+         UsedInProtocolAttribute(ProtocolKind.Rdp)]
         public virtual string RDGatewayUserViaAPI
         {
             get => GetPropertyValue(nameof(RDGatewayUserViaAPI), _rdGatewayUserViaAPI);
@@ -662,7 +665,7 @@ namespace LoipvRemote.Connection
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.Resolution)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionResolution)),
          TypeConverter(typeof(MiscTools.EnumTypeConverter)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp)]
+         UsedInProtocolAttribute(ProtocolKind.Rdp)]
         public RDPResolutions Resolution
         {
             get => GetPropertyValue(nameof(Resolution), _resolution);
@@ -673,7 +676,7 @@ namespace LoipvRemote.Connection
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.AutomaticResize)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionAutomaticResize)),
          TypeConverter(typeof(MiscTools.YesNoTypeConverter)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp)]
+         UsedInProtocolAttribute(ProtocolKind.Rdp)]
         public bool AutomaticResize
         {
             get => GetPropertyValue(nameof(AutomaticResize), _automaticResize);
@@ -684,7 +687,7 @@ namespace LoipvRemote.Connection
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.Colors)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionColors)),
          TypeConverter(typeof(MiscTools.EnumTypeConverter)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp)]
+         UsedInProtocolAttribute(ProtocolKind.Rdp)]
         public RDPColors Colors
         {
             get => GetPropertyValue(nameof(Colors), _colors);
@@ -695,7 +698,7 @@ namespace LoipvRemote.Connection
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.CacheBitmaps)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionCacheBitmaps)),
          TypeConverter(typeof(MiscTools.YesNoTypeConverter)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp)]
+         UsedInProtocolAttribute(ProtocolKind.Rdp)]
         public bool CacheBitmaps
         {
             get => GetPropertyValue(nameof(CacheBitmaps), _cacheBitmaps);
@@ -706,7 +709,7 @@ namespace LoipvRemote.Connection
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.DisplayWallpaper)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionDisplayWallpaper)),
          TypeConverter(typeof(MiscTools.YesNoTypeConverter)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp)]
+         UsedInProtocolAttribute(ProtocolKind.Rdp)]
         public bool DisplayWallpaper
         {
             get => GetPropertyValue(nameof(DisplayWallpaper), _displayWallpaper);
@@ -717,7 +720,7 @@ namespace LoipvRemote.Connection
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.DisplayThemes)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionDisplayThemes)),
          TypeConverter(typeof(MiscTools.YesNoTypeConverter)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp)]
+         UsedInProtocolAttribute(ProtocolKind.Rdp)]
         public bool DisplayThemes
         {
             get => GetPropertyValue(nameof(DisplayThemes), _displayThemes);
@@ -728,7 +731,7 @@ namespace LoipvRemote.Connection
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.FontSmoothing)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionEnableFontSmoothing)),
          TypeConverter(typeof(MiscTools.YesNoTypeConverter)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp)]
+         UsedInProtocolAttribute(ProtocolKind.Rdp)]
         public bool EnableFontSmoothing
         {
             get => GetPropertyValue(nameof(EnableFontSmoothing), _enableFontSmoothing);
@@ -739,7 +742,7 @@ namespace LoipvRemote.Connection
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.EnableDesktopComposition)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionEnableDesktopComposition)),
          TypeConverter(typeof(MiscTools.YesNoTypeConverter)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp)]
+         UsedInProtocolAttribute(ProtocolKind.Rdp)]
         public bool EnableDesktopComposition
         {
             get => GetPropertyValue(nameof(EnableDesktopComposition), _enableDesktopComposition);
@@ -750,7 +753,7 @@ namespace LoipvRemote.Connection
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.DisableFullWindowDrag)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionDisableFullWindowDrag)),
          TypeConverter(typeof(MiscTools.YesNoTypeConverter)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp)]
+         UsedInProtocolAttribute(ProtocolKind.Rdp)]
         public bool DisableFullWindowDrag
         {
             get => GetPropertyValue(nameof(DisableFullWindowDrag), _disableFullWindowDrag);
@@ -761,7 +764,7 @@ namespace LoipvRemote.Connection
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.DisableMenuAnimations)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionDisableMenuAnimations)),
          TypeConverter(typeof(MiscTools.YesNoTypeConverter)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp)]
+         UsedInProtocolAttribute(ProtocolKind.Rdp)]
         public bool DisableMenuAnimations
         {
             get => GetPropertyValue(nameof(DisableMenuAnimations), _disableMenuAnimations);
@@ -772,7 +775,7 @@ namespace LoipvRemote.Connection
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.DisableCursorShadow)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionDisableCursorShadow)),
          TypeConverter(typeof(MiscTools.YesNoTypeConverter)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp)]
+         UsedInProtocolAttribute(ProtocolKind.Rdp)]
         public bool DisableCursorShadow
         {
             get => GetPropertyValue(nameof(DisableCursorShadow), _disableCursorShadow);
@@ -783,7 +786,7 @@ namespace LoipvRemote.Connection
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.DisableCursorShadow)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionDisableCursorShadow)),
          TypeConverter(typeof(MiscTools.YesNoTypeConverter)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp)]
+         UsedInProtocolAttribute(ProtocolKind.Rdp)]
         public bool DisableCursorBlinking
         {
             get => GetPropertyValue(nameof(DisableCursorBlinking), _disableCursorBlinking);
@@ -797,7 +800,7 @@ namespace LoipvRemote.Connection
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.RedirectKeys)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionRedirectKeys)),
          TypeConverter(typeof(MiscTools.YesNoTypeConverter)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp)]
+         UsedInProtocolAttribute(ProtocolKind.Rdp)]
         public bool RedirectKeys
         {
             get => GetPropertyValue(nameof(RedirectKeys), _redirectKeys);
@@ -808,7 +811,7 @@ namespace LoipvRemote.Connection
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.DiskDrives)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionRedirectDrives)),
          TypeConverter(typeof(MiscTools.EnumTypeConverter)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp)]
+         UsedInProtocolAttribute(ProtocolKind.Rdp)]
         public RDPDiskDrives RedirectDiskDrives
         {
             get => GetPropertyValue(nameof(RedirectDiskDrives), _redirectDiskDrives);
@@ -818,7 +821,7 @@ namespace LoipvRemote.Connection
         [LocalizedAttributes.LocalizedCategory(nameof(Language.Redirect), 6),
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.RedirectDiskDrivesCustom)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionRedirectDiskDrivesCustom)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp)]
+         UsedInProtocolAttribute(ProtocolKind.Rdp)]
         public string RedirectDiskDrivesCustom
         {
             get => GetPropertyValue(nameof(RedirectDiskDrivesCustom), _redirectDiskDrivesCustom);
@@ -829,7 +832,7 @@ namespace LoipvRemote.Connection
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.Printers)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionRedirectPrinters)),
          TypeConverter(typeof(MiscTools.YesNoTypeConverter)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp)]
+         UsedInProtocolAttribute(ProtocolKind.Rdp)]
         public bool RedirectPrinters
         {
             get => GetPropertyValue(nameof(RedirectPrinters), _redirectPrinters);
@@ -840,7 +843,7 @@ namespace LoipvRemote.Connection
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.Clipboard)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionRedirectClipboard)),
          TypeConverter(typeof(MiscTools.YesNoTypeConverter)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp)]
+         UsedInProtocolAttribute(ProtocolKind.Rdp)]
         public bool RedirectClipboard
         {
             get => GetPropertyValue(nameof(RedirectClipboard), _redirectClipboard);
@@ -852,7 +855,7 @@ namespace LoipvRemote.Connection
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.Ports)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionRedirectPorts)),
          TypeConverter(typeof(MiscTools.YesNoTypeConverter)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp)]
+         UsedInProtocolAttribute(ProtocolKind.Rdp)]
         public bool RedirectPorts
         {
             get => GetPropertyValue(nameof(RedirectPorts), _redirectPorts);
@@ -863,7 +866,7 @@ namespace LoipvRemote.Connection
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.SmartCard)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionRedirectSmartCards)),
          TypeConverter(typeof(MiscTools.YesNoTypeConverter)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp)]
+         UsedInProtocolAttribute(ProtocolKind.Rdp)]
         public bool RedirectSmartCards
         {
             get => GetPropertyValue(nameof(RedirectSmartCards), _redirectSmartCards);
@@ -874,7 +877,7 @@ namespace LoipvRemote.Connection
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.Sounds)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionRedirectSounds)),
          TypeConverter(typeof(MiscTools.EnumTypeConverter)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp)]
+         UsedInProtocolAttribute(ProtocolKind.Rdp)]
         public RDPSounds RedirectSound
         {
             get => GetPropertyValue(nameof(RedirectSound), _redirectSound);
@@ -885,7 +888,7 @@ namespace LoipvRemote.Connection
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.SoundQuality)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionSoundQuality)),
          TypeConverter(typeof(MiscTools.EnumTypeConverter)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp)]
+         UsedInProtocolAttribute(ProtocolKind.Rdp)]
         public RDPSoundQuality SoundQuality
         {
             get => GetPropertyValue(nameof(SoundQuality), _soundQuality);
@@ -896,7 +899,7 @@ namespace LoipvRemote.Connection
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.AudioCapture)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionRedirectAudioCapture)),
          TypeConverter(typeof(MiscTools.YesNoTypeConverter)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp)]
+         UsedInProtocolAttribute(ProtocolKind.Rdp)]
         public bool RedirectAudioCapture
         {
             get => GetPropertyValue(nameof(RedirectAudioCapture), _redirectAudioCapture);
@@ -969,7 +972,7 @@ namespace LoipvRemote.Connection
         [LocalizedAttributes.LocalizedCategory(nameof(Language.Miscellaneous), 7),
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.RDPStartProgram)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionRDPStartProgram)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp)]
+         UsedInProtocolAttribute(ProtocolKind.Rdp)]
         public virtual string RDPStartProgram
         {
             get => GetPropertyValue(nameof(RDPStartProgram), _rdpStartProgram);
@@ -979,7 +982,7 @@ namespace LoipvRemote.Connection
         [LocalizedAttributes.LocalizedCategory(nameof(Language.Miscellaneous), 7),
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.RDPStartProgramWorkDir)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionRDPStartProgramWorkDir)),
-         AttributeUsedInProtocol(ProtocolKind.Rdp)]
+         UsedInProtocolAttribute(ProtocolKind.Rdp)]
         public virtual string RDPStartProgramWorkDir
         {
             get => GetPropertyValue(nameof(RDPStartProgramWorkDir), _rdpStartProgramWorkDir);
@@ -993,7 +996,7 @@ namespace LoipvRemote.Connection
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.Compression)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionCompression)),
          TypeConverter(typeof(MiscTools.EnumTypeConverter)),
-         AttributeUsedInProtocol(ProtocolKind.Vnc, ProtocolKind.Ard),
+         UsedInProtocolAttribute(ProtocolKind.Vnc, ProtocolKind.Ard),
          Browsable(false)]
         public VncCompression VNCCompression
         {
@@ -1005,7 +1008,7 @@ namespace LoipvRemote.Connection
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.Encoding)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionEncoding)),
          TypeConverter(typeof(MiscTools.EnumTypeConverter)),
-         AttributeUsedInProtocol(ProtocolKind.Vnc, ProtocolKind.Ard),
+         UsedInProtocolAttribute(ProtocolKind.Vnc, ProtocolKind.Ard),
          Browsable(false)]
         public VncEncoding VNCEncoding
         {
@@ -1017,7 +1020,7 @@ namespace LoipvRemote.Connection
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.AuthenticationMode)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionAuthenticationMode)),
          TypeConverter(typeof(MiscTools.EnumTypeConverter)),
-         AttributeUsedInProtocol(ProtocolKind.Vnc, ProtocolKind.Ard),
+         UsedInProtocolAttribute(ProtocolKind.Vnc, ProtocolKind.Ard),
          Browsable(false)]
         public VncAuthMode VNCAuthMode
         {
@@ -1029,7 +1032,7 @@ namespace LoipvRemote.Connection
             LocalizedAttributes.LocalizedDisplayName(nameof(Language.ProxyType)),
             LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionVNCProxyType)),
             TypeConverter(typeof(MiscTools.EnumTypeConverter)),
-            AttributeUsedInProtocol(ProtocolKind.Vnc, ProtocolKind.Ard),
+            UsedInProtocolAttribute(ProtocolKind.Vnc, ProtocolKind.Ard),
             Browsable(false)]
         public VncProxyType VNCProxyType
         {
@@ -1040,7 +1043,7 @@ namespace LoipvRemote.Connection
         [LocalizedAttributes.LocalizedCategory(nameof(Language.Proxy), 7),
             LocalizedAttributes.LocalizedDisplayName(nameof(Language.ProxyAddress)),
             LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionVNCProxyAddress)),
-            AttributeUsedInProtocol(ProtocolKind.Vnc, ProtocolKind.Ard),
+            UsedInProtocolAttribute(ProtocolKind.Vnc, ProtocolKind.Ard),
             Browsable(false)]
         public string VNCProxyIP
         {
@@ -1051,7 +1054,7 @@ namespace LoipvRemote.Connection
         [LocalizedAttributes.LocalizedCategory(nameof(Language.Proxy), 7),
             LocalizedAttributes.LocalizedDisplayName(nameof(Language.ProxyPort)),
             LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionVNCProxyPort)),
-            AttributeUsedInProtocol(ProtocolKind.Vnc, ProtocolKind.Ard),
+            UsedInProtocolAttribute(ProtocolKind.Vnc, ProtocolKind.Ard),
             Browsable(false)]
         public int VNCProxyPort
         {
@@ -1062,7 +1065,7 @@ namespace LoipvRemote.Connection
         [LocalizedAttributes.LocalizedCategory(nameof(Language.Proxy), 7),
             LocalizedAttributes.LocalizedDisplayName(nameof(Language.ProxyUsername)),
             LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionVNCProxyUsername)),
-            AttributeUsedInProtocol(ProtocolKind.Vnc, ProtocolKind.Ard),
+            UsedInProtocolAttribute(ProtocolKind.Vnc, ProtocolKind.Ard),
             Browsable(false)]
         public string VNCProxyUsername
         {
@@ -1074,7 +1077,7 @@ namespace LoipvRemote.Connection
             LocalizedAttributes.LocalizedDisplayName(nameof(Language.ProxyPassword)),
             LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionVNCProxyPassword)),
             PasswordPropertyText(true),
-            AttributeUsedInProtocol(ProtocolKind.Vnc, ProtocolKind.Ard),
+            UsedInProtocolAttribute(ProtocolKind.Vnc, ProtocolKind.Ard),
             Browsable(false)]
         public string VNCProxyPassword
         {
@@ -1086,7 +1089,7 @@ namespace LoipvRemote.Connection
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.Colors)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionColors)),
          TypeConverter(typeof(MiscTools.EnumTypeConverter)),
-         AttributeUsedInProtocol(ProtocolKind.Vnc, ProtocolKind.Ard),
+         UsedInProtocolAttribute(ProtocolKind.Vnc, ProtocolKind.Ard),
          Browsable(false)]
         public VncColors VNCColors
         {
@@ -1098,7 +1101,7 @@ namespace LoipvRemote.Connection
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.SmartSizeMode)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionSmartSizeMode)),
          TypeConverter(typeof(MiscTools.EnumTypeConverter)),
-         AttributeUsedInProtocol(ProtocolKind.Vnc, ProtocolKind.Ard)]
+         UsedInProtocolAttribute(ProtocolKind.Vnc, ProtocolKind.Ard)]
         public VncSmartSizeMode VNCSmartSizeMode
         {
             get => GetPropertyValue(nameof(VNCSmartSizeMode), _vncSmartSizeMode);
@@ -1109,7 +1112,7 @@ namespace LoipvRemote.Connection
          LocalizedAttributes.LocalizedDisplayName(nameof(Language.ViewOnly)),
          LocalizedAttributes.LocalizedDescription(nameof(Language.PropertyDescriptionViewOnly)),
          TypeConverter(typeof(MiscTools.YesNoTypeConverter)),
-         AttributeUsedInProtocol(ProtocolKind.Vnc, ProtocolKind.Ard)]
+         UsedInProtocolAttribute(ProtocolKind.Vnc, ProtocolKind.Ard)]
         public bool VNCViewOnly
         {
             get => GetPropertyValue(nameof(VNCViewOnly), _vncViewOnly);
@@ -1121,7 +1124,8 @@ namespace LoipvRemote.Connection
 
         protected virtual TPropertyType GetPropertyValue<TPropertyType>(string propertyName, TPropertyType value)
         {
-            return (TPropertyType)GetType().GetProperty(propertyName)?.GetValue(this, null);
+            object? propertyValue = GetType().GetProperty(propertyName)?.GetValue(this, null);
+            return propertyValue is TPropertyType typedValue ? typedValue : value;
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
@@ -1131,7 +1135,7 @@ namespace LoipvRemote.Connection
             PropertyChanged?.Invoke(sender, new PropertyChangedEventArgs(args.PropertyName));
         }
 
-        protected void SetField<T>(ref T field, T value, string propertyName = null)
+        protected void SetField<T>(ref T field, T value, string? propertyName = null)
         {
             if (EqualityComparer<T>.Default.Equals(field, value)) return;
             field = value;

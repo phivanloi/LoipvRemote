@@ -30,7 +30,7 @@ namespace LoipvRemote.UI.Controls
             ThemeManager.getInstance().ThemeChanged += OnCreateControl;
         }
 
-        public MouseState _mice { get; set; }
+        public MouseState MouseInteractionState { get; set; }
 
         /// <summary>
         /// Rewrite the function to allow for coloring the component depending on the mouse state
@@ -41,28 +41,28 @@ namespace LoipvRemote.UI.Controls
             _themeManager = ThemeManager.getInstance();
             if (_themeManager.ThemingActive)
             {
-                _mice = MouseState.OUT;
+                MouseInteractionState = MouseState.OUT;
                 MouseEnter += (sender, args) =>
                 {
-                    _mice = MouseState.HOVER;
+                    MouseInteractionState = MouseState.HOVER;
                     Invalidate();
                 };
                 MouseLeave += (sender, args) =>
                 {
-                    _mice = MouseState.OUT;
+                    MouseInteractionState = MouseState.OUT;
                     Invalidate();
                 };
                 MouseDown += (sender, args) =>
                 {
                     if (args.Button == MouseButtons.Left)
                     {
-                        _mice = MouseState.DOWN;
+                        MouseInteractionState = MouseState.DOWN;
                         Invalidate();
                     }
                 };
                 MouseUp += (sender, args) =>
                 {
-                    _mice = MouseState.OUT;
+                    MouseInteractionState = MouseState.OUT;
 
                     Invalidate();
                 };
@@ -75,8 +75,9 @@ namespace LoipvRemote.UI.Controls
         /// Repaint the componente, the elements considered are the clipping rectangle, text and an icon
         /// </summary>
         /// <param name="e"></param>
-        protected override void OnPaint(PaintEventArgs e)
+        protected override void OnPaint(PaintEventArgs pevent)
         {
+            PaintEventArgs e = pevent;
             if (!_themeManager.ActiveAndExtended)
             {
                 base.OnPaint(e);
@@ -88,7 +89,7 @@ namespace LoipvRemote.UI.Controls
             Color border;
             if (Enabled)
             {
-                switch (_mice)
+                switch (MouseInteractionState)
                 {
                     case MouseState.HOVER:
                         back = _themeManager.ActiveTheme.ExtendedPalette.getColor("Button_Hover_Background");

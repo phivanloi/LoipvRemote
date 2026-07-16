@@ -11,7 +11,15 @@ namespace LoipvRemote.Connection
     public class ConnectionIcon : StringConverter
     {
         public const string LoipvRemoteIconName = "LoipvRemote";
-        public static string[] Icons = { };
+        public static string[] Icons { get; private set; } = Array.Empty<string>();
+
+        internal static void AddIcon(string iconName)
+        {
+            if (string.IsNullOrWhiteSpace(iconName))
+                return;
+
+            Icons = [.. Icons, iconName];
+        }
 
         public static string GetConnectionDisplayIcon(string? iconName)
         {

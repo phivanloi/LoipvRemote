@@ -20,7 +20,6 @@ namespace LoipvRemote.App.Info
         public static readonly string? Copyright = (Attribute.GetCustomAttribute(Assembly.GetExecutingAssembly(), typeof(AssemblyCopyrightAttribute), false) as AssemblyCopyrightAttribute)?.Copyright;
         public static readonly string? HomePath = Path.GetDirectoryName(Assembly.GetEntryAssembly()?.Location);
 
-        //public static string ReportingFilePath = "";
         private static readonly string puttyPath = HomePath + "\\PuTTYNG.exe";
 
         public static string UserAgent
@@ -48,15 +47,6 @@ namespace LoipvRemote.App.Info
         }
 
         public static string PuttyPath => puttyPath;
-
-        public static Version? GetApplicationVersion()
-        {
-            string cleanedVersion = ApplicationVersion.Split(' ')[0].Replace("(", "").Replace(")", "").Replace("Build", "");
-            cleanedVersion = cleanedVersion + "." + ApplicationVersion.Split(' ')[^1].Replace(")", "");
-
-            _ = System.Version.TryParse(cleanedVersion, out Version? parsedVersion);
-            return parsedVersion;
-        }
 
         public static string NormalizeProductVersion(string? productVersion)
         {

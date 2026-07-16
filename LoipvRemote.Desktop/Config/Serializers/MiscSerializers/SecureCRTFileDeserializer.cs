@@ -5,6 +5,7 @@ using LoipvRemote.Tree;
 using LoipvRemote.Tree.Root;
 using LoipvRemote.Messages;
 using System;
+using System.Globalization;
 using System.IO;
 using System.Runtime.Versioning;
 using System.Xml;
@@ -25,7 +26,9 @@ namespace LoipvRemote.Config.Serializers.MiscSerializers
 
             XmlDocument xmlDocument = SecureXmlHelper.LoadXmlFromString(content);
 
-            XmlNode sessionsNode = xmlDocument.SelectSingleNode("/VanDyke/key[@name=\"Sessions\"]");
+            XmlNode sessionsNode = RequireNode(
+                xmlDocument.SelectSingleNode("/VanDyke/key[@name=\"Sessions\"]"),
+                "Sessions");
 
             ImportRootOrContainer(sessionsNode, root);
 
@@ -41,7 +44,8 @@ namespace LoipvRemote.Config.Serializers.MiscSerializers
 
             foreach (XmlNode child in rootNode.ChildNodes)
             {
-                string name = child.Attributes["name"].Value;
+                string name = child.Attributes?["name"]?.Value
+                    ?? throw new FileFormatException("SecureCRT node is missing its name attribute.");
                 if (name == "Default" || name == "Default_LocalShell")
                     continue;
                 SecureCRTNodeType nodeType = GetFolderOrSession(child);
@@ -59,24 +63,25 @@ namespace LoipvRemote.Config.Serializers.MiscSerializers
 
         private void ImportConnection(XmlNode childNode, ContainerInfo parentContainer)
         {
-            ConnectionInfo connectionInfo = ConnectionInfoFromXml(childNode);
-            if (connectionInfo == null)
+            ConnectionInfo? connectionInfo = ConnectionInfoFromXml(childNode);
+            if (connectionInfo is null)
                 return;
 
             parentContainer.AddChild(connectionInfo);
         }
 
-        private ContainerInfo ImportContainer(XmlNode containerNode, ContainerInfo parentContainer)
+        private static ContainerInfo ImportContainer(XmlNode containerNode, ContainerInfo parentContainer)
         {
             ContainerInfo containerInfo = new()
             {
-                Name = containerNode.Attributes["name"].InnerText
+                Name = containerNode.Attributes?["name"]?.InnerText
+                    ?? throw new FileFormatException("SecureCRT container is missing its name attribute.")
             };
             parentContainer.AddChild(containerInfo);
             return containerInfo;
         }
 
-        private SecureCRTNodeType GetFolderOrSession(XmlNode xmlNode)
+        private static SecureCRTNodeType GetFolderOrSession(XmlNode xmlNode)
         {
             if (GetHostnameFromNode(xmlNode) == null)
                 return SecureCRTNodeType.folder;
@@ -84,16 +89,17 @@ namespace LoipvRemote.Config.Serializers.MiscSerializers
             return SecureCRTNodeType.session;
         }
 
-        private ConnectionInfo ConnectionInfoFromXml(XmlNode xmlNode)
+        private ConnectionInfo? ConnectionInfoFromXml(XmlNode xmlNode)
         {
             ConnectionInfo connectionInfo = new();
             try
             {
-                connectionInfo.Name = xmlNode.Attributes["name"].InnerText;
-                connectionInfo.Hostname = GetHostnameFromNode(xmlNode);
+                connectionInfo.Name = xmlNode.Attributes?["name"]?.InnerText
+                    ?? throw new FileFormatException("SecureCRT session is missing its name attribute.");
+                connectionInfo.Hostname = GetHostnameFromNode(xmlNode) ?? string.Empty;
                 connectionInfo.Protocol = GetProtocolFromNode(xmlNode);
                 connectionInfo.Port = GetPortFromNode(xmlNode, connectionInfo.Protocol);
-                connectionInfo.Username = GetUsernameFromNode(xmlNode);
+                connectionInfo.Username = GetUsernameFromNode(xmlNode) ?? string.Empty;
                 connectionInfo.Description = GetDescriptionFromNode(xmlNode);
             }
             catch (FileFormatException e)
@@ -105,37 +111,51 @@ namespace LoipvRemote.Config.Serializers.MiscSerializers
             return connectionInfo;
         }
 
-        private string GetHostnameFromNode(XmlNode xmlNode)
+        private static string? GetHostnameFromNode(XmlNode xmlNode)
         {
             return xmlNode.SelectSingleNode("string[@name=\"Hostname\"]")?.InnerText;
 
         }
 
-        private string GetUsernameFromNode(XmlNode xmlNode)
+        private static string? GetUsernameFromNode(XmlNode xmlNode)
         {
             return xmlNode.SelectSingleNode("string[@name=\"Username\"]")?.InnerText;
         }
 
-        private int GetPortFromNode(XmlNode xmlNode, ProtocolKind protocol)
+        private static int GetPortFromNode(XmlNode xmlNode, ProtocolKind protocol)
         {
             switch (protocol)
             {
                 case ProtocolKind.Ssh1:
-                    return Convert.ToInt32(xmlNode.SelectSingleNode("dword[@name=\"[SSH1] Port\"]").InnerText);
+                    return ParsePort(xmlNode.SelectSingleNode("dword[@name=\"[SSH1] Port\"]"));
                 case ProtocolKind.Ssh2:
-                    return Convert.ToInt32(xmlNode.SelectSingleNode("dword[@name=\"[SSH2] Port\"]").InnerText);
+                    return ParsePort(xmlNode.SelectSingleNode("dword[@name=\"[SSH2] Port\"]"));
                 default:
-                    return Convert.ToInt32(xmlNode.SelectSingleNode("dword[@name=\"Port\"]")?.InnerText);
+                    return ParsePort(xmlNode.SelectSingleNode("dword[@name=\"Port\"]"));
             }
         }
 
-        private ProtocolKind GetProtocolFromNode(XmlNode xmlNode)
+        private static int ParsePort(XmlNode? portNode)
         {
-            XmlNode protocolNode = xmlNode.SelectSingleNode("string[@name=\"Protocol Name\"]");
+            // SecureCRT omits a port for protocols that use their default endpoint
+            // (for example Rlogin). Preserve that protocol default as port 0.
+            if (portNode is null)
+                return 0;
+
+            string value = portNode.InnerText;
+            if (!int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int port))
+                throw new FileFormatException($"Invalid SecureCRT port '{value}'.");
+
+            return port;
+        }
+
+        private static ProtocolKind GetProtocolFromNode(XmlNode xmlNode)
+        {
+            XmlNode? protocolNode = xmlNode.SelectSingleNode("string[@name=\"Protocol Name\"]");
             if (protocolNode == null)
                 throw new FileFormatException($"Protocol node not found");
 
-            string protocolText = protocolNode.InnerText.ToUpper();
+            string protocolText = protocolNode.InnerText.ToUpperInvariant();
             switch (protocolText)
             {
                 case "RDP":
@@ -155,16 +175,22 @@ namespace LoipvRemote.Config.Serializers.MiscSerializers
             }
         }
 
-        private string GetDescriptionFromNode(XmlNode xmlNode)
+        private static string GetDescriptionFromNode(XmlNode xmlNode)
         {
             string description = string.Empty;
-            XmlNode descNode = xmlNode.SelectSingleNode("array[@name=\"Description\"]");
-            foreach(XmlNode n in descNode.ChildNodes)
+            XmlNode? descNode = xmlNode.SelectSingleNode("array[@name=\"Description\"]");
+            if (descNode == null)
+                return string.Empty;
+
+            foreach (XmlNode n in descNode.ChildNodes)
             {
                 description += n.InnerText + " ";
             }
 
             return description.TrimEnd();
         }
+
+        private static XmlNode RequireNode(XmlNode? node, string description) =>
+            node ?? throw new FileFormatException($"SecureCRT {description} node was not found.");
     }
 }

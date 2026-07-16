@@ -117,7 +117,7 @@ public sealed class ModuleDependencyTests
         Assert.Multiple(() =>
         {
             Assert.That(source, Does.Contain("IConnectionTreeWorkspace"));
-            Assert.That(source, Does.Contain("IConnectionWorkspace"));
+            Assert.That(source, Does.Not.Contain("IConnectionWorkspace"));
             Assert.That(source, Does.Not.Contain("AddSingleton<ConnectionsService>"));
         });
     }
@@ -218,6 +218,82 @@ public sealed class ModuleDependencyTests
     }
 
     [Test]
+    public void ConnectionInitiatorHasNoVoidConnectionLifecycleEntryPoint()
+    {
+        string source = File.ReadAllText(Path.Combine(
+            FindRepositoryRoot(),
+            "LoipvRemote.Desktop",
+            "Connection",
+            "ConnectionInitiator.cs"));
+        string contract = File.ReadAllText(Path.Combine(
+            FindRepositoryRoot(),
+            "LoipvRemote.Desktop",
+            "Connection",
+            "IConnectionInitiator.cs"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(source, Does.Not.Match(@"async\s+void\s+OpenConnection"));
+            Assert.That(source, Does.Not.Match(@"void\s+OpenConnection\s*\("));
+            Assert.That(contract, Does.Not.Contain("void OpenConnection"));
+            Assert.That(contract, Does.Contain("Task OpenConnectionAsync"));
+        });
+    }
+
+    [Test]
+    public void CredentialConnectorsDoNotBlockOnAsyncOperations()
+    {
+        string root = FindRepositoryRoot();
+        string connectorsRoot = Path.Combine(root, "LoipvRemote.Connectors");
+        string[] sources = Directory.EnumerateFiles(connectorsRoot, "*.cs", SearchOption.AllDirectories)
+            .Where(path => !path.Contains(Path.Combine("bin", string.Empty), StringComparison.OrdinalIgnoreCase))
+            .Where(path => !path.Contains(Path.Combine("obj", string.Empty), StringComparison.OrdinalIgnoreCase))
+            .Select(File.ReadAllText)
+            .ToArray();
+
+        Assert.That(sources.Any(source => Regex.IsMatch(source, @"(?<!Message)\.Result\b|GetAwaiter\(\)\.GetResult")), Is.False,
+            "Credential connector I/O must remain asynchronous and cancellation-aware.");
+    }
+
+    [TestCase("LoipvRemote.Desktop/Messages/WriterDecorators/MessageFocusDecorator.cs")]
+    [TestCase("LoipvRemote.Desktop/Config/Connections/Multiuser/RemoteConnectionsSyncronizer.cs")]
+    [TestCase("LoipvRemote.Desktop/UI/Adapters/ProtocolSessionBridge.cs")]
+    public void AsyncLifecycleAdaptersDoNotUseAsyncVoid(string relativePath)
+    {
+        string source = File.ReadAllText(Path.Combine(FindRepositoryRoot(), relativePath));
+
+        Assert.That(source, Does.Not.Contain("async void"),
+            $"Async lifecycle adapter '{relativePath}' must expose Task-based internal work.");
+    }
+
+    [Test]
+    public void ConnectorsDoNotReferenceWinFormsOrOwnCredentialPromptForms()
+    {
+        string root = FindRepositoryRoot();
+        string connectorsRoot = Path.Combine(root, "LoipvRemote.Connectors");
+        string[] sources = Directory.EnumerateFiles(connectorsRoot, "*.cs", SearchOption.AllDirectories)
+            .Where(path => !path.Contains(Path.Combine("bin", string.Empty), StringComparison.OrdinalIgnoreCase))
+            .Where(path => !path.Contains(Path.Combine("obj", string.Empty), StringComparison.OrdinalIgnoreCase))
+            .Select(File.ReadAllText)
+            .ToArray();
+        string project = File.ReadAllText(Path.Combine(connectorsRoot, "LoipvRemote.Connectors.csproj"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(sources.Any(source => Regex.IsMatch(
+                source,
+                @"System\.Windows\.Forms|Microsoft\.Win32|\bRegistry\b|\bMessageBox\b|\b(Form|DialogResult)\b|ConnectionForm")), Is.False,
+                "Connector runtime must not own UI or Windows infrastructure.");
+            Assert.That(project, Does.Not.Contain("UseWindowsForms"));
+            Assert.That(Directory.EnumerateFiles(connectorsRoot, "*ConnectionForm*", SearchOption.AllDirectories)
+                .Where(path => !path.Contains(Path.Combine("bin", string.Empty), StringComparison.OrdinalIgnoreCase))
+                .Where(path => !path.Contains(Path.Combine("obj", string.Empty), StringComparison.OrdinalIgnoreCase)), Is.Empty);
+            Assert.That(File.Exists(Path.Combine(root, "LoipvRemote.Desktop", "UI", "Adapters", "WinFormsExternalCredentialPrompt.cs")), Is.True);
+            Assert.That(File.Exists(Path.Combine(root, "LoipvRemote.Infrastructure.Windows", "Registry", "WindowsExternalCredentialSettingsStore.cs")), Is.True);
+        });
+    }
+
+    [Test]
     public void RemovedLegacyXmlPersistencePipelineHasNoProductionArtifacts()
     {
         string root = FindRepositoryRoot();
@@ -266,7 +342,7 @@ public sealed class ModuleDependencyTests
         Assert.Multiple(() =>
         {
             Assert.That(forbiddenMarkers.Where(source.Contains), Is.Empty);
-            Assert.That(source, Does.Contain("ConnectionDefinitionPersistenceRuntime"));
+            Assert.That(source, Does.Contain("ConnectionStoreConfigurationService"));
             Assert.That(source, Does.Contain("IConnectionStoreOptionsProvider"));
             Assert.That(source, Does.Contain("IStringSecretStore"));
         });
@@ -311,7 +387,7 @@ public sealed class ModuleDependencyTests
             "RemoteConnectionsSyncronizer.cs"));
 
         Assert.That(source, Does.Not.Match("(?<!System\\.)\\bRuntime\\."));
-        Assert.That(source, Does.Contain("IConnectionWorkspace workspace"));
+        Assert.That(source, Does.Contain("IConnectionTreeWorkspace workspace"));
     }
 
     [TestCase("Config", "Settings", "SettingsLoader.cs")]

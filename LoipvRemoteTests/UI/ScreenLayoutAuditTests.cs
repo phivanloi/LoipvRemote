@@ -1,10 +1,10 @@
 using System.Drawing;
 using System.Threading;
 using System.Windows.Forms;
-using LoipvRemote.Connectors.AWS;
-using LoipvRemote.Connectors.Delinea;
-using LoipvRemote.Connectors.OpenBao;
-using LoipvRemote.Connectors.Passwordstate;
+using LoipvRemote.Desktop.UI.Connectors.AWS;
+using LoipvRemote.Desktop.UI.Connectors.Delinea;
+using LoipvRemote.Desktop.UI.Connectors.OpenBao;
+using LoipvRemote.Desktop.UI.Connectors.Passwordstate;
 using LoipvRemote.UI.Forms;
 using LoipvRemote.UI.Forms.OptionsPages;
 using LoipvRemote.UI.TaskDialog;
@@ -25,7 +25,7 @@ public sealed class ScreenLayoutAuditTests
         new("Export", () => new FrmExport()),
         new("InputBox", () => new FrmInputBox("Input", "Prompt", "value")),
         new("Password", () => new FrmPassword()),
-        new("UnhandledException", () => new FrmUnhandledException()),
+        new("UnhandledException", () => new UnhandledExceptionForm()),
         new("TaskDialog", () => new frmTaskDialog()),
         new("BaseWindow", () => new BaseWindow()),
         new("ConfigWindow", () => new ConfigWindow()),

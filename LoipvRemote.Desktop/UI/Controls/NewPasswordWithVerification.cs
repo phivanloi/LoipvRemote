@@ -78,7 +78,7 @@ namespace LoipvRemote.UI.Controls
             }
         }
 
-        private void OnSecureTextBoxTextChanged(object sender, EventArgs eventArgs)
+        private void OnSecureTextBoxTextChanged(object? sender, EventArgs eventArgs)
         {
             if (Verify() && !PasswordsMatch)
             {

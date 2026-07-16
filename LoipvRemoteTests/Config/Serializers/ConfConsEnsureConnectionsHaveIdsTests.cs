@@ -20,7 +20,7 @@ public class ConfConsEnsureConnectionsHaveIdsTests
     public void IdAttributeIsAddedIfItDidntExist()
     {
         var xdoc = CreateTestDocument();
-        _consEnsureConnectionsHaveIds.EnsureElementsHaveIds(xdoc);
+        ConfConsEnsureConnectionsHaveIds.EnsureElementsHaveIds(xdoc);
         var attribute = xdoc.Root?.Element("Node")?.Attribute("Id");
         Assert.That(attribute, Is.Not.Null);
     }
@@ -29,7 +29,7 @@ public class ConfConsEnsureConnectionsHaveIdsTests
     public void NewIdAttributeShouldNotBeAnEmptyGuid()
     {
         var xdoc = CreateTestDocument();
-        _consEnsureConnectionsHaveIds.EnsureElementsHaveIds(xdoc);
+        ConfConsEnsureConnectionsHaveIds.EnsureElementsHaveIds(xdoc);
         var attribute = xdoc.Root?.Element("Node")?.Attribute("Id");
         Assert.That(attribute?.Value, Is.Not.EqualTo(Guid.Empty.ToString()));
     }

@@ -1,9 +1,10 @@
-﻿using Microsoft.Win32;
-using System.Net;
+﻿using System.Net;
 using System.Net.Sockets;
 using VaultSharp;
 using VaultSharp.V1.AuthMethods;
 using VaultSharp.V1.AuthMethods.Token;
+using LoipvRemote.Connectors.Abstractions;
+using LoipvRemote.Protocols.Abstractions;
 
 namespace LoipvRemote.Connectors.OpenBao {
     public class VaultOpenbaoException(string message, string? arguments = null) : Exception(message) {
@@ -11,46 +12,53 @@ namespace LoipvRemote.Connectors.OpenBao {
     }
 
     public static class VaultOpenbao {
-        private static readonly RegistryKey baseKey = Registry.CurrentUser.CreateSubKey(@"SOFTWARE\LoipvRemote\VaultOpenbao");
         private static string token = "";
-        private static VaultClient GetClient() {
-            string url = (string)baseKey.GetValue("URL", "");
-            using VaultOpenbaoConnectionForm voForm = new();
-            voForm.tbUrl.Text = url;
-            voForm.tbToken.Text = token;
-            _ = voForm.ShowDialog();
-            if (voForm.DialogResult != DialogResult.OK)
-                throw new VaultOpenbaoException($"No credential provided");
-            url = voForm.tbUrl.Text;
-            if (!string.IsNullOrEmpty(voForm.tbToken.Text)) // override token if provided
-                token = voForm.tbToken.Text;
+        private static async Task<VaultClient> GetClientAsync(
+            IExternalCredentialPrompt prompt,
+            IExternalCredentialSettingsStore settings,
+            CancellationToken cancellationToken) {
+            string url = settings.GetString("OpenBao", "URL") ?? string.Empty;
+            OpenBaoPromptResult? result = await prompt.PromptOpenBaoAsync(
+                new OpenBaoPromptRequest(url, token), cancellationToken).ConfigureAwait(true);
+            if (result is null)
+                throw new VaultOpenbaoException("No credential provided");
+            url = result.Url;
+            if (!string.IsNullOrEmpty(result.Token))
+                token = result.Token;
             IAuthMethodInfo authMethod = new TokenAuthMethodInfo(token);
             var vaultClientSettings = new VaultClientSettings(url, authMethod);
             VaultClient client = new(vaultClientSettings);
-            var sysInfo = client.V1.System.GetInitStatusAsync().Result;
+            var sysInfo = await client.V1.System.GetInitStatusAsync().ConfigureAwait(false);
             if (!sysInfo) {
-                MessageBox.Show("Test connection failed", "Vault Openbao", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                throw new VaultOpenbaoException("Url not working");
+                throw new VaultOpenbaoException("OpenBao connection test failed.");
             }
-            baseKey.SetValue("URL", url);
+            settings.SetString("OpenBao", "URL", url);
             return client;
         }
-        private static void TestMountType(VaultClient vaultClient, string mount, int VaultOpenbaoSecretEngine) {
-            switch (vaultClient.V1.System.GetSecretBackendAsync(mount).Result.Data.Type.Type) {
-                case "kv" when VaultOpenbaoSecretEngine != 0:
-                    throw new VaultOpenbaoException($"Backend of type kv does not match expected type {VaultOpenbaoSecretEngine}");
-                case "ldap" when VaultOpenbaoSecretEngine != 1 && VaultOpenbaoSecretEngine != 2:
-                    throw new VaultOpenbaoException($"Backend of type ldap does not match expected type {VaultOpenbaoSecretEngine}");
-                case "ssh" when VaultOpenbaoSecretEngine != 3:
-                    throw new VaultOpenbaoException($"Backend of type ssh does not match expected type {VaultOpenbaoSecretEngine}");
+        private static async Task TestMountTypeAsync(VaultClient vaultClient, string mount, int vaultOpenbaoSecretEngine) {
+            string backendType = (await vaultClient.V1.System.GetSecretBackendAsync(mount).ConfigureAwait(false)).Data.Type.Type;
+            switch (backendType) {
+                case "kv" when vaultOpenbaoSecretEngine != 0:
+                    throw new VaultOpenbaoException($"Backend of type kv does not match expected type {vaultOpenbaoSecretEngine}");
+                case "ldap" when vaultOpenbaoSecretEngine != 1 && vaultOpenbaoSecretEngine != 2:
+                    throw new VaultOpenbaoException($"Backend of type ldap does not match expected type {vaultOpenbaoSecretEngine}");
+                case "ssh" when vaultOpenbaoSecretEngine != 3:
+                    throw new VaultOpenbaoException($"Backend of type ssh does not match expected type {vaultOpenbaoSecretEngine}");
             }
         }
-        public static void ReadOtpSSH(string mount, string role, string? username, string address, out string password) {
-            VaultClient vaultClient = GetClient();
-            TestMountType(vaultClient, mount, 3);
+        public static async Task<string> ReadOtpSSHAsync(
+            string mount,
+            string role,
+            string? username,
+            string address,
+            IExternalCredentialPrompt prompt,
+            IExternalCredentialSettingsStore settings,
+            CancellationToken cancellationToken = default) {
+            VaultClient vaultClient = await GetClientAsync(prompt, settings, cancellationToken).ConfigureAwait(false);
+            await TestMountTypeAsync(vaultClient, mount, 3).ConfigureAwait(false);
             if (!IPAddress.TryParse(address, out _)) {
                 try {
-                    var addrs = Dns.GetHostAddressesAsync(address).Result;
+                    var addrs = await Dns.GetHostAddressesAsync(address, cancellationToken).ConfigureAwait(false);
                     if (addrs == null || addrs.Length == 0) {
                         throw new VaultOpenbaoException($"Could not resolve address '{address}'");
                     }
@@ -61,40 +69,48 @@ namespace LoipvRemote.Connectors.OpenBao {
                     throw new VaultOpenbaoException($"Failed to resolve address '{address}'", ex.Message);
                 }
             }
-            var otp = vaultClient.V1.Secrets.SSH.GetCredentialsAsync(role, address, username, mount).Result;
-            password = otp.Data.Key;
+            var otp = await vaultClient.V1.Secrets.SSH.GetCredentialsAsync(role, address, username, mount).ConfigureAwait(false);
+            return otp.Data.Key;
 
         }
-        public static void ReadPasswordSSH(int secretEngine, string mount, string role, string username, out string password) {
-            VaultClient vaultClient = GetClient();
-            TestMountType(vaultClient, mount, secretEngine);
+        public static async Task<string> ReadPasswordSSHAsync(
+            int secretEngine,
+            string mount,
+            string role,
+            string username,
+            IExternalCredentialPrompt prompt,
+            IExternalCredentialSettingsStore settings,
+            CancellationToken cancellationToken = default) {
+            VaultClient vaultClient = await GetClientAsync(prompt, settings, cancellationToken).ConfigureAwait(false);
+            await TestMountTypeAsync(vaultClient, mount, secretEngine).ConfigureAwait(false);
             switch (secretEngine) {
                 case 0:
-                    var kv = vaultClient.V1.Secrets.KeyValue.V2.ReadSecretAsync(role, mountPoint: mount).Result;
-                    password = kv.Data.Data[username].ToString() ?? string.Empty;
-                    return;
+                    var kv = await vaultClient.V1.Secrets.KeyValue.V2.ReadSecretAsync(role, mountPoint: mount).ConfigureAwait(false);
+                    return kv.Data.Data[username].ToString() ?? string.Empty;
                 default:
                     throw new VaultOpenbaoException($"Backend of type {secretEngine} is not supported");
             }
         }
-        public static void ReadPasswordRDP(int secretEngine, string mount, string role, ref string username, out string password) {
-            VaultClient vaultClient = GetClient();
-            TestMountType(vaultClient, mount, secretEngine);
+        public static async Task<(string Username, string Password)> ReadPasswordRdpAsync(
+            int secretEngine,
+            string mount,
+            string role,
+            string username,
+            IExternalCredentialPrompt prompt,
+            IExternalCredentialSettingsStore settings,
+            CancellationToken cancellationToken = default) {
+            VaultClient vaultClient = await GetClientAsync(prompt, settings, cancellationToken).ConfigureAwait(false);
+            await TestMountTypeAsync(vaultClient, mount, secretEngine).ConfigureAwait(false);
             switch (secretEngine) {
                 case 0:
-                    var kv = vaultClient.V1.Secrets.KeyValue.V2.ReadSecretAsync(role, mountPoint: mount).Result;
-                    password = kv.Data.Data[username].ToString() ?? string.Empty;
-                    return;
+                    var kv = await vaultClient.V1.Secrets.KeyValue.V2.ReadSecretAsync(role, mountPoint: mount).ConfigureAwait(false);
+                    return (username, kv.Data.Data[username].ToString() ?? string.Empty);
                 case 1:
-                    var ldapd = vaultClient.V1.Secrets.OpenLDAP.GetDynamicCredentialsAsync(role, mount).Result;
-                    username = ldapd.Data.Username;
-                    password = ldapd.Data.Password;
-                    return;
+                    var ldapd = await vaultClient.V1.Secrets.OpenLDAP.GetDynamicCredentialsAsync(role, mount).ConfigureAwait(false);
+                    return (ldapd.Data.Username, ldapd.Data.Password);
                 case 2:
-                    var ldaps = vaultClient.V1.Secrets.OpenLDAP.GetStaticCredentialsAsync(role, mount).Result;
-                    username = ldaps.Data.Username;
-                    password = ldaps.Data.Password;
-                    return;
+                    var ldaps = await vaultClient.V1.Secrets.OpenLDAP.GetStaticCredentialsAsync(role, mount).ConfigureAwait(false);
+                    return (ldaps.Data.Username, ldaps.Data.Password);
                 default:
                     throw new VaultOpenbaoException($"Backend of type {secretEngine} is not supported");
             }

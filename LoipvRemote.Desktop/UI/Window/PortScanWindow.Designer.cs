@@ -205,7 +205,7 @@ namespace LoipvRemote.UI.Window
             //
             // btnImport
             //
-            this.btnImport._mice = MrngButton.MouseState.OUT;
+            this.btnImport.MouseInteractionState = MrngButton.MouseState.OUT;
             this.btnImport.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.btnImport.Location = new System.Drawing.Point(765, 27);
             this.btnImport.Name = "btnImport";
@@ -217,7 +217,7 @@ namespace LoipvRemote.UI.Window
             //
             // cbProtocol
             //
-            this.cbProtocol._mice = MrngComboBox.MouseState.HOVER;
+            this.cbProtocol.MouseInteractionState = MrngComboBox.MouseState.HOVER;
             this.cbProtocol.Dock = System.Windows.Forms.DockStyle.Fill;
             this.cbProtocol.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cbProtocol.FormattingEnabled = true;
@@ -410,7 +410,7 @@ namespace LoipvRemote.UI.Window
             //
             // btnScan
             //
-            this.btnScan._mice = MrngButton.MouseState.OUT;
+            this.btnScan.MouseInteractionState = MrngButton.MouseState.OUT;
             this.btnScan.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.btnScan.Image = global::LoipvRemote.Properties.Resources.Search_16x;
             this.btnScan.ImageAlign = System.Drawing.ContentAlignment.MiddleRight;
@@ -425,7 +425,7 @@ namespace LoipvRemote.UI.Window
             //
             // ngCheckFirstPort
             //
-            this.ngCheckFirstPort._mice = MrngCheckBox.MouseState.OUT;
+            this.ngCheckFirstPort.MouseInteractionState = MrngCheckBox.MouseState.OUT;
             this.ngCheckFirstPort.AutoSize = true;
             this.ngCheckFirstPort.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.ngCheckFirstPort.Location = new System.Drawing.Point(3, 51);
@@ -438,7 +438,7 @@ namespace LoipvRemote.UI.Window
             //
             // ngCheckLastPort
             //
-            this.ngCheckLastPort._mice = MrngCheckBox.MouseState.OUT;
+            this.ngCheckLastPort.MouseInteractionState = MrngCheckBox.MouseState.OUT;
             this.ngCheckLastPort.AutoSize = true;
             this.ngCheckLastPort.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.ngCheckLastPort.Location = new System.Drawing.Point(3, 75);

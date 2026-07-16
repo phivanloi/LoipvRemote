@@ -4,7 +4,7 @@ using LoipvRemote.Protocols.Abstractions;
 namespace LoipvRemote.Protocols.Rdp;
 
 /// <summary>Common RDP session adapter around the module lifecycle.</summary>
-public sealed class RdpProtocolSession : IAsyncProtocolSession, IProtocolSessionEvents, IManagedEmbeddedWindow, IViewOnlySession, ISmartSizingSession, IFullscreenSession
+public sealed class RdpProtocolSession : IProtocolSession, IProtocolSessionEvents, IManagedEmbeddedWindow, IViewOnlySession, ISmartSizingSession, IFullscreenSession
 {
     private readonly IRdpClient _client;
     private readonly RdpSession _lifecycle;
@@ -34,7 +34,7 @@ public sealed class RdpProtocolSession : IAsyncProtocolSession, IProtocolSession
     public event EventHandler<ProtocolSessionDisconnectedEventArgs>? Disconnected;
     public event EventHandler<ProtocolSessionErrorEventArgs>? ErrorOccurred;
 
-    public bool Initialize()
+    private bool InitializeCore()
     {
         bool initialized = _lifecycle.Initialize(Options);
         if (initialized)
@@ -45,23 +45,21 @@ public sealed class RdpProtocolSession : IAsyncProtocolSession, IProtocolSession
     public ValueTask<bool> InitializeAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return ValueTask.FromResult(Initialize());
+        return ValueTask.FromResult(InitializeCore());
     }
 
-    public bool Connect() => _lifecycle.Connect();
+    private bool ConnectCore() => _lifecycle.Connect();
 
     public ValueTask<bool> ConnectAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return ValueTask.FromResult(Connect());
+        return ValueTask.FromResult(ConnectCore());
     }
-
-    public void Disconnect() => _lifecycle.Disconnect();
 
     public ValueTask DisconnectAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        Disconnect();
+        _lifecycle.Disconnect();
         return ValueTask.CompletedTask;
     }
 
@@ -128,12 +126,10 @@ public sealed class RdpProtocolSession : IAsyncProtocolSession, IProtocolSession
 
     public void ToggleFullscreen() => Fullscreen = !Fullscreen;
 
-    public void Close() => Disconnect();
-
     public ValueTask CloseAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        Close();
+        _lifecycle.Disconnect();
         return ValueTask.CompletedTask;
     }
 
@@ -143,7 +139,7 @@ public sealed class RdpProtocolSession : IAsyncProtocolSession, IProtocolSession
             return;
 
         UnsubscribeRuntimeEvents();
-        Close();
+        _lifecycle.Disconnect();
         if (_client is IDisposable disposable)
             disposable.Dispose();
         _disposed = true;

@@ -9,14 +9,14 @@ namespace LoipvRemote.App.Initialization
     [SupportedOSPlatform("windows")]
     public sealed class CredsAndConsSetup(IConnectionTreeWorkspace workspace, ConnectionLoadingService connectionLoadingService)
     {
+        private readonly SaveConnectionsOnEdit _saveConnectionsOnEdit = new(workspace);
+
         public void LoadCredsAndCons()
         {
-            new SaveConnectionsOnEdit(workspace);
-
             if (Properties.App.Default.FirstStart && !Properties.OptionsBackupPage.Default.LoadConsFromCustomLocation && !File.Exists(workspace.GetStartupConnectionFileName()))
-                workspace.NewConnectionsFile(workspace.GetStartupConnectionFileName());
+                _ = workspace.NewConnectionsFileAsync(workspace.GetStartupConnectionFileName());
 
-            connectionLoadingService.LoadConnections();
+            _ = connectionLoadingService.LoadConnectionsAsync();
         }
     }
 }

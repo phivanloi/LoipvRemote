@@ -64,7 +64,7 @@ namespace LoipvRemote.Tools
             //
             // btnClose
             //
-            this.btnClose._mice = MrngButton.MouseState.HOVER;
+            this.btnClose.MouseInteractionState = MrngButton.MouseState.HOVER;
             this.btnClose.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnClose.Location = new System.Drawing.Point(6, 67);
             this.btnClose.Name = "btnClose";
@@ -85,7 +85,7 @@ namespace LoipvRemote.Tools
             //
             // chkReconnectWhenReady
             //
-            this.chkReconnectWhenReady._mice = MrngCheckBox.MouseState.HOVER;
+            this.chkReconnectWhenReady.MouseInteractionState = MrngCheckBox.MouseState.HOVER;
             this.chkReconnectWhenReady.AutoSize = true;
             this.chkReconnectWhenReady.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.chkReconnectWhenReady.Location = new System.Drawing.Point(18, 44);

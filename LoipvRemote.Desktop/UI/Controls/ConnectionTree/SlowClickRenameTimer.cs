@@ -47,7 +47,7 @@ namespace LoipvRemote.UI.Controls.ConnectionTree
         public void Start() => _timer.Start();
 
         /// <inheritdoc />
-        public void Stop() => _timer.Stop();
+        public void StopTimer() => _timer.Stop();
 
         /// <inheritdoc />
         public void Dispose() => _timer.Dispose();

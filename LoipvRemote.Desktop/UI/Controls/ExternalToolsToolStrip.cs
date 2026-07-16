@@ -14,7 +14,7 @@ namespace LoipvRemote.UI.Controls
     [SupportedOSPlatform("windows")]
     public class ExternalToolsToolStrip : ToolStrip
     {
-        private IContainer components = null!;
+        private System.ComponentModel.Container? components;
         private ContextMenuStrip _cMenExtAppsToolbar = null!;
         internal ToolStripMenuItem CMenToolbarShowText = null!;
         private DesktopShellRuntime? _desktopShellRuntime;
@@ -67,7 +67,7 @@ namespace LoipvRemote.UI.Controls
 
         #region Ext Apps Toolbar
 
-        private void CMenToolbarShowText_Click(object sender, EventArgs e)
+        private void CMenToolbarShowText_Click(object? sender, EventArgs e)
         {
             SwitchToolBarText(!CMenToolbarShowText.Checked);
         }
@@ -106,13 +106,15 @@ namespace LoipvRemote.UI.Controls
             }
         }
 
-        private void TsExtAppEntry_Click(object sender, EventArgs e)
+        private void TsExtAppEntry_Click(object? sender, EventArgs e)
         {
-            ExternalTool extA = (ExternalTool)((ToolStripButton)sender).Tag;
+            if (sender is not ToolStripButton button || button.Tag is not ExternalTool extA)
+                return;
 
-            Connection.ConnectionInfo selectedTreeNode = AppWindows.TreeForm.SelectedNode;
-            if (selectedTreeNode != null && selectedTreeNode.GetTreeNodeType() == TreeNodeType.Connection ||
-                selectedTreeNode.GetTreeNodeType() == TreeNodeType.PuttySession)
+            Connection.ConnectionInfo? selectedTreeNode = DesktopShellRuntime.Windows.TreeForm.SelectedNode;
+            if (selectedTreeNode is not null &&
+                (selectedTreeNode.GetTreeNodeType() == TreeNodeType.Connection ||
+                 selectedTreeNode.GetTreeNodeType() == TreeNodeType.PuttySession))
                 extA.Start(selectedTreeNode);
             else
             {

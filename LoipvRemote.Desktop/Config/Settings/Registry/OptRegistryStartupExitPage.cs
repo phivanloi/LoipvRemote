@@ -8,6 +8,7 @@ namespace LoipvRemote.Config.Settings.Registry
     [SupportedOSPlatform("windows")]
     public sealed partial class OptRegistryStartupExitPage
     {
+        private static readonly string[] s_startupBehaviors = ["None", "Minimized", "FullScreen"];
         /// <summary>
         /// Specifies whether the application should start minimized or fullscreen.
         /// </summary>
@@ -44,12 +45,7 @@ namespace LoipvRemote.Config.Settings.Registry
         /// </summary>
         private void SetupValidation()
         {
-            StartupBehavior.SetValidation(
-               new string[] {
-                    "None",
-                    "Minimized",
-                    "FullScreen"
-               });
+            StartupBehavior.SetValidation(s_startupBehaviors);
         }
 
         /// <summary>

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Runtime.Versioning;
 using Microsoft.Win32;
@@ -43,6 +44,9 @@ namespace LoipvRemote.Tools.WindowsRegistry
     /// </code>
     ///
     /// </remarks>
+    // Factory methods are intentionally static for ergonomic generic construction.
+    // CA1000 is suppressed only for this value-object factory surface.
+#pragma warning disable CA1000
     public class WinRegistryEntry<T>
     {
         #region Registry Fileds & Properties
@@ -59,7 +63,7 @@ namespace LoipvRemote.Tools.WindowsRegistry
             set
             {
                 privateHive =
-                    !Enum.IsDefined(typeof(RegistryHive), value) || value == RegistryHive.CurrentConfig || value == RegistryHive.ClassesRoot
+                    !Enum.IsDefined(value) || value == RegistryHive.CurrentConfig || value == RegistryHive.ClassesRoot
                     ? throw new ArgumentException("Invalid parameter: Unknown or unsupported RegistryHive value.", nameof(Hive))
                     : value;
             }
@@ -80,12 +84,12 @@ namespace LoipvRemote.Tools.WindowsRegistry
                     : throw new ArgumentNullException(nameof(Path), "Invalid parameter: Path cannot be null, empty, or consist only of whitespace characters.");
             }
         }
-        private string privatePath;
+        private string privatePath = string.Empty;
 
         /// <summary>
         /// Represents the name of the registry entry.
         /// </summary>
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
 
         /// <summary>
         /// Represents the kind of data stored in the registry value.
@@ -103,23 +107,23 @@ namespace LoipvRemote.Tools.WindowsRegistry
                 privateValue = ValueValidationRules(value);
             }
         }
-        private T privateValue;
+        private T privateValue = default!;
 
         #endregion
 
         #region Aditional Fileds & Properties
 
-        private T[] AllowedValues;
+        private T[]? AllowedValues;
         private int? MinInt32Value;
         private int? MaxInt32Value;
         private long? MinInt64Value;
         private long? MaxInt64Value;
-        private Type EnumType;
+        private Type? EnumType;
 
         /// <summary>
         /// Represents the raw value retrieved directly from the registry.
         /// </summary>
-        private string RawValue;
+        private string RawValue = string.Empty;
 
         /// <summary>
         /// Represents the type of the generic parameter T.
@@ -312,7 +316,7 @@ namespace LoipvRemote.Tools.WindowsRegistry
         /// <param name="allowedValues">The array of allowed integer values.</param>
         public WinRegistryEntry<T> SetValidation(int[] allowedValues)
         {
-            T[] mappedValues = allowedValues?.Select(value => (T)(object)value).ToArray();
+            T[] mappedValues = allowedValues.Select(value => (T)(object)value).ToArray();
             return SetValidation(mappedValues);
         }
 
@@ -322,7 +326,7 @@ namespace LoipvRemote.Tools.WindowsRegistry
         /// <param name="allowedValues">The array of allowed integer values.</param>
         public WinRegistryEntry<T> SetValidation(long[] allowedValues)
         {
-            T[] mappedValues = allowedValues?.Select(value => (T)(object)value).ToArray();
+            T[] mappedValues = allowedValues.Select(value => (T)(object)value).ToArray();
             return SetValidation(mappedValues);
         }
 
@@ -374,8 +378,8 @@ namespace LoipvRemote.Tools.WindowsRegistry
                 minValue = "0";
             if ((string.IsNullOrEmpty(maxValue) || maxValue == "*"))
                 maxValue = (ElementType == typeof(int))
-                    ? Int32.MaxValue.ToString()
-                    : Int64.MaxValue.ToString();
+                    ? Int32.MaxValue.ToString(CultureInfo.InvariantCulture)
+                    : Int64.MaxValue.ToString(CultureInfo.InvariantCulture);
 
             if (ElementType == typeof(int))
             {
@@ -451,16 +455,16 @@ namespace LoipvRemote.Tools.WindowsRegistry
             if (!IsReadable())
                 throw new InvalidOperationException("Unable to read registry key. Hive, path, and name are required.");
 
-            string rawValue = null;
-            string name = string.IsNullOrEmpty(Name) ? null : Name;
+            string? rawValue = null;
+            string? name = string.IsNullOrEmpty(Name) ? null : Name;
 
             try
             {
                 using var key = RegistryKey.OpenBaseKey(Hive, RegistryView.Default).OpenSubKey(Path);
                 if (key != null)
-                    RawValue = rawValue = key.GetValue(name)?.ToString();
+                    RawValue = rawValue = key.GetValue(name)?.ToString() ?? string.Empty;
 
-                if (rawValue != null)
+                if (rawValue != null && key is not null)
                     ValueKind = key.GetValueKind(name);
             }
             catch (Exception ex)
@@ -477,7 +481,7 @@ namespace LoipvRemote.Tools.WindowsRegistry
             else if (!ValueKindValidationRule(ValueKind))
             {
                 // Issue in Windows registry: Value kind of the value cannot be parsed to type T.
-                LogError($"Cannot parse a Value of type {ValueKind} to the specified type {typeof(T).FullName}.");
+                LogInfo($"Registry value kind {ValueKind} is incompatible with {typeof(T).FullName}; the entry remains unset.");
             }
             else
             {
@@ -500,25 +504,26 @@ namespace LoipvRemote.Tools.WindowsRegistry
             if (!IsWritable())
                 throw new InvalidOperationException("Unable to write registry key. Hive, path, name, value kind, and value are required.");
 
-            string name = string.IsNullOrEmpty(Name) ? null : Name;
+            string? name = string.IsNullOrEmpty(Name) ? null : Name;
             RegistryValueKind valueKind = string.IsNullOrEmpty(Name) ? RegistryValueKind.String : ValueKind;
 
             string value;
             if (typeof(T) == typeof(bool))
             {
-                value = (bool)(object)Value
+                value = (Value is bool boolValue && boolValue)
                     ? ValueKind == RegistryValueKind.DWord ? "1" : "True"
                     : ValueKind == RegistryValueKind.DWord ? "0" : "False";
             }
             else
             {
-                value = Value.ToString();
+                value = Value?.ToString() ?? string.Empty;
             }
 
             try
             {
                 using RegistryKey baseKey = RegistryKey.OpenBaseKey(Hive, RegistryView.Default);
-                using RegistryKey registryKey = baseKey.CreateSubKey(Path, true);
+                using RegistryKey registryKey = baseKey.CreateSubKey(Path, true)
+                    ?? throw new InvalidOperationException("Unable to create the Windows Registry key.");
 
                 registryKey.SetValue(name, value, valueKind);
             }
@@ -551,8 +556,8 @@ namespace LoipvRemote.Tools.WindowsRegistry
         /// </remarks>
         public void Clear()
         {
-            RawValue = null;
-            Value = default;
+            RawValue = string.Empty;
+            Value = default!;
             ReadOperationSucceeded = false;
         }
 
@@ -661,7 +666,8 @@ namespace LoipvRemote.Tools.WindowsRegistry
             // For boolean elements, check if the value is valid and convert it to the appropriate value kind.
             else if (ElementType == typeof(bool))
             {
-                if (!booleanRegistryValueKindMap.TryGetValue(value.ToString().ToLower(), out var valueKind))
+                string normalizedValue = Convert.ToString(value, CultureInfo.InvariantCulture)?.ToLowerInvariant() ?? string.Empty;
+                if (!booleanRegistryValueKindMap.TryGetValue(normalizedValue, out var valueKind))
                     throw new ArgumentException("Invalid value. Supported values are ci strings 'True'/'False' or numbers '0'/'1'.", nameof(value));
 
                 ValueKind = valueKind;
@@ -670,7 +676,7 @@ namespace LoipvRemote.Tools.WindowsRegistry
             // For integer or long elements, ensure the value is not negative.
             else if (ElementType == typeof(int) || ElementType == typeof(long))
             {
-                if (Convert.ToInt64(value) < 0)
+                if (Convert.ToInt64(value, CultureInfo.InvariantCulture) < 0)
                     throw new ArgumentException("Value cannot be negative.", nameof(value));
                 return value;
             }
@@ -693,11 +699,14 @@ namespace LoipvRemote.Tools.WindowsRegistry
         /// <returns>The validated and potentially corrected value.</returns>
         private T EnforceStringInputValidity(T value)
         {
+            string valueText = Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty;
+
             if (AllowedValues != null)
             {
-                T matchedValue = AllowedValues.FirstOrDefault(v => v.ToString().Equals(value.ToString(), StringComparison.OrdinalIgnoreCase));
+                T? matchedValue = AllowedValues.FirstOrDefault(v =>
+                    string.Equals(Convert.ToString(v, CultureInfo.InvariantCulture), valueText, StringComparison.OrdinalIgnoreCase));
 
-                if (matchedValue != null)
+                if (matchedValue is not null)
                     // Correct the Value to ensure the correct spelling and avoid user typing mistakes
                     return matchedValue;
             }
@@ -705,7 +714,7 @@ namespace LoipvRemote.Tools.WindowsRegistry
             {
                 var matchedEnumValue = Enum.GetValues(EnumType)
                           .Cast<Enum>()
-                          .FirstOrDefault(e => e.ToString().Equals(value.ToString(), StringComparison.OrdinalIgnoreCase));
+                          .FirstOrDefault(e => string.Equals(e.ToString(), valueText, StringComparison.OrdinalIgnoreCase));
 
                 if (matchedEnumValue != null)
                     // Correct the Value to ensure the correct spelling and avoid user typing mistakes
@@ -748,7 +757,7 @@ namespace LoipvRemote.Tools.WindowsRegistry
         /// <exception cref="ArgumentException">Thrown when Value type <typeparamref name="T"/> is not supported.</exception>
         private bool ValueKindValidationRule(RegistryValueKind valueKind)
         {
-            if (!Enum.IsDefined(typeof(RegistryValueKind), valueKind) || valueKind == RegistryValueKind.Unknown || valueKind == RegistryValueKind.None || valueKind == 0)
+            if (!Enum.IsDefined(valueKind) || valueKind == RegistryValueKind.Unknown || valueKind == RegistryValueKind.None || valueKind == 0)
                 throw new ArgumentException("Invalid parameter: Unknown or unsupported RegistryValueKind value.", nameof(valueKind));
 
             return Type.GetTypeCode(ElementType) switch
@@ -781,7 +790,7 @@ namespace LoipvRemote.Tools.WindowsRegistry
         /// <summary>
         /// Determines whether the registry entry has been set.
         /// </summary>
-        private bool IsEntrySet() => RawValue != null && ReadOperationSucceeded;
+        private bool IsEntrySet() => ReadOperationSucceeded;
 
         /// <summary>
         /// Determines whether the registry hive has been explicitly set.
@@ -799,7 +808,7 @@ namespace LoipvRemote.Tools.WindowsRegistry
         /// Determines whether the path of the registry entry has been explicitly set.
         /// </summary>
         /// <returns><c>true</c> if the path is set; otherwise, <c>false</c>.</returns>
-        private bool IsPathSet() => Path != null;
+        private bool IsPathSet() => !string.IsNullOrWhiteSpace(Path);
 
         /// <summary>
         /// Checks if the current value is valid according to its type-specific rules and constraints.
@@ -848,9 +857,10 @@ namespace LoipvRemote.Tools.WindowsRegistry
             }
             else if (EnumType != null && EnumType.IsEnum)
             {
+                string valueText = Convert.ToString(Value, CultureInfo.InvariantCulture) ?? string.Empty;
                 return Enum.GetValues(EnumType)
                            .Cast<Enum>()
-                           .Any(e => e.ToString().Equals(Value.ToString(), StringComparison.OrdinalIgnoreCase));
+                           .Any(e => string.Equals(e.ToString(), valueText, StringComparison.OrdinalIgnoreCase));
             }
 
             return true;
@@ -862,7 +872,10 @@ namespace LoipvRemote.Tools.WindowsRegistry
         /// <returns>True if the integer value is valid; otherwise, false.</returns>
         private bool ValidateInt32()
         {
-            int value = (int)(object)Value;
+            if (Value is null)
+                return false;
+
+            int value = Convert.ToInt32(Value, CultureInfo.InvariantCulture);
 
             if (AllowedValues != null)
                 return AllowedValues.Contains(Value);
@@ -874,7 +887,7 @@ namespace LoipvRemote.Tools.WindowsRegistry
             {
                 foreach (object enumValue in Enum.GetValues(EnumType))
                 {
-                    if (Convert.ToInt32(enumValue) == value)
+                    if (Convert.ToInt32(enumValue, CultureInfo.InvariantCulture) == value)
                     {
                         return true;
                     }
@@ -891,7 +904,10 @@ namespace LoipvRemote.Tools.WindowsRegistry
         /// <returns>True if the long integer value is valid; otherwise, false.</returns>
         private bool ValidateInt64()
         {
-            long value = (long)(object)Value;
+            if (Value is null)
+                return false;
+
+            long value = Convert.ToInt64(Value, CultureInfo.InvariantCulture);
 
             if (AllowedValues != null)
                 return AllowedValues.Contains(Value);
@@ -904,4 +920,5 @@ namespace LoipvRemote.Tools.WindowsRegistry
 
         #endregion
     }
+#pragma warning restore CA1000
 }

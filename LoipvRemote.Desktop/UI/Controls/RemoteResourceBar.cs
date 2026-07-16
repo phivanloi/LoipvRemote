@@ -78,6 +78,8 @@ namespace LoipvRemote.UI.Controls
 
         public void SetIsActive(bool isActive) => _monitor.SetIsActive(isActive);
 
+        internal bool IsStatusVisible => _status.Visible;
+
         private static Label CreateStatusLabel(int width) => new()
         {
             AutoSize = false,
@@ -127,7 +129,11 @@ namespace LoipvRemote.UI.Controls
             int availableWidth = ClientSize.Width - Padding.Horizontal;
             if (availableWidth <= 0) return;
 
-            _status.Visible = _monitorState != RemoteResourceMonitorState.Monitoring;
+            // Keep the monitoring state visible while metrics are being collected.
+            // Hiding the status item in the healthy state made the whole SSH
+            // monitoring strip look as if it had disappeared, especially when
+            // the terminal filled most of the available width.
+            _status.Visible = true;
             int minimumWidth = _metrics.Sum(GetBaseWidth) + _metrics.Sum(label => label.Margin.Horizontal);
             if (_status.Visible)
                 minimumWidth += GetBaseWidth(_status) + _status.Margin.Horizontal;

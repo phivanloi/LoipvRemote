@@ -15,7 +15,7 @@ public class RdpOptionPresentationTests
     [TestCase(RDPResolutions.Fullscreen, 2)]
     [TestCase(RDPSoundQuality.High, 2)]
     [TestCase(RDPSounds.DoNotPlay, 2)]
-    [TestCase(RDPPerformanceFlags.EnableDesktopComposition, 0x100)]
+    [TestCase(RdpPerformanceOptions.EnableDesktopComposition, 0x100)]
     public void PersistedOptionValues_AreStable(Enum option, int expectedValue)
     {
         Assert.That(Convert.ToInt32(option), Is.EqualTo(expectedValue));
@@ -30,7 +30,7 @@ public class RdpOptionPresentationTests
             context: null,
             culture: null,
             value: AuthenticationLevel.AuthRequired,
-            destType: typeof(string));
+            destinationType: typeof(string));
 
         Assert.That(displayValue, Is.EqualTo(Language.DontConnectWhenAuthFails));
     }

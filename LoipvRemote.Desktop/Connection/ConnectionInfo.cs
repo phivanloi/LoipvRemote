@@ -138,17 +138,17 @@ namespace LoipvRemote.Connection
         {
             string[] excludedProperties = new[]
             {
-                "Parent", "Name", "Hostname", "Port", "Inheritance", "OpenConnections",
+                nameof(Parent), nameof(Name), nameof(Hostname), nameof(Port), nameof(Inheritance), nameof(OpenConnections),
                 "IsContainer", "IsDefault", "PositionID", "ConstantID", "TreeNode", "IsQuickConnect", "PleaseConnect"
             };
 
             return GetProperties(excludedProperties);
         }
 
-        public virtual void SetParent(ContainerInfo newParent)
+        public virtual void SetParent(ContainerInfo containerInfo)
         {
             RemoveParent();
-            newParent?.AddChild(this);
+            containerInfo?.AddChild(this);
         }
 
         public void RemoveParent()
@@ -300,7 +300,10 @@ namespace LoipvRemote.Connection
         {
             Name = Language.NewConnection;
             Description = Settings.Default.ConDefaultDescription;
-            Icon = Settings.Default.ConDefaultIcon;
+            // New connections always start with the product icon.  Existing
+            // custom icon values are preserved when loading persisted records;
+            // this only defines the fresh-connection default.
+            Icon = ConnectionIcon.LoipvRemoteIconName;
             Panel = Language.General;
             Color = string.Empty;
             TabColor = string.Empty;
@@ -310,9 +313,9 @@ namespace LoipvRemote.Connection
         private void SetConnectionDefaults()
         {
             Hostname = string.Empty;
-            ExternalAddressProvider = (ExternalAddressProvider)Enum.Parse(typeof(ExternalAddressProvider), Settings.Default.ConDefaultExternalAddressProvider);
+            ExternalAddressProvider = Enum.Parse<ExternalAddressProvider>(Settings.Default.ConDefaultExternalAddressProvider);
             EC2Region = Settings.Default.ConDefaultEC2Region;
-            ExternalCredentialProvider = (ExternalCredentialProvider)Enum.Parse(typeof(ExternalCredentialProvider), Settings.Default.ConDefaultExternalCredentialProvider);
+            ExternalCredentialProvider = Enum.Parse<ExternalCredentialProvider>(Settings.Default.ConDefaultExternalCredentialProvider);
             UserViaAPI = "";
         }
 
@@ -325,11 +328,11 @@ namespace LoipvRemote.Connection
             Port = 0;
             PuttySession = Settings.Default.ConDefaultPuttySession;
             UseConsoleSession = Settings.Default.ConDefaultUseConsoleSession;
-            RDPAuthenticationLevel = (AuthenticationLevel)Enum.Parse(typeof(AuthenticationLevel), Settings.Default.ConDefaultRDPAuthenticationLevel);
+            RDPAuthenticationLevel = Enum.Parse<AuthenticationLevel>(Settings.Default.ConDefaultRDPAuthenticationLevel);
             RDPMinutesToIdleTimeout = Settings.Default.ConDefaultRDPMinutesToIdleTimeout;
             RDPAlertIdleTimeout = Settings.Default.ConDefaultRDPAlertIdleTimeout;
             LoadBalanceInfo = Settings.Default.ConDefaultLoadBalanceInfo;
-            RenderingEngine = (BrowserRenderingEngine)Enum.Parse(typeof(BrowserRenderingEngine), Settings.Default.ConDefaultRenderingEngine);
+            RenderingEngine = Enum.Parse<BrowserRenderingEngine>(Settings.Default.ConDefaultRenderingEngine);
             UseCredSsp = Settings.Default.ConDefaultUseCredSsp;
             UseRestrictedAdmin = Settings.Default.ConDefaultUseRestrictedAdmin;
             UseRCG = Settings.Default.ConDefaultUseRCG;
@@ -346,14 +349,14 @@ namespace LoipvRemote.Connection
 
         private void SetRdGatewayDefaults()
         {
-            RDGatewayUsageMethod = (RDGatewayUsageMethod)Enum.Parse(typeof(RDGatewayUsageMethod), Settings.Default.ConDefaultRDGatewayUsageMethod);
+            RDGatewayUsageMethod = Enum.Parse<RDGatewayUsageMethod>(Settings.Default.ConDefaultRDGatewayUsageMethod);
             RDGatewayHostname = Settings.Default.ConDefaultRDGatewayHostname;
-            RDGatewayUseConnectionCredentials = (RDGatewayUseConnectionCredentials)Enum.Parse(typeof(RDGatewayUseConnectionCredentials), Settings.Default.ConDefaultRDGatewayUseConnectionCredentials);
+            RDGatewayUseConnectionCredentials = Enum.Parse<RDGatewayUseConnectionCredentials>(Settings.Default.ConDefaultRDGatewayUseConnectionCredentials);
             RDGatewayUsername = Settings.Default.ConDefaultRDGatewayUsername;
             RDGatewayPassword = Settings.Default.ConDefaultRDGatewayPassword;
             RDGatewayDomain = Settings.Default.ConDefaultRDGatewayDomain;
             RDGatewayAccessToken = Settings.Default.ConDefaultRDGatewayAccessToken;
-            RDGatewayExternalCredentialProvider = (ExternalCredentialProvider)Enum.Parse(typeof(ExternalCredentialProvider), Settings.Default.ConDefaultRDGatewayExternalCredentialProvider);
+            RDGatewayExternalCredentialProvider = Enum.Parse<ExternalCredentialProvider>(Settings.Default.ConDefaultRDGatewayExternalCredentialProvider);
             RDGatewayUserViaAPI = Settings.Default.ConDefaultRDGatewayUserViaAPI;
         }
 
@@ -363,7 +366,7 @@ namespace LoipvRemote.Connection
                 ? res
                 : RDPResolutions.SmartSize;
             AutomaticResize = Settings.Default.ConDefaultAutomaticResize;
-            Colors = (RDPColors)Enum.Parse(typeof(RDPColors), Settings.Default.ConDefaultColors);
+            Colors = Enum.Parse<RDPColors>(Settings.Default.ConDefaultColors);
             CacheBitmaps = Settings.Default.ConDefaultCacheBitmaps;
             DisplayWallpaper = Settings.Default.ConDefaultDisplayWallpaper;
             DisplayThemes = Settings.Default.ConDefaultDisplayThemes;
@@ -387,8 +390,8 @@ namespace LoipvRemote.Connection
             RedirectPorts = Settings.Default.ConDefaultRedirectPorts;
             RedirectSmartCards = Settings.Default.ConDefaultRedirectSmartCards;
             RedirectAudioCapture = Settings.Default.ConDefaultRedirectAudioCapture;
-            RedirectSound = (RDPSounds)Enum.Parse(typeof(RDPSounds), Settings.Default.ConDefaultRedirectSound);
-            SoundQuality = (RDPSoundQuality)Enum.Parse(typeof(RDPSoundQuality), Settings.Default.ConDefaultSoundQuality);
+            RedirectSound = Enum.Parse<RDPSounds>(Settings.Default.ConDefaultRedirectSound);
+            SoundQuality = Enum.Parse<RDPSoundQuality>(Settings.Default.ConDefaultSoundQuality);
         }
 
         private void SetMiscDefaults()
@@ -406,23 +409,23 @@ namespace LoipvRemote.Connection
 
         private void SetVncDefaults()
         {
-            VNCCompression = (VncCompression)Enum.Parse(typeof(VncCompression), Settings.Default.ConDefaultVNCCompression);
-            VNCEncoding = (VncEncoding)Enum.Parse(typeof(VncEncoding), Settings.Default.ConDefaultVNCEncoding);
-            VNCAuthMode = (VncAuthMode)Enum.Parse(typeof(VncAuthMode), Settings.Default.ConDefaultVNCAuthMode);
-            VNCProxyType = (VncProxyType)Enum.Parse(typeof(VncProxyType), Settings.Default.ConDefaultVNCProxyType);
+            VNCCompression = Enum.Parse<VncCompression>(Settings.Default.ConDefaultVNCCompression);
+            VNCEncoding = Enum.Parse<VncEncoding>(Settings.Default.ConDefaultVNCEncoding);
+            VNCAuthMode = Enum.Parse<VncAuthMode>(Settings.Default.ConDefaultVNCAuthMode);
+            VNCProxyType = Enum.Parse<VncProxyType>(Settings.Default.ConDefaultVNCProxyType);
             VNCProxyIP = Settings.Default.ConDefaultVNCProxyIP;
             VNCProxyPort = Settings.Default.ConDefaultVNCProxyPort;
             VNCProxyUsername = Settings.Default.ConDefaultVNCProxyUsername;
             VNCProxyPassword = Settings.Default.ConDefaultVNCProxyPassword;
-            VNCColors = (VncColors)Enum.Parse(typeof(VncColors), Settings.Default.ConDefaultVNCColors);
-            VNCSmartSizeMode = (VncSmartSizeMode)Enum.Parse(typeof(VncSmartSizeMode), Settings.Default.ConDefaultVNCSmartSizeMode);
+            VNCColors = Enum.Parse<VncColors>(Settings.Default.ConDefaultVNCColors);
+            VNCSmartSizeMode = Enum.Parse<VncSmartSizeMode>(Settings.Default.ConDefaultVNCSmartSizeMode);
             VNCViewOnly = Settings.Default.ConDefaultVNCViewOnly;
         }
 
         private void SetNewOpenConnectionList()
         {
             OpenConnections = [];
-            OpenConnections.CollectionChanged += (sender, args) => RaisePropertyChangedEvent(this, new PropertyChangedEventArgs("OpenConnections"));
+            OpenConnections.CollectionChanged += (sender, args) => RaisePropertyChangedEvent(this, new PropertyChangedEventArgs(nameof(OpenConnections)));
         }
 
         #endregion

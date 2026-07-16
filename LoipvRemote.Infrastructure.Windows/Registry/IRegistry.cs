@@ -18,22 +18,22 @@ namespace LoipvRemote.Tools.WindowsRegistry
         /// <summary>
         /// Gets the value of a registry entry specified by its name.
         /// </summary>
-        string GetValue(RegistryHive hive, string path, string name);
+        string? GetValue(RegistryHive hive, string path, string? name);
 
         /// <summary>
         /// Gets the string value of a registry entry specified by its name.
         /// </summary>
-        string GetStringValue(RegistryHive hive, string path, string name, string defaultValue = null);
+        string? GetStringValue(RegistryHive hive, string path, string? name, string? defaultValue = null);
 
         /// <summary>
         /// Gets the boolean value of a registry entry specified by its name.
         /// </summary>
-        bool GetBoolValue(RegistryHive hive, string path, string propertyName, bool defaultValue = false);
+        bool GetBoolValue(RegistryHive hive, string path, string? propertyName, bool defaultValue = false);
 
         /// <summary>
         /// Gets the DWORD value of a registry entry specified by its name.
         /// </summary>
-        int GetIntegerValue(RegistryHive hive, string path, string propertyName, int defaultValue = -1);
+        int GetIntegerValue(RegistryHive hive, string path, string? propertyName, int defaultValue = -1);
 
         /// <summary>
         /// Retrieves a specific registry entry of type string from the Windows Registry.
@@ -57,7 +57,7 @@ namespace LoipvRemote.Tools.WindowsRegistry
         /// <summary>
         /// Sets the value of a registry entry.
         /// </summary>
-        void SetValue(RegistryHive hive, string path, string name, object value, RegistryValueKind valueKind);
+        void SetValue(RegistryHive hive, string path, string? name, object value, RegistryValueKind valueKind);
 
         /// <summary>
         /// Creates a new registry key.

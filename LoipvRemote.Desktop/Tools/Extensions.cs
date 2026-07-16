@@ -6,20 +6,20 @@ namespace LoipvRemote.Tools
 {
     public static class Extensions
     {
-        public static Optional<T> Maybe<T>(this T value)
+        public static OptionalValue<T> Maybe<T>(this T value)
         {
-            return new Optional<T>(value);
+            return new OptionalValue<T>(value);
         }
 
-        public static Optional<U> MaybeParse<T, U>(this T value, Func<T, U> parseFunc)
+        public static OptionalValue<TResult> MaybeParse<T, TResult>(this T value, Func<T, TResult> parseFunc)
         {
             try
             {
-                return new Optional<U>(parseFunc(value));
+                return new OptionalValue<TResult>(parseFunc(value));
             }
             catch
             {
-                return new Optional<U>();
+                return new OptionalValue<TResult>();
             }
         }
 

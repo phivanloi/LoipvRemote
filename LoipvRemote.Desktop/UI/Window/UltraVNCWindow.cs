@@ -12,6 +12,7 @@ namespace LoipvRemote.UI.Window
     public class UltraVNCWindow : BaseWindow
     {
         private MessageCollector? _messageCollector;
+        private DesktopWindowCatalog? _windows;
 
         private MessageCollector MessageCollector => _messageCollector
             ?? throw new InvalidOperationException("UltraVNCWindow services must be attached before use.");
@@ -47,7 +48,7 @@ namespace LoipvRemote.UI.Window
             // btnDisconnect
             //
             this.btnDisconnect.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
-            this.btnDisconnect.Image = ((System.Drawing.Image)(resources.GetObject("btnDisconnect.Image")));
+            this.btnDisconnect.Image = resources.GetObject("btnDisconnect.Image", CultureInfo.CurrentUICulture) as System.Drawing.Image;
             this.btnDisconnect.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.btnDisconnect.Name = "btnDisconnect";
             this.btnDisconnect.Size = new System.Drawing.Size(70, 22);
@@ -102,16 +103,17 @@ namespace LoipvRemote.UI.Window
             this.InitializeComponent();
         }
 
-        public void AttachServices(MessageCollector messageCollector)
+        public void AttachServices(MessageCollector messageCollector, DesktopWindowCatalog windows)
         {
             _messageCollector = messageCollector ?? throw new ArgumentNullException(nameof(messageCollector));
+            _windows = windows ?? throw new ArgumentNullException(nameof(windows));
         }
 
         #endregion
 
         #region Private Methods
 
-        private void UltraVNCSC_Load(object sender, System.EventArgs e)
+        private void UltraVNCSC_Load(object? sender, System.EventArgs e)
         {
             ApplyLanguage();
 
@@ -161,11 +163,11 @@ namespace LoipvRemote.UI.Window
         //    StartListening()
         //End Sub
 
-        private void btnDisconnect_Click(object sender, EventArgs e)
+        private void btnDisconnect_Click(object? sender, EventArgs e)
         {
             //vnc.Dispose()
             Dispose();
-            AppWindows.Show(WindowType.UltraVNCSC);
+            (_windows ?? throw new InvalidOperationException("UltraVNC window services must be attached before use.")).Show(WindowType.UltraVNCSC);
         }
 
         #endregion

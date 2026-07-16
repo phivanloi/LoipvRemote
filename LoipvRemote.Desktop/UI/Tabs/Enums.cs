@@ -1,6 +1,10 @@
 using LoipvRemote.Infrastructure.Windows.Interop;
 using System;
 
+// Win32 exposes multiple symbolic names for the same bit/value. Keep these aliases
+// because the native API and existing interop call sites rely on the documented names.
+#pragma warning disable CA1069
+
 namespace LoipvRemote.UI.Tabs
 {
     [Flags]

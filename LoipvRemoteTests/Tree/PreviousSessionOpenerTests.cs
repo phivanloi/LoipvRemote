@@ -28,7 +28,7 @@ namespace LoipvRemoteTests.Tree
         public void AllRequestedSessionsAreReopened()
         {
             _previousSessionOpener.Execute(_connectionTree);
-            _connectionInitiator.ReceivedWithAnyArgs(2).OpenConnection(new ConnectionInfo());
+            _ = _connectionInitiator.ReceivedWithAnyArgs(2).OpenConnectionAsync(new ConnectionInfo());
         }
 
         [Test]

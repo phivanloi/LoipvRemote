@@ -1855,9 +1855,6 @@ LoipvRemote 将退出并安装更新。</value>
   <data name="DatabaseNotAvailable" xml:space="preserve">
     <value>数据库“{0}”不可用。</value>
   </data>
-  <data name="SaveConnectionsAfterEveryEdit" xml:space="preserve">
-    <value>每次编辑后保存连接</value>
-  </data>
   <data name="TestConnection" xml:space="preserve">
     <value>测试连接</value>
   </data>

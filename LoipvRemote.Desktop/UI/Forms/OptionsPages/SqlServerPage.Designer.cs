@@ -215,7 +215,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             // txtSQLAuthType
             //
-            txtSQLAuthType._mice = MrngComboBox.MouseState.HOVER;
+            txtSQLAuthType.MouseInteractionState = MrngComboBox.MouseState.HOVER;
             txtSQLAuthType.Dock = System.Windows.Forms.DockStyle.Fill;
             txtSQLAuthType.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             txtSQLAuthType.FormattingEnabled = true;
@@ -259,7 +259,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             // txtSQLType
             //
-            txtSQLType._mice = MrngComboBox.MouseState.HOVER;
+            txtSQLType.MouseInteractionState = MrngComboBox.MouseState.HOVER;
             txtSQLType.Dock = System.Windows.Forms.DockStyle.Fill;
             txtSQLType.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             txtSQLType.FormattingEnabled = true;
@@ -421,7 +421,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             // mrngComboBox4
             //
-            mrngComboBox4._mice = MrngComboBox.MouseState.HOVER;
+            mrngComboBox4.MouseInteractionState = MrngComboBox.MouseState.HOVER;
             mrngComboBox4.Dock = System.Windows.Forms.DockStyle.Fill;
             mrngComboBox4.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             mrngComboBox4.FormattingEnabled = true;
@@ -523,7 +523,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             // mrngCheckBox5
             //
-            mrngCheckBox5._mice = MrngCheckBox.MouseState.OUT;
+            mrngCheckBox5.MouseInteractionState = MrngCheckBox.MouseState.OUT;
             mrngCheckBox5.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left;
             mrngCheckBox5.AutoSize = true;
             mrngCheckBox5.Font = new System.Drawing.Font("Segoe UI", 10F);
@@ -565,7 +565,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             // mrngComboBox2
             //
-            mrngComboBox2._mice = MrngComboBox.MouseState.HOVER;
+            mrngComboBox2.MouseInteractionState = MrngComboBox.MouseState.HOVER;
             mrngComboBox2.Dock = System.Windows.Forms.DockStyle.Fill;
             mrngComboBox2.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             mrngComboBox2.FormattingEnabled = true;
@@ -577,7 +577,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             // mrngCheckBox2
             //
-            mrngCheckBox2._mice = MrngCheckBox.MouseState.OUT;
+            mrngCheckBox2.MouseInteractionState = MrngCheckBox.MouseState.OUT;
             mrngCheckBox2.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left;
             mrngCheckBox2.AutoSize = true;
             mrngCheckBox2.Font = new System.Drawing.Font("Segoe UI", 10F);
@@ -589,7 +589,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             // mrngCheckBox4
             //
-            mrngCheckBox4._mice = MrngCheckBox.MouseState.OUT;
+            mrngCheckBox4.MouseInteractionState = MrngCheckBox.MouseState.OUT;
             mrngCheckBox4.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left;
             mrngCheckBox4.AutoSize = true;
             mrngCheckBox4.Font = new System.Drawing.Font("Segoe UI", 10F);
@@ -601,7 +601,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             // mrngCheckBox3
             //
-            mrngCheckBox3._mice = MrngCheckBox.MouseState.OUT;
+            mrngCheckBox3.MouseInteractionState = MrngCheckBox.MouseState.OUT;
             mrngCheckBox3.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left;
             mrngCheckBox3.AutoSize = true;
             mrngCheckBox3.Font = new System.Drawing.Font("Segoe UI", 10F);
@@ -613,7 +613,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             // mrngComboBox3
             //
-            mrngComboBox3._mice = MrngComboBox.MouseState.HOVER;
+            mrngComboBox3.MouseInteractionState = MrngComboBox.MouseState.HOVER;
             mrngComboBox3.Dock = System.Windows.Forms.DockStyle.Fill;
             mrngComboBox3.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             mrngComboBox3.FormattingEnabled = true;
@@ -733,7 +733,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             // btnTestConnection
             //
-            btnTestConnection._mice = MrngButton.MouseState.OUT;
+            btnTestConnection.MouseInteractionState = MrngButton.MouseState.OUT;
             btnTestConnection.Location = new System.Drawing.Point(265, 286);
             btnTestConnection.Name = "btnTestConnection";
             btnTestConnection.Size = new System.Drawing.Size(109, 25);
@@ -743,7 +743,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             // btnExpandOptions
             //
-            btnExpandOptions._mice = MrngButton.MouseState.OUT;
+            btnExpandOptions.MouseInteractionState = MrngButton.MouseState.OUT;
             btnExpandOptions.Location = new System.Drawing.Point(380, 286);
             btnExpandOptions.Name = "btnExpandOptions";
             btnExpandOptions.Size = new System.Drawing.Size(109, 25);

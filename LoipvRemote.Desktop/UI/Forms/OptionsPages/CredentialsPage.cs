@@ -44,16 +44,16 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             // ReSharper disable once SwitchStatementMissingSomeCases
             switch (Properties.OptionsCredentialsPage.Default.EmptyCredentials)
             {
-                    case "noinfo":
-                        radCredentialsNoInfo.Checked = true;
-                        break;
-                    case "windows":
-                        radCredentialsWindows.Checked = true;
-                        break;
-                    case "custom":
-                        radCredentialsCustom.Checked = true;
-                        break;
-                }
+                case "noinfo":
+                    radCredentialsNoInfo.Checked = true;
+                    break;
+                case "windows":
+                    radCredentialsWindows.Checked = true;
+                    break;
+                case "custom":
+                    radCredentialsCustom.Checked = true;
+                    break;
+            }
 
             txtCredentialsUsername.Text = Properties.OptionsCredentialsPage.Default.DefaultUsername;
             txtCredentialsPassword.Text = FrmMain.Default.UnprotectUserSecret(
@@ -90,7 +90,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
         {
             Type settingsType = typeof(OptRegistryCredentialsPage);
             RegistryLoader.RegistrySettings.TryGetValue(settingsType, out var settings);
-            pageRegSettingsInstance = settings as OptRegistryCredentialsPage;
+            pageRegSettingsInstance = settings as OptRegistryCredentialsPage ?? new OptRegistryCredentialsPage();
 
             // If registry settings don't exist, create a default instance to prevent null reference exceptions
             if (pageRegSettingsInstance == null)
@@ -102,7 +102,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             RegistryLoader.Cleanup(settingsType);
 
             // Show registry settings info if any common setting is used.
-            lblRegistrySettingsUsedInfo.Visible =  CommonRegistrySettingsUsed();
+            lblRegistrySettingsUsedInfo.Visible = CommonRegistrySettingsUsed();
 
             // UseCredentials reg setting must be set (and valid).
             if (!pageRegSettingsInstance.UseCredentials.IsValid)
@@ -168,7 +168,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
         /// </summary>
         /// <param name="sender">The source of the event.</param>
         /// <param name="e">Event data containing information about the event.</param>
-        private void radCredentialsCustom_CheckedChanged(object sender, EventArgs e)
+        private void radCredentialsCustom_CheckedChanged(object? sender, EventArgs e)
         {
             if (!pageRegSettingsInstance.DefaultUsername.IsSet && pageRegSettingsInstance.DefaultUsernameEnabled)
             {

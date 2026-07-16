@@ -11,17 +11,17 @@ namespace LoipvRemoteTests.Protocols.ExternalApps;
 public class ExternalApplicationSessionTests
 {
     [Test]
-    public void EmbeddedSession_TransitionsThroughLifecycleAndFocusesHost()
+    public async Task EmbeddedSession_TransitionsThroughLifecycleAndFocusesHost()
     {
         FakeExternalApplicationHost host = new();
         using ExternalApplicationSession session = new(CreateEmbeddedPlan(), host);
 
-        Assert.That(session, Is.AssignableTo<IAsyncProtocolSession>());
+        Assert.That(session, Is.AssignableTo<IProtocolSession>());
 
-        Assert.That(session.Initialize(), Is.True);
-        Assert.That(session.Connect(), Is.True);
+        Assert.That(await session.InitializeAsync(), Is.True);
+        Assert.That(await session.ConnectAsync(), Is.True);
         session.Focus();
-        session.Close();
+        await session.CloseAsync();
 
         Assert.Multiple(() =>
         {
@@ -34,14 +34,14 @@ public class ExternalApplicationSessionTests
     }
 
     [Test]
-    public void InvalidElevatedEmbeddedPlanIsRejectedBeforeStart()
+    public async Task InvalidElevatedEmbeddedPlanIsRejectedBeforeStart()
     {
         FakeExternalApplicationHost host = new();
         using ExternalApplicationSession session = new(
             CreateEmbeddedPlan() with { RunElevated = true },
             host);
 
-        Assert.That(session.Initialize(), Is.False);
+        Assert.That(await session.InitializeAsync(), Is.False);
         Assert.Multiple(() =>
         {
             Assert.That(session.State, Is.EqualTo(ProtocolSessionState.Faulted));
@@ -50,25 +50,25 @@ public class ExternalApplicationSessionTests
     }
 
     [Test]
-    public void FailedStartMarksTheSessionFaulted()
+    public async Task FailedStartMarksTheSessionFaulted()
     {
         FakeExternalApplicationHost host = new() { StartResult = false };
         using ExternalApplicationSession session = new(CreateEmbeddedPlan(), host);
 
-        Assert.That(session.Initialize(), Is.True);
-        Assert.That(session.Connect(), Is.False);
+        Assert.That(await session.InitializeAsync(), Is.True);
+        Assert.That(await session.ConnectAsync(), Is.False);
         Assert.That(session.State, Is.EqualTo(ProtocolSessionState.Faulted));
     }
 
     [Test]
-    public void EmbeddedSession_AttachesAndResizesThroughHost()
+    public async Task EmbeddedSession_AttachesAndResizesThroughHost()
     {
         FakeExternalApplicationHost host = new();
         using ExternalApplicationSession session = new(CreateEmbeddedPlan(), host);
         EmbeddedWindowBounds bounds = new(1, 2, 640, 480);
 
-        Assert.That(session.Initialize(), Is.True);
-        Assert.That(session.Connect(), Is.True);
+        Assert.That(await session.InitializeAsync(), Is.True);
+        Assert.That(await session.ConnectAsync(), Is.True);
         Assert.That(session.AttachTo(new IntPtr(123), TimeSpan.FromSeconds(1)), Is.True);
         session.Resize(bounds);
 
@@ -81,15 +81,15 @@ public class ExternalApplicationSessionTests
     }
 
     [Test]
-    public void HostExit_ClosesSessionAndRaisesExitNotification()
+    public async Task HostExit_ClosesSessionAndRaisesExitNotification()
     {
         FakeExternalApplicationHost host = new();
         using ExternalApplicationSession session = new(CreateEmbeddedPlan(), host);
         int exitNotifications = 0;
         session.Exited += (_, _) => exitNotifications++;
 
-        Assert.That(session.Initialize(), Is.True);
-        Assert.That(session.Connect(), Is.True);
+        Assert.That(await session.InitializeAsync(), Is.True);
+        Assert.That(await session.ConnectAsync(), Is.True);
         host.RaiseExited();
 
         Assert.Multiple(() =>

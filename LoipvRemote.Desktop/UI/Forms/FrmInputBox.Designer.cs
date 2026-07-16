@@ -63,7 +63,7 @@ namespace LoipvRemote.UI.Forms
             //
             // _Ok
             //
-            this._Ok._mice = MrngButton.MouseState.HOVER;
+            this._Ok.MouseInteractionState = MrngButton.MouseState.HOVER;
             this._Ok.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this._Ok.Location = new System.Drawing.Point(125, 55);
             this._Ok.Name = "_Ok";
@@ -75,7 +75,7 @@ namespace LoipvRemote.UI.Forms
             //
             // buttonCancel
             //
-            this.buttonCancel._mice = MrngButton.MouseState.HOVER;
+            this.buttonCancel.MouseInteractionState = MrngButton.MouseState.HOVER;
             this.buttonCancel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.buttonCancel.DialogResult = System.Windows.Forms.DialogResult.Cancel;
             this.buttonCancel.Location = new System.Drawing.Point(206, 55);

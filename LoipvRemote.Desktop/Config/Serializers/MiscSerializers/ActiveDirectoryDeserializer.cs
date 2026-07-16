@@ -1,5 +1,6 @@
 using System;
 using System.DirectoryServices;
+using System.Globalization;
 using System.Text.RegularExpressions;
 using LoipvRemote.Config.Import;
 using LoipvRemote.Connection;
@@ -51,7 +52,7 @@ namespace LoipvRemote.Config.Serializers.MiscSerializers
             Match match = Regex.Match(ldapPath, "ou=([^,]*)", RegexOptions.IgnoreCase);
             string name = match.Success ? match.Groups[1].Captures[0].Value : Language.ActiveDirectory;
 
-            ContainerInfo newContainer = new() { Name = name};
+            ContainerInfo newContainer = new() { Name = name };
             parentContainer.AddChild(newContainer);
 
             ImportComputers(ldapPath, newContainer);
@@ -67,7 +68,7 @@ namespace LoipvRemote.Config.Serializers.MiscSerializers
                     ldapSearcher.SearchRoot = new DirectoryEntry(ldapPath);
                     ldapSearcher.Filter = ldapFilter;
                     ldapSearcher.SearchScope = SearchScope.OneLevel;
-                    ldapSearcher.PropertiesToLoad.AddRange(new[] {"securityEquals", "cn", "objectClass"});
+                    ldapSearcher.PropertiesToLoad.AddRange(s_propertiesToLoad);
 
                     SearchResultCollection ldapResults = ldapSearcher.FindAll();
                     foreach (SearchResult ldapResult in ldapResults)
@@ -94,11 +95,13 @@ namespace LoipvRemote.Config.Serializers.MiscSerializers
             }
         }
 
-        private void DeserializeConnection(DirectoryEntry directoryEntry, ContainerInfo parentContainer)
+        private static readonly string[] s_propertiesToLoad = ["securityEquals", "cn", "objectClass"];
+
+        private static void DeserializeConnection(DirectoryEntry directoryEntry, ContainerInfo parentContainer)
         {
-            string displayName = Convert.ToString(directoryEntry.Properties["cn"].Value);
-            string description = Convert.ToString(directoryEntry.Properties["Description"].Value);
-            string hostName = Convert.ToString(directoryEntry.Properties["dNSHostName"].Value);
+            string displayName = Convert.ToString(directoryEntry.Properties["cn"].Value, CultureInfo.InvariantCulture) ?? string.Empty;
+            string description = Convert.ToString(directoryEntry.Properties["Description"].Value, CultureInfo.InvariantCulture) ?? string.Empty;
+            string hostName = Convert.ToString(directoryEntry.Properties["dNSHostName"].Value, CultureInfo.InvariantCulture) ?? string.Empty;
 
             ConnectionInfo newConnectionInfo = new()
             {

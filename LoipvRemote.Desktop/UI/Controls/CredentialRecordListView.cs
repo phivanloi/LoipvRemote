@@ -43,12 +43,12 @@ namespace LoipvRemote.UI.Controls
         {
             InitializeComponent();
             Disposed += OnDisposed;
-            olvColumnCredentialId.AspectGetter = CredentialIdAspectGetter;
-            olvColumnTitle.AspectGetter = CredentialTitleAspectGetter;
-            olvColumnUsername.AspectGetter = CredentialUsernameAspectGetter;
-            olvColumnDomain.AspectGetter = CredentialDomainAspectGetter;
-            olvColumnRepositorySource.AspectGetter = CredentialSourceAspectGetter;
-            olvColumnRepositoryTitle.AspectGetter = RepoTitleAspectGetter;
+            olvColumnCredentialId.AspectGetter = row => CredentialIdAspectGetter(row);
+            olvColumnTitle.AspectGetter = row => CredentialTitleAspectGetter(row);
+            olvColumnUsername.AspectGetter = row => CredentialUsernameAspectGetter(row);
+            olvColumnDomain.AspectGetter = row => CredentialDomainAspectGetter(row);
+            olvColumnRepositorySource.AspectGetter = row => CredentialSourceAspectGetter(row);
+            olvColumnRepositoryTitle.AspectGetter = row => RepoTitleAspectGetter(row);
             objectListView1.SelectionChanged += (sender, args) => RaiseSelectionChangedEvent();
             objectListView1.CellClick += RaiseCellClickEvent;
             ApplyLanguage();
@@ -79,43 +79,43 @@ namespace LoipvRemote.UI.Controls
             olvColumnDomain.Text = Language.Domain;
         }
 
-        private object CredentialIdAspectGetter(object rowObject)
+        private static Guid CredentialIdAspectGetter(object rowObject)
         {
             KeyValuePair<ICredentialRecord, ICredentialRepository> keyValuePair = CastRowObject(rowObject);
             return keyValuePair.Key.Id;
         }
 
-        private object CredentialTitleAspectGetter(object rowObject)
+        private static string CredentialTitleAspectGetter(object rowObject)
         {
             KeyValuePair<ICredentialRecord, ICredentialRepository> keyValuePair = CastRowObject(rowObject);
             return keyValuePair.Key.Title;
         }
 
-        private object CredentialUsernameAspectGetter(object rowObject)
+        private static string CredentialUsernameAspectGetter(object rowObject)
         {
             KeyValuePair<ICredentialRecord, ICredentialRepository> keyValuePair = CastRowObject(rowObject);
             return keyValuePair.Key.Username;
         }
 
-        private object CredentialDomainAspectGetter(object rowObject)
+        private static string CredentialDomainAspectGetter(object rowObject)
         {
             KeyValuePair<ICredentialRecord, ICredentialRepository> keyValuePair = CastRowObject(rowObject);
             return keyValuePair.Key.Domain;
         }
 
-        private object CredentialSourceAspectGetter(object rowObject)
+        private static string CredentialSourceAspectGetter(object rowObject)
         {
             KeyValuePair<ICredentialRecord, ICredentialRepository> keyValuePair = CastRowObject(rowObject);
             return keyValuePair.Value.Config.Source;
         }
 
-        private object RepoTitleAspectGetter(object rowObject)
+        private static string RepoTitleAspectGetter(object rowObject)
         {
             KeyValuePair<ICredentialRecord, ICredentialRepository> keyValuePair = CastRowObject(rowObject);
             return keyValuePair.Value.Config.Title;
         }
 
-        private KeyValuePair<ICredentialRecord, ICredentialRepository> CastRowObject(object model)
+        private static KeyValuePair<ICredentialRecord, ICredentialRepository> CastRowObject(object model)
         {
             if (!(model is KeyValuePair<ICredentialRecord, ICredentialRepository>))
                 return default(KeyValuePair<ICredentialRecord, ICredentialRepository>);

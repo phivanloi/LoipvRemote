@@ -44,7 +44,7 @@ namespace LoipvRemote.UI.Window
 
         #region Private Methods
 
-        private void ExternalTools_Load(object sender, EventArgs e)
+        private void ExternalTools_Load(object? sender, EventArgs e)
         {
             ApplyLanguage();
             ApplyTheme();
@@ -138,7 +138,7 @@ namespace LoipvRemote.UI.Window
 
         private void UpdateEditorControls()
         {
-            ExternalTool selectedTool = _currentlySelectedExternalTools.FirstOrDefault();
+            ExternalTool? selectedTool = _currentlySelectedExternalTools.FirstOrDefault();
 
             DisplayNameTextBox.Text = selectedTool?.DisplayName;
             FilenameTextBox.Text = selectedTool?.FileName;
@@ -168,21 +168,21 @@ namespace LoipvRemote.UI.Window
 
         #region Event Handlers
 
-        private void CurrentlySelectedExternalToolsOnCollectionUpdated(object sender,
+        private void CurrentlySelectedExternalToolsOnCollectionUpdated(object? sender,
                                                                        CollectionUpdatedEventArgs<ExternalTool>
                                                                            collectionUpdatedEventArgs)
         {
             UpdateEditorControls();
         }
 
-        private void ExternalTools_FormClosed(object sender, FormClosedEventArgs e)
+        private void ExternalTools_FormClosed(object? sender, FormClosedEventArgs e)
         {
             _externalAppsSaver.Save(_externalToolsService.ExternalTools);
             _themeManager.ThemeChanged -= ApplyTheme;
             _currentlySelectedExternalTools.CollectionUpdated -= CurrentlySelectedExternalToolsOnCollectionUpdated;
         }
 
-        private void NewTool_Click(object sender, EventArgs e)
+        private void NewTool_Click(object? sender, EventArgs e)
         {
             try
             {
@@ -198,16 +198,16 @@ namespace LoipvRemote.UI.Window
             }
         }
 
-        private void DeleteTool_Click(object sender, EventArgs e)
+        private void DeleteTool_Click(object? sender, EventArgs e)
         {
             try
             {
                 string message;
                 if (_currentlySelectedExternalTools.Count == 1)
-                    message = string.Format(Language.ConfirmDeleteExternalTool,
+                    message = FormatText(Language.ConfirmDeleteExternalTool,
                                             _currentlySelectedExternalTools[0].DisplayName);
                 else if (_currentlySelectedExternalTools.Count > 1)
-                    message = string.Format(Language.ConfirmDeleteExternalToolMultiple,
+                    message = FormatText(Language.ConfirmDeleteExternalToolMultiple,
                                             _currentlySelectedExternalTools.Count);
                 else
                     return;
@@ -221,8 +221,8 @@ namespace LoipvRemote.UI.Window
                     _externalToolsService.ExternalTools.Remove(externalTool);
                 }
 
-                ExternalTool firstDeletedNode = _currentlySelectedExternalTools.FirstOrDefault();
-                int oldSelectedIndex = ToolsListObjView.IndexOf(firstDeletedNode);
+                ExternalTool? firstDeletedNode = _currentlySelectedExternalTools.FirstOrDefault();
+                int oldSelectedIndex = firstDeletedNode is null ? -1 : ToolsListObjView.IndexOf(firstDeletedNode);
                 _currentlySelectedExternalTools.Clear();
                 UpdateToolsListObjView();
 
@@ -239,12 +239,12 @@ namespace LoipvRemote.UI.Window
             }
         }
 
-        private void LaunchTool_Click(object sender, EventArgs e)
+        private void LaunchTool_Click(object? sender, EventArgs e)
         {
             LaunchTool();
         }
 
-        private void ToolsListObjView_SelectedIndexChanged(object sender, EventArgs e)
+        private void ToolsListObjView_SelectedIndexChanged(object? sender, EventArgs e)
         {
             try
             {
@@ -258,7 +258,7 @@ namespace LoipvRemote.UI.Window
             }
         }
 
-        private void ToolsListObjView_DoubleClick(object sender, EventArgs e)
+        private void ToolsListObjView_DoubleClick(object? sender, EventArgs e)
         {
             if (ToolsListObjView.SelectedItems.Count > 0)
             {
@@ -266,9 +266,9 @@ namespace LoipvRemote.UI.Window
             }
         }
 
-        private void PropertyControl_ChangedOrLostFocus(object sender, EventArgs e)
+        private void PropertyControl_ChangedOrLostFocus(object? sender, EventArgs e)
         {
-            ExternalTool selectedTool = _currentlySelectedExternalTools.FirstOrDefault();
+            ExternalTool? selectedTool = _currentlySelectedExternalTools.FirstOrDefault();
             if (selectedTool == null)
                 return;
 
@@ -293,7 +293,7 @@ namespace LoipvRemote.UI.Window
             }
         }
 
-        private void BrowseButton_Click(object sender, EventArgs e)
+        private void BrowseButton_Click(object? sender, EventArgs e)
         {
             try
             {
@@ -303,7 +303,7 @@ namespace LoipvRemote.UI.Window
                                                       Language.FilterAll, "*.*");
                     if (browseDialog.ShowDialog() != DialogResult.OK)
                         return;
-                    ExternalTool selectedItem = _currentlySelectedExternalTools.FirstOrDefault();
+                    ExternalTool? selectedItem = _currentlySelectedExternalTools.FirstOrDefault();
                     if (selectedItem == null)
                         return;
                     selectedItem.FileName = browseDialog.FileName;
@@ -316,7 +316,7 @@ namespace LoipvRemote.UI.Window
             }
         }
 
-        private void BrowseWorkingDir_Click(object sender, EventArgs e)
+        private void BrowseWorkingDir_Click(object? sender, EventArgs e)
         {
             try
             {
@@ -324,7 +324,7 @@ namespace LoipvRemote.UI.Window
                 {
                     if (browseDialog.ShowDialog() != DialogResult.OK)
                         return;
-                    ExternalTool selectedItem = _currentlySelectedExternalTools.FirstOrDefault();
+                    ExternalTool? selectedItem = _currentlySelectedExternalTools.FirstOrDefault();
                     if (selectedItem == null)
                         return;
                     selectedItem.WorkingDir = browseDialog.SelectedPath;
@@ -337,7 +337,7 @@ namespace LoipvRemote.UI.Window
             }
         }
 
-        private void ToolsListObjView_CellToolTipShowing(object sender, ToolTipShowingEventArgs e)
+        private void ToolsListObjView_CellToolTipShowing(object? sender, ToolTipShowingEventArgs e)
         {
             if (e.Column != WaitForExitColumnHeader)
                 return;

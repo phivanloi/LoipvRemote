@@ -46,7 +46,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             // chkReconnectOnStart
             //
-            chkReconnectOnStart._mice = MrngCheckBox.MouseState.OUT;
+            chkReconnectOnStart.MouseInteractionState = MrngCheckBox.MouseState.OUT;
             chkReconnectOnStart.AutoSize = true;
             chkReconnectOnStart.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkReconnectOnStart.Location = new System.Drawing.Point(6, 4);
@@ -58,7 +58,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             // chkSingleInstance
             //
-            chkSingleInstance._mice = MrngCheckBox.MouseState.OUT;
+            chkSingleInstance.MouseInteractionState = MrngCheckBox.MouseState.OUT;
             chkSingleInstance.AutoSize = true;
             chkSingleInstance.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkSingleInstance.Location = new System.Drawing.Point(6, 27);
@@ -70,7 +70,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             // chkStartMinimized
             //
-            chkStartMinimized._mice = MrngCheckBox.MouseState.OUT;
+            chkStartMinimized.MouseInteractionState = MrngCheckBox.MouseState.OUT;
             chkStartMinimized.AutoSize = true;
             chkStartMinimized.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkStartMinimized.Location = new System.Drawing.Point(6, 50);
@@ -83,7 +83,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             // chkStartFullScreen
             //
-            chkStartFullScreen._mice = MrngCheckBox.MouseState.OUT;
+            chkStartFullScreen.MouseInteractionState = MrngCheckBox.MouseState.OUT;
             chkStartFullScreen.AutoSize = true;
             chkStartFullScreen.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkStartFullScreen.Location = new System.Drawing.Point(6, 73);
@@ -96,7 +96,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             // chkDisableRefocus
             //
-            chkDisableRefocus._mice = MrngCheckBox.MouseState.OUT;
+            chkDisableRefocus.MouseInteractionState = MrngCheckBox.MouseState.OUT;
             chkDisableRefocus.AutoSize = true;
             chkDisableRefocus.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkDisableRefocus.Location = new System.Drawing.Point(6, 96);

@@ -36,7 +36,8 @@ namespace LoipvRemote.UI.Panels
             get
             {
                 for (int index = 0; index < WindowList.Count; index++)
-                    yield return WindowList[index];
+                    if (WindowList[index] is BaseWindow window)
+                        yield return window;
             }
         }
 
@@ -57,7 +58,7 @@ namespace LoipvRemote.UI.Panels
             catch (Exception ex)
             {
                 _messageCollector.AddMessage(MessageClass.ErrorMsg, "Couldn\'t add panel" + Environment.NewLine + ex.Message);
-                return null;
+                throw new InvalidOperationException("Could not add the connection panel.", ex);
             }
         }
 
@@ -89,7 +90,7 @@ namespace LoipvRemote.UI.Panels
             ToolStripMenuItem cMenRen = CreateRenameMenuItem(pnlcForm);
             ToolStripMenuItem cMenScreens = CreateScreensMenuItem(pnlcForm);
             ToolStripMenuItem cMenClose = CreateCloseMenuItem(pnlcForm);
-            cMen.Items.AddRange(new ToolStripItem[] {cMenRen, cMenScreens, cMenClose});
+            cMen.Items.AddRange(new ToolStripItem[] { cMenRen, cMenScreens, cMenClose });
             pnlcForm.TabPageContextMenuStrip = cMen;
         }
 
@@ -134,7 +135,7 @@ namespace LoipvRemote.UI.Panels
         {
             try
             {
-                ConnectionWindow conW = (ConnectionWindow)((ToolStripMenuItem)sender).Tag;
+                if (sender is not ToolStripMenuItem { Tag: ConnectionWindow conW }) return;
 
                 using (FrmInputBox newTitle = new(Language.NewTitle, Language.NewTitle + ":", ""))
                     if (newTitle.ShowDialog() == DialogResult.OK && !string.IsNullOrEmpty(newTitle.returnValue))
@@ -150,7 +151,7 @@ namespace LoipvRemote.UI.Panels
         {
             try
             {
-                ConnectionWindow conW = (ConnectionWindow)((ToolStripMenuItem)sender).Tag;
+                if (sender is not ToolStripMenuItem { Tag: ConnectionWindow conW }) return;
                 conW.Close();
             }
             catch (Exception ex)
@@ -163,18 +164,19 @@ namespace LoipvRemote.UI.Panels
         {
             try
             {
-                ToolStripMenuItem cMenScreens = (ToolStripMenuItem)sender;
+                if (sender is not ToolStripMenuItem cMenScreens) return;
                 cMenScreens.DropDownItems.Clear();
 
                 for (int i = 0; i <= Screen.AllScreens.Length - 1; i++)
                 {
-                    ToolStripMenuItem cMenScreen = new(Language.Screen + " " + Convert.ToString(i + 1))
+                    ToolStripMenuItem cMenScreen = new(Language.Screen + " " + Convert.ToString(i + 1, CultureInfo.InvariantCulture))
                     {
                         Tag = new ArrayList(),
                         Image = Properties.Resources.Monitor_16x
                     };
-                    ((ArrayList)cMenScreen.Tag).Add(Screen.AllScreens[i]);
-                    ((ArrayList)cMenScreen.Tag).Add(cMenScreens.Tag);
+                    ArrayList screenTag = (ArrayList)cMenScreen.Tag;
+                    screenTag.Add(Screen.AllScreens[i]);
+                    screenTag.Add(cMenScreens.Tag);
                     cMenScreen.Click += cMenConnectionPanelScreen_Click;
                     cMenScreens.DropDownItems.Add(cMenScreen);
                 }
@@ -187,12 +189,11 @@ namespace LoipvRemote.UI.Panels
 
         private void cMenConnectionPanelScreen_Click(object? sender, EventArgs e)
         {
-            Screen screen = null;
-            DockContent panel = null;
+                Screen? screen = null;
+                DockContent? panel = null;
             try
             {
-                IEnumerable tagEnumeration = (IEnumerable)((ToolStripMenuItem)sender).Tag;
-                if (tagEnumeration == null) return;
+                if (sender is not ToolStripMenuItem { Tag: IEnumerable tagEnumeration }) return;
                 foreach (object obj in tagEnumeration)
                 {
                     if (obj is Screen screen1)
@@ -205,7 +206,8 @@ namespace LoipvRemote.UI.Panels
                     }
                 }
 
-                Screens.SendPanelToScreen(panel, screen);
+                if (panel is not null && screen is not null)
+                    Screens.SendPanelToScreen(panel, screen);
             }
             catch (Exception ex)
             {

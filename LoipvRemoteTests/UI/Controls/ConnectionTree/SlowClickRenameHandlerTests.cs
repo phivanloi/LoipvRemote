@@ -80,7 +80,7 @@ namespace LoipvRemoteTests.UI.Controls.ConnectionTree
             _sut.Execute(new ConnectionInfo());
             _timer.ClearReceivedCalls();
             _sut.Execute(new ConnectionInfo());
-            _timer.Received().Stop();
+            _timer.Received().StopTimer();
         }
 
         [Test]
@@ -117,7 +117,7 @@ namespace LoipvRemoteTests.UI.Controls.ConnectionTree
         {
             _sut.Execute(new ConnectionInfo());
             _sut.Cancel();
-            _timer.Received().Stop();
+            _timer.Received().StopTimer();
         }
 
         [Test]
@@ -139,7 +139,7 @@ namespace LoipvRemoteTests.UI.Controls.ConnectionTree
         public void CancelIfDifferentNode_NoPendingNode_DoesNotCancel()
         {
             _sut.CancelIfDifferentNode(new ConnectionInfo());
-            _timer.DidNotReceive().Stop();
+            _timer.DidNotReceive().StopTimer();
         }
 
         [Test]
@@ -149,7 +149,7 @@ namespace LoipvRemoteTests.UI.Controls.ConnectionTree
             _sut.Execute(node);
             _timer.ClearReceivedCalls();
             _sut.CancelIfDifferentNode(node);
-            _timer.DidNotReceive().Stop();
+            _timer.DidNotReceive().StopTimer();
         }
 
         [Test]
@@ -158,7 +158,7 @@ namespace LoipvRemoteTests.UI.Controls.ConnectionTree
             _sut.Execute(new ConnectionInfo());
             _timer.ClearReceivedCalls();
             _sut.CancelIfDifferentNode(new ConnectionInfo());
-            _timer.Received().Stop();
+            _timer.Received().StopTimer();
         }
 
         // ── Timer tick ──────────────────────────────────────────────────────
@@ -206,7 +206,7 @@ namespace LoipvRemoteTests.UI.Controls.ConnectionTree
 
             _timer.Tick += Raise.EventWith(new object(), EventArgs.Empty);
 
-            _timer.Received().Stop();
+            _timer.Received().StopTimer();
         }
 
         // ── Dispose ─────────────────────────────────────────────────────────

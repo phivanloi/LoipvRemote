@@ -22,7 +22,7 @@ namespace LoipvRemote.UI.DesignSystem
         public static Bitmap Resize(Image source, int size, bool cropTransparentPadding = true)
         {
             ArgumentNullException.ThrowIfNull(source);
-            if (size < 1) throw new ArgumentOutOfRangeException(nameof(size));
+            ArgumentOutOfRangeException.ThrowIfLessThan(size, 1);
 
             using Bitmap sourceBitmap = new(source);
             Rectangle sourceBounds = cropTransparentPadding ? FindVisibleBounds(sourceBitmap) : new Rectangle(Point.Empty, sourceBitmap.Size);
@@ -54,9 +54,9 @@ namespace LoipvRemote.UI.DesignSystem
         {
             foreach (ToolStripItem item in items)
             {
-                if (item.Image != null)
+                if (item.Image is Image image)
                 {
-                    OriginalImage state = OriginalImages.GetValue(item, current => new OriginalImage(current.Image));
+                    OriginalImage state = OriginalImages.GetValue(item, _ => new OriginalImage(image));
                     state.Generated?.Dispose();
                     state.Generated = Resize(state.Image, size);
                     item.Image = state.Generated;
@@ -75,14 +75,14 @@ namespace LoipvRemote.UI.DesignSystem
             int right = -1;
             int bottom = -1;
             for (int y = 0; y < bitmap.Height; y++)
-            for (int x = 0; x < bitmap.Width; x++)
-            {
-                if (bitmap.GetPixel(x, y).A <= 8) continue;
-                left = Math.Min(left, x);
-                top = Math.Min(top, y);
-                right = Math.Max(right, x);
-                bottom = Math.Max(bottom, y);
-            }
+                for (int x = 0; x < bitmap.Width; x++)
+                {
+                    if (bitmap.GetPixel(x, y).A <= 8) continue;
+                    left = Math.Min(left, x);
+                    top = Math.Min(top, y);
+                    right = Math.Max(right, x);
+                    bottom = Math.Max(bottom, y);
+                }
 
             return right < left
                 ? new Rectangle(0, 0, bitmap.Width, bitmap.Height)

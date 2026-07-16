@@ -36,7 +36,7 @@ namespace LoipvRemote.Config.DataProviders
                 if (!File.Exists(FilePath))
                 {
                     CreateMissingDirectories();
-                    File.WriteAllLines(FilePath, new []{ $@"<?xml version=""1.0"" encoding=""UTF-8""?>", $@"<LocalConnections/>" });
+                    File.WriteAllLines(FilePath, new[] { $@"<?xml version=""1.0"" encoding=""UTF-8""?>", $@"<LocalConnections/>" });
                 }
                 fileContents = File.ReadAllText(FilePath);
             }
@@ -54,7 +54,7 @@ namespace LoipvRemote.Config.DataProviders
 
         public virtual void Save(string content)
         {
-            string temporaryFile = null;
+            string? temporaryFile = null;
             try
             {
                 CreateMissingDirectories();
@@ -89,7 +89,7 @@ namespace LoipvRemote.Config.DataProviders
 
         private void CreateMissingDirectories()
         {
-            string dirname = Path.GetDirectoryName(FilePath);
+            string? dirname = Path.GetDirectoryName(FilePath);
             if (dirname == null) return;
             Directory.CreateDirectory(dirname);
         }

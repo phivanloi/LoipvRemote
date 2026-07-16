@@ -6,6 +6,12 @@
     <AssemblyName>ObjectListView</AssemblyName>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <UseWindowsForms>true</UseWindowsForms>
+    <SupportedOSPlatformVersion>10.0.26100.0</SupportedOSPlatformVersion>
+    <!-- Vendored ObjectListView is kept as an isolated UI dependency. Its
+         upstream source predates nullable annotations and the current
+         analyzer set; production code remains analyzer-enabled. -->
+    <Nullable>disable</Nullable>
+    <EnableNETAnalyzers>false</EnableNETAnalyzers>
     <NoWarn>$(NoWarn);WFO1000</NoWarn>
     <EnableWinFormsAnalyzers>false</EnableWinFormsAnalyzers>
   </PropertyGroup>

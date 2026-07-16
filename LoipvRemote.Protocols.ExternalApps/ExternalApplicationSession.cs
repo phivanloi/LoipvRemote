@@ -5,7 +5,7 @@ using LoipvRemote.Protocols.Abstractions;
 namespace LoipvRemote.Protocols.ExternalApps;
 
 /// <summary>Lifecycle implementation for a configured external application.</summary>
-public sealed class ExternalApplicationSession : IAsyncProtocolSession, IEmbeddedWindow
+public sealed class ExternalApplicationSession : IProtocolSession, IEmbeddedWindow
 {
     private readonly ExternalApplicationDefinition _definition;
     private readonly IExternalApplicationHost _host;
@@ -30,7 +30,7 @@ public sealed class ExternalApplicationSession : IAsyncProtocolSession, IEmbedde
 
     public bool IsAvailable => State == ProtocolSessionState.Connected && _host.IsRunning;
 
-    public bool Initialize()
+    private bool InitializeCore()
     {
         if (State != ProtocolSessionState.Created || !_definition.IsValid)
         {
@@ -45,10 +45,10 @@ public sealed class ExternalApplicationSession : IAsyncProtocolSession, IEmbedde
     public ValueTask<bool> InitializeAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return ValueTask.FromResult(Initialize());
+        return ValueTask.FromResult(InitializeCore());
     }
 
-    public bool Connect()
+    private bool ConnectCore()
     {
         if (State != ProtocolSessionState.Initialized || !_host.Start(_definition))
         {
@@ -63,15 +63,13 @@ public sealed class ExternalApplicationSession : IAsyncProtocolSession, IEmbedde
     public ValueTask<bool> ConnectAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return ValueTask.FromResult(Connect());
+        return ValueTask.FromResult(ConnectCore());
     }
-
-    public void Disconnect() => Close();
 
     public ValueTask DisconnectAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        Disconnect();
+        CloseCore();
         return ValueTask.CompletedTask;
     }
 
@@ -95,7 +93,7 @@ public sealed class ExternalApplicationSession : IAsyncProtocolSession, IEmbedde
             _host.Resize(bounds);
     }
 
-    public void Close()
+    private void CloseCore()
     {
         if (State == ProtocolSessionState.Closed)
             return;
@@ -110,7 +108,7 @@ public sealed class ExternalApplicationSession : IAsyncProtocolSession, IEmbedde
     public ValueTask CloseAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        Close();
+        CloseCore();
         return ValueTask.CompletedTask;
     }
 
@@ -119,7 +117,7 @@ public sealed class ExternalApplicationSession : IAsyncProtocolSession, IEmbedde
         if (_disposed)
             return;
 
-        Close();
+        CloseCore();
         _host.Exited -= HostOnExited;
         _host.Dispose();
         _disposed = true;

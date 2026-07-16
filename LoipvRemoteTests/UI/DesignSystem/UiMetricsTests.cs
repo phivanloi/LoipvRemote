@@ -48,7 +48,7 @@ namespace LoipvRemoteTests.UI.DesignSystem
         public void DpiScalingRejectsInvalidScale()
         {
             UiMetrics metrics = new(new UiPreferences("System", 100, 20, UiDensity.Standard));
-            Assert.Throws<ArgumentOutOfRangeException>(() => metrics.ScaleForDpi(20, 0));
+            Assert.Throws<ArgumentOutOfRangeException>(() => UiMetrics.ScaleForDpi(20, 0));
         }
 
         [TestCase(1f, 20)]
@@ -58,7 +58,7 @@ namespace LoipvRemoteTests.UI.DesignSystem
         public void DpiScalingReturnsPhysicalPixels(float dpiScale, int expected)
         {
             UiMetrics metrics = new(new UiPreferences("System", 100, 20, UiDensity.Standard));
-            Assert.That(metrics.ScaleForDpi(20, dpiScale), Is.EqualTo(expected));
+            Assert.That(UiMetrics.ScaleForDpi(20, dpiScale), Is.EqualTo(expected));
         }
 
         [TestCase(14, 26)]

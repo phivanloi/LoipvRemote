@@ -27,13 +27,13 @@ namespace LoipvRemote.App
     public sealed class ConnectionExportService(
         ConnectionWorkspaceAdapter connectionWorkspace,
         MessageCollector messageCollector,
-        IConnectionWorkspace workspace,
+        IConnectionTreeWorkspace workspace,
         ICredentialRepositoryList credentialRepositoryList,
         ExternalToolsService externalToolsService)
     {
         private readonly ConnectionWorkspaceAdapter _connectionWorkspace = connectionWorkspace ?? throw new ArgumentNullException(nameof(connectionWorkspace));
         private readonly MessageCollector _messageCollector = messageCollector ?? throw new ArgumentNullException(nameof(messageCollector));
-        private readonly IConnectionWorkspace _workspace = workspace ?? throw new ArgumentNullException(nameof(workspace));
+        private readonly IConnectionTreeWorkspace _workspace = workspace ?? throw new ArgumentNullException(nameof(workspace));
         private readonly ICredentialRepositoryList _credentialRepositoryList = credentialRepositoryList ?? throw new ArgumentNullException(nameof(credentialRepositoryList));
         private readonly ExternalToolsService _externalToolsService = externalToolsService ?? throw new ArgumentNullException(nameof(externalToolsService));
 
@@ -103,7 +103,7 @@ namespace LoipvRemote.App
                         SaveCanonicalXmlFile(fileName, exportTarget);
                         break;
                     case SaveFormat.Csv:
-                        ISerializer<ConnectionInfo, string> serializer =
+                        CsvConnectionsSerializer serializer =
                             new CsvConnectionsSerializer(saveFilter, _credentialRepositoryList);
                         string serializedData = serializer.Serialize(exportTarget);
                         new FileDataProvider(fileName).Save(serializedData);

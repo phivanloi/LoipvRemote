@@ -2,7 +2,7 @@ using System.ComponentModel;
 
 namespace LoipvRemote.Domain.Protocols.Rdp;
 
-public enum RDPPerformanceFlags
+public enum RdpPerformanceOptions
 {
     [Description("strRDPDisableWallpaper")]
     DisableWallpaper = 0x1,

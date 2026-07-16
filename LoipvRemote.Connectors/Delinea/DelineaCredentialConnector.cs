@@ -1,14 +1,25 @@
 using LoipvRemote.Connectors.Abstractions;
+using LoipvRemote.Protocols.Abstractions;
 
 namespace LoipvRemote.Connectors.Delinea;
 
 public sealed class DelineaCredentialConnector : IExternalCredentialConnector
 {
+    private readonly SecretServerInterface _client;
+
+    public DelineaCredentialConnector(
+        IExternalCredentialPrompt prompt,
+        IExternalCredentialSettingsStore settings)
+    {
+        _client = new SecretServerInterface(prompt, settings);
+    }
+
     public string Provider => "DelineaSecretServer";
 
-    public ExternalCredential Resolve(string secretReference)
+    public Task<ExternalCredential> ResolveAsync(
+        string secretReference,
+        CancellationToken cancellationToken = default)
     {
-        SecretServerInterface.FetchSecretFromServer(secretReference, out string username, out string password, out string domain, out string privateKey);
-        return new ExternalCredential(username, password, domain, privateKey);
+        return _client.FetchSecretFromServerAsync(secretReference, cancellationToken);
     }
 }

@@ -8,12 +8,12 @@ namespace LoipvRemote.Connection
     {
         IEnumerable<string> ActiveConnections { get; }
 
-        void OpenConnection(
+        Task OpenConnectionAsync(
             ContainerInfo containerInfo,
             ConnectionInfo.Force force = ConnectionInfo.Force.None,
             ConnectionWindow? conForm = null);
 
-        void OpenConnection(
+        Task OpenConnectionAsync(
             ConnectionInfo connectionInfo,
             ConnectionInfo.Force force = ConnectionInfo.Force.None,
             ConnectionWindow? conForm = null);

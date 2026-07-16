@@ -1,6 +1,6 @@
 namespace LoipvRemote.UI.Forms
 {
-    partial class FrmUnhandledException
+    partial class UnhandledExceptionForm
     {
         /// <summary>
         /// Required designer variable.
@@ -203,7 +203,7 @@ namespace LoipvRemote.UI.Forms
             this.buttonCreateBug.UseVisualStyleBackColor = true;
             this.buttonCreateBug.Click += new System.EventHandler(this.buttonCreateBug_Click);
             //
-            // FrmUnhandledException
+            // UnhandledExceptionForm
             //
             this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
@@ -213,7 +213,7 @@ namespace LoipvRemote.UI.Forms
             this.Controls.Add(this.tableLayoutPanel1);
             this.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.MinimumSize = new System.Drawing.Size(550, 350);
-            this.Name = "FrmUnhandledException";
+            this.Name = "UnhandledExceptionForm";
             this.ShowInTaskbar = false;
             this.SizeGripStyle = System.Windows.Forms.SizeGripStyle.Hide;
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;

@@ -27,19 +27,19 @@ namespace LoipvRemote.Tree
 
         private bool UserConfirmsEmptyFolderDeletion(AbstractConnectionRecord deletionTarget)
         {
-            string messagePrompt = string.Format(Language.ConfirmDeleteNodeFolder, deletionTarget.Name);
+            string messagePrompt = FormatText(Language.ConfirmDeleteNodeFolder, deletionTarget.Name);
             return PromptUser(messagePrompt);
         }
 
         private bool UserConfirmsNonEmptyFolderDeletion(AbstractConnectionRecord deletionTarget)
         {
-            string messagePrompt = string.Format(Language.ConfirmDeleteNodeFolderNotEmpty, deletionTarget.Name);
+            string messagePrompt = FormatText(Language.ConfirmDeleteNodeFolderNotEmpty, deletionTarget.Name);
             return PromptUser(messagePrompt);
         }
 
         private bool UserConfirmsConnectionDeletion(AbstractConnectionRecord deletionTarget)
         {
-            string messagePrompt = string.Format(Language.ConfirmDeleteNodeConnection, deletionTarget.Name);
+            string messagePrompt = FormatText(Language.ConfirmDeleteNodeConnection, deletionTarget.Name);
             return PromptUser(messagePrompt);
         }
 

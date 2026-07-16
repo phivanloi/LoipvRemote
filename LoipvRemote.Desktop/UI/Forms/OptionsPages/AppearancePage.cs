@@ -47,7 +47,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
 
             lblLanguage.Text = Language.LanguageString;
             lblLanguageRestartRequired.Text =
-                string.Format(Language.LanguageRestartRequired, Application.ProductName);
+                FormatText(Language.LanguageRestartRequired, Application.ProductName);
             chkShowDescriptionTooltipsInTree.Text = Language.ShowDescriptionTooltips;
             chkShowFullConnectionsFilePathInTitle.Text = Language.ShowFullConsFilePath;
             chkShowSystemTrayIcon.Text = Language.AlwaysShowSysTrayIcon;
@@ -78,7 +78,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             if (!string.IsNullOrEmpty(Settings.Default.OverrideUICulture) &&
                 SupportedCultures.IsNameSupported(Settings.Default.OverrideUICulture))
             {
-                cboLanguage.SelectedItem = SupportedCultures.get_CultureNativeName(Settings.Default.OverrideUICulture);
+                cboLanguage.SelectedItem = SupportedCultures.CultureNativeNameFromName(Settings.Default.OverrideUICulture);
             }
 
             if (cboLanguage.SelectedIndex == -1)
@@ -102,10 +102,12 @@ namespace LoipvRemote.UI.Forms.OptionsPages
 
         public override void SaveSettings()
         {
+            string? selectedLanguage = cboLanguage.SelectedItem?.ToString();
             if (cboLanguage.SelectedIndex > 0 &&
-                SupportedCultures.IsNativeNameSupported(Convert.ToString(cboLanguage.SelectedItem)))
+                selectedLanguage is not null &&
+                SupportedCultures.IsNativeNameSupported(selectedLanguage))
             {
-                Settings.Default.OverrideUICulture = SupportedCultures.get_CultureName(Convert.ToString(cboLanguage.SelectedItem));
+                Settings.Default.OverrideUICulture = SupportedCultures.CultureNameFromNativeName(selectedLanguage);
             }
             else
             {
@@ -129,10 +131,10 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             Properties.OptionsAppearancePage.Default.MinimizeToTray = chkMinimizeToSystemTray.Checked;
             Properties.OptionsAppearancePage.Default.CloseToTray = chkCloseToSystemTray.Checked;
 
-            Properties.OptionsAppearancePage.Default.UiFontFamily = Convert.ToString(cboUiFont.SelectedItem) ?? "System";
+            Properties.OptionsAppearancePage.Default.UiFontFamily = cboUiFont.SelectedItem?.ToString() ?? "System";
             Properties.OptionsAppearancePage.Default.UiFontScalePercent = Decimal.ToInt32(numUiFontScale.Value);
             Properties.OptionsAppearancePage.Default.UiIconSize = Decimal.ToInt32(numUiIconSize.Value);
-            Properties.OptionsAppearancePage.Default.UiDensity = Convert.ToString(cboUiDensity.SelectedItem) ?? UiDensity.Standard.ToString();
+            Properties.OptionsAppearancePage.Default.UiDensity = cboUiDensity.SelectedItem?.ToString() ?? UiDensity.Standard.ToString();
             Properties.OptionsAppearancePage.Default.Save();
             UiScaleManager.Instance.RefreshFromSettings();
         }
@@ -215,7 +217,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             if (pnlOptions.Height != requiredHeight) pnlOptions.Height = requiredHeight;
         }
 
-        private void UpdateUiPreview()
+        private static void UpdateUiPreview()
         {
             // Interface sizing is applied after saving; no redundant preview text is shown here.
         }
@@ -241,7 +243,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
         {
             Type settingsType = typeof(OptRegistryAppearancePage);
             RegistryLoader.RegistrySettings.TryGetValue(settingsType, out var settings);
-            pageRegSettingsInstance = settings as OptRegistryAppearancePage;
+            pageRegSettingsInstance = settings as OptRegistryAppearancePage ?? new OptRegistryAppearancePage();
 
             // If registry settings don't exist, create a default instance to prevent null reference exceptions
             if (pageRegSettingsInstance == null)

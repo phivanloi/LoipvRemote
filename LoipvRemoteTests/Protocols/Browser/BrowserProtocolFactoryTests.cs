@@ -62,22 +62,25 @@ public sealed class BrowserProtocolFactoryTests
     }
 
     [Test]
-    public void SessionForwardsLifecycleToBrowserClient()
+    public async Task SessionForwardsLifecycleToBrowserClient()
     {
         var client = new RecordingBrowserClient();
         using var session = new BrowserProtocolSession(
             client,
             new BrowserConnectionOptions("server.example", 443, "https", 443));
 
+        bool initialized = await session.InitializeAsync();
+        bool connected = await session.ConnectAsync();
+
         Assert.Multiple(() =>
         {
-            Assert.That(session.Initialize(), Is.True);
-            Assert.That(session.Connect(), Is.True);
+            Assert.That(initialized, Is.True);
+            Assert.That(connected, Is.True);
             Assert.That(client.LastUri?.ToString(), Is.EqualTo("https://server.example/"));
             Assert.That(session.State, Is.EqualTo(LoipvRemote.Domain.Protocols.ProtocolSessionState.Connected));
         });
 
-        session.Close();
+        await session.CloseAsync();
         Assert.That(session.State, Is.EqualTo(LoipvRemote.Domain.Protocols.ProtocolSessionState.Closed));
     }
 

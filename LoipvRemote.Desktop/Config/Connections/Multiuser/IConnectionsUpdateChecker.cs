@@ -4,12 +4,10 @@ namespace LoipvRemote.Config.Connections.Multiuser
 {
     public interface IConnectionsUpdateChecker : IDisposable
     {
-        bool IsUpdateAvailable();
-
-        void IsUpdateAvailableAsync();
+        Task<bool> IsUpdateAvailableAsync(CancellationToken cancellationToken = default);
 
         event EventHandler UpdateCheckStarted;
-        event UpdateCheckFinishedEventHandler UpdateCheckFinished;
-        event ConnectionsUpdateAvailableEventHandler ConnectionsUpdateAvailable;
+        event EventHandler<ConnectionsUpdateCheckFinishedEventArgs> UpdateCheckFinished;
+        event EventHandler<ConnectionsUpdateAvailableEventArgs> ConnectionsUpdateAvailable;
     }
 }

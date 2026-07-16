@@ -136,7 +136,7 @@ public sealed class SqliteConnectionDefinitionStore(string connectionString) : I
         }
         catch (SqliteException exception)
         {
-            throw new InvalidDataException("SQLite connection database uses an unsupported legacy schema.", exception);
+            throw new InvalidDataException("SQLite connection database uses an unsupported schema.", exception);
         }
 
         command.CommandText = "SELECT version FROM schema_version LIMIT 1;";

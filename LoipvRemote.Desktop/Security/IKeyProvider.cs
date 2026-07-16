@@ -5,6 +5,6 @@ namespace LoipvRemote.Security
 {
     public interface IKeyProvider
     {
-        Optional<SecureString> GetKey();
+        OptionalValue<SecureString> GetKey();
     }
 }

@@ -22,14 +22,6 @@ public sealed class ProtocolSessionCollection : IList<IProtocolSession>, IReadOn
         }
     }
 
-    /// <summary>Compatibility indexer for callers that search by session instance.</summary>
-    public IProtocolSession? this[object index] => index switch
-    {
-        IProtocolSession session when _sessions.Contains(session) => session,
-        int integer when integer >= 0 && integer < _sessions.Count => _sessions[integer],
-        _ => null
-    };
-
     public int Count => _sessions.Count;
     public bool IsReadOnly => false;
 

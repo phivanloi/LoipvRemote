@@ -4,8 +4,8 @@ namespace LoipvRemote.Messages;
 
 public interface IMessage
 {
-    MessageClass Class { get; set; }
+    MessageClass MessageClass { get; set; }
     string Text { get; set; }
-    DateTime Date { get; set; }
+    DateTime Timestamp { get; set; }
     bool OnlyLog { get; set; }
 }

@@ -37,7 +37,7 @@ namespace LoipvRemote.UI.Controls
             OUT
         }
 
-        private MouseState _mice { get; set; }
+        private MouseState MouseInteractionState { get; set; }
 
 
         protected override void OnCreateControl()
@@ -48,26 +48,26 @@ namespace LoipvRemote.UI.Controls
             // Allows for Overlaying
             SetStyle(ControlStyles.SupportsTransparentBackColor, true);
             BackColor = Color.Transparent;
-            _mice = MouseState.OUT;
+            MouseInteractionState = MouseState.OUT;
             MouseEnter += (sender, args) =>
             {
-                _mice = MouseState.HOVER;
+                MouseInteractionState = MouseState.HOVER;
                 Invalidate();
             };
             MouseLeave += (sender, args) =>
             {
-                _mice = MouseState.OUT;
+                MouseInteractionState = MouseState.OUT;
                 Invalidate();
             };
             MouseDown += (sender, args) =>
             {
                 if (args.Button != MouseButtons.Left) return;
-                _mice = MouseState.DOWN;
+                MouseInteractionState = MouseState.DOWN;
                 Invalidate();
             };
             MouseUp += (sender, args) =>
             {
-                _mice = MouseState.OUT;
+                MouseInteractionState = MouseState.OUT;
 
                 Invalidate();
             };
@@ -94,7 +94,8 @@ namespace LoipvRemote.UI.Controls
             Color center;
 
             // Overlay Graphic
-            e.Graphics.Clear(Parent.BackColor);
+            Color parentBackColor = Parent?.BackColor ?? BackColor;
+            e.Graphics.Clear(parentBackColor);
             if (Enabled)
             {
                 if (Checked)
@@ -104,7 +105,7 @@ namespace LoipvRemote.UI.Controls
                 else
                 {
                     center = Color.Transparent;
-                    if (_mice == MouseState.HOVER)
+                    if (MouseInteractionState == MouseState.HOVER)
                     {
                         outline = _themeManager.ActiveTheme.ExtendedPalette.getColor("CheckBox_Border_Hover");
                     }
@@ -117,7 +118,7 @@ namespace LoipvRemote.UI.Controls
             }
 
             Rectangle textRect = new(_textXCoord, Padding.Top, Width - 16, Height);
-            TextRenderer.DrawText(e.Graphics, Text, Font, textRect, fore, Parent.BackColor,
+            TextRenderer.DrawText(e.Graphics, Text, Font, textRect, fore, parentBackColor,
                                   TextFormatFlags.PathEllipsis);
 
             g.FillEllipse(new SolidBrush(centerBack), _circle);

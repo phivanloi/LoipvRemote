@@ -1,74 +1,83 @@
-﻿using Microsoft.Win32;
-using Org.BouncyCastle.Crypto;
+﻿using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.Parameters;
 using Org.BouncyCastle.OpenSsl;
 using Org.BouncyCastle.Security;
 using SecretServerAuthentication.DSS;
 using SecretServerRestClient.DSS;
 using System.Security.Cryptography;
+using LoipvRemote.Connectors.Abstractions;
+using LoipvRemote.Protocols.Abstractions;
 
 namespace LoipvRemote.Connectors.Delinea;
 
 public class SecretServerInterface
 {
+    private readonly IExternalCredentialPrompt _prompt;
+    private readonly IExternalCredentialSettingsStore _settings;
+
+    public SecretServerInterface(
+        IExternalCredentialPrompt prompt,
+        IExternalCredentialSettingsStore settings)
+    {
+        _prompt = prompt ?? throw new ArgumentNullException(nameof(prompt));
+        _settings = settings ?? throw new ArgumentNullException(nameof(settings));
+    }
+
     private static class SSConnectionData
     {
         public static string ssUsername = "";
         public static string ssPassword = "";
         public static string ssUrl = "";
         public static string ssOTP = "";
-        public static bool ssSSO = false;
-        public static bool initdone = false;
+        public static bool ssSSO;
+        public static bool initdone;
+        public static IExternalCredentialPrompt? Prompt;
+        public static IExternalCredentialSettingsStore? Settings;
 
         //token 
         public static string ssTokenBearer = "";
         public static DateTime ssTokenExpiresOn = DateTime.UtcNow;
         public static string ssTokenRefresh = "";
 
-        public static void Init()
+        public static async Task InitAsync(
+            IExternalCredentialPrompt prompt,
+            IExternalCredentialSettingsStore settings,
+            CancellationToken cancellationToken)
         {
+            Prompt = prompt;
+            Settings = settings;
             if (initdone == true)
                 return;
 
-                RegistryKey key = Registry.CurrentUser.CreateSubKey(@"SOFTWARE\LoipvRemote\SecretServer");
                 try
                 {
-                    // display gui and ask for data
-                    SSConnectionForm f = new();
-                    string? un = key.GetValue("Username") as string;
-                    f.tbUsername.Text = un ?? "";
-                    f.tbPassword.Text = SSConnectionData.ssPassword;    // in OTP refresh cases, this value might already be filled
+                    string? un = settings.GetString("Delinea", "Username");
 
-                string? url = key.GetValue("URL") as string;
+                string? url = settings.GetString("Delinea", "URL");
                 if (url == null || !url.Contains("://"))
                     url = "https://cred.domain.local/SecretServer";
-                f.tbSSURL.Text = url;
 
-                var b = key.GetValue("SSO");
-                if (b == null || (string)b != "True")
-                    ssSSO = false;
-                else
-                    ssSSO = true;
-                f.cbUseSSO.Checked = ssSSO;
+                ssSSO = settings.GetBoolean("Delinea", "SSO");
                 
-                // show dialog
                 while (true)
                 {
-                    _ = f.ShowDialog();
-
-                    if (f.DialogResult != DialogResult.OK)
+                    DelineaPromptResult? result = await prompt.PromptDelineaAsync(
+                        new DelineaPromptRequest(url, un ?? "", ssPassword, ssOTP, ssSSO),
+                        cancellationToken).ConfigureAwait(true);
+                    if (result is null)
                         return;
 
                     // store values to memory
-                    ssUsername = f.tbUsername.Text;
-                    ssPassword = f.tbPassword.Text;
-                    ssUrl = f.tbSSURL.Text;
-                    ssSSO = f.cbUseSSO.Checked;
-                    ssOTP = f.tbOTP.Text;
+                    ssUsername = result.Username;
+                    ssPassword = result.Password;
+                    ssUrl = result.ServerUrl;
+                    url = ssUrl;
+                    ssSSO = result.UseSso;
+                    ssOTP = result.OneTimePassword;
                     // check connection first
                     try
                     {
-                        if (TestCredentials() == true)
+                        if (await TestCredentialsAsync(cancellationToken).ConfigureAwait(true))
                         {
                             initdone = true;
                             break;
@@ -76,29 +85,24 @@ public class SecretServerInterface
                     }
                     catch (Exception)
                     {
-                        MessageBox.Show("Test Credentials failed - please check your credentials");
+                        // Prompt again without coupling the connector runtime to a UI toolkit.
                     }
                 }
 
 
                 // write values to registry
-                key.SetValue("Username", ssUsername);
-                key.SetValue("URL", ssUrl);
-                key.SetValue("SSO", ssSSO);
+                settings.SetString("Delinea", "Username", ssUsername);
+                settings.SetString("Delinea", "URL", ssUrl);
+                settings.SetBoolean("Delinea", "SSO", ssSSO);
             }
             catch (Exception)
             {
                 throw;
             }
-            finally
-            {
-                key.Close();
-            }
-
         }
     }
 
-    private static bool TestCredentials()
+    private static async Task<bool> TestCredentialsAsync(CancellationToken cancellationToken)
     {
         if (SSConnectionData.ssSSO)
         {
@@ -108,7 +112,7 @@ public class SecretServerInterface
         else
         {
 
-            if (!String.IsNullOrEmpty(GetToken()))
+            if (!String.IsNullOrEmpty(await GetTokenAsync(cancellationToken).ConfigureAwait(false)))
             {
                 return true;
             }
@@ -119,7 +123,7 @@ public class SecretServerInterface
         }
     }
 
-    private static SecretsServiceClient ConstructSecretsServiceClient()
+    private static async Task<SecretsServiceClient> ConstructSecretsServiceClientAsync(CancellationToken cancellationToken)
     {
         string baseURL = SSConnectionData.ssUrl;
         if (SSConnectionData.ssSSO)
@@ -137,7 +141,7 @@ public class SecretServerInterface
             var httpClient = new HttpClient();
             {
 
-                var token = GetToken();
+                var token = await GetTokenAsync(cancellationToken).ConfigureAwait(false);
                 // Set credentials (token):
                 httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
 
@@ -147,34 +151,34 @@ public class SecretServerInterface
         }
 
     }
-    private static void FetchSecret(int secretID, out string secretUsername, out string secretPassword, out string secretDomain, out string privatekey)
+    private static async Task<ExternalCredential> FetchSecretAsync(int secretID, CancellationToken cancellationToken)
     {
-        var client = ConstructSecretsServiceClient();
-        SecretModel secret = client.GetSecretAsync(false, true, secretID, null).Result;
+        var client = await ConstructSecretsServiceClientAsync(cancellationToken).ConfigureAwait(false);
+        SecretModel secret = await client.GetSecretAsync(false, true, secretID, null, cancellationToken).ConfigureAwait(false);
 
         // clear return variables
-        secretDomain = "";
-        secretUsername = "";
-        secretPassword = "";
-        privatekey = "";
+        string secretDomain = "";
+        string secretUsername = "";
+        string secretPassword = "";
+        string privatekey = "";
         string privatekeypassphrase = "";
 
         // parse data and extract what we need
         foreach (var item in secret.Items)
         {
-            if (item.FieldName.ToLower().Equals("domain"))
+            if (string.Equals(item.FieldName, "domain", StringComparison.OrdinalIgnoreCase))
                 secretDomain = item.ItemValue;
-            else if (item.FieldName.ToLower().Equals("username"))
+            else if (string.Equals(item.FieldName, "username", StringComparison.OrdinalIgnoreCase))
                 secretUsername = item.ItemValue;
-            else if (item.FieldName.ToLower().Equals("password"))
+            else if (string.Equals(item.FieldName, "password", StringComparison.OrdinalIgnoreCase))
                 secretPassword = item.ItemValue;
-            else if (item.FieldName.ToLower().Equals("private key"))
+            else if (string.Equals(item.FieldName, "private key", StringComparison.OrdinalIgnoreCase))
             {
                 client.ReadResponseNoJSONConvert = true;
-                privatekey = client.GetFieldAsync(false, false, secretID, "private-key").Result;
+                privatekey = await client.GetFieldAsync(false, false, secretID, "private-key", cancellationToken).ConfigureAwait(false);
                 client.ReadResponseNoJSONConvert = false;
             }
-            else if (item.FieldName.ToLower().Equals("private key passphrase"))
+            else if (string.Equals(item.FieldName, "private key passphrase", StringComparison.OrdinalIgnoreCase))
                 privatekeypassphrase = item.ItemValue;
         }
 
@@ -193,7 +197,7 @@ public class SecretServerInterface
         }
 
         // conversion to putty format necessary?
-        if (!string.IsNullOrEmpty(privatekey) && !privatekey.StartsWith("PuTTY-User-Key-File-2"))
+        if (!string.IsNullOrEmpty(privatekey) && !privatekey.StartsWith("PuTTY-User-Key-File-2", StringComparison.Ordinal))
         {
             try
             {
@@ -205,6 +209,8 @@ public class SecretServerInterface
 
             }
         }
+
+        return new ExternalCredential(secretUsername, secretPassword, secretDomain, privatekey);
     }
 
         #region PUTTY KEY HANDLING
@@ -223,7 +229,7 @@ public class SecretServerInterface
 
         return ""+textWriter.ToString();
     }
-    private class PasswordFinder(string password) : IPasswordFinder
+    private sealed class PasswordFinder(string password) : IPasswordFinder
     {
         private string password = password;
 
@@ -252,12 +258,12 @@ public class SecretServerInterface
 
 
     #region TOKEN
-    private static string GetToken()
+    private static async Task<string> GetTokenAsync(CancellationToken cancellationToken)
     {
         // if there is no token, fetch a fresh one
         if (String.IsNullOrEmpty(SSConnectionData.ssTokenBearer))
         {
-            return GetTokenFresh();
+            return await GetTokenFreshAsync(cancellationToken).ConfigureAwait(false);
         }
         // if there is a token, check if it is valid
         if (SSConnectionData.ssTokenExpiresOn >= DateTime.UtcNow)
@@ -273,7 +279,13 @@ public class SecretServerInterface
                 TokenResponse token = new();
                 try
                 {
-                    token = tokenClient.AuthorizeAsync(Grant_type.Refresh_token, null, null, SSConnectionData.ssTokenRefresh, null).Result;
+                    token = await tokenClient.AuthorizeAsync(
+                        Grant_type.Refresh_token,
+                        null,
+                        null,
+                        SSConnectionData.ssTokenRefresh,
+                        cancellationToken,
+                        null).ConfigureAwait(false);
                     var tokenResult = token.Access_token;
 
                     SSConnectionData.ssTokenBearer = tokenResult;
@@ -292,27 +304,36 @@ public class SecretServerInterface
                     {
                         SSConnectionData.initdone = false;
                         // the call below executes a connection test, which fetches a valid token
-                        SSConnectionData.Init();
+                        await SSConnectionData.InitAsync(
+                            SSConnectionData.Prompt ?? throw new InvalidOperationException("Credential prompt is not configured."),
+                            SSConnectionData.Settings ?? throw new InvalidOperationException("Credential settings are not configured."),
+                            cancellationToken).ConfigureAwait(true);
                         // we now have a fresh token in memory. return it to caller
                         return SSConnectionData.ssTokenBearer;
                     }
                     else
                     {
                         // no user interaction required. get a fresh token and return it to caller
-                        return GetTokenFresh();
+                        return await GetTokenFreshAsync(cancellationToken).ConfigureAwait(false);
                     }
                 }
             }
         }
     }
-    static string GetTokenFresh()
+    static async Task<string> GetTokenFreshAsync(CancellationToken cancellationToken)
     {
         using (var httpClient = new HttpClient())
         {
             // Authenticate:
             var tokenClient = new OAuth2ServiceClient(SSConnectionData.ssUrl, httpClient);
             // call below will throw an exception if the creds are invalid
-            var token = tokenClient.AuthorizeAsync(Grant_type.Password, SSConnectionData.ssUsername, SSConnectionData.ssPassword, null, SSConnectionData.ssOTP).Result;
+            var token = await tokenClient.AuthorizeAsync(
+                Grant_type.Password,
+                SSConnectionData.ssUsername,
+                SSConnectionData.ssPassword,
+                null,
+                cancellationToken,
+                SSConnectionData.ssOTP).ConfigureAwait(false);
             // here we can be sure the creds are ok - return success state                   
             var tokenResult = token.Access_token;
 
@@ -326,15 +347,17 @@ public class SecretServerInterface
 
 
     // input must be the secret id to fetch
-    public static void FetchSecretFromServer(string input, out string username, out string password, out string domain, out string privatekey)
+    public async Task<ExternalCredential> FetchSecretFromServerAsync(
+        string input,
+        CancellationToken cancellationToken = default)
     {
         // get secret id
-        int secretID = Int32.Parse(input);
+        int secretID = int.Parse(input, System.Globalization.CultureInfo.InvariantCulture);
 
         // init connection credentials, display popup if necessary
-        SSConnectionData.Init();
+        await SSConnectionData.InitAsync(_prompt, _settings, cancellationToken).ConfigureAwait(true);
 
         // get the secret
-        FetchSecret(secretID, out username, out password, out domain, out privatekey);
+        return await FetchSecretAsync(secretID, cancellationToken).ConfigureAwait(false);
     }
 }

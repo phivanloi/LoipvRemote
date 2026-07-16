@@ -198,7 +198,7 @@ namespace LoipvRemote.UI.TaskDialog
             //
             // bt1
             //
-            this.bt1._mice = MrngButton.MouseState.HOVER;
+            this.bt1.MouseInteractionState = MrngButton.MouseState.HOVER;
             this.bt1.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.bt1.Location = new System.Drawing.Point(218, 8);
             this.bt1.Name = "bt1";
@@ -208,7 +208,7 @@ namespace LoipvRemote.UI.TaskDialog
             //
             // bt2
             //
-            this.bt2._mice = MrngButton.MouseState.HOVER;
+            this.bt2.MouseInteractionState = MrngButton.MouseState.HOVER;
             this.bt2.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.bt2.Location = new System.Drawing.Point(299, 8);
             this.bt2.Name = "bt2";
@@ -218,7 +218,7 @@ namespace LoipvRemote.UI.TaskDialog
             //
             // bt3
             //
-            this.bt3._mice = MrngButton.MouseState.HOVER;
+            this.bt3.MouseInteractionState = MrngButton.MouseState.HOVER;
             this.bt3.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.bt3.Location = new System.Drawing.Point(380, 8);
             this.bt3.Name = "bt3";
@@ -228,7 +228,7 @@ namespace LoipvRemote.UI.TaskDialog
             //
             // cbVerify
             //
-            this.cbVerify._mice = MrngCheckBox.MouseState.HOVER;
+            this.cbVerify.MouseInteractionState = MrngCheckBox.MouseState.HOVER;
             this.cbVerify.AutoSize = true;
             this.cbVerify.Location = new System.Drawing.Point(13, 34);
             this.cbVerify.Name = "cbVerify";

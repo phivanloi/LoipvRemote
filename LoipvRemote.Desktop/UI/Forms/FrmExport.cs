@@ -28,14 +28,14 @@ namespace LoipvRemote.UI.Forms
         {
             get
             {
-                ExportFormat exportFormat = cboFileFormat.SelectedItem as ExportFormat;
+                ExportFormat? exportFormat = cboFileFormat.SelectedItem as ExportFormat;
                 return exportFormat?.Format ?? SaveFormat.Xml;
             }
             set
             {
                 foreach (object item in cboFileFormat.Items)
                 {
-                    ExportFormat exportFormat = item as ExportFormat;
+                    ExportFormat? exportFormat = item as ExportFormat;
                     if (exportFormat?.Format != value) continue;
                     cboFileFormat.SelectedItem = item;
                     break;
@@ -70,9 +70,9 @@ namespace LoipvRemote.UI.Forms
             }
         }
 
-        private ContainerInfo _selectedFolder = null!;
+        private ContainerInfo? _selectedFolder;
 
-        public ContainerInfo SelectedFolder
+        public ContainerInfo? SelectedFolder
         {
             get => _selectedFolder;
             set
@@ -83,9 +83,9 @@ namespace LoipvRemote.UI.Forms
             }
         }
 
-        private ConnectionInfo _selectedConnection = null!;
+        private ConnectionInfo? _selectedConnection;
 
-        public ConnectionInfo SelectedConnection
+        public ConnectionInfo? SelectedConnection
         {
             get => _selectedConnection;
             set
@@ -146,7 +146,7 @@ namespace LoipvRemote.UI.Forms
 
         #region Event Handlers
 
-        private void ExportForm_Load(object sender, EventArgs e)
+        private void ExportForm_Load(object? sender, EventArgs e)
         {
             cboFileFormat.Items.Clear();
             cboFileFormat.Items.Add(new ExportFormat(SaveFormat.Xml));
@@ -157,12 +157,12 @@ namespace LoipvRemote.UI.Forms
             ApplyLanguage();
         }
 
-        private void txtFileName_TextChanged(object sender, EventArgs e)
+        private void txtFileName_TextChanged(object? sender, EventArgs e)
         {
             btnOK.Enabled = !string.IsNullOrEmpty(txtFileName.Text);
         }
 
-        private void btnBrowse_Click(object sender, EventArgs e)
+        private void btnBrowse_Click(object? sender, EventArgs e)
         {
             using (SaveFileDialog saveFileDialog = new())
             {
@@ -171,9 +171,12 @@ namespace LoipvRemote.UI.Forms
                 saveFileDialog.OverwritePrompt = true;
 
                 List<string> fileTypes = new();
-                fileTypes.AddRange(new[] {"LoipvRemote XML (*.xml)", "*.xml"});
-                fileTypes.AddRange(new[] {"LoipvRemote CSV (*.csv)", "*.csv"});
-                fileTypes.AddRange(new[] {Language.FilterAll, "*.*"});
+                fileTypes.Add("LoipvRemote XML (*.xml)");
+                fileTypes.Add("*.xml");
+                fileTypes.Add("LoipvRemote CSV (*.csv)");
+                fileTypes.Add("*.csv");
+                fileTypes.Add(Language.FilterAll);
+                fileTypes.Add("*.*");
 
                 saveFileDialog.Filter = string.Join("|", fileTypes.ToArray());
                 SelectFileTypeBasedOnSaveFormat(saveFileDialog);
@@ -190,17 +193,17 @@ namespace LoipvRemote.UI.Forms
             saveFileDialog.FilterIndex = SaveFormat == SaveFormat.Csv ? 2 : 1;
         }
 
-        private void btnOK_Click(object sender, EventArgs e)
+        private void btnOK_Click(object? sender, EventArgs e)
         {
             DialogResult = DialogResult.OK;
         }
 
-        private void btnCancel_Click(object sender, EventArgs e)
+        private void btnCancel_Click(object? sender, EventArgs e)
         {
             DialogResult = DialogResult.Cancel;
         }
 
-        private void cboFileformat_SelectedIndexChanged(object sender, EventArgs e)
+        private void cboFileformat_SelectedIndexChanged(object? sender, EventArgs e)
         {
             // should only be active if we are using the credential manager feature
             //if (SaveFormat == SaveFormat.Xml)

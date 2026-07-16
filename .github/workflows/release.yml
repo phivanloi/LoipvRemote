@@ -1,0 +1,183 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  validate-source:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@v7
+
+      - name: Set up .NET SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - name: Restore solution
+        run: dotnet restore LoipvRemote.slnx
+
+      - name: Audit NuGet vulnerabilities
+        shell: pwsh
+        run: |
+          $report = dotnet list LoipvRemote.slnx package --vulnerable --include-transitive --format json | ConvertFrom-Json
+          $vulnerable = @($report.projects | ForEach-Object {
+            $_.frameworks | ForEach-Object {
+              $_.topLevelPackages
+              $_.transitivePackages
+            }
+          } | Where-Object { $_.vulnerabilities -and $_.vulnerabilities.Count -gt 0 })
+          if ($vulnerable.Count -gt 0) {
+            $vulnerable | ConvertTo-Json -Depth 8 | Write-Host
+            throw 'NuGet vulnerability detected.'
+          }
+
+      - name: Build solution
+        run: dotnet build LoipvRemote.slnx -c Release -p:Platform=x64 --no-restore --nologo
+
+      - name: Run tests
+        run: >
+          dotnet test LoipvRemoteTests/LoipvRemoteTests.csproj
+          -c Release
+          -p:Platform=x64
+          --no-build
+          --no-restore
+          --logger "console;verbosity=minimal"
+
+      - name: Verify refactor boundaries
+        shell: pwsh
+        run: |
+          git diff --check
+          [xml]$project = Get-Content 'LoipvRemote.Desktop/LoipvRemote.Desktop.csproj'
+          $version = @($project.Project.PropertyGroup | ForEach-Object Version | Where-Object { $_ })[0]
+          if ([string]::IsNullOrWhiteSpace($version) -or $version -notmatch '^\d+\.\d+\.\d+\.\d+$') {
+            throw "Version must be numeric four-part SemVer-compatible value; got '$version'."
+          }
+          if ($version -match '[+ ]') {
+            throw "Version must not contain source/build metadata: '$version'."
+          }
+          $legacy = rg -n --glob '*.cs' '\b(ProtocolVNC|PuttyBase|HTTPBase|XmlConnectionsLoader|SqlConnectionsLoader)\b' LoipvRemote.Application LoipvRemote.Connectors LoipvRemote.Desktop LoipvRemote.Domain LoipvRemote.Infrastructure.Persistence LoipvRemote.Infrastructure.Windows LoipvRemote.Protocols.Abstractions LoipvRemote.Protocols.Browser LoipvRemote.Protocols.ExternalApps LoipvRemote.Protocols.Putty LoipvRemote.Protocols.Rdp LoipvRemote.Protocols.Vnc
+          if ($LASTEXITCODE -eq 0 -and $legacy) {
+            $legacy | Write-Host
+            throw 'Legacy protocol/persistence implementation marker detected.'
+          }
+          $runtimeLeaks = @(rg -n --pcre2 '(?<!System\.)\bRuntime\.' LoipvRemote.Desktop/Tools/ExternalTool.cs LoipvRemote.Desktop/UI/DialogFactory.cs)
+          if ($runtimeLeaks.Count -gt 0) {
+            $runtimeLeaks | Write-Host
+            throw 'Desktop adapters must not resolve Runtime static services.'
+          }
+          if (Test-Path 'LoipvRemote.Desktop/App/Runtime.cs') {
+            throw 'The Runtime service locator must remain removed.'
+          }
+          if (Test-Path 'LoipvRemote.Desktop/Connection/Protocol/ProtocolBase.cs') {
+            throw 'Protocol lifecycle host must live in LoipvRemote.Desktop.'
+          }
+          if (Test-Path 'LoipvRemote.Desktop/Connection/Protocol/ProtocolList.cs') {
+            throw 'Protocol session collection must live in LoipvRemote.Desktop.'
+          }
+          if (Test-Path 'LoipvRemote.Desktop/Config/DatabaseConnectors') {
+            throw 'Database connector implementations must live in LoipvRemote.Infrastructure.Persistence.'
+          }
+          if (Test-Path '.github/workflows/Build_mR-NB.yml') {
+            throw 'Obsolete NB/mRemote release workflow must remain removed.'
+          }
+          $todo = @(rg -n --glob '*.cs' --glob '*.resx' --glob '!**/bin/**' --glob '!**/obj/**' --glob '!DSS/SecretServerRestClient.cs' '\bTODO\b|NotImplementedException|#if false' LoipvRemote.Application LoipvRemote.Connectors LoipvRemote.Desktop LoipvRemote.Domain LoipvRemote.Infrastructure.Persistence LoipvRemote.Infrastructure.Windows LoipvRemote.Protocols.Abstractions LoipvRemote.Protocols.Browser LoipvRemote.Protocols.ExternalApps LoipvRemote.Protocols.Putty LoipvRemote.Protocols.Rdp LoipvRemote.Protocols.Vnc)
+          if ($todo.Count -gt 0) {
+            $todo | Write-Host
+            throw 'Dead-code marker detected.'
+          }
+          $repoDocs = @(git ls-files | Where-Object { $_ -match '\.(md|docx|pdf)$' })
+          if ($repoDocs.Count -gt 0) {
+            $repoDocs | Write-Host
+            throw 'Repository documentation artifacts are not allowed; keep only build/release metadata.'
+          }
+
+  build-installer:
+    needs: validate-source
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: windows-latest
+            platform: x64
+          - runner: windows-11-arm
+            platform: arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@v7
+
+      - name: Set up .NET SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - name: Restore installer dependencies
+        run: dotnet restore LoipvRemoteInstaller/Installer/Installer.wixproj
+
+      - name: Build installer
+        run: >
+          dotnet build LoipvRemoteInstaller/Installer/Installer.wixproj
+          -c Release
+          -p:Platform=${{ matrix.platform }}
+          --no-restore
+          --nologo
+
+      - name: Verify installer artifact
+        shell: pwsh
+        run: |
+          $msi = Get-ChildItem "LoipvRemoteInstaller\Installer\bin\${{ matrix.platform }}\Release" -Filter '*.msi' | Select-Object -First 1
+          if ($null -eq $msi -or $msi.Length -eq 0) {
+            throw 'Release build did not produce a non-empty MSI artifact.'
+          }
+          Write-Host "Verified $($msi.FullName) ($($msi.Length) bytes)."
+
+      - name: Smoke test installer
+        shell: pwsh
+        env:
+          CI: true
+        run: |
+          $msi = Get-ChildItem "LoipvRemoteInstaller\Installer\bin\${{ matrix.platform }}\Release" -Filter '*.msi' | Select-Object -First 1
+          $installDirectory = Join-Path $env:RUNNER_TEMP "LoipvRemote-${{ matrix.platform }}-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+          & .\LoipvRemoteInstaller\Installer\SmokeTest-Installer.ps1 `
+            -MsiPath $msi.FullName `
+            -InstallDirectory $installDirectory `
+            -LogDirectory $env:RUNNER_TEMP
+
+      - name: Upload release artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: loipvremote-installer-${{ matrix.platform }}
+          path: LoipvRemoteInstaller/Installer/bin/${{ matrix.platform }}/Release/*.msi
+          if-no-files-found: error
+
+  publish-release:
+    needs: build-installer
+    runs-on: windows-latest
+    steps:
+      - name: Download installer artifacts
+        uses: actions/download-artifact@v7
+        with:
+          pattern: loipvremote-installer-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $assets = @(Get-ChildItem -LiteralPath release-assets -Filter '*.msi' -File | ForEach-Object FullName)
+          if ($assets.Count -ne 2) {
+            throw "Expected x64 and arm64 MSI artifacts, found $($assets.Count)."
+          }
+          gh release create $env:GITHUB_REF_NAME @assets --verify-tag --generate-notes --title $env:GITHUB_REF_NAME

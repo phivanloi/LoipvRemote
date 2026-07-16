@@ -2,6 +2,10 @@
 using System.Text;
 using System.Text.RegularExpressions;
 
+// PuTTY-User-Key-File-2 mandates an SHA-1 based MAC. This applies only to the
+// file-format MAC; private-key encryption is not being downgraded.
+#pragma warning disable CA5350
+
 namespace LoipvRemote.Connectors;
 
 public class PuttyKeyFileGenerator
@@ -39,7 +43,7 @@ public class PuttyKeyFileGenerator
         }
         var privateBlob = System.Convert.ToBase64String(privateBuffer);
 
-        HMACSHA1 hmacSha1 = new(SHA1.Create().ComputeHash(Encoding.ASCII.GetBytes("putty-private-key-file-mac-key")));
+        using HMACSHA1 hmacSha1 = new(SHA1.HashData(Encoding.ASCII.GetBytes("putty-private-key-file-mac-key")));
         byte[] bytesToHash = new byte[prefixSize + keyType.Length + prefixSize + encryptionType.Length + prefixSize + Comment.Length + prefixSize + publicBuffer.Length + prefixSize + privateBuffer.Length];
 
         using (var bw = new BinaryWriter(new MemoryStream(bytesToHash)))

@@ -6,15 +6,15 @@ namespace LoipvRemote.Themes
     /// <summary>
     /// Class used for the UI to display the color tables,as the Dictionary value keys cannot be directly replaced
     /// </summary>
-    public class PseudoKeyColor(string _key, Color _value, string _displayKey = null)
+    public class PseudoKeyColor(string key, Color value, string? displayKey = null)
     {
         /// <summary>Stable internal key (used for palette replacement).</summary>
-        public string Key { get; set; } = _key;
+        public string Key { get; set; } = key;
 
         /// <summary>Localized label shown in the UI; defaults to <see cref="Key"/>.</summary>
-        public string DisplayKey { get; set; } = _displayKey ?? _key;
+        public string DisplayKey { get; set; } = displayKey ?? key;
 
-        public Color Value { get; set; } = _value;
+        public Color Value { get; set; } = value;
     }
 
 
@@ -57,12 +57,12 @@ namespace LoipvRemote.Themes
         /// <returns></returns>
         public Color getColor(string colorKey)
         {
-            Color retColor = ExtColorPalette.ContainsKey(colorKey) ? ExtColorPalette[colorKey] : Color.Empty;
+            Color retColor = ExtColorPalette.TryGetValue(colorKey, out Color extendedColor) ? extendedColor : Color.Empty;
             //Invisible colors are not good, might  indicate missing color from the palette as is represented by 00000000
             if (retColor != Color.Empty && retColor.A != 0) return retColor;
             if (DefaultColorPalette != null)
             {
-                retColor = DefaultColorPalette.ContainsKey(colorKey) ? DefaultColorPalette[colorKey] : Color.Empty;
+                retColor = DefaultColorPalette.TryGetValue(colorKey, out Color defaultColor) ? defaultColor : Color.Empty;
             }
 
             //why are we here?, just avoid a crash

@@ -10,7 +10,7 @@ namespace LoipvRemoteTests.Protocols.Rdp;
 public sealed class RdpProtocolFactoryTests
 {
     [Test]
-    public void CreatesRdpSessionFromDomainDefinition()
+    public async Task CreatesRdpSessionFromDomainDefinition()
     {
         var client = new FakeRdpClient();
         var definition = new ConnectionDefinition(
@@ -19,8 +19,8 @@ public sealed class RdpProtocolFactoryTests
         using IProtocolSession session = new RdpProtocolFactory(_ => client).Create(definition);
 
         Assert.That(session, Is.TypeOf<RdpProtocolSession>());
-        Assert.That(session.Initialize(), Is.True);
-        Assert.That(session.Connect(), Is.True);
+        Assert.That(await session.InitializeAsync(), Is.True);
+        Assert.That(await session.ConnectAsync(), Is.True);
         Assert.That(client.ConnectCalls, Is.EqualTo(1));
     }
 
@@ -56,7 +56,7 @@ public sealed class RdpProtocolFactoryTests
     }
 
     [Test]
-    public void AppliesThePersistedRdpSecurityDisplayAndRedirectionOptions()
+    public async Task AppliesThePersistedRdpSecurityDisplayAndRedirectionOptions()
     {
         ConnectionNodeOptions options = new(
             new Dictionary<string, string>
@@ -71,7 +71,8 @@ public sealed class RdpProtocolFactoryTests
                 ["CacheBitmaps"] = "true",
                 ["DisplayWallpaper"] = "false",
                 ["DisplayThemes"] = "false",
-                ["EnableFontSmoothing"] = "true"
+                ["EnableFontSmoothing"] = "true",
+                ["Resolution"] = RDPResolutions.FitToWindow.ToString()
             },
             Array.Empty<string>());
         var definition = new ConnectionDefinition(
@@ -80,7 +81,7 @@ public sealed class RdpProtocolFactoryTests
         var client = new RuntimeRdpClient();
         using IProtocolSession session = new RdpProtocolFactory(_ => client).Create(definition);
 
-        Assert.That(session.Initialize(), Is.True);
+        Assert.That(await session.InitializeAsync(), Is.True);
 
         Assert.Multiple(() =>
         {
@@ -94,9 +95,10 @@ public sealed class RdpProtocolFactoryTests
             Assert.That(client.Configuration?.DriveRedirection, Is.EqualTo(RdpDriveRedirection.Custom));
             Assert.That(client.Configuration?.CustomDrives, Is.EqualTo("C;D"));
             Assert.That(client.Configuration?.PerformanceFlags,
-                Is.EqualTo((int)(RDPPerformanceFlags.DisableWallpaper |
-                                 RDPPerformanceFlags.DisableThemes |
-                                 RDPPerformanceFlags.EnableFontSmoothing)));
+                Is.EqualTo((int)(RdpPerformanceOptions.DisableWallpaper |
+                                 RdpPerformanceOptions.DisableThemes |
+                                 RdpPerformanceOptions.EnableFontSmoothing)));
+            Assert.That(client.Display, Is.EqualTo(new RdpDisplayConfiguration(1920, 1080, false, true, 100, 100)));
         });
     }
 
@@ -116,11 +118,12 @@ public sealed class RdpProtocolFactoryTests
     private sealed class RuntimeRdpClient : IRdpClient, IRdpRuntimeClient
     {
         public RdpRuntimeConfiguration? Configuration { get; private set; }
+        public RdpDisplayConfiguration? Display { get; private set; }
         public void Initialize() { }
         public void ConfigureEndpoint(string host, int port) { }
         public void Connect() { }
         public void Disconnect() { }
         public void ApplyConfiguration(RdpRuntimeConfiguration configuration) => Configuration = configuration;
-        public void ApplyDisplay(RdpDisplayConfiguration display) { }
+        public void ApplyDisplay(RdpDisplayConfiguration display) => Display = display;
     }
 }

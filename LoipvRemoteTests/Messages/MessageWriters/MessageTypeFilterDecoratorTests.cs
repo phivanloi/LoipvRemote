@@ -26,7 +26,7 @@ namespace LoipvRemoteTests.Messages.MessageWriters
         [Test]
         public void DebugMessageWrittenIfAllowed()
         {
-            _message.Class.Returns(MessageClass.DebugMsg);
+        _message.MessageClass.Returns(MessageClass.DebugMsg);
             _filter.AllowDebugMessages.Returns(true);
             _sut.Write(_message);
             _mockWriter.Received().Write(_message);
@@ -35,7 +35,7 @@ namespace LoipvRemoteTests.Messages.MessageWriters
         [Test]
         public void DebugMessageNotWrittenIfNotAllowed()
         {
-            _message.Class.Returns(MessageClass.DebugMsg);
+        _message.MessageClass.Returns(MessageClass.DebugMsg);
             _filter.AllowDebugMessages.Returns(false);
             _sut.Write(_message);
             _mockWriter.DidNotReceive().Write(_message);
@@ -44,7 +44,7 @@ namespace LoipvRemoteTests.Messages.MessageWriters
         [Test]
         public void InfoMessageWrittenIfAllowed()
         {
-            _message.Class.Returns(MessageClass.InformationMsg);
+        _message.MessageClass.Returns(MessageClass.InformationMsg);
             _filter.AllowInfoMessages.Returns(true);
             _sut.Write(_message);
             _mockWriter.Received().Write(_message);
@@ -53,7 +53,7 @@ namespace LoipvRemoteTests.Messages.MessageWriters
         [Test]
         public void InfoMessageNotWrittenIfNotAllowed()
         {
-            _message.Class.Returns(MessageClass.InformationMsg);
+        _message.MessageClass.Returns(MessageClass.InformationMsg);
             _filter.AllowInfoMessages.Returns(false);
             _sut.Write(_message);
             _mockWriter.DidNotReceive().Write(_message);
@@ -62,7 +62,7 @@ namespace LoipvRemoteTests.Messages.MessageWriters
         [Test]
         public void WarningMessageWrittenIfAllowed()
         {
-            _message.Class.Returns(MessageClass.WarningMsg);
+        _message.MessageClass.Returns(MessageClass.WarningMsg);
             _filter.AllowWarningMessages.Returns(true);
             _sut.Write(_message);
             _mockWriter.Received().Write(_message);
@@ -71,7 +71,7 @@ namespace LoipvRemoteTests.Messages.MessageWriters
         [Test]
         public void WarningMessageNotWrittenIfNotAllowed()
         {
-            _message.Class.Returns(MessageClass.WarningMsg);
+        _message.MessageClass.Returns(MessageClass.WarningMsg);
             _filter.AllowWarningMessages.Returns(false);
             _sut.Write(_message);
             _mockWriter.DidNotReceive().Write(_message);
@@ -80,7 +80,7 @@ namespace LoipvRemoteTests.Messages.MessageWriters
         [Test]
         public void ErrorMessageWrittenIfAllowed()
         {
-            _message.Class.Returns(MessageClass.ErrorMsg);
+        _message.MessageClass.Returns(MessageClass.ErrorMsg);
             _filter.AllowErrorMessages.Returns(true);
             _sut.Write(_message);
             _mockWriter.Received().Write(_message);
@@ -89,7 +89,7 @@ namespace LoipvRemoteTests.Messages.MessageWriters
         [Test]
         public void ErrorMessageNotWrittenIfNotAllowed()
         {
-            _message.Class.Returns(MessageClass.ErrorMsg);
+        _message.MessageClass.Returns(MessageClass.ErrorMsg);
             _filter.AllowErrorMessages.Returns(false);
             _sut.Write(_message);
             _mockWriter.DidNotReceive().Write(_message);

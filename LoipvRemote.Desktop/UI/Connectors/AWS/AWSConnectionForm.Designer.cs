@@ -1,4 +1,4 @@
-namespace LoipvRemote.Connectors.AWS
+namespace LoipvRemote.Desktop.UI.Connectors.AWS
 {
     partial class AWSConnectionForm
     {

@@ -3,6 +3,10 @@ using System.Runtime.InteropServices;
 using System.Text;
 using LoipvRemote.Infrastructure.Windows.WindowEmbedding;
 
+// These P/Invoke signatures mirror the Unicode Win32 text APIs, whose
+// StringBuilder buffers are required by the native contract.
+#pragma warning disable CA1838
+
 namespace LoipvRemote.Infrastructure.Windows.ProcessManagement;
 
 /// <summary>Controls a Windows process and selected child controls without UI dependencies.</summary>
@@ -17,7 +21,6 @@ public sealed class WindowsProcessController : IDisposable
     private const int LbErr = -1;
 
     private readonly System.Diagnostics.Process _process = new();
-    private readonly WindowsHandleEnumerator _windowEnumerator = new();
     private readonly TimeSpan _windowDiscoveryTimeout;
     private IReadOnlyList<IntPtr> _controls = [];
     private IntPtr _mainWindowHandle;
@@ -123,7 +126,7 @@ public sealed class WindowsProcessController : IDisposable
             return IntPtr.Zero;
 
         if (_controls.Count == 0)
-            _controls = _windowEnumerator.EnumerateChildWindows(_mainWindowHandle);
+            _controls = WindowsHandleEnumerator.EnumerateChildWindows(_mainWindowHandle);
 
         foreach (IntPtr control in _controls)
         {

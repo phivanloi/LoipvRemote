@@ -120,7 +120,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
         {
             Type settingsType = typeof(OptRegistryTabsPanelsPage);
             RegistryLoader.RegistrySettings.TryGetValue(settingsType, out var settings);
-            pageRegSettingsInstance = settings as OptRegistryTabsPanelsPage;
+            pageRegSettingsInstance = settings as OptRegistryTabsPanelsPage ?? new OptRegistryTabsPanelsPage();
 
             // If registry settings don't exist, create a default instance to prevent null reference exceptions
             if (pageRegSettingsInstance == null)
@@ -183,11 +183,11 @@ namespace LoipvRemote.UI.Forms.OptionsPages
 
         private void UpdatePanelNameTextBox()
         {
-            if (! pageRegSettingsInstance.StartUpPanelName.IsSet)
+            if (!pageRegSettingsInstance.StartUpPanelName.IsSet)
                 txtBoxPanelName.Enabled = chkCreateEmptyPanelOnStart.Checked;
         }
 
-        private void chkCreateEmptyPanelOnStart_CheckedChanged(object sender, System.EventArgs e)
+        private void chkCreateEmptyPanelOnStart_CheckedChanged(object? sender, System.EventArgs e)
         {
             UpdatePanelNameTextBox();
         }

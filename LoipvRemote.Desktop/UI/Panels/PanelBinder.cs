@@ -1,6 +1,7 @@
 using System;
 using System.Runtime.Versioning;
 using LoipvRemote.App;
+using LoipvRemote.App.Composition;
 using LoipvRemote.Properties;
 using WeifenLuo.WinFormsUI.Docking;
 using LoipvRemote.UI;
@@ -13,9 +14,9 @@ namespace LoipvRemote.UI.Panels
     /// Manages the binding between Connections and Config panels so they show/hide together when in auto-hide state
     /// </summary>
     [SupportedOSPlatform("windows")]
-    public class PanelBinder
+    public class PanelBinder : IDisposable
     {
-        private static PanelBinder? _instance;
+        private readonly DesktopWindowCatalog _windows;
         private bool _isProcessing; // Prevent recursive calls
 
         // Store original auto-hide states
@@ -27,15 +28,15 @@ namespace LoipvRemote.UI.Panels
         private DockState _configFormDockedState = DockState.Unknown;
 
         // Track if panels are temporarily pinned
-        private bool _panelsTemporarilyPinned = false;
+        private bool _panelsTemporarilyPinned;
 
         // Timer to check for focus loss
         private System.Windows.Forms.Timer _focusCheckTimer;
+        private bool _disposed;
 
-        public static PanelBinder Instance => _instance ?? (_instance = new PanelBinder());
-
-        private PanelBinder()
+        public PanelBinder(DesktopWindowCatalog windows)
         {
+            _windows = windows ?? throw new ArgumentNullException(nameof(windows));
             _focusCheckTimer = new System.Windows.Forms.Timer();
             _focusCheckTimer.Interval = 250; // Check every 250ms
             _focusCheckTimer.Tick += FocusCheckTimer_Tick;
@@ -94,40 +95,40 @@ namespace LoipvRemote.UI.Panels
         private void SetPanelsToAutoHide()
         {
             // Save current states if they're not auto-hide
-            if (AppWindows.TreeForm != null && !IsAutoHideState(AppWindows.TreeForm.DockState))
+            if (_windows.TreeForm != null && !IsAutoHideState(_windows.TreeForm.DockState))
             {
-                _treeFormDockedState = AppWindows.TreeForm.DockState;
+                _treeFormDockedState = _windows.TreeForm.DockState;
 
                 // Set to auto-hide equivalent
-                if (AppWindows.TreeForm.DockState == DockState.DockLeft)
-                    AppWindows.TreeForm.DockState = DockState.DockLeftAutoHide;
-                else if (AppWindows.TreeForm.DockState == DockState.DockRight)
-                    AppWindows.TreeForm.DockState = DockState.DockRightAutoHide;
-                else if (AppWindows.TreeForm.DockState == DockState.DockTop)
-                    AppWindows.TreeForm.DockState = DockState.DockTopAutoHide;
-                else if (AppWindows.TreeForm.DockState == DockState.DockBottom)
-                    AppWindows.TreeForm.DockState = DockState.DockBottomAutoHide;
+                if (_windows.TreeForm.DockState == DockState.DockLeft)
+                    _windows.TreeForm.DockState = DockState.DockLeftAutoHide;
+                else if (_windows.TreeForm.DockState == DockState.DockRight)
+                    _windows.TreeForm.DockState = DockState.DockRightAutoHide;
+                else if (_windows.TreeForm.DockState == DockState.DockTop)
+                    _windows.TreeForm.DockState = DockState.DockTopAutoHide;
+                else if (_windows.TreeForm.DockState == DockState.DockBottom)
+                    _windows.TreeForm.DockState = DockState.DockBottomAutoHide;
 
                 // Save this auto-hide state
-                _treeFormAutoHideState = AppWindows.TreeForm.DockState;
+                _treeFormAutoHideState = _windows.TreeForm.DockState;
             }
 
-            if (AppWindows.ConfigForm != null && !IsAutoHideState(AppWindows.ConfigForm.DockState))
+            if (_windows.ConfigForm != null && !IsAutoHideState(_windows.ConfigForm.DockState))
             {
-                _configFormDockedState = AppWindows.ConfigForm.DockState;
+                _configFormDockedState = _windows.ConfigForm.DockState;
 
                 // Set to auto-hide equivalent
-                if (AppWindows.ConfigForm.DockState == DockState.DockLeft)
-                    AppWindows.ConfigForm.DockState = DockState.DockLeftAutoHide;
-                else if (AppWindows.ConfigForm.DockState == DockState.DockRight)
-                    AppWindows.ConfigForm.DockState = DockState.DockRightAutoHide;
-                else if (AppWindows.ConfigForm.DockState == DockState.DockTop)
-                    AppWindows.ConfigForm.DockState = DockState.DockTopAutoHide;
-                else if (AppWindows.ConfigForm.DockState == DockState.DockBottom)
-                    AppWindows.ConfigForm.DockState = DockState.DockBottomAutoHide;
+                if (_windows.ConfigForm.DockState == DockState.DockLeft)
+                    _windows.ConfigForm.DockState = DockState.DockLeftAutoHide;
+                else if (_windows.ConfigForm.DockState == DockState.DockRight)
+                    _windows.ConfigForm.DockState = DockState.DockRightAutoHide;
+                else if (_windows.ConfigForm.DockState == DockState.DockTop)
+                    _windows.ConfigForm.DockState = DockState.DockTopAutoHide;
+                else if (_windows.ConfigForm.DockState == DockState.DockBottom)
+                    _windows.ConfigForm.DockState = DockState.DockBottomAutoHide;
 
                 // Save this auto-hide state
-                _configFormAutoHideState = AppWindows.ConfigForm.DockState;
+                _configFormAutoHideState = _windows.ConfigForm.DockState;
             }
         }
 
@@ -137,55 +138,55 @@ namespace LoipvRemote.UI.Panels
         private void SetPanelsToDocked()
         {
             // Restore to docked states if available, otherwise convert from auto-hide
-            if (AppWindows.TreeForm != null)
+            if (_windows.TreeForm != null)
             {
                 if (_treeFormDockedState != DockState.Unknown && _treeFormDockedState != DockState.Hidden)
                 {
-                    AppWindows.TreeForm.DockState = _treeFormDockedState;
+                    _windows.TreeForm.DockState = _treeFormDockedState;
                 }
-                else if (IsAutoHideState(AppWindows.TreeForm.DockState))
+                else if (IsAutoHideState(_windows.TreeForm.DockState))
                 {
                     // Convert auto-hide to regular docked
-                    if (AppWindows.TreeForm.DockState == DockState.DockLeftAutoHide)
-                        AppWindows.TreeForm.DockState = DockState.DockLeft;
-                    else if (AppWindows.TreeForm.DockState == DockState.DockRightAutoHide)
-                        AppWindows.TreeForm.DockState = DockState.DockRight;
-                    else if (AppWindows.TreeForm.DockState == DockState.DockTopAutoHide)
-                        AppWindows.TreeForm.DockState = DockState.DockTop;
-                    else if (AppWindows.TreeForm.DockState == DockState.DockBottomAutoHide)
-                        AppWindows.TreeForm.DockState = DockState.DockBottom;
+                    if (_windows.TreeForm.DockState == DockState.DockLeftAutoHide)
+                        _windows.TreeForm.DockState = DockState.DockLeft;
+                    else if (_windows.TreeForm.DockState == DockState.DockRightAutoHide)
+                        _windows.TreeForm.DockState = DockState.DockRight;
+                    else if (_windows.TreeForm.DockState == DockState.DockTopAutoHide)
+                        _windows.TreeForm.DockState = DockState.DockTop;
+                    else if (_windows.TreeForm.DockState == DockState.DockBottomAutoHide)
+                        _windows.TreeForm.DockState = DockState.DockBottom;
                 }
 
                 // Explicitly ensure it's not in auto-hide state
-                if (IsAutoHideState(AppWindows.TreeForm.DockState))
+                if (IsAutoHideState(_windows.TreeForm.DockState))
                 {
-                    AppWindows.TreeForm.DockState = DockState.DockLeft;
+                    _windows.TreeForm.DockState = DockState.DockLeft;
                 }
             }
 
-            if (AppWindows.ConfigForm != null)
+            if (_windows.ConfigForm != null)
             {
                 if (_configFormDockedState != DockState.Unknown && _configFormDockedState != DockState.Hidden)
                 {
-                    AppWindows.ConfigForm.DockState = _configFormDockedState;
+                    _windows.ConfigForm.DockState = _configFormDockedState;
                 }
-                else if (IsAutoHideState(AppWindows.ConfigForm.DockState))
+                else if (IsAutoHideState(_windows.ConfigForm.DockState))
                 {
                     // Convert auto-hide to regular docked
-                    if (AppWindows.ConfigForm.DockState == DockState.DockLeftAutoHide)
-                        AppWindows.ConfigForm.DockState = DockState.DockLeft;
-                    else if (AppWindows.ConfigForm.DockState == DockState.DockRightAutoHide)
-                        AppWindows.ConfigForm.DockState = DockState.DockRight;
-                    else if (AppWindows.ConfigForm.DockState == DockState.DockTopAutoHide)
-                        AppWindows.ConfigForm.DockState = DockState.DockTop;
-                    else if (AppWindows.ConfigForm.DockState == DockState.DockBottomAutoHide)
-                        AppWindows.ConfigForm.DockState = DockState.DockBottom;
+                    if (_windows.ConfigForm.DockState == DockState.DockLeftAutoHide)
+                        _windows.ConfigForm.DockState = DockState.DockLeft;
+                    else if (_windows.ConfigForm.DockState == DockState.DockRightAutoHide)
+                        _windows.ConfigForm.DockState = DockState.DockRight;
+                    else if (_windows.ConfigForm.DockState == DockState.DockTopAutoHide)
+                        _windows.ConfigForm.DockState = DockState.DockTop;
+                    else if (_windows.ConfigForm.DockState == DockState.DockBottomAutoHide)
+                        _windows.ConfigForm.DockState = DockState.DockBottom;
                 }
 
                 // Explicitly ensure it's not in auto-hide state
-                if (IsAutoHideState(AppWindows.ConfigForm.DockState))
+                if (IsAutoHideState(_windows.ConfigForm.DockState))
                 {
-                    AppWindows.ConfigForm.DockState = DockState.DockLeft;
+                    _windows.ConfigForm.DockState = DockState.DockLeft;
                 }
             }
 
@@ -199,26 +200,27 @@ namespace LoipvRemote.UI.Panels
         /// </summary>
         public void Initialize()
         {
-            if (AppWindows.TreeForm != null)
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (_windows.TreeForm != null)
             {
-                AppWindows.TreeForm.VisibleChanged += OnTreeFormVisibleChanged;
-                AppWindows.TreeForm.DockStateChanged += OnTreeFormDockStateChanged;
-                AppWindows.TreeForm.Enter += OnPanelEnter;
+                _windows.TreeForm.VisibleChanged += OnTreeFormVisibleChanged;
+                _windows.TreeForm.DockStateChanged += OnTreeFormDockStateChanged;
+                _windows.TreeForm.Enter += OnPanelEnter;
 
                 // Store initial dock state if not auto-hide
-                if (!IsAutoHideState(AppWindows.TreeForm.DockState))
-                    _treeFormDockedState = AppWindows.TreeForm.DockState;
+                if (!IsAutoHideState(_windows.TreeForm.DockState))
+                    _treeFormDockedState = _windows.TreeForm.DockState;
             }
 
-            if (AppWindows.ConfigForm != null)
+            if (_windows.ConfigForm != null)
             {
-                AppWindows.ConfigForm.VisibleChanged += OnConfigFormVisibleChanged;
-                AppWindows.ConfigForm.DockStateChanged += OnConfigFormDockStateChanged;
-                AppWindows.ConfigForm.Enter += OnPanelEnter;
+                _windows.ConfigForm.VisibleChanged += OnConfigFormVisibleChanged;
+                _windows.ConfigForm.DockStateChanged += OnConfigFormDockStateChanged;
+                _windows.ConfigForm.Enter += OnPanelEnter;
 
                 // Store initial dock state if not auto-hide
-                if (!IsAutoHideState(AppWindows.ConfigForm.DockState))
-                    _configFormDockedState = AppWindows.ConfigForm.DockState;
+                if (!IsAutoHideState(_windows.ConfigForm.DockState))
+                    _configFormDockedState = _windows.ConfigForm.DockState;
             }
 
             // Apply initial binding state based on option
@@ -228,33 +230,52 @@ namespace LoipvRemote.UI.Panels
             }
         }
 
+        public void Dispose()
+        {
+            if (_disposed)
+                return;
+
+            _disposed = true;
+            OptionsTabsPanelsPage.Default.PropertyChanged -= OptionsPropertyChanged;
+            _windows.TreeForm.VisibleChanged -= OnTreeFormVisibleChanged;
+            _windows.TreeForm.DockStateChanged -= OnTreeFormDockStateChanged;
+            _windows.TreeForm.Enter -= OnPanelEnter;
+            _windows.ConfigForm.VisibleChanged -= OnConfigFormVisibleChanged;
+            _windows.ConfigForm.DockStateChanged -= OnConfigFormDockStateChanged;
+            _windows.ConfigForm.Enter -= OnPanelEnter;
+            _focusCheckTimer.Tick -= FocusCheckTimer_Tick;
+            _focusCheckTimer.Stop();
+            _focusCheckTimer.Dispose();
+            GC.SuppressFinalize(this);
+        }
+
         private void OnTreeFormDockStateChanged(object? sender, EventArgs e)
         {
             // Save auto-hide state if it's an auto-hide state
-            if (IsAutoHideState(AppWindows.TreeForm.DockState))
+            if (IsAutoHideState(_windows.TreeForm.DockState))
             {
-                _treeFormAutoHideState = AppWindows.TreeForm.DockState;
+                _treeFormAutoHideState = _windows.TreeForm.DockState;
             }
             // Save docked state if it's a docked state
-            else if (AppWindows.TreeForm.DockState != DockState.Hidden &&
-                     AppWindows.TreeForm.DockState != DockState.Unknown)
+            else if (_windows.TreeForm.DockState != DockState.Hidden &&
+                     _windows.TreeForm.DockState != DockState.Unknown)
             {
-                _treeFormDockedState = AppWindows.TreeForm.DockState;
+                _treeFormDockedState = _windows.TreeForm.DockState;
             }
         }
 
         private void OnConfigFormDockStateChanged(object? sender, EventArgs e)
         {
             // Save auto-hide state if it's an auto-hide state
-            if (IsAutoHideState(AppWindows.ConfigForm.DockState))
+            if (IsAutoHideState(_windows.ConfigForm.DockState))
             {
-                _configFormAutoHideState = AppWindows.ConfigForm.DockState;
+                _configFormAutoHideState = _windows.ConfigForm.DockState;
             }
             // Save docked state if it's a docked state
-            else if (AppWindows.ConfigForm.DockState != DockState.Hidden &&
-                     AppWindows.ConfigForm.DockState != DockState.Unknown)
+            else if (_windows.ConfigForm.DockState != DockState.Hidden &&
+                     _windows.ConfigForm.DockState != DockState.Unknown)
             {
-                _configFormDockedState = AppWindows.ConfigForm.DockState;
+                _configFormDockedState = _windows.ConfigForm.DockState;
             }
         }
 
@@ -265,11 +286,11 @@ namespace LoipvRemote.UI.Panels
                 return;
 
             // If the panel was just made visible and both are in auto-hide mode
-            if (AppWindows.TreeForm.Visible &&
-                IsPanelAutoHidden(AppWindows.TreeForm) &&
-                IsPanelAutoHidden(AppWindows.ConfigForm))
+            if (_windows.TreeForm.Visible &&
+                IsPanelAutoHidden(_windows.TreeForm) &&
+                IsPanelAutoHidden(_windows.ConfigForm))
             {
-                OnPanelEnter(AppWindows.TreeForm, EventArgs.Empty);
+                OnPanelEnter(_windows.TreeForm, EventArgs.Empty);
             }
         }
 
@@ -280,11 +301,11 @@ namespace LoipvRemote.UI.Panels
                 return;
 
             // If the panel was just made visible and both are in auto-hide mode
-            if (AppWindows.ConfigForm.Visible &&
-                IsPanelAutoHidden(AppWindows.TreeForm) &&
-                IsPanelAutoHidden(AppWindows.ConfigForm))
+            if (_windows.ConfigForm.Visible &&
+                IsPanelAutoHidden(_windows.TreeForm) &&
+                IsPanelAutoHidden(_windows.ConfigForm))
             {
-                OnPanelEnter(AppWindows.ConfigForm, EventArgs.Empty);
+                OnPanelEnter(_windows.ConfigForm, EventArgs.Empty);
             }
         }
 
@@ -297,7 +318,7 @@ namespace LoipvRemote.UI.Panels
                 return;
 
             // Check if both panels are in auto-hide mode
-            if (!IsPanelAutoHidden(AppWindows.TreeForm) || !IsPanelAutoHidden(AppWindows.ConfigForm))
+            if (!IsPanelAutoHidden(_windows.TreeForm) || !IsPanelAutoHidden(_windows.ConfigForm))
                 return;
 
             _isProcessing = true;
@@ -305,10 +326,10 @@ namespace LoipvRemote.UI.Panels
             {
                 // Store current auto-hide states if not already stored
                 if (_treeFormAutoHideState == DockState.Unknown)
-                    _treeFormAutoHideState = AppWindows.TreeForm.DockState;
+                    _treeFormAutoHideState = _windows.TreeForm.DockState;
 
                 if (_configFormAutoHideState == DockState.Unknown)
-                    _configFormAutoHideState = AppWindows.ConfigForm.DockState;
+                    _configFormAutoHideState = _windows.ConfigForm.DockState;
 
                 // Pin both panels temporarily (make them normal docked)
                 TemporarilyPinPanels();
@@ -334,13 +355,13 @@ namespace LoipvRemote.UI.Panels
             Form? activeForm = Form.ActiveForm;
 
             // Check if neither panel has focus
-            bool treeHasFocus = AppWindows.TreeForm != null &&
-                               (activeForm == AppWindows.TreeForm ||
-                                AppWindows.TreeForm.ContainsFocus);
+            bool treeHasFocus = _windows.TreeForm != null &&
+                               (activeForm == _windows.TreeForm ||
+                                _windows.TreeForm.ContainsFocus);
 
-            bool configHasFocus = AppWindows.ConfigForm != null &&
-                                 (activeForm == AppWindows.ConfigForm ||
-                                  AppWindows.ConfigForm.ContainsFocus);
+            bool configHasFocus = _windows.ConfigForm != null &&
+                                 (activeForm == _windows.ConfigForm ||
+                                  _windows.ConfigForm.ContainsFocus);
 
             // If neither panel has focus and panels are temporarily pinned, restore auto-hide
             if (!treeHasFocus && !configHasFocus)
@@ -366,46 +387,46 @@ namespace LoipvRemote.UI.Panels
                 return;
 
             // For TreeForm: change from auto-hide to normal docked
-            if (AppWindows.TreeForm != null && IsPanelAutoHidden(AppWindows.TreeForm))
+            if (_windows.TreeForm != null && IsPanelAutoHidden(_windows.TreeForm))
             {
                 // Convert auto-hide state to regular docked state
-                if (AppWindows.TreeForm.DockState == DockState.DockLeftAutoHide)
-                    AppWindows.TreeForm.DockState = DockState.DockLeft;
-                else if (AppWindows.TreeForm.DockState == DockState.DockRightAutoHide)
-                    AppWindows.TreeForm.DockState = DockState.DockRight;
-                else if (AppWindows.TreeForm.DockState == DockState.DockTopAutoHide)
-                    AppWindows.TreeForm.DockState = DockState.DockTop;
-                else if (AppWindows.TreeForm.DockState == DockState.DockBottomAutoHide)
-                    AppWindows.TreeForm.DockState = DockState.DockBottom;
+                if (_windows.TreeForm.DockState == DockState.DockLeftAutoHide)
+                    _windows.TreeForm.DockState = DockState.DockLeft;
+                else if (_windows.TreeForm.DockState == DockState.DockRightAutoHide)
+                    _windows.TreeForm.DockState = DockState.DockRight;
+                else if (_windows.TreeForm.DockState == DockState.DockTopAutoHide)
+                    _windows.TreeForm.DockState = DockState.DockTop;
+                else if (_windows.TreeForm.DockState == DockState.DockBottomAutoHide)
+                    _windows.TreeForm.DockState = DockState.DockBottom;
             }
 
             // For ConfigForm: change from auto-hide to normal docked
-            if (AppWindows.ConfigForm != null && IsPanelAutoHidden(AppWindows.ConfigForm))
+            if (_windows.ConfigForm != null && IsPanelAutoHidden(_windows.ConfigForm))
             {
                 // Convert auto-hide state to regular docked state
-                if (AppWindows.ConfigForm.DockState == DockState.DockLeftAutoHide)
-                    AppWindows.ConfigForm.DockState = DockState.DockLeft;
-                else if (AppWindows.ConfigForm.DockState == DockState.DockRightAutoHide)
-                    AppWindows.ConfigForm.DockState = DockState.DockRight;
-                else if (AppWindows.ConfigForm.DockState == DockState.DockTopAutoHide)
-                    AppWindows.ConfigForm.DockState = DockState.DockTop;
-                else if (AppWindows.ConfigForm.DockState == DockState.DockBottomAutoHide)
-                    AppWindows.ConfigForm.DockState = DockState.DockBottom;
+                if (_windows.ConfigForm.DockState == DockState.DockLeftAutoHide)
+                    _windows.ConfigForm.DockState = DockState.DockLeft;
+                else if (_windows.ConfigForm.DockState == DockState.DockRightAutoHide)
+                    _windows.ConfigForm.DockState = DockState.DockRight;
+                else if (_windows.ConfigForm.DockState == DockState.DockTopAutoHide)
+                    _windows.ConfigForm.DockState = DockState.DockTop;
+                else if (_windows.ConfigForm.DockState == DockState.DockBottomAutoHide)
+                    _windows.ConfigForm.DockState = DockState.DockBottom;
             }
 
             _panelsTemporarilyPinned = true;
 
             // Ensure both panels are visible and active
-            if (AppWindows.TreeForm != null)
+            if (_windows.TreeForm != null)
             {
-                AppWindows.TreeForm.Show();
-                AppWindows.TreeForm.Activate();
+                _windows.TreeForm.Show();
+                _windows.TreeForm.Activate();
             }
 
-            if (AppWindows.ConfigForm != null)
+            if (_windows.ConfigForm != null)
             {
-                AppWindows.ConfigForm.Show();
-                AppWindows.ConfigForm.Activate();
+                _windows.ConfigForm.Show();
+                _windows.ConfigForm.Activate();
             }
         }
 
@@ -420,15 +441,15 @@ namespace LoipvRemote.UI.Panels
             _focusCheckTimer.Stop();
 
             // Restore TreeForm to its auto-hide state
-            if (AppWindows.TreeForm != null && _treeFormAutoHideState != DockState.Unknown)
+            if (_windows.TreeForm != null && _treeFormAutoHideState != DockState.Unknown)
             {
-                AppWindows.TreeForm.DockState = _treeFormAutoHideState;
+                _windows.TreeForm.DockState = _treeFormAutoHideState;
             }
 
             // Restore ConfigForm to its auto-hide state
-            if (AppWindows.ConfigForm != null && _configFormAutoHideState != DockState.Unknown)
+            if (_windows.ConfigForm != null && _configFormAutoHideState != DockState.Unknown)
             {
-                AppWindows.ConfigForm.DockState = _configFormAutoHideState;
+                _windows.ConfigForm.DockState = _configFormAutoHideState;
             }
 
             _panelsTemporarilyPinned = false;
@@ -437,7 +458,7 @@ namespace LoipvRemote.UI.Panels
         /// <summary>
         /// Checks if a dock state is an auto-hide state
         /// </summary>
-        private bool IsAutoHideState(DockState state)
+        private static bool IsAutoHideState(DockState state)
         {
             return state == DockState.DockLeftAutoHide ||
                    state == DockState.DockRightAutoHide ||
@@ -448,7 +469,7 @@ namespace LoipvRemote.UI.Panels
         /// <summary>
         /// Checks if a panel is in auto-hide state
         /// </summary>
-        private bool IsPanelAutoHidden(DockContent panel)
+        private static bool IsPanelAutoHidden(DockContent panel)
         {
             if (panel == null)
                 return false;

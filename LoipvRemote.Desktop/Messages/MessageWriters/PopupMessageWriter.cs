@@ -8,26 +8,26 @@ namespace LoipvRemote.Messages.MessageWriters
     {
         public void Write(IMessage message)
         {
-            switch (message.Class)
+            switch (message.MessageClass)
             {
                 case MessageClass.DebugMsg:
-                    MessageBox.Show(message.Text, string.Format(Language.TitleInformation, message.Date),
+                    MessageBox.Show(message.Text, FormatText(Language.TitleInformation, message.Timestamp),
                                     MessageBoxButtons.OK, MessageBoxIcon.Information);
                     break;
                 case MessageClass.InformationMsg:
-                    MessageBox.Show(message.Text, string.Format(Language.TitleInformation, message.Date),
+                    MessageBox.Show(message.Text, FormatText(Language.TitleInformation, message.Timestamp),
                                     MessageBoxButtons.OK, MessageBoxIcon.Information);
                     break;
                 case MessageClass.WarningMsg:
-                    MessageBox.Show(message.Text, string.Format(Language.TitleWarning, message.Date),
+                    MessageBox.Show(message.Text, FormatText(Language.TitleWarning, message.Timestamp),
                                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     break;
                 case MessageClass.ErrorMsg:
-                    MessageBox.Show(message.Text, string.Format(Language.TitleError, message.Date),
+                    MessageBox.Show(message.Text, FormatText(Language.TitleError, message.Timestamp),
                                     MessageBoxButtons.OK, MessageBoxIcon.Error);
                     break;
                 default:
-                    throw new ArgumentOutOfRangeException();
+                    throw new InvalidOperationException($"Unsupported message class: {message.MessageClass}.");
             }
         }
     }

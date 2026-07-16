@@ -11,7 +11,7 @@ namespace LoipvRemote.Security.PasswordCreation
     {
         private readonly int _minimumCount;
 
-        public IEnumerable<char> SpecialCharacters { get; } = new[] {'!', '@', '#', '$', '%', '^', '&', '*'};
+        public IEnumerable<char> SpecialCharacters { get; } = new[] { '!', '@', '#', '$', '%', '^', '&', '*' };
 
         public string ConstraintHint { get; }
 
@@ -21,7 +21,7 @@ namespace LoipvRemote.Security.PasswordCreation
                 throw new ArgumentException($"{nameof(minimumCount)} must be a non-negative value");
 
             _minimumCount = minimumCount;
-            ConstraintHint = string.Format(Language.PasswordConstainsSpecialCharactersConstraintHint, _minimumCount,
+            ConstraintHint = FormatText(Language.PasswordConstainsSpecialCharactersConstraintHint, _minimumCount,
                                            string.Concat(SpecialCharacters));
         }
 
@@ -31,14 +31,14 @@ namespace LoipvRemote.Security.PasswordCreation
             ArgumentNullException.ThrowIfNull(specialCharacters);
 
             SpecialCharacters = specialCharacters;
-            ConstraintHint = string.Format(Language.PasswordConstainsSpecialCharactersConstraintHint, _minimumCount,
+            ConstraintHint = FormatText(Language.PasswordConstainsSpecialCharactersConstraintHint, _minimumCount,
                                            string.Concat(SpecialCharacters));
         }
 
         public bool Validate(SecureString password)
         {
             Regex regex = new($"[{string.Concat(SpecialCharacters)}]");
-            return regex.Matches(password.ConvertToUnsecureString()).Count >= _minimumCount;
+            return regex.Count(password.ConvertToUnsecureString()) >= _minimumCount;
         }
     }
 }

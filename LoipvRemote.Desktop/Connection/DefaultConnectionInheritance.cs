@@ -27,14 +27,14 @@ namespace LoipvRemote.Connection
             System.Collections.Generic.IEnumerable<System.Reflection.PropertyInfo> inheritanceProperties = GetProperties();
             foreach (System.Reflection.PropertyInfo property in inheritanceProperties)
             {
-                System.Reflection.PropertyInfo propertyFromSettings = typeof(TSource).GetProperty(propertyNameMutator(property.Name));
+                System.Reflection.PropertyInfo? propertyFromSettings = typeof(TSource).GetProperty(propertyNameMutator(property.Name));
                 if (propertyFromSettings == null)
                 {
                     Trace.TraceError($"DefaultConInherit-LoadFrom: Could not load {property.Name}");
                     continue;
                 }
 
-                object valueFromSettings = propertyFromSettings.GetValue(sourceInstance, null);
+                object? valueFromSettings = propertyFromSettings.GetValue(sourceInstance, null);
                 property.SetValue(Instance, valueFromSettings, null);
             }
         }
@@ -46,8 +46,8 @@ namespace LoipvRemote.Connection
             System.Collections.Generic.IEnumerable<System.Reflection.PropertyInfo> inheritanceProperties = GetProperties();
             foreach (System.Reflection.PropertyInfo property in inheritanceProperties)
             {
-                System.Reflection.PropertyInfo propertyFromSettings = typeof(TDestination).GetProperty(propertyNameMutator(property.Name));
-                object localValue = property.GetValue(Instance, null);
+                System.Reflection.PropertyInfo? propertyFromSettings = typeof(TDestination).GetProperty(propertyNameMutator(property.Name));
+                object? localValue = property.GetValue(Instance, null);
                 if (propertyFromSettings == null)
                 {
                     Trace.TraceError($"DefaultConInherit-SaveTo: Could not load {property.Name}");

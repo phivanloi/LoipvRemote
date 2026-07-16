@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
-using System.Runtime.Serialization;
 using System.Runtime.Versioning;
 using LoipvRemote.Properties;
 
@@ -11,7 +10,6 @@ using LoipvRemote.Properties;
 namespace LoipvRemote.App
 {
     [SupportedOSPlatform("windows")]
-    [Serializable]
     public sealed class SupportedCultures : Dictionary<string, string>
     {
         private static SupportedCultures? _Instance;
@@ -39,12 +37,6 @@ namespace LoipvRemote.App
             }
         }
 
-        // fix CA2229 - https://docs.microsoft.com/en-us/visualstudio/code-quality/ca2229-implement-serialization-constructors?view=vs-2017
-        private SupportedCultures(SerializationInfo info, StreamingContext context)
-            : base(info, context)
-        {
-        }
-
         public static bool IsNameSupported(string CultureName)
         {
             return SingletonInstance.ContainsKey(CultureName);
@@ -55,7 +47,7 @@ namespace LoipvRemote.App
             return SingletonInstance.ContainsValue(CultureNativeName);
         }
 
-        public static string get_CultureName(string CultureNativeName)
+        public static string CultureNameFromNativeName(string CultureNativeName)
         {
             string[] Names = new string[SingletonInstance.Count + 1];
             string[] NativeNames = new string[SingletonInstance.Count + 1];
@@ -74,7 +66,7 @@ namespace LoipvRemote.App
             throw (new KeyNotFoundException());
         }
 
-        public static string get_CultureNativeName(string CultureName)
+        public static string CultureNativeNameFromName(string CultureName)
         {
             return SingletonInstance[CultureName];
         }

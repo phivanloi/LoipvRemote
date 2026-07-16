@@ -20,10 +20,10 @@ namespace LoipvRemote.Tree
         private bool _enableFeedback;
 
 
-        public void HandleEvent_ModelDropped(object? sender, ModelDropEventArgs e)
+        public void HandleModelDropped(object? sender, ModelDropEventArgs e)
         {
             if (!(e.TargetModel is ConnectionInfo dropTarget)) return;
-            foreach(ConnectionInfo dropSource in e.SourceModels.Cast<ConnectionInfo>())
+            foreach (ConnectionInfo dropSource in e.SourceModels.Cast<ConnectionInfo>())
             {
                 DropModel(dropSource, dropTarget, e.DropTargetLocation);
             }
@@ -31,7 +31,7 @@ namespace LoipvRemote.Tree
             e.Handled = true;
         }
 
-        public void DropModel(ConnectionInfo dropSource,
+        public static void DropModel(ConnectionInfo dropSource,
                               ConnectionInfo dropTarget,
                               DropTargetLocation dropTargetLocation)
         {
@@ -49,13 +49,13 @@ namespace LoipvRemote.Tree
             }
         }
 
-        private void DropModelOntoTarget(ConnectionInfo dropSource, ConnectionInfo dropTarget)
+        private static void DropModelOntoTarget(ConnectionInfo dropSource, ConnectionInfo dropTarget)
         {
             if (!(dropTarget is ContainerInfo dropTargetAsContainer)) return;
             dropSource.SetParent(dropTargetAsContainer);
         }
 
-        private void DropModelAboveTarget(ConnectionInfo dropSource, ConnectionInfo dropTarget)
+        private static void DropModelAboveTarget(ConnectionInfo dropSource, ConnectionInfo dropTarget)
         {
             if (!dropSource.Parent.Equals(dropTarget.Parent))
                 dropTarget.Parent.AddChildAbove(dropSource, dropTarget);
@@ -63,7 +63,7 @@ namespace LoipvRemote.Tree
                 dropTarget.Parent.SetChildAbove(dropSource, dropTarget);
         }
 
-        private void DropModelBelowTarget(ConnectionInfo dropSource, ConnectionInfo dropTarget)
+        private static void DropModelBelowTarget(ConnectionInfo dropSource, ConnectionInfo dropTarget)
         {
             if (!dropSource.Parent.Equals(dropTarget.Parent))
                 dropTarget.Parent.AddChildBelow(dropSource, dropTarget);
@@ -71,7 +71,7 @@ namespace LoipvRemote.Tree
                 dropTarget.Parent.SetChildBelow(dropSource, dropTarget);
         }
 
-        public void HandleEvent_ModelCanDrop(object? sender, ModelDropEventArgs e)
+        public void HandleModelCanDrop(object? sender, ModelDropEventArgs e)
         {
             _enableFeedback = true;
             _currentFeedbackColor = DropDeniedFeedbackColor;
@@ -160,23 +160,23 @@ namespace LoipvRemote.Tree
             return validDrag;
         }
 
-        private bool NodeIsDraggable(ConnectionInfo node)
+        private static bool NodeIsDraggable(ConnectionInfo node)
         {
             return node != null && !(node is RootNodeInfo) && !(node is PuttySessionInfo);
         }
 
-        private bool NodeDraggingOntoSelf(ConnectionInfo source, ConnectionInfo? target)
+        private static bool NodeDraggingOntoSelf(ConnectionInfo source, ConnectionInfo? target)
         {
             return source.Equals(target);
         }
 
-        private bool AncestorDraggingOntoChild(ConnectionInfo source, ConnectionInfo? target)
+        private static bool AncestorDraggingOntoChild(ConnectionInfo source, ConnectionInfo? target)
         {
             return target is not null && source is ContainerInfo sourceAsContainer &&
                    sourceAsContainer.GetRecursiveChildList().Contains(target);
         }
 
-        private bool DraggingOntoCurrentParent(ConnectionInfo source, ConnectionInfo? target)
+        private static bool DraggingOntoCurrentParent(ConnectionInfo source, ConnectionInfo? target)
         {
             return target is ContainerInfo targetAsContainer && targetAsContainer.Children.Contains(source);
         }

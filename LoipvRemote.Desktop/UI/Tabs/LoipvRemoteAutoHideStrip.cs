@@ -306,26 +306,29 @@ namespace LoipvRemote.UI.Tabs
                 rectImage.Width = imageWidth;
                 rectImage = GetTransformedRectangle(dockState, rectImage);
 
-                if (dockState == DockState.DockLeftAutoHide || dockState == DockState.DockRightAutoHide)
+                if (content is Form { Icon: { } formIcon })
                 {
-                    // The DockState is DockLeftAutoHide or DockRightAutoHide, so rotate the image 90 degrees to the right.
-                    Rectangle rectTransform = RtlTransform(rectImage, dockState);
-                    Point[] rotationPoints =
+                    if (dockState == DockState.DockLeftAutoHide || dockState == DockState.DockRightAutoHide)
                     {
-                        new(rectTransform.X + rectTransform.Width, rectTransform.Y),
-                        new(rectTransform.X + rectTransform.Width, rectTransform.Y + rectTransform.Height),
-                        new(rectTransform.X, rectTransform.Y)
-                    };
+                        // The DockState is DockLeftAutoHide or DockRightAutoHide, so rotate the image 90 degrees to the right.
+                        Rectangle rectTransform = RtlTransform(rectImage, dockState);
+                        Point[] rotationPoints =
+                        {
+                            new(rectTransform.X + rectTransform.Width, rectTransform.Y),
+                            new(rectTransform.X + rectTransform.Width, rectTransform.Y + rectTransform.Height),
+                            new(rectTransform.X, rectTransform.Y)
+                        };
 
-                    using (Icon rotatedIcon = new(((Form)content).Icon, 16, 16))
-                    {
-                        g.DrawImage(rotatedIcon.ToBitmap(), rotationPoints);
+                        using (Icon rotatedIcon = new(formIcon, 16, 16))
+                        {
+                            g.DrawImage(rotatedIcon.ToBitmap(), rotationPoints);
+                        }
                     }
-                }
-                else
-                {
-                    // Draw the icon normally without any rotation.
-                    g.DrawIcon(((Form)content).Icon, RtlTransform(rectImage, dockState));
+                    else
+                    {
+                        // Draw the icon normally without any rotation.
+                        g.DrawIcon(formIcon, RtlTransform(rectImage, dockState));
+                    }
                 }
 
                 // Draw the text
@@ -474,7 +477,7 @@ namespace LoipvRemote.UI.Tabs
                 }
             }
 
-            return null;
+            return null!;
         }
 
         protected override Rectangle GetTabBounds(Tab tab)

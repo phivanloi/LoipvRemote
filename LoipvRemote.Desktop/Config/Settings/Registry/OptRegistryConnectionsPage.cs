@@ -124,7 +124,7 @@ namespace LoipvRemote.Config.Settings.Registry
         private void ApplySingleClickSwitchesToOpenConnection()
         {
             if (SingleClickSwitchesToOpenConnection.IsSet)
-                 Properties.Settings.Default.SingleClickSwitchesToOpenConnection = SingleClickSwitchesToOpenConnection.Value;
+                Properties.Settings.Default.SingleClickSwitchesToOpenConnection = SingleClickSwitchesToOpenConnection.Value;
         }
 
         private void ApplyTrackActiveConnectionInConnectionTree()

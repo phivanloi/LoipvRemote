@@ -151,7 +151,7 @@ public abstract class RelationalConnectionDefinitionStore : IConnectionDefinitio
             }
         }
 
-        // The application deliberately does not migrate the removed legacy schema.
+        // The application deliberately does not migrate removed schemas.
         // Validate the complete current column shape before registering a new version
         // marker, otherwise an older database could be mistaken for the current model.
         command.Parameters.Clear();
@@ -162,7 +162,7 @@ public abstract class RelationalConnectionDefinitionStore : IConnectionDefinitio
         }
         catch (DbException exception)
         {
-            throw new InvalidDataException("The relational connection database uses an unsupported legacy schema.", exception);
+            throw new InvalidDataException("The relational connection database uses an unsupported schema.", exception);
         }
 
         command.Parameters.Clear();

@@ -18,18 +18,18 @@ namespace LoipvRemote.Messages.WriterDecorators
         private readonly ErrorAndInfoWindow _messageWindow = messageWindow ?? throw new ArgumentNullException(nameof(messageWindow));
         private readonly FrmMain _frmMain = FrmMain.Default;
 
-        public async void Write(IMessage message)
+        public void Write(IMessage message)
         {
             _decoratedWriter.Write(message);
 
             if (WeShouldFocusNotificationPanel(message))
-                await SwitchToMessageAsync();
+                _ = SwitchToMessageAsync();
         }
 
         private bool WeShouldFocusNotificationPanel(IMessage message)
         {
             // ReSharper disable once SwitchStatementMissingSomeCases
-            switch (message.Class)
+            switch (message.MessageClass)
             {
                 case MessageClass.InformationMsg:
                     if (_filter.AllowInfoMessages)
@@ -48,9 +48,8 @@ namespace LoipvRemote.Messages.WriterDecorators
 
         private async Task SwitchToMessageAsync()
         {
-            await Task
-                  .Delay(TimeSpan.FromMilliseconds(300))
-                  .ContinueWith(task => SwitchToMessage());
+            await Task.Delay(TimeSpan.FromMilliseconds(300)).ConfigureAwait(true);
+            SwitchToMessage();
         }
 
         private void SwitchToMessage()
@@ -86,7 +85,7 @@ namespace LoipvRemote.Messages.WriterDecorators
             _messageWindow.lvErrorCollector.FocusedItem = _messageWindow.lvErrorCollector.Items[0];
         }
 
-        private bool AutoHideEnabled(DockContent content)
+        private static bool AutoHideEnabled(DockContent content)
         {
             return content.DockState == DockState.DockBottomAutoHide ||
                    content.DockState == DockState.DockTopAutoHide ||

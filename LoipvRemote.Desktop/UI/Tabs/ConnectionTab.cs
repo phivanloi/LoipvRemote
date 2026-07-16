@@ -34,7 +34,7 @@ namespace LoipvRemote.UI.Tabs
             Activated += ConnectionTab_Activated;
         }
 
-        private void ConnectionTab_GotFocus(object sender, EventArgs e)
+        private void ConnectionTab_GotFocus(object? sender, EventArgs e)
         {
             TabHelper.Instance.CurrentTab = this;
             ScheduleProtocolFocus();
@@ -65,18 +65,17 @@ namespace LoipvRemote.UI.Tabs
             {
                 if (!silentClose)
                 {
-                    if (Settings.Default.ConfirmCloseConnection == (int)ConfirmCloseEnum.All)
+                    if (Settings.Default.ConfirmCloseConnection == (int)ConfirmCloseMode.All)
                     {
-                        DialogResult result = CTaskDialog.MessageBox(this, GeneralAppInfo.ProductName,
-                                                            string
-                                                                .Format(Language.ConfirmCloseConnectionPanelMainInstruction,
+                        DialogResult result = CTaskDialog.MessageBox(this, GeneralAppInfo.ProductName ?? string.Empty,
+                                                            FormatText(Language.ConfirmCloseConnectionPanelMainInstruction,
                                                                         TabText), "", "", "",
                                                             Language.CheckboxDoNotShowThisMessageAgain,
                                                             ETaskDialogButtons.YesNo, ESysIcons.Question,
                                                             ESysIcons.Question);
                         if (CTaskDialog.VerificationChecked)
                         {
-                            Settings.Default.ConfirmCloseConnection = (int)ConfirmCloseEnum.Never;
+                            Settings.Default.ConfirmCloseConnection = (int)ConfirmCloseMode.Never;
                             Settings.Default.Save();
                         }
 
@@ -86,18 +85,21 @@ namespace LoipvRemote.UI.Tabs
                         }
                         else
                         {
-                            ((InterfaceControl)Tag)?.Protocol.Close();
+                            if (Tag is InterfaceControl control)
+                                control.Protocol.RequestClose();
                         }
                     }
                     else
                     {
                         // close without the confirmation prompt...
-                        ((InterfaceControl)Tag)?.Protocol.Close();
+                        if (Tag is InterfaceControl control)
+                            control.Protocol.RequestClose();
                     }
                 }
                 else
                 {
-                    ((InterfaceControl)Tag)?.Protocol.Close();
+                    if (Tag is InterfaceControl control)
+                        control.Protocol.RequestClose();
                 }
             }
 
@@ -111,7 +113,7 @@ namespace LoipvRemote.UI.Tabs
         {
             try
             {
-                InterfaceControl interfaceControl = Tag as InterfaceControl;
+                InterfaceControl? interfaceControl = Tag as InterfaceControl;
                 if (interfaceControl?.Protocol is IRemoteScreenController screen)
                     screen.RefreshScreen();
             }

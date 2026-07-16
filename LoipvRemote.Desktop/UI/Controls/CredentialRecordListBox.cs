@@ -8,9 +8,9 @@ namespace LoipvRemote.UI.Controls
 {
     public partial class CredentialRecordListBox : ListBox
     {
-        public new ICredentialRecord SelectedItem => (ICredentialRecord)base.SelectedItem;
-        public ICredentialRecord NoneSelection { get; } = new CredentialRecord {Title = $"--{Language.None}--"};
-        public ICredentialRecord AddNewSelection { get; } = new CredentialRecord {Title = $"--{Language.Add}--"};
+        public new ICredentialRecord? SelectedItem => base.SelectedItem as ICredentialRecord;
+        public ICredentialRecord NoneSelection { get; } = new CredentialRecord { Title = $"--{Language.None}--" };
+        public ICredentialRecord AddNewSelection { get; } = new CredentialRecord { Title = $"--{Language.Add}--" };
 
         public CredentialRecordListBox(IEnumerable<ICredentialRecord> listOfCredentialRecords)
         {

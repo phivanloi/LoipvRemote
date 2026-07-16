@@ -1,6 +1,6 @@
 namespace LoipvRemote.Config
 {
-    public enum ConfirmCloseEnum
+    public enum ConfirmCloseMode
     {
         Unspecified = 0,
         Never = 1,

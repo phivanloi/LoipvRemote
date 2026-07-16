@@ -16,9 +16,9 @@ namespace LoipvRemote.UI.Controls
             InitializeComponent();
         }
 
-        public event AdPathChangedEventHandler? AdPathChanged;
+        public event AdPathChangedHandler? AdPathChanged;
 
-        public delegate void AdPathChangedEventHandler(object sender);
+        public delegate void AdPathChangedHandler(object? sender);
 
         public string AdPath { get; set; } = "";
 
@@ -28,7 +28,7 @@ namespace LoipvRemote.UI.Controls
             set => _domain = value;
         }
 
-        public object SelectedNode { get; internal set; } = null!;
+        public object? SelectedNode { get; internal set; }
 
         #endregion Public Methods
 
@@ -36,10 +36,12 @@ namespace LoipvRemote.UI.Controls
 
         private string _domain = "";
 
-        private void TvActiveDirectory_AfterExpand(object sender, TreeViewEventArgs e)
+        private void TvActiveDirectory_AfterExpand(object? sender, TreeViewEventArgs e)
         {
             try
             {
+                if (e.Node is null)
+                    return;
                 foreach (TreeNode node in e.Node.Nodes)
                     AddTreeNodes(node);
             }
@@ -49,14 +51,16 @@ namespace LoipvRemote.UI.Controls
             }
         }
 
-        private void TvActiveDirectory_AfterSelect(object sender, TreeViewEventArgs e)
+        private void TvActiveDirectory_AfterSelect(object? sender, TreeViewEventArgs e)
         {
-            AdPath = e.Node.Tag.ToString();
-            AdPathChangedEventHandler pathChangedEvent = AdPathChanged;
+            if (e.Node is null)
+                return;
+            AdPath = e.Node.Tag?.ToString() ?? string.Empty;
+            AdPathChangedHandler? pathChangedEvent = AdPathChanged;
             pathChangedEvent?.Invoke(this);
         }
 
-        private void AdTree_Load(object sender, EventArgs e)
+        private void AdTree_Load(object? sender, EventArgs e)
         {
             tvActiveDirectory.Nodes.Clear();
             TreeNode treeNode = new(Domain) { Tag = "" };
@@ -68,20 +72,21 @@ namespace LoipvRemote.UI.Controls
         private void AddTreeNodes(TreeNode tNode)
         {
             AdHelper adhelper = new(Domain);
-            adhelper.GetChildEntries(tNode.Tag.ToString());
+            adhelper.GetChildEntries(tNode.Tag?.ToString() ?? string.Empty);
             System.Collections.IDictionaryEnumerator enumerator = adhelper.Children.GetEnumerator();
             tvActiveDirectory.BeginUpdate();
             while (enumerator.MoveNext())
             {
                 bool flag1 = false;
                 if (enumerator.Key == null) continue;
-                TreeNode node1 = new(enumerator.Key.ToString().Substring(3))
+                string key = enumerator.Key.ToString() ?? string.Empty;
+                TreeNode node1 = new(key.Length > 3 ? key[3..] : string.Empty)
                 {
                     Tag = RuntimeHelpers.GetObjectValue(enumerator.Value)
                 };
-                if (!enumerator.Key.ToString().Substring(0, 2).Equals("CN") ||
-                    enumerator.Key.ToString().Equals("CN=Computers") ||
-                    enumerator.Key.ToString().Equals("CN=Users"))
+                if (key.Length < 2 || !key[..2].Equals("CN", StringComparison.Ordinal) ||
+                    key.Equals("CN=Computers", StringComparison.Ordinal) ||
+                    key.Equals("CN=Users", StringComparison.Ordinal))
                     flag1 = true;
 
                 if (flag1)
@@ -91,7 +96,7 @@ namespace LoipvRemote.UI.Controls
                     {
                         foreach (TreeNode node2 in tNode.Nodes)
                         {
-                            if (!node2.Text.Equals(node1.Text)) continue;
+                            if (!node2.Text.Equals(node1.Text, StringComparison.Ordinal)) continue;
                             flag2 = true;
                             break;
                         }
@@ -105,7 +110,7 @@ namespace LoipvRemote.UI.Controls
                         tNode.Nodes.Add(node1);
                 }
 
-                int imageIndex = GetImageIndex(enumerator.Key.ToString().Substring(0, 2));
+                int imageIndex = GetImageIndex(key.Length >= 2 ? key[..2] : string.Empty);
                 node1.ImageIndex = imageIndex;
                 node1.SelectedImageIndex = imageIndex;
             }
@@ -115,9 +120,9 @@ namespace LoipvRemote.UI.Controls
 
         private static int GetImageIndex(string objType)
         {
-            if (objType.Equals("CN"))
+            if (objType.Equals("CN", StringComparison.Ordinal))
                 return 2;
-            return objType.Equals("OU") ? 1 : 3;
+            return objType.Equals("OU", StringComparison.Ordinal) ? 1 : 3;
         }
 
         #endregion Private Methods

@@ -20,7 +20,7 @@ namespace LoipvRemote.Config.Putty
         #region Public Methods
 
         public abstract string[] GetSessionNames(bool raw = false);
-        public abstract PuttySessionInfo GetSession(string sessionName);
+        public abstract PuttySessionInfo? GetSession(string sessionName);
 
         public virtual IEnumerable<PuttySessionInfo> GetSessions()
         {
@@ -28,8 +28,9 @@ namespace LoipvRemote.Config.Putty
 
             foreach (string sessionName in GetSessionNamesToAdd(sessionNamesFromProvider))
             {
-                PuttySessionInfo sessionInfo = GetSession(sessionName);
-                AddSession(sessionInfo);
+                PuttySessionInfo? sessionInfo = GetSession(sessionName);
+                if (sessionInfo is not null)
+                    AddSession(sessionInfo);
             }
 
             foreach (PuttySessionInfo session in GetSessionToRemove(sessionNamesFromProvider))
@@ -84,9 +85,7 @@ namespace LoipvRemote.Config.Putty
 
         #endregion
 
-        public delegate void PuttySessionChangedEventHandler(object sender, PuttySessionChangedEventArgs e);
-
-        public event PuttySessionChangedEventHandler? PuttySessionChanged;
+        public event EventHandler<PuttySessionChangedEventArgs>? PuttySessionChanged;
 
         protected virtual void RaiseSessionChangedEvent(PuttySessionChangedEventArgs args)
         {

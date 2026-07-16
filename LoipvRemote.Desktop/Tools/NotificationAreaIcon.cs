@@ -14,7 +14,7 @@ using System.Runtime.Versioning;
 namespace LoipvRemote.Tools
 {
     [SupportedOSPlatform("windows")]
-    public class NotificationAreaIcon
+    public class NotificationAreaIcon : IDisposable
     {
         private readonly NotifyIcon _nI = null!;
         private readonly ContextMenuStrip _cMen = null!;
@@ -38,7 +38,7 @@ namespace LoipvRemote.Tools
 
                 ToolStripSeparator cMenSep1 = new();
 
-                ToolStripMenuItem cMenExit = new() { Text = Language.Exit};
+                ToolStripMenuItem cMenExit = new() { Text = Language.Exit };
                 cMenExit.Click += cMenExit_Click;
 
                 _cMen = new ContextMenuStrip
@@ -47,7 +47,7 @@ namespace LoipvRemote.Tools
                                                    System.Drawing.GraphicsUnit.Point, Convert.ToByte(0)),
                     RenderMode = ToolStripRenderMode.Professional
                 };
-                _cMen.Items.AddRange(new ToolStripItem[] {_cMenCons, cMenSep1, cMenExit});
+                _cMen.Items.AddRange(new ToolStripItem[] { _cMenCons, cMenSep1, cMenExit });
 
                 _nI = new NotifyIcon
                 {
@@ -69,12 +69,18 @@ namespace LoipvRemote.Tools
 
         public void Dispose()
         {
+            if (Disposed)
+                return;
+
             try
             {
+                _nI.MouseClick -= nI_MouseClick;
+                _nI.MouseDoubleClick -= nI_MouseDoubleClick;
                 _nI.Visible = false;
                 _nI.Dispose();
                 _cMen.Dispose();
                 Disposed = true;
+                GC.SuppressFinalize(this);
             }
             catch (Exception ex)
             {
@@ -131,10 +137,11 @@ namespace LoipvRemote.Tools
         private void ConMenItem_MouseUp(object? sender, MouseEventArgs e)
         {
             if (e.Button != MouseButtons.Left) return;
-            if (((ToolStripMenuItem)sender).Tag is ContainerInfo) return;
+            if (sender is not ToolStripMenuItem menuItem || menuItem.Tag is ContainerInfo) return;
             if (_mainForm.Visible == false)
                 ShowForm();
-            _desktopShellRuntime.ConnectionInitiator.OpenConnection((ConnectionInfo)((ToolStripMenuItem)sender).Tag);
+            if (menuItem.Tag is ConnectionInfo connectionInfo)
+                _ = _desktopShellRuntime.ConnectionInitiator.OpenConnectionAsync(connectionInfo);
         }
 
         private static void cMenExit_Click(object? sender, EventArgs e)

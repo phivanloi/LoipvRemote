@@ -37,49 +37,32 @@ public sealed class ProtocolSessionBridge(
     public ProtocolSessionState State { get; private set; } = ProtocolSessionState.Created;
     public ProtocolCapabilities Capabilities => _host.Capabilities;
 
-    public bool Initialize()
+    public ValueTask<bool> InitializeAsync(CancellationToken cancellationToken = default)
     {
-        try
-        {
-            if (!_host.InitializeSurface() || !_host.InitializeSession())
-            {
-                State = ProtocolSessionState.Faulted;
-                return false;
-            }
-
-            State = ProtocolSessionState.Initialized;
-            SubscribeSessionEvents();
-            return true;
-        }
-        catch (Exception exception)
-        {
-            State = ProtocolSessionState.Faulted;
-            ErrorOccured?.Invoke(this, exception.Message, null);
-            return false;
-        }
+        return InitializeCoreAsync(cancellationToken);
     }
 
-    public bool Connect()
+    public ValueTask<bool> ConnectAsync(CancellationToken cancellationToken = default)
     {
-        if (State != ProtocolSessionState.Initialized || !_host.Connect())
-        {
-            State = ProtocolSessionState.Faulted;
-            return false;
-        }
-
-        if (_sessionEvents is null)
-        {
-            State = ProtocolSessionState.Connected;
-            Connected?.Invoke(this);
-        }
-        return true;
+        return ConnectCoreAsync(cancellationToken);
     }
 
-    public void Disconnect()
+    public ValueTask DisconnectAsync(CancellationToken cancellationToken = default)
     {
-        _host.Disconnect();
-        State = ProtocolSessionState.Closing;
+        return DisconnectCoreAsync(cancellationToken);
     }
+
+    /// <summary>
+    /// Starts an orderly close from a synchronous WinForms callback without
+    /// blocking the UI thread. Application code must use <see cref="CloseAsync"/>.
+    /// </summary>
+    public void RequestClose() => _ = CloseFromUiAsync();
+
+    /// <summary>
+    /// Starts an orderly disconnect from a synchronous WinForms callback
+    /// without blocking the UI thread.
+    /// </summary>
+    public void RequestDisconnect() => _ = DisconnectFromUiAsync();
 
     public void Focus()
     {
@@ -93,22 +76,15 @@ public sealed class ProtocolSessionBridge(
         _host.Focus();
     }
 
-    public void Close()
+    public ValueTask CloseAsync(CancellationToken cancellationToken = default)
     {
-        if (State == ProtocolSessionState.Closed)
-            return;
+        return CloseCoreAsync(cancellationToken);
+    }
 
-        State = ProtocolSessionState.Closing;
-        try
-        {
-            UnsubscribeSessionEvents();
-            _host.Close();
-        }
-        finally
-        {
-            State = ProtocolSessionState.Closed;
-            Closed?.Invoke(this);
-        }
+    public async ValueTask DisposeAsync()
+    {
+        await DisposeCoreAsync().ConfigureAwait(true);
+        GC.SuppressFinalize(this);
     }
 
     public void Dispose()
@@ -165,13 +141,13 @@ public sealed class ProtocolSessionBridge(
 
     public void ShowSettingsDialog() => (_host.Session as IPuttySettingsSession)?.ShowSettingsDialog();
 
-    public delegate void ConnectingHandler(object sender);
-    public delegate void ConnectedHandler(object sender);
-    public delegate void DisconnectedHandler(object sender, string disconnectedMessage, int? reasonCode);
-    public delegate void ProtocolErrorHandler(object sender, string errorMessage, int? errorCode);
-    public delegate void ClosingHandler(object sender);
-    public delegate void ClosedHandler(object sender);
-    public delegate void TitleChangedHandler(object sender, string newTitle);
+    public delegate void ConnectingHandler(object? sender);
+    public delegate void ConnectedHandler(object? sender);
+    public delegate void DisconnectedHandler(object? sender, string disconnectedMessage, int? reasonCode);
+    public delegate void ProtocolErrorHandler(object? sender, string errorMessage, int? errorCode);
+    public delegate void ClosingHandler(object? sender);
+    public delegate void ClosedHandler(object? sender);
+    public delegate void TitleChangedHandler(object? sender, string newTitle);
 
     public event ConnectingHandler? Connecting;
     public event ConnectedHandler? Connected;
@@ -197,6 +173,102 @@ public sealed class ProtocolSessionBridge(
         events.Connected += OnSessionConnected;
         events.Disconnected += OnSessionDisconnected;
         events.ErrorOccurred += OnSessionErrorOccurred;
+    }
+
+    private async ValueTask<bool> InitializeCoreAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            if (!_host.InitializeSurface() || !await _host.InitializeSessionAsync(cancellationToken).ConfigureAwait(true))
+            {
+                State = ProtocolSessionState.Faulted;
+                return false;
+            }
+
+            State = ProtocolSessionState.Initialized;
+            SubscribeSessionEvents();
+            return true;
+        }
+        catch (Exception exception)
+        {
+            State = ProtocolSessionState.Faulted;
+            ErrorOccured?.Invoke(this, exception.Message, null);
+            return false;
+        }
+    }
+
+    private async ValueTask<bool> ConnectCoreAsync(CancellationToken cancellationToken)
+    {
+        if (State != ProtocolSessionState.Initialized ||
+            !await _host.ConnectAsync(cancellationToken).ConfigureAwait(true))
+        {
+            State = ProtocolSessionState.Faulted;
+            return false;
+        }
+
+        if (_sessionEvents is null)
+        {
+            State = ProtocolSessionState.Connected;
+            Connected?.Invoke(this);
+        }
+
+        return true;
+    }
+
+    private async ValueTask DisconnectCoreAsync(CancellationToken cancellationToken)
+    {
+        await _host.DisconnectAsync(cancellationToken).ConfigureAwait(true);
+        State = ProtocolSessionState.Closing;
+    }
+
+    private async ValueTask CloseCoreAsync(CancellationToken cancellationToken)
+    {
+        if (State == ProtocolSessionState.Closed)
+            return;
+
+        State = ProtocolSessionState.Closing;
+        try
+        {
+            UnsubscribeSessionEvents();
+            await _host.CloseAsync(cancellationToken).ConfigureAwait(true);
+        }
+        finally
+        {
+            State = ProtocolSessionState.Closed;
+            Closed?.Invoke(this);
+        }
+    }
+
+    private async ValueTask DisposeCoreAsync()
+    {
+        UnsubscribeSessionEvents();
+        await _host.DisposeAsync().ConfigureAwait(true);
+    }
+
+    private async Task CloseFromUiAsync()
+    {
+        try
+        {
+            await CloseAsync().ConfigureAwait(true);
+        }
+        catch (Exception exception)
+        {
+            State = ProtocolSessionState.Faulted;
+            ErrorOccured?.Invoke(this, exception.Message, null);
+        }
+    }
+
+    private async Task DisconnectFromUiAsync()
+    {
+        try
+        {
+            await DisconnectAsync().ConfigureAwait(true);
+        }
+        catch (Exception exception)
+        {
+            State = ProtocolSessionState.Faulted;
+            ErrorOccured?.Invoke(this, exception.Message, null);
+        }
     }
 
     private void UnsubscribeSessionEvents()

@@ -37,7 +37,7 @@ namespace LoipvRemote.UI.Controls
                 for (int i = 0; i < Controls.Count; i++)
                 {
                     //Remove those non-themable buttons
-                    if (Controls[i].GetType().ToString().Equals("System.Windows.Forms.UpDownBase+UpDownButtons"))
+                    if (Controls[i].GetType().ToString().Equals("System.Windows.Forms.UpDownBase+UpDownButtons", StringComparison.Ordinal))
                         Controls.Remove(Controls[i]);
 
                     /* This is a bit of a hack.
@@ -47,7 +47,7 @@ namespace LoipvRemote.UI.Controls
                      * AddOptionsPagesToListView and then LstOptionPages_SelectedIndexChanged
                      */
                     if (!(Controls[i] is MrngButton)) continue;
-                    if (!Controls[i].Text.Equals("\u25B2") && !Controls[i].Text.Equals("\u25BC")) continue;
+                    if (!Controls[i].Text.Equals("\u25B2", StringComparison.Ordinal) && !Controls[i].Text.Equals("\u25BC", StringComparison.Ordinal)) continue;
                     Invalidate();
                     return;
                 }
@@ -96,12 +96,12 @@ namespace LoipvRemote.UI.Controls
             Down.SetBounds(left, 1 + buttonHeight, buttonWidth, Math.Max(1, Height - buttonHeight - 2));
         }
 
-        private void Down_Click(object sender, EventArgs e)
+        private void Down_Click(object? sender, EventArgs e)
         {
             DownButton();
         }
 
-        private void Up_Click(object sender, EventArgs e)
+        private void Up_Click(object? sender, EventArgs e)
         {
             UpButton();
         }

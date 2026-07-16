@@ -2,11 +2,11 @@ using System;
 
 namespace LoipvRemote.Credential.Repositories
 {
-    public class CredentialRepositoryChangedArgs : EventArgs
+    public class CredentialRepositoryChangedEventArgs : EventArgs
     {
         public ICredentialRepository Repository { get; }
 
-        public CredentialRepositoryChangedArgs(ICredentialRepository repository)
+        public CredentialRepositoryChangedEventArgs(ICredentialRepository repository)
         {
             ArgumentNullException.ThrowIfNull(repository);
 

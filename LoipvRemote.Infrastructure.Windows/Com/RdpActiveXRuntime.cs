@@ -56,7 +56,8 @@ public sealed class RdpActiveXRuntime : IRdpClient, IRdpCredentialClient, IRdpRu
             throw new InvalidOperationException("The RDP ActiveX control must be hosted before initialization.");
 
         Control.CreateControl();
-        _client = (MsRdpClient6NotSafeForScripting)Control.GetOcx();
+        _client = Control.GetOcx() as MsRdpClient6NotSafeForScripting
+            ?? throw new InvalidOperationException("The RDP ActiveX control did not expose the expected client interface.");
     }
 
     public bool AttachTo(IntPtr parentWindowHandle, TimeSpan timeout)
@@ -71,7 +72,7 @@ public sealed class RdpActiveXRuntime : IRdpClient, IRdpCredentialClient, IRdpRu
         if (ReferenceEquals(Control.Parent, parent))
             return true;
 
-        ISupportInitialize initializer = Control;
+        AxHost initializer = Control;
         initializer.BeginInit();
         try
         {
@@ -275,14 +276,17 @@ public sealed class RdpActiveXRuntime : IRdpClient, IRdpCredentialClient, IRdpRu
             return;
         }
 
-        IMsRdpClientNonScriptable5 nonScriptable = (IMsRdpClientNonScriptable5)Control.GetOcx();
+        IMsRdpClientNonScriptable5 nonScriptable = Control.GetOcx() as IMsRdpClientNonScriptable5
+            ?? throw new InvalidOperationException("The RDP ActiveX control does not expose drive redirection settings.");
         HashSet<char> localFixedDrives = DriveInfo.GetDrives()
             .Where(drive => drive.DriveType == DriveType.Fixed)
             .Select(drive => char.ToUpperInvariant(drive.Name[0]))
             .ToHashSet();
         for (uint index = 0; index < nonScriptable.DriveCollection.DriveCount; index++)
         {
-            IMsRdpDrive drive = nonScriptable.DriveCollection.DriveByIndex[index];
+            IMsRdpDrive? drive = nonScriptable.DriveCollection.DriveByIndex[index];
+            if (drive is null)
+                continue;
             char letter = char.ToUpperInvariant(drive.Name[0]);
             drive.RedirectionState = mode == RdpDriveRedirection.Custom
                 ? customDrives.Contains(letter.ToString(), StringComparison.OrdinalIgnoreCase)

@@ -1906,9 +1906,6 @@
   <data name="DatabaseNotAvailable" xml:space="preserve">
     <value>தரவுத்தளம் '{0}' கிடைக்கவில்லை.</value>
   </data>
-  <data name="SaveConnectionsAfterEveryEdit" xml:space="preserve">
-    <value>ஒவ்வொரு திருத்தத்திற்குப் பிறகு இணைப்புகளைச் சேமி</value>
-  </data>
   <data name="TestConnection" xml:space="preserve">
     <value>சோதனை இணைப்பு</value>
   </data>

@@ -31,7 +31,7 @@ namespace LoipvRemote.UI.Controls
             OUT
         }
 
-        public MouseState _mice { get; set; }
+        public MouseState MouseInteractionState { get; set; }
 
 
         protected override void OnCreateControl()
@@ -39,26 +39,26 @@ namespace LoipvRemote.UI.Controls
             base.OnCreateControl();
             _themeManager = ThemeManager.getInstance();
             if (!_themeManager.ThemingActive) return;
-            _mice = MouseState.OUT;
+            MouseInteractionState = MouseState.OUT;
             MouseEnter += (sender, args) =>
             {
-                _mice = MouseState.HOVER;
+                MouseInteractionState = MouseState.HOVER;
                 Invalidate();
             };
             MouseLeave += (sender, args) =>
             {
-                _mice = MouseState.OUT;
+                MouseInteractionState = MouseState.OUT;
                 Invalidate();
             };
             MouseDown += (sender, args) =>
             {
                 if (args.Button != MouseButtons.Left) return;
-                _mice = MouseState.DOWN;
+                MouseInteractionState = MouseState.DOWN;
                 Invalidate();
             };
             MouseUp += (sender, args) =>
             {
-                _mice = MouseState.OUT;
+                MouseInteractionState = MouseState.OUT;
 
                 Invalidate();
             };
@@ -67,8 +67,9 @@ namespace LoipvRemote.UI.Controls
         }
 
 
-        protected override void OnPaint(PaintEventArgs e)
+        protected override void OnPaint(PaintEventArgs pevent)
         {
+            PaintEventArgs e = pevent;
             if (!_themeManager.ActiveAndExtended)
             {
                 base.OnPaint(e);
@@ -86,7 +87,7 @@ namespace LoipvRemote.UI.Controls
                 glyph = _themeManager.ActiveTheme.ExtendedPalette.getColor("CheckBox_Glyph");
                 fore = _themeManager.ActiveTheme.ExtendedPalette.getColor("CheckBox_Text");
                 // ReSharper disable once SwitchStatementMissingSomeCases
-                switch (_mice)
+                switch (MouseInteractionState)
                 {
                     case MouseState.HOVER:
                         checkBorder = _themeManager.ActiveTheme.ExtendedPalette.getColor("CheckBox_Border_Hover");

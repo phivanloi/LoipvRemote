@@ -13,13 +13,15 @@
     <PackageReference Include="System.Management" />
   </ItemGroup>
   <ItemGroup>
-    <Reference Include="Interop.MSTSCLib">
+    <Reference Include="Interop.MSTSCLib" Condition="'$(Platform)' != 'arm64'">
       <HintPath>Interop\Interop.MSTSCLib.dll</HintPath>
       <EmbedInteropTypes>false</EmbedInteropTypes>
     </Reference>
-    <Reference Include="AxInterop.MSTSCLib">
+    <Reference Include="AxInterop.MSTSCLib" Condition="'$(Platform)' != 'arm64'">
       <HintPath>Interop\AxInterop.MSTSCLib.dll</HintPath>
       <EmbedInteropTypes>false</EmbedInteropTypes>
     </Reference>
+    <Compile Remove="Com\RdpActiveXRuntime.cs" Condition="'$(Platform)' == 'arm64'" />
+    <Compile Remove="Com\RdpActiveXRuntime.Arm64.cs" Condition="'$(Platform)' != 'arm64'" />
   </ItemGroup>
 </Project>

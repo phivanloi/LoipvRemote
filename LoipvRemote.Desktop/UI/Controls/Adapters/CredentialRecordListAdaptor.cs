@@ -1,6 +1,5 @@
 using System;
 using System.ComponentModel;
-using System.Diagnostics.CodeAnalysis;
 using System.Drawing.Design;
 using System.Runtime.Versioning;
 using System.Windows.Forms.Design;
@@ -12,7 +11,7 @@ namespace LoipvRemote.UI.Controls.Adapters
     public class CredentialRecordListAdaptor : UITypeEditor
     {
         private static Func<ICredentialRepositoryList>? s_catalogSource;
-        private IWindowsFormsEditorService _editorService = null!;
+        private IWindowsFormsEditorService? _editorService;
 
         public static void Configure(Func<ICredentialRepositoryList> catalogSource)
         {
@@ -49,9 +48,9 @@ namespace LoipvRemote.UI.Controls.Adapters
             return listBox.SelectedItem ?? value;
         }
 
-        private void ListBoxOnSelectedValueChanged([NotNull] object? sender, EventArgs eventArgs)
+        private void ListBoxOnSelectedValueChanged(object? sender, EventArgs eventArgs)
         {
-            _editorService.CloseDropDown();
+            _editorService?.CloseDropDown();
         }
     }
 }

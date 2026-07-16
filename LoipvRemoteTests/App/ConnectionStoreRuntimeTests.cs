@@ -32,11 +32,17 @@ public sealed class ConnectionWorkspacePersistenceTests
     }
 
     [Test]
-    public void XmlRuntimeRoundTripPreservesFoldersOptionsInheritanceAndCredentialReferences()
+    public async Task XmlRuntimeRoundTripPreservesFoldersOptionsInheritanceAndCredentialReferences()
     {
         string filePath = Path.Combine(Path.GetTempPath(), $"loipvremote-runtime-{Guid.NewGuid():N}.xml");
         _temporaryFiles.Add(filePath);
-        var workspace = CreateWorkspace();
+        var messages = new MessageCollector();
+        var workspace = new ConnectionWorkspace(
+            new PuttySessionsManager(),
+            new ConnectionStoreConfigurationService(new ConnectionDefinitionStoreFactory()),
+            new XmlConnectionStoreOptionsProvider(),
+            new DpapiStringSecretStore(new WindowsDpapiSecretProtector()),
+            messages);
         var source = new ConnectionTreeModel();
         var root = new RootNodeInfo(RootNodeType.Connection, Guid.NewGuid().ToString());
         var folder = new ContainerInfo(Guid.NewGuid().ToString()) { Name = "Production", PuttySession = "prod" };
@@ -54,8 +60,8 @@ public sealed class ConnectionWorkspacePersistenceTests
         folder.AddChild(connection);
         source.AddRootNode(root);
 
-        workspace.SaveConnections(source, false, new SaveFilter(), filePath, forceSave: true);
-        workspace.LoadConnections(useDatabase: false, import: true, connectionFileName: filePath);
+        await workspace.SaveConnectionsAsync(source, false, new SaveFilter(), filePath, forceSave: true);
+        await workspace.LoadConnectionsAsync(useDatabase: false, import: true, connectionFileName: filePath);
         RootNodeInfo restoredRoot = workspace.ConnectionTreeModel.RootNodes.OfType<RootNodeInfo>().Single();
         ContainerInfo restoredFolder = restoredRoot.Children.OfType<ContainerInfo>().Single();
         ConnectionInfo restoredConnection = restoredFolder.Children.Single();
@@ -70,7 +76,7 @@ public sealed class ConnectionWorkspacePersistenceTests
     }
 
     [Test]
-    public void ConnectionWorkspaceLoadsXmlThroughTheDomainStoreRuntime()
+    public async Task ConnectionWorkspaceLoadsXmlThroughTheDomainStoreRuntime()
     {
         string filePath = Path.Combine(Path.GetTempPath(), $"loipvremote-runtime-{Guid.NewGuid():N}.xml");
         _temporaryFiles.Add(filePath);
@@ -85,29 +91,51 @@ public sealed class ConnectionWorkspacePersistenceTests
             Protocol = ProtocolKind.Ssh2
         });
         source.AddRootNode(root);
-        workspace.SaveConnections(source, false, new SaveFilter(), filePath, forceSave: true);
+        await workspace.SaveConnectionsAsync(source, false, new SaveFilter(), filePath, forceSave: true);
 
-        workspace.LoadConnections(useDatabase: false, import: true, connectionFileName: filePath);
+        await workspace.LoadConnectionsAsync(useDatabase: false, import: true, connectionFileName: filePath);
 
         Assert.That(workspace.ConnectionTreeModel.RootNodes.Single().Children.Single().Hostname, Is.EqualTo("host.example"));
     }
 
     [Test]
-    public void LoadDoesNotDeadlockWhenCalledFromANonPumpingSynchronizationContext()
+    public async Task ConcurrentXmlSavesReleaseCrossThreadFileGateSafely()
+    {
+        string filePath = Path.Combine(Path.GetTempPath(), $"loipvremote-runtime-{Guid.NewGuid():N}.xml");
+        _temporaryFiles.Add(filePath);
+        var messages = new MessageCollector();
+        var workspace = CreateWorkspace(messages: messages);
+        var source = new ConnectionTreeModel();
+        var root = new RootNodeInfo(RootNodeType.Connection, Guid.NewGuid().ToString());
+        root.AddChild(new ConnectionInfo(Guid.NewGuid().ToString())
+        {
+            Name = "ssh",
+            Hostname = "host.example",
+            Port = 22,
+            Protocol = ProtocolKind.Ssh2
+        });
+        source.AddRootNode(root);
+
+        Task[] saves =
+        [
+            workspace.SaveConnectionsAsync(source, false, new SaveFilter(), filePath, forceSave: true),
+            workspace.SaveConnectionsAsync(source, false, new SaveFilter(), filePath, forceSave: true)
+        ];
+
+        await Task.WhenAll(saves);
+
+        Assert.That(messages.Messages.Any(message => message.Text.Contains("Object synchronization method", StringComparison.Ordinal)), Is.False);
+    }
+
+    [Test]
+    public async Task LoadCompletesFromAWorkerContextWithoutBlocking()
     {
         var workspace = CreateWorkspace(new YieldingStoreFactory());
-        SynchronizationContext? originalContext = SynchronizationContext.Current;
-        SynchronizationContext.SetSynchronizationContext(new NonPumpingSynchronizationContext());
-
-        try
-        {
-            workspace.LoadConnections(useDatabase: false, import: true, connectionFileName: "ignored.xml");
-            Assert.That(workspace.ConnectionTreeModel, Is.Not.Null);
-        }
-        finally
-        {
-            SynchronizationContext.SetSynchronizationContext(originalContext);
-        }
+        await Task.Run(() => workspace.LoadConnectionsAsync(
+            useDatabase: false,
+            import: true,
+            connectionFileName: "ignored.xml"));
+        Assert.That(workspace.ConnectionTreeModel, Is.Not.Null);
     }
 
     [Test]
@@ -135,15 +163,16 @@ public sealed class ConnectionWorkspacePersistenceTests
         Assert.That(restored.RootNodes.Single().Children.Single().Password, Is.EqualTo("connection-password"));
     }
 
-    private static ConnectionWorkspace CreateWorkspace(IConnectionDefinitionStoreFactory? factory = null)
+    private static ConnectionWorkspace CreateWorkspace(
+        IConnectionDefinitionStoreFactory? factory = null,
+        MessageCollector? messages = null)
     {
         return new ConnectionWorkspace(
-            PuttySessionsManager.Instance,
-            new ConnectionDefinitionPersistenceRuntime(
-                new ConnectionStoreConfigurationService(factory ?? new ConnectionDefinitionStoreFactory())),
+            new PuttySessionsManager(),
+            new ConnectionStoreConfigurationService(factory ?? new ConnectionDefinitionStoreFactory()),
             new XmlConnectionStoreOptionsProvider(),
             new DpapiStringSecretStore(new WindowsDpapiSecretProtector()),
-            new MessageCollector());
+            messages ?? new MessageCollector());
     }
 
     private sealed class YieldingStoreFactory : IConnectionDefinitionStoreFactory
@@ -162,10 +191,4 @@ public sealed class ConnectionWorkspacePersistenceTests
         public Task SaveAsync(ConnectionTreeDefinition tree, CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
 
-    private sealed class NonPumpingSynchronizationContext : SynchronizationContext
-    {
-        public override void Post(SendOrPostCallback callback, object? state)
-        {
-        }
-    }
 }

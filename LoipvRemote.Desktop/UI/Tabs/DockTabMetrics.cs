@@ -9,13 +9,13 @@ namespace LoipvRemote.UI.Tabs
 
         internal static int BoxedTextHeight(int textHeight)
         {
-            if (textHeight <= 0) throw new ArgumentOutOfRangeException(nameof(textHeight));
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(textHeight);
             return textHeight + (TextPadding * 2);
         }
 
         internal static int BoxedTextWidth(int textWidth)
         {
-            if (textWidth < 0) throw new ArgumentOutOfRangeException(nameof(textWidth));
+            ArgumentOutOfRangeException.ThrowIfNegative(textWidth);
             return textWidth + (TextPadding * 2);
         }
 

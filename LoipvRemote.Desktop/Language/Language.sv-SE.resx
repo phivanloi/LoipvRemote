@@ -1828,9 +1828,6 @@ LoipvRemote kommer nu att avsluta och börja med installationen.</value>
   <data name="DatabaseNotAvailable" xml:space="preserve">
     <value>Databasen '{0}' är inte tillgängligt.</value>
   </data>
-  <data name="SaveConnectionsAfterEveryEdit" xml:space="preserve">
-    <value>Spara anslutningar efter varje ändring</value>
-  </data>
   <data name="TestConnection" xml:space="preserve">
     <value>Testa anslutning</value>
   </data>

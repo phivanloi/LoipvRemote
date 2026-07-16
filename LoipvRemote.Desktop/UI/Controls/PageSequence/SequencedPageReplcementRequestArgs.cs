@@ -2,7 +2,7 @@ using System;
 
 namespace LoipvRemote.UI.Controls.PageSequence
 {
-    public delegate void SequencedPageReplcementRequestHandler(object sender, SequencedPageReplcementRequestArgs args);
+    public delegate void SequencedPageReplcementRequestHandler(object? sender, SequencedPageReplcementRequestArgs args);
 
     public enum RelativePagePosition
     {

@@ -11,7 +11,11 @@ namespace LoipvRemote.Credential
     [SupportedOSPlatform("windows")]
     public class PlaceholderCredentialRecord(IEnumerable<Guid> id) : ICredentialRecord
     {
-        public event PropertyChangedEventHandler? PropertyChanged;
+        public event PropertyChangedEventHandler? PropertyChanged
+        {
+            add { }
+            remove { }
+        }
 
         public Guid Id { get; } = id.FirstOrDefault();
 

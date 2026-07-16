@@ -7,7 +7,7 @@ namespace LoipvRemote.Tools.Cmdline
     // Adapted from http://qntm.org/cmd
     public class CommandLineArguments
     {
-        protected List<Argument> Arguments = [];
+        protected List<Argument> Arguments { get; } = [];
 
         public bool EscapeForShell { get; set; }
 
@@ -42,7 +42,7 @@ namespace LoipvRemote.Tools.Cmdline
             if (string.IsNullOrEmpty(argument))
                 return argument;
 
-            if (argument.StartsWith("-"))
+            if (argument.StartsWith('-'))
                 argument = ".\\" + argument;
 
             return argument;
@@ -75,7 +75,7 @@ namespace LoipvRemote.Tools.Cmdline
 
         public static string QuoteArgument(string argument, bool forceQuotes = false)
         {
-            if (!forceQuotes && !string.IsNullOrEmpty(argument) && !argument.Contains(" "))
+            if (!forceQuotes && !string.IsNullOrEmpty(argument) && !argument.Contains(' '))
             {
                 return argument;
             }

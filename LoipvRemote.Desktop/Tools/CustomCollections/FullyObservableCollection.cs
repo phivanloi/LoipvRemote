@@ -35,7 +35,7 @@ namespace LoipvRemote.Tools.CustomCollections
             _list.Add(item);
             SubscribeToChildEvents(item);
             if (_eventsAllowed)
-                RaiseCollectionChangedEvent(ActionType.Added, new[] {item});
+                RaiseCollectionChangedEvent(ActionType.Added, new[] { item });
         }
 
         /// <summary>
@@ -60,7 +60,7 @@ namespace LoipvRemote.Tools.CustomCollections
         {
             _list.Insert(index, item);
             SubscribeToChildEvents(item);
-            RaiseCollectionChangedEvent(ActionType.Added, new[] {item});
+            RaiseCollectionChangedEvent(ActionType.Added, new[] { item });
         }
 
         public bool Remove(T item)
@@ -68,7 +68,7 @@ namespace LoipvRemote.Tools.CustomCollections
             bool worked = _list.Remove(item);
             if (!worked) return worked;
             UnsubscribeFromChildEvents(item);
-            RaiseCollectionChangedEvent(ActionType.Removed, new[] {item});
+            RaiseCollectionChangedEvent(ActionType.Removed, new[] { item });
             return worked;
         }
 
@@ -77,7 +77,7 @@ namespace LoipvRemote.Tools.CustomCollections
             T item = _list[index];
             _list.RemoveAt(index);
             UnsubscribeFromChildEvents(item);
-            RaiseCollectionChangedEvent(ActionType.Removed, new[] {item});
+            RaiseCollectionChangedEvent(ActionType.Removed, new[] { item });
         }
 
         public void Clear()
@@ -99,10 +99,10 @@ namespace LoipvRemote.Tools.CustomCollections
             item.PropertyChanged -= ItemOnPropertyChanged;
         }
 
-        private void ItemOnPropertyChanged(object sender, PropertyChangedEventArgs propertyChangedEventArgs)
+        private void ItemOnPropertyChanged(object? sender, PropertyChangedEventArgs propertyChangedEventArgs)
         {
             if (sender is T)
-                RaiseCollectionChangedEvent(ActionType.Updated, new[] {(T)sender});
+                RaiseCollectionChangedEvent(ActionType.Updated, new[] { (T)sender });
         }
 
         public event EventHandler<CollectionUpdatedEventArgs<T>>? CollectionUpdated;

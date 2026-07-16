@@ -25,30 +25,6 @@ public sealed class ConnectionSessionOrchestrator(
 
     public event Action<ConnectionSessionStateChanged>? StateChanged;
 
-    public ConnectionSessionStartOutcome Start(ConnectionDefinition definition)
-    {
-        ArgumentNullException.ThrowIfNull(definition);
-
-        if (!IsValid(definition))
-        {
-            PublishState(definition.Id, ProtocolSessionState.Faulted);
-            return new ConnectionSessionStartOutcome(ConnectionSessionStartStatus.InvalidDefinition, null);
-        }
-
-        IProtocolSession session;
-        try
-        {
-            session = _protocolFactory.Create(definition);
-        }
-        catch (NotSupportedException)
-        {
-            PublishState(definition.Id, ProtocolSessionState.Faulted);
-            return new ConnectionSessionStartOutcome(ConnectionSessionStartStatus.ProtocolUnavailable, null);
-        }
-
-        return StartValidated(definition, session);
-    }
-
     public async ValueTask<ConnectionSessionStartOutcome> StartAsync(
         ConnectionDefinition definition,
         CancellationToken cancellationToken = default)
@@ -78,7 +54,10 @@ public sealed class ConnectionSessionOrchestrator(
     /// <summary>
     /// Starts a session already created and bound by a host adapter.
     /// </summary>
-    public ConnectionSessionStartOutcome Start(ConnectionDefinition definition, IProtocolSession session)
+    public async ValueTask<ConnectionSessionStartOutcome> StartAsync(
+        ConnectionDefinition definition,
+        IProtocolSession session,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(definition);
         ArgumentNullException.ThrowIfNull(session);
@@ -89,25 +68,7 @@ public sealed class ConnectionSessionOrchestrator(
             return new ConnectionSessionStartOutcome(ConnectionSessionStartStatus.InvalidDefinition, null);
         }
 
-        return StartValidated(definition, session);
-    }
-
-    private ConnectionSessionStartOutcome StartValidated(ConnectionDefinition definition, IProtocolSession session)
-    {
-        SessionStartResult result = _lifecycleCoordinator.Start(session);
-        if (result == SessionStartResult.Started)
-        {
-            PublishState(definition.Id, session.State);
-            return new ConnectionSessionStartOutcome(ConnectionSessionStartStatus.Started, session);
-        }
-
-        session.Dispose();
-        PublishState(definition.Id, session.State);
-        return new ConnectionSessionStartOutcome(
-            result == SessionStartResult.InitializationFailed
-                ? ConnectionSessionStartStatus.InitializationFailed
-                : ConnectionSessionStartStatus.ConnectionFailed,
-            null);
+        return await StartValidatedAsync(definition, session, cancellationToken).ConfigureAwait(false);
     }
 
     private async ValueTask<ConnectionSessionStartOutcome> StartValidatedAsync(
@@ -124,7 +85,7 @@ public sealed class ConnectionSessionOrchestrator(
             return new ConnectionSessionStartOutcome(ConnectionSessionStartStatus.Started, session);
         }
 
-        await session.DisposeAsyncSafe().ConfigureAwait(false);
+        await session.DisposeAsync().ConfigureAwait(false);
         PublishState(definition.Id, session.State);
         return new ConnectionSessionStartOutcome(
             result == SessionStartResult.InitializationFailed
@@ -149,18 +110,11 @@ public sealed class ConnectionSessionOrchestrator(
     private void PublishState(Guid connectionId, ProtocolSessionState state) =>
         StateChanged?.Invoke(new ConnectionSessionStateChanged(connectionId, state, DateTimeOffset.UtcNow));
 
-    public void Stop(IProtocolSession session)
-    {
-        ArgumentNullException.ThrowIfNull(session);
-        _lifecycleCoordinator.Stop(session);
-        session.Dispose();
-    }
-
     public async ValueTask StopAsync(IProtocolSession session, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(session);
         await _lifecycleCoordinator.StopAsync(session, cancellationToken).ConfigureAwait(false);
-        await session.DisposeAsyncSafe().ConfigureAwait(false);
+        await session.DisposeAsync().ConfigureAwait(false);
     }
 }
 

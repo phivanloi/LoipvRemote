@@ -25,14 +25,14 @@ namespace LoipvRemoteTests.Tree.ClickHandlers
         {
             var connectionInfo = new ConnectionInfo();
             _clickHandler.Execute(connectionInfo);
-            _connectionInitiator.Received().OpenConnection(connectionInfo);
+            _ = _connectionInitiator.Received().OpenConnectionAsync(connectionInfo);
         }
 
         [Test]
         public void DoesNothingWhenGivenContainerInfo()
         {
             _clickHandler.Execute(new ContainerInfo());
-            _connectionInitiator.DidNotReceiveWithAnyArgs().OpenConnection(new ConnectionInfo());
+            _ = _connectionInitiator.DidNotReceiveWithAnyArgs().OpenConnectionAsync(new ConnectionInfo());
         }
 
         [Test]

@@ -2,14 +2,12 @@ using System;
 using System.ComponentModel;
 using System.Diagnostics;
 using LoipvRemote.Domain.Metadata;
-using System.Data.SqlTypes;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Globalization;
 using System.IO;
 using System.Security;
 using LoipvRemote.UI.Forms;
-using MySql.Data.Types;
 using LoipvRemote.Resources.Language;
 using System.Runtime.Versioning;
 
@@ -36,7 +34,7 @@ namespace LoipvRemote.Tools
             }
         }
 
-        public static Optional<SecureString> PasswordDialog(string? passwordName = null, bool verify = true)
+        public static OptionalValue<SecureString> PasswordDialog(string? passwordName = null, bool verify = true)
         {
             passwordName ??= string.Empty; // Ensure passwordName is not null
             FrmPassword passwordForm = new(passwordName, verify);
@@ -45,7 +43,7 @@ namespace LoipvRemote.Tools
 
         public static string LeadingZero(string Number)
         {
-            if (Convert.ToInt32(Number) < 10)
+            if (Convert.ToInt32(Number, CultureInfo.InvariantCulture) < 10)
             {
                 return "0" + Number;
             }
@@ -72,47 +70,6 @@ namespace LoipvRemote.Tools
 
             Trace.TraceError($"Conversion of object to boolean failed because the type, {type}, is not handled.");
             return false;
-        }
-
-        public static string DBDate(DateTime Dt)
-		{
-			switch (Properties.OptionsDBsPage.Default.SQLServerType)
-			{
-				case "mysql":
-					return Dt.ToString("yyyy/MM/dd HH:mm:ss");
-				case "mssql":
-				default:
-					return Dt.ToString("yyyyMMdd HH:mm:ss");
-			}
-		}
-
-		public static Type DBTimeStampType()
-		{
-			switch (Properties.OptionsDBsPage.Default.SQLServerType)
-			{
-				case "mysql":
-					return typeof(MySqlDateTime);
-				case "mssql":
-				default:
-					return typeof(SqlDateTime);
-			}
-		}
-
-		public static object DBTimeStampNow()
-		{
-			switch (Properties.OptionsDBsPage.Default.SQLServerType)
-			{
-				case "mysql":
-					return new MySqlDateTime(DateTime.Now.ToUniversalTime());
-				case "mssql":
-				default:
-					return DateTime.Now.ToUniversalTime();
-			}
-		}
-
-        public static string PrepareValueForDB(string Text)
-        {
-            return Text.Replace("\'", "\'\'");
         }
 
         public static string GetExceptionMessageRecursive(Exception ex)
@@ -154,12 +111,12 @@ namespace LoipvRemote.Tools
         {
             private readonly Type _enumType = type;
 
-            public override bool CanConvertTo(ITypeDescriptorContext? context, Type? destType)
+            public override bool CanConvertTo(ITypeDescriptorContext? context, Type? destinationType)
             {
-                return destType == typeof(string);
+                return destinationType == typeof(string);
             }
 
-            public override object ConvertTo(ITypeDescriptorContext? context, CultureInfo? culture, object? value, Type? destType)
+            public override object ConvertTo(ITypeDescriptorContext? context, CultureInfo? culture, object? value, Type? destinationType)
             {
                 if (value == null) return string.Empty;
 
@@ -178,15 +135,15 @@ namespace LoipvRemote.Tools
                 ProtocolDisplayKeyAttribute? displayKey =
                     (ProtocolDisplayKeyAttribute?)Attribute.GetCustomAttribute(fi, typeof(ProtocolDisplayKeyAttribute));
                 if (displayKey is not null)
-                    return Language.ResourceManager.GetString(displayKey.ResourceKey) ?? displayKey.ResourceKey;
+                    return Language.ResourceManager.GetString(displayKey.ResourceKey, culture ?? CultureInfo.CurrentUICulture) ?? displayKey.ResourceKey;
 
                 DescriptionAttribute? dna = (DescriptionAttribute?)Attribute.GetCustomAttribute(fi, typeof(DescriptionAttribute));
                 return dna?.Description ?? value.ToString() ?? string.Empty;
             }
 
-            public override bool CanConvertFrom(ITypeDescriptorContext? context, Type? srcType)
+            public override bool CanConvertFrom(ITypeDescriptorContext? context, Type? sourceType)
             {
-                return srcType == typeof(string);
+                return sourceType == typeof(string);
             }
 
             public override object ConvertFrom(ITypeDescriptorContext? context, CultureInfo? culture, object? value)
@@ -198,7 +155,7 @@ namespace LoipvRemote.Tools
                         ProtocolDisplayKeyAttribute? displayKey =
                             (ProtocolDisplayKeyAttribute?)Attribute.GetCustomAttribute(fi, typeof(ProtocolDisplayKeyAttribute));
                         string? displayValue = displayKey is not null
-                            ? Language.ResourceManager.GetString(displayKey.ResourceKey) ?? displayKey.ResourceKey
+                            ? Language.ResourceManager.GetString(displayKey.ResourceKey, culture ?? CultureInfo.CurrentUICulture) ?? displayKey.ResourceKey
                             : ((DescriptionAttribute?)Attribute.GetCustomAttribute(fi, typeof(DescriptionAttribute)))?.Description;
 
                         if (displayValue is not null && string.Equals(stringValue, displayValue, StringComparison.Ordinal))
@@ -235,24 +192,24 @@ namespace LoipvRemote.Tools
                         : throw new ArgumentNullException(nameof(value), "Value cannot be null.");
                 }
 
-                if (string.Equals(stringValue, Language.Yes, StringComparison.CurrentCultureIgnoreCase))
+                if (string.Equals(stringValue, Language.Yes, StringComparison.OrdinalIgnoreCase))
                 {
                     return true;
                 }
 
-                if (string.Equals(stringValue, Language.No, StringComparison.CurrentCultureIgnoreCase))
+                if (string.Equals(stringValue, Language.No, StringComparison.OrdinalIgnoreCase))
                 {
                     return false;
                 }
 
-                throw new Exception("Values must be \"Yes\" or \"No\"");
+                throw new FormatException("Values must be \"Yes\" or \"No\".");
             }
 
             public override object ConvertTo(ITypeDescriptorContext? context, CultureInfo? culture, object? value, Type destinationType)
             {
                 if (destinationType == typeof(string))
                 {
-                    return Convert.ToBoolean(value) ? Language.Yes : Language.No;
+                    return Convert.ToBoolean(value, CultureInfo.InvariantCulture) ? Language.Yes : Language.No;
                 }
 
                 return base.ConvertTo(context, culture, value, destinationType) ?? throw new InvalidOperationException("Base conversion returned null.");

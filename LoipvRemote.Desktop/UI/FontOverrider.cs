@@ -14,10 +14,12 @@ namespace LoipvRemote.UI
             {
                 Control ctlChild = tempLoopVarCtlChild;
                 // Only create a new Font if the font name is different to avoid unnecessary GDI operations
-                if (ctlChild.Font.Name != SystemFonts.MessageBoxFont.Name)
+                Font? currentFont = ctlChild.Font;
+                Font messageFont = SystemFonts.MessageBoxFont ?? SystemFonts.DefaultFont;
+                if (currentFont is not null && currentFont.Name != messageFont.Name)
                 {
-                    ctlChild.Font = new Font(SystemFonts.MessageBoxFont.Name, ctlChild.Font.Size, ctlChild.Font.Style,
-                                             ctlChild.Font.Unit, ctlChild.Font.GdiCharSet);
+                    ctlChild.Font = new Font(messageFont.Name, currentFont.Size, currentFont.Style,
+                                             currentFont.Unit, currentFont.GdiCharSet);
                 }
                 if (ctlChild.Controls.Count > 0)
                 {

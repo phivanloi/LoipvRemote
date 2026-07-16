@@ -17,16 +17,16 @@ namespace LoipvRemote.UI.Menu
         private ToolStripMenuItem _mMenViewConnectionPanels = null!;
         private ToolStripMenuItem _mMenReconnectAll = null!;
         private ToolStripSeparator _mMenViewSep1 = null!;
-        public ToolStripMenuItem _mMenViewErrorsAndInfos = null!;
-        public ToolStripMenuItem _mMenViewFileMenu = null!;
+        public ToolStripMenuItem ViewErrorsAndInfosMenu { get; private set; } = null!;
+        public ToolStripMenuItem ViewFileMenu { get; private set; } = null!;
         private ToolStripMenuItem _mMenViewAddConnectionPanel = null!;
         private ToolStripSeparator _mMenViewSep2 = null!;
         private ToolStripMenuItem _mMenViewFullscreen = null!;
-        public ToolStripMenuItem _mMenViewExtAppsToolbar = null!;
-        public ToolStripMenuItem _mMenViewQuickConnectToolbar = null!;
-        public ToolStripMenuItem _mMenViewMultiSshToolbar = null!;
+        public ToolStripMenuItem ViewExternalAppsToolbar { get; private set; } = null!;
+        public ToolStripMenuItem ViewQuickConnectToolbar { get; private set; } = null!;
+        public ToolStripMenuItem ViewMultiSshToolbar { get; private set; } = null!;
         private ToolStripMenuItem _mMenViewResetLayout = null!;
-        public ToolStripMenuItem _mMenViewLockToolbars = null!;
+        public ToolStripMenuItem ViewLockToolbars { get; private set; } = null!;
         private PanelAdder? _panelAdder;
         private DesktopShellRuntime? _desktopShellRuntime;
 
@@ -60,15 +60,15 @@ namespace LoipvRemote.UI.Menu
             _mMenViewAddConnectionPanel = new ToolStripMenuItem();
             _mMenViewConnectionPanels = new ToolStripMenuItem();
             _mMenViewSep1 = new ToolStripSeparator();
-            _mMenViewFileMenu = new ToolStripMenuItem();
-            _mMenViewErrorsAndInfos = new ToolStripMenuItem();
+            ViewFileMenu = new ToolStripMenuItem();
+            ViewErrorsAndInfosMenu = new ToolStripMenuItem();
             _mMenViewResetLayout = new ToolStripMenuItem();
-            _mMenViewLockToolbars = new ToolStripMenuItem();
+            ViewLockToolbars = new ToolStripMenuItem();
             _mMenViewSep2 = new ToolStripSeparator();
-            _mMenViewQuickConnectToolbar = new ToolStripMenuItem();
+            ViewQuickConnectToolbar = new ToolStripMenuItem();
             _mMenReconnectAll = new ToolStripMenuItem();
-            _mMenViewExtAppsToolbar = new ToolStripMenuItem();
-            _mMenViewMultiSshToolbar = new ToolStripMenuItem();
+            ViewExternalAppsToolbar = new ToolStripMenuItem();
+            ViewMultiSshToolbar = new ToolStripMenuItem();
             _mMenViewFullscreen = new ToolStripMenuItem();
 
             //
@@ -76,17 +76,17 @@ namespace LoipvRemote.UI.Menu
             //
             DropDownItems.AddRange(new ToolStripItem[]
             {
-                _mMenViewFileMenu,
-                _mMenViewErrorsAndInfos,
-                _mMenViewQuickConnectToolbar,
-                _mMenViewExtAppsToolbar,
-                _mMenViewMultiSshToolbar,
+                ViewFileMenu,
+                ViewErrorsAndInfosMenu,
+                ViewQuickConnectToolbar,
+                ViewExternalAppsToolbar,
+                ViewMultiSshToolbar,
                 _mMenViewSep1,
                 _mMenReconnectAll,
                 _mMenViewAddConnectionPanel,
                 _mMenViewConnectionPanels,
                 _mMenViewResetLayout,
-                _mMenViewLockToolbars,
+                ViewLockToolbars,
                 _mMenViewSep2,
                 _mMenViewFullscreen
             });
@@ -125,21 +125,21 @@ namespace LoipvRemote.UI.Menu
             //
             // mMenViewFile
             //
-            _mMenViewFileMenu.Checked = true;
-            _mMenViewFileMenu.CheckState = CheckState.Checked;
-            _mMenViewFileMenu.Name = "mMenViewFile";
-            _mMenViewFileMenu.Size = new System.Drawing.Size(228, 22);
-            _mMenViewFileMenu.Text = Language.FileMenu;
-            _mMenViewFileMenu.Click += mMenViewFileMenu_Click;
+            ViewFileMenu.Checked = true;
+            ViewFileMenu.CheckState = CheckState.Checked;
+            ViewFileMenu.Name = "mMenViewFile";
+            ViewFileMenu.Size = new System.Drawing.Size(228, 22);
+            ViewFileMenu.Text = Language.FileMenu;
+            ViewFileMenu.Click += mMenViewFileMenu_Click;
             //
             // mMenViewErrorsAndInfos
             //
-            _mMenViewErrorsAndInfos.Checked = true;
-            _mMenViewErrorsAndInfos.CheckState = CheckState.Checked;
-            _mMenViewErrorsAndInfos.Name = "mMenViewErrorsAndInfos";
-            _mMenViewErrorsAndInfos.Size = new System.Drawing.Size(228, 22);
-            _mMenViewErrorsAndInfos.Text = Language.Notifications;
-            _mMenViewErrorsAndInfos.Click += mMenViewErrorsAndInfos_Click;
+            ViewErrorsAndInfosMenu.Checked = true;
+            ViewErrorsAndInfosMenu.CheckState = CheckState.Checked;
+            ViewErrorsAndInfosMenu.Name = "mMenViewErrorsAndInfos";
+            ViewErrorsAndInfosMenu.Size = new System.Drawing.Size(228, 22);
+            ViewErrorsAndInfosMenu.Text = Language.Notifications;
+            ViewErrorsAndInfosMenu.Click += mMenViewErrorsAndInfos_Click;
             //
             // mMenViewResetLayout
             //
@@ -150,10 +150,10 @@ namespace LoipvRemote.UI.Menu
             //
             // mMenViewLockToolbars
             //
-            _mMenViewLockToolbars.Name = "mMenViewLockToolbars";
-            _mMenViewLockToolbars.Size = new System.Drawing.Size(228, 22);
-            _mMenViewLockToolbars.Text = Language.LockToolbars;
-            _mMenViewLockToolbars.Click += mMenViewLockToolbars_Click;
+            ViewLockToolbars.Name = "mMenViewLockToolbars";
+            ViewLockToolbars.Size = new System.Drawing.Size(228, 22);
+            ViewLockToolbars.Text = Language.LockToolbars;
+            ViewLockToolbars.Click += mMenViewLockToolbars_Click;
             //
             // mMenViewSep2
             //
@@ -162,24 +162,24 @@ namespace LoipvRemote.UI.Menu
             //
             // mMenViewQuickConnectToolbar
             //
-            _mMenViewQuickConnectToolbar.Name = "mMenViewQuickConnectToolbar";
-            _mMenViewQuickConnectToolbar.Size = new System.Drawing.Size(228, 22);
-            _mMenViewQuickConnectToolbar.Text = Language.QuickConnectToolbar;
-            _mMenViewQuickConnectToolbar.Click += mMenViewQuickConnectToolbar_Click;
+            ViewQuickConnectToolbar.Name = "mMenViewQuickConnectToolbar";
+            ViewQuickConnectToolbar.Size = new System.Drawing.Size(228, 22);
+            ViewQuickConnectToolbar.Text = Language.QuickConnectToolbar;
+            ViewQuickConnectToolbar.Click += mMenViewQuickConnectToolbar_Click;
             //
             // mMenViewExtAppsToolbar
             //
-            _mMenViewExtAppsToolbar.Name = "mMenViewExtAppsToolbar";
-            _mMenViewExtAppsToolbar.Size = new System.Drawing.Size(228, 22);
-            _mMenViewExtAppsToolbar.Text = Language.ExternalToolsToolbar;
-            _mMenViewExtAppsToolbar.Click += mMenViewExtAppsToolbar_Click;
+            ViewExternalAppsToolbar.Name = "mMenViewExtAppsToolbar";
+            ViewExternalAppsToolbar.Size = new System.Drawing.Size(228, 22);
+            ViewExternalAppsToolbar.Text = Language.ExternalToolsToolbar;
+            ViewExternalAppsToolbar.Click += mMenViewExtAppsToolbar_Click;
             //
             // mMenViewMultiSSHToolbar
             //
-            _mMenViewMultiSshToolbar.Name = "mMenViewMultiSSHToolbar";
-            _mMenViewMultiSshToolbar.Size = new System.Drawing.Size(279, 26);
-            _mMenViewMultiSshToolbar.Text = Language.MultiSshToolbar;
-            _mMenViewMultiSshToolbar.Click += mMenViewMultiSSHToolbar_Click;
+            ViewMultiSshToolbar.Name = "mMenViewMultiSSHToolbar";
+            ViewMultiSshToolbar.Size = new System.Drawing.Size(279, 26);
+            ViewMultiSshToolbar.Text = Language.MultiSshToolbar;
+            ViewMultiSshToolbar.Click += mMenViewMultiSSHToolbar_Click;
             //
             // mMenViewFullscreen
             //
@@ -198,12 +198,12 @@ namespace LoipvRemote.UI.Menu
             Text = Language._View;
             _mMenViewAddConnectionPanel.Text = Language.AddConnectionPanel;
             _mMenViewConnectionPanels.Text = Language.ConnectionPanels;
-            _mMenViewErrorsAndInfos.Text = Language.Notifications;
+            ViewErrorsAndInfosMenu.Text = Language.Notifications;
             _mMenViewResetLayout.Text = Language.ResetLayout;
-            _mMenViewLockToolbars.Text = Language.LockToolbars;
-            _mMenViewQuickConnectToolbar.Text = Language.QuickConnectToolbar;
-            _mMenViewExtAppsToolbar.Text = Language.ExternalToolsToolbar;
-            _mMenViewMultiSshToolbar.Text = Language.MultiSshToolbar;
+            ViewLockToolbars.Text = Language.LockToolbars;
+            ViewQuickConnectToolbar.Text = Language.QuickConnectToolbar;
+            ViewExternalAppsToolbar.Text = Language.ExternalToolsToolbar;
+            ViewMultiSshToolbar.Text = Language.MultiSshToolbar;
             _mMenViewFullscreen.Text = Language.Fullscreen;
         }
 
@@ -211,12 +211,12 @@ namespace LoipvRemote.UI.Menu
 
         internal void mMenView_DropDownOpening(object? sender, EventArgs e)
         {
-            _mMenViewErrorsAndInfos.Visible = false;
-            _mMenViewLockToolbars.Checked = Settings.Default.LockToolbars;
+            ViewErrorsAndInfosMenu.Visible = false;
+            ViewLockToolbars.Checked = Settings.Default.LockToolbars;
 
-            _mMenViewExtAppsToolbar.Checked = TsExternalTools.Visible;
-            _mMenViewQuickConnectToolbar.Checked = TsQuickConnect.Visible;
-            _mMenViewMultiSshToolbar.Checked = TsMultiSsh.Visible;
+            ViewExternalAppsToolbar.Checked = TsExternalTools.Visible;
+            ViewQuickConnectToolbar.Checked = TsQuickConnect.Visible;
+            ViewMultiSshToolbar.Checked = TsMultiSsh.Visible;
 
             _mMenViewConnectionPanels.DropDownItems.Clear();
 
@@ -241,21 +241,21 @@ namespace LoipvRemote.UI.Menu
 
         private void mMenViewErrorsAndInfos_Click(object? sender, EventArgs e)
         {
-            if (_mMenViewErrorsAndInfos.Checked == false)
+            if (ViewErrorsAndInfosMenu.Checked == false)
             {
-                AppWindows.ErrorsForm.Show(MainForm.pnlDock);
-                _mMenViewErrorsAndInfos.Checked = true;
+                DesktopShellRuntime.Windows.ErrorsForm.Show(MainForm.pnlDock);
+                ViewErrorsAndInfosMenu.Checked = true;
             }
             else
             {
-                AppWindows.ErrorsForm.Hide();
-                _mMenViewErrorsAndInfos.Checked = false;
+                DesktopShellRuntime.Windows.ErrorsForm.Hide();
+                ViewErrorsAndInfosMenu.Checked = false;
             }
         }
 
         private void mMenViewFileMenu_Click(object? sender, EventArgs e)
         {
-            if (_mMenViewFileMenu.Checked == false)
+            if (ViewFileMenu.Checked == false)
             {
                 MainForm.ShowFileMenu();
             }
@@ -276,15 +276,15 @@ namespace LoipvRemote.UI.Menu
 
         private void mMenViewLockToolbars_Click(object? sender, EventArgs eventArgs)
         {
-            if (_mMenViewLockToolbars.Checked)
+            if (ViewLockToolbars.Checked)
             {
                 Settings.Default.LockToolbars = false;
-                _mMenViewLockToolbars.Checked = false;
+                ViewLockToolbars.Checked = false;
             }
             else
             {
                 Settings.Default.LockToolbars = true;
-                _mMenViewLockToolbars.Checked = true;
+                ViewLockToolbars.Checked = true;
             }
         }
 
@@ -295,48 +295,48 @@ namespace LoipvRemote.UI.Menu
 
         private void mMenViewExtAppsToolbar_Click(object? sender, EventArgs e)
         {
-            if (_mMenViewExtAppsToolbar.Checked)
+            if (ViewExternalAppsToolbar.Checked)
             {
                 Settings.Default.ViewMenuExternalTools = false;
-                _mMenViewExtAppsToolbar.Checked = false;
+                ViewExternalAppsToolbar.Checked = false;
                 TsExternalTools.Visible = false;
             }
             else
             {
                 Settings.Default.ViewMenuExternalTools = true;
-                _mMenViewExtAppsToolbar.Checked = true;
+                ViewExternalAppsToolbar.Checked = true;
                 TsExternalTools.Visible = true;
             }
         }
 
         private void mMenViewQuickConnectToolbar_Click(object? sender, EventArgs e)
         {
-            if (_mMenViewQuickConnectToolbar.Checked)
+            if (ViewQuickConnectToolbar.Checked)
             {
                 Settings.Default.ViewMenuQuickConnect = false;
-                _mMenViewQuickConnectToolbar.Checked = false;
+                ViewQuickConnectToolbar.Checked = false;
                 TsQuickConnect.Visible = false;
             }
             else
             {
                 Settings.Default.ViewMenuQuickConnect = true;
-                _mMenViewQuickConnectToolbar.Checked = true;
+                ViewQuickConnectToolbar.Checked = true;
                 TsQuickConnect.Visible = true;
             }
         }
 
         private void mMenViewMultiSSHToolbar_Click(object? sender, EventArgs e)
         {
-            if (_mMenViewMultiSshToolbar.Checked)
+            if (ViewMultiSshToolbar.Checked)
             {
                 Settings.Default.ViewMenuMultiSSH = false;
-                _mMenViewMultiSshToolbar.Checked = false;
+                ViewMultiSshToolbar.Checked = false;
                 TsMultiSsh.Visible = false;
             }
             else
             {
                 Settings.Default.ViewMenuMultiSSH = true;
-                _mMenViewMultiSshToolbar.Checked = true;
+                ViewMultiSshToolbar.Checked = true;
                 TsMultiSsh.Visible = true;
             }
         }
@@ -347,14 +347,14 @@ namespace LoipvRemote.UI.Menu
             _mMenViewFullscreen.Checked = FullscreenHandler.Value;
         }
 
-        private void mMenReconnectAll_Click(object? sender, EventArgs e)
+        private async void mMenReconnectAll_Click(object? sender, EventArgs e)
         {
             foreach (BaseWindow window in PanelAdder.Panels)
             {
                 if (!(window is ConnectionWindow connectionWindow))
                     return;
 
-                connectionWindow.ReconnectAll(DesktopShellRuntime.ConnectionInitiator);
+                await connectionWindow.ReconnectAllAsync(DesktopShellRuntime.ConnectionInitiator);
             }
         }
 

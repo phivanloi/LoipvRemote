@@ -1,6 +1,8 @@
 using LoipvRemote.Tools;
 using System;
 using System.Diagnostics;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using LoipvRemote.Config.Connections;
 using LoipvRemote.Config.Putty;
@@ -26,18 +28,19 @@ namespace LoipvRemote.App
             ProgramRoot.CloseSingletonInstanceMutex();
         }
 
-        public static void Cleanup(
+        public static async Task CleanupAsync(
             Control quickConnectToolStrip,
             ExternalToolsToolStrip externalToolsToolStrip,
             MultiSshToolStrip multiSshToolStrip,
             FrmMain frmMain,
-            DesktopShellRuntime desktopShellRuntime)
+            DesktopShellRuntime desktopShellRuntime,
+            CancellationToken cancellationToken = default)
         {
             try
             {
-                StopPuttySessionWatcher();
+                StopPuttySessionWatcher(desktopShellRuntime.PuttySessionsManager);
                 DisposeNotificationAreaIcon(desktopShellRuntime.RuntimeState);
-                SaveConnections(desktopShellRuntime.ConnectionWorkspaceRuntime);
+                await SaveConnectionsAsync(desktopShellRuntime.ConnectionWorkspaceRuntime, cancellationToken).ConfigureAwait(true);
                 SaveSettings(quickConnectToolStrip, externalToolsToolStrip, multiSshToolStrip, frmMain, desktopShellRuntime);
             }
             catch (Exception ex)
@@ -46,9 +49,9 @@ namespace LoipvRemote.App
             }
         }
 
-        private static void StopPuttySessionWatcher()
+        private static void StopPuttySessionWatcher(PuttySessionsManager puttySessionsManager)
         {
-            PuttySessionsManager.Instance.StopWatcher();
+            puttySessionsManager.StopWatcher();
         }
 
         private static void DisposeNotificationAreaIcon(RuntimeState runtimeState)
@@ -57,25 +60,28 @@ namespace LoipvRemote.App
                 notificationAreaIcon.Dispose();
         }
 
-        private static void SaveConnections(IConnectionWorkspace workspace)
+        private static async Task SaveConnectionsAsync(
+            IConnectionTreeWorkspace workspace,
+            CancellationToken cancellationToken)
         {
             DateTime lastUpdate;
             DateTime updateDate;
             DateTime currentDate = DateTime.Now;
 
-            if ((Properties.OptionsBackupPage.Default.SaveConnectionsFrequency == (int)ConnectionsBackupFrequencyEnum.OnExit))
+            if ((Properties.OptionsBackupPage.Default.SaveConnectionsFrequency == (int)ConnectionsBackupFrequency.OnExit))
             {
-                workspace.SaveConnections();
-				return;
+
+                await workspace.SaveConnectionsAsync(cancellationToken).ConfigureAwait(true);
+                return;
             }
-			lastUpdate = workspace.UsingDatabase ? workspace.LastSqlUpdate : workspace.LastFileUpdate;
+            lastUpdate = workspace.UsingDatabase ? workspace.LastSqlUpdate : workspace.LastFileUpdate;
 
             switch (Properties.OptionsBackupPage.Default.SaveConnectionsFrequency)
             {
-                case (int)ConnectionsBackupFrequencyEnum.Daily:
+                case (int)ConnectionsBackupFrequency.Daily:
                     updateDate = lastUpdate.AddDays(1);
                     break;
-                case (int)ConnectionsBackupFrequencyEnum.Weekly:
+                case (int)ConnectionsBackupFrequency.Weekly:
                     updateDate = lastUpdate.AddDays(7);
                     break;
                 default:
@@ -84,7 +90,7 @@ namespace LoipvRemote.App
 
             if (currentDate >= updateDate)
             {
-                workspace.SaveConnections();
+                await workspace.SaveConnectionsAsync(cancellationToken).ConfigureAwait(true);
             }
         }
 

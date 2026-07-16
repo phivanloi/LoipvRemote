@@ -184,7 +184,8 @@ public static class ConnectionDefinitionMapper
         if (protocol != ProtocolKind.Browser)
             return protocol;
 
-        if (options?.Values.TryGetValue("Scheme", out string? scheme) != true)
+        if (options?.Values.TryGetValue("Scheme", out string? scheme) != true ||
+            string.IsNullOrWhiteSpace(scheme))
             throw new NotSupportedException(
                 "Browser connections must specify a Domain option named 'Scheme' with value 'http' or 'https'.");
 
@@ -391,7 +392,7 @@ public static class ConnectionDefinitionMapper
     }
 
     private static void MapChildren(
-        IReadOnlyList<ConnectionInfo> children,
+        List<ConnectionInfo> children,
         Guid? parentFolderId,
         ICollection<ConnectionFolderDefinition> folders,
         ICollection<ConnectionDefinition> connections,

@@ -2,6 +2,7 @@
 using System.Net;
 using System.Text.Json;
 using System.Web;
+using LoipvRemote.Connectors.Abstractions;
 
 namespace LoipvRemote.Connectors.OnePassword;
 
@@ -29,28 +30,34 @@ public class OnePasswordCli
 	private const string SshKeyType = "SSHKEY";
 	private const string DomainLabel = "domain";
 
-	private record VaultUrl(string Label, string Href);
+	private sealed record VaultUrl(string Label, string Href);
 
-	private record VaultField(string Id, string Label, string Type, string Purpose, string Value);
+	private sealed record VaultField(string Id, string Label, string Type, string Purpose, string Value);
 
-	private record VaultItem(VaultUrl[]? Urls, VaultField[]? Fields);
+	private sealed record VaultItem(VaultUrl[]? Urls, VaultField[]? Fields);
 
 	private static readonly JsonSerializerOptions JsonSerializerOptions = new()
 	{
 		PropertyNamingPolicy = JsonNamingPolicy.CamelCase
 	};
 
-	public static void ReadPassword(string input, out string username, out string password, out string domain, out string privateKey)
+	public static async Task<ExternalCredential> ReadPasswordAsync(
+		string input,
+		CancellationToken cancellationToken = default)
 	{
 		var inputUrl = new Uri(input);
 		var vault = WebUtility.UrlDecode(inputUrl.Host);
 		var queryParams = HttpUtility.ParseQueryString(inputUrl.Query);
 		var account = queryParams["account"];
 		var item = WebUtility.UrlDecode(inputUrl.AbsolutePath.TrimStart('/'));
-		ItemGet(item, vault, account, out username, out password, out domain, out privateKey);
+		return await ItemGetAsync(item, vault, account, cancellationToken).ConfigureAwait(false);
 	}
 
-	private static void ItemGet(string item, string? vault, string? account, out string username, out string password, out string domain, out string privateKey)
+	private static async Task<ExternalCredential> ItemGetAsync(
+		string item,
+		string? vault,
+		string? account,
+		CancellationToken cancellationToken)
     {
         var args = new List<string> { "item", "get", item };
 
@@ -71,40 +78,43 @@ public class OnePasswordCli
 
 		string commandLine = OnePasswordCliExecutable + " " + string.Join(' ', args);
             
-        var exitCode = RunCommand(OnePasswordCliExecutable, args, out var output, out var error);
-        if (exitCode != 0)
-        {
-            username = string.Empty;
-            password = string.Empty;
-            privateKey = string.Empty;
-            domain = string.Empty;
-            throw new OnePasswordCliException($"Error running op item get: {error}",
+		(int exitCode, string output, string error) = await RunCommandAsync(
+			OnePasswordCliExecutable,
+			args,
+			cancellationToken).ConfigureAwait(false);
+		if (exitCode != 0)
+		{
+			throw new OnePasswordCliException($"Error running op item get: {error}",
                 commandLine);
         }
 
         var items = JsonSerializer.Deserialize<VaultItem>(output, JsonSerializerOptions) ??
                     throw new OnePasswordCliException("1Password returned null",
                         commandLine);
-        username = FindField(items, UserNamePurpose, UserNameLabel);
-        password = FindField(items, PasswordPurpose, PasswordLabel);
-        privateKey = items.Fields?.FirstOrDefault(x => x.Type == SshKeyType)?.Value ?? string.Empty;
-        domain = items.Fields?.FirstOrDefault(x => x.Type == StringType && x.Label == DomainLabel)?.Value ?? string.Empty;
-		if(string.IsNullOrEmpty(password) && string.IsNullOrEmpty(privateKey))
+		string username = FindField(items, UserNamePurpose, UserNameLabel);
+		string password = FindField(items, PasswordPurpose, PasswordLabel);
+		string privateKey = items.Fields?.FirstOrDefault(x => x.Type == SshKeyType)?.Value ?? string.Empty;
+		string domain = items.Fields?.FirstOrDefault(x => x.Type == StringType && x.Label == DomainLabel)?.Value ?? string.Empty;
+		if (string.IsNullOrEmpty(password) && string.IsNullOrEmpty(privateKey))
 		{
-			throw new OnePasswordCliException("No secret found in 1Password. At least fields with labels username/password or a SshKey are expected.", commandLine);
+				throw new OnePasswordCliException("No secret found in 1Password. At least fields with labels username/password or a SshKey are expected.", commandLine);
 		}
+
+		return new ExternalCredential(username, password, domain, privateKey);
     }
 
     private static string FindField(VaultItem items, string purpose, string fallbackLabel)
     {
         return items.Fields?.FirstOrDefault(x => x.Purpose == purpose)?.Value ??
-			items.Fields?.FirstOrDefault(x => x.Type == StringType && string.Equals(x.Id, fallbackLabel, StringComparison.InvariantCultureIgnoreCase))?.Value ??
-		 	items.Fields?.FirstOrDefault(x => x.Type == StringType && string.Equals(x.Label, fallbackLabel, StringComparison.InvariantCultureIgnoreCase))?.Value ??
+			items.Fields?.FirstOrDefault(x => x.Type == StringType && string.Equals(x.Id, fallbackLabel, StringComparison.OrdinalIgnoreCase))?.Value ??
+			items.Fields?.FirstOrDefault(x => x.Type == StringType && string.Equals(x.Label, fallbackLabel, StringComparison.OrdinalIgnoreCase))?.Value ??
 		 	string.Empty;
     }
 
-    private static int RunCommand(string command, IReadOnlyCollection<string> arguments, out string output,
-		out string error)
+	private static async Task<(int ExitCode, string Output, string Error)> RunCommandAsync(
+		string command,
+		IReadOnlyCollection<string> arguments,
+		CancellationToken cancellationToken)
 	{
 		var processStartInfo = new ProcessStartInfo
 		{
@@ -123,9 +133,11 @@ public class OnePasswordCli
 		using var process = new Process();
 		process.StartInfo = processStartInfo;
 		process.Start();
-		output = process.StandardOutput.ReadToEnd();
-		error = process.StandardError.ReadToEnd();
-		process.WaitForExit();
-		return process.ExitCode;
+		Task<string> outputTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
+		Task<string> errorTask = process.StandardError.ReadToEndAsync(cancellationToken);
+		await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+		string output = await outputTask.ConfigureAwait(false);
+		string error = await errorTask.ConfigureAwait(false);
+		return (process.ExitCode, output, error);
 	}
 }

@@ -89,7 +89,7 @@ namespace LoipvRemote.App
                         Language.MsgExit + "\n\n",
                         Language.MsgMissingRuntime + " Visual C++ Redistributable x64");
 
-                    if (result == DialogResult.OK && InternetConnection.IsPosible())
+                    if (result == DialogResult.OK && await InternetConnection.IsPossibleAsync())
                     {
                         try
                         {
@@ -241,19 +241,19 @@ namespace LoipvRemote.App
             AppDomain.CurrentDomain.UnhandledException += CurrentDomainOnUnhandledException;
         }
 
-        private static void ApplicationOnThreadException(object sender, ThreadExceptionEventArgs e)
+        private static void ApplicationOnThreadException(object? sender, ThreadExceptionEventArgs e)
         {
             CloseSplash();
             if (FrmMain.Default.IsDisposed) return;
-            FrmUnhandledException window = new(e.Exception, false);
+            UnhandledExceptionForm window = new(e.Exception, false);
             window.ShowDialog(FrmMain.Default);
         }
 
-        private static void CurrentDomainOnUnhandledException(object sender, UnhandledExceptionEventArgs e)
+        private static void CurrentDomainOnUnhandledException(object? sender, UnhandledExceptionEventArgs e)
         {
             Exception exception = e.ExceptionObject as Exception
-                                  ?? new Exception(e.ExceptionObject?.ToString() ?? "Unknown error");
-            FrmUnhandledException window = new(exception, e.IsTerminating);
+                                  ?? new InvalidOperationException(e.ExceptionObject?.ToString() ?? "Unknown error");
+            UnhandledExceptionForm window = new(exception, e.IsTerminating);
             window.ShowDialog(FrmMain.Default);
         }
 
@@ -298,7 +298,7 @@ namespace LoipvRemote.App
             string? url = null;
             if (urlStart >= 0)
             {
-                int urlEnd = message.IndexOfAny(new char[] { ' ', '\r', '\n', '\t' }, urlStart);
+                int urlEnd = message.IndexOfAny(UrlDelimiters, urlStart);
                 if (urlEnd == -1) urlEnd = message.Length;
                 url = message.Substring(urlStart, urlEnd - urlStart);
             }
@@ -325,14 +325,14 @@ namespace LoipvRemote.App
                 }
             }
 
-            lbl.LinkClicked += (s, e) =>
+            lbl.LinkClicked += async (s, e) =>
             {
                 string? linkUrl = e.Link?.LinkData as string;
                 if (string.IsNullOrEmpty(linkUrl))
                     return;
                 if (!hasValidUrl)
                     return;
-                if (!InternetConnection.IsPosible())
+                if (!await InternetConnection.IsPossibleAsync())
                 {
                     MessageBox.Show("No internet connection is available.", "Network", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
@@ -375,5 +375,7 @@ namespace LoipvRemote.App
 
             return dialog.ShowDialog();
         }
+
+        private static readonly char[] UrlDelimiters = [' ', '\r', '\n', '\t'];
     }
 }

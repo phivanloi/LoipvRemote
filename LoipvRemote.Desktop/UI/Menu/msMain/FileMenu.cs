@@ -143,7 +143,7 @@ namespace LoipvRemote.UI.Menu
 
         #region File
 
-        private void mMenFileNew_Click(object? sender, EventArgs e)
+        private async void mMenFileNew_Click(object? sender, EventArgs e)
         {
             using (SaveFileDialog saveFileDialog = DialogFactory.ConnectionsSaveAsDialog())
             {
@@ -152,11 +152,11 @@ namespace LoipvRemote.UI.Menu
                     return;
                 }
 
-                DesktopShellRuntime.ConnectionTreeWorkspace.NewConnectionsFile(saveFileDialog.FileName);
+                await DesktopShellRuntime.ConnectionTreeWorkspace.NewConnectionsFileAsync(saveFileDialog.FileName);
             }
         }
 
-        private void mMenFileLoad_Click(object? sender, EventArgs e)
+        private async void mMenFileLoad_Click(object? sender, EventArgs e)
         {
             if (DesktopShellRuntime.ConnectionTreeWorkspace.IsConnectionsFileLoaded)
             {
@@ -166,22 +166,22 @@ namespace LoipvRemote.UI.Menu
                 switch (msgBoxResult)
                 {
                     case DialogResult.Yes:
-                        DesktopShellRuntime.ConnectionTreeWorkspace.SaveConnections();
+                        await DesktopShellRuntime.ConnectionTreeWorkspace.SaveConnectionsAsync();
                         break;
                     case DialogResult.Cancel:
                         return;
                 }
             }
 
-            DesktopShellRuntime.ConnectionLoadingService.LoadConnections(true);
+            await DesktopShellRuntime.ConnectionLoadingService.LoadConnectionsAsync(true);
         }
 
-        private void mMenFileSave_Click(object? sender, EventArgs e)
+        private async void mMenFileSave_Click(object? sender, EventArgs e)
         {
-            DesktopShellRuntime.ConnectionTreeWorkspace.SaveConnectionsAsync();
+            await DesktopShellRuntime.ConnectionTreeWorkspace.SaveConnectionsAsync();
         }
 
-        private void mMenFileSaveAs_Click(object? sender, EventArgs e)
+        private async void mMenFileSaveAs_Click(object? sender, EventArgs e)
         {
             using (SaveFileDialog saveFileDialog = DialogFactory.ConnectionsSaveAsDialog())
             {
@@ -190,7 +190,7 @@ namespace LoipvRemote.UI.Menu
 
                 string newFileName = saveFileDialog.FileName;
 
-                DesktopShellRuntime.ConnectionTreeWorkspace.SaveConnections(DesktopShellRuntime.ConnectionTreeWorkspace.ConnectionTreeModel, false, new SaveFilter(), newFileName);
+                await DesktopShellRuntime.ConnectionTreeWorkspace.SaveConnectionsAsync(DesktopShellRuntime.ConnectionTreeWorkspace.ConnectionTreeModel, false, new SaveFilter(), newFileName);
 
                 if (newFileName == DesktopShellRuntime.ConnectionTreeWorkspace.GetStartupConnectionFileName())
                 {
@@ -211,7 +211,7 @@ namespace LoipvRemote.UI.Menu
 
         private void mMenToolsOptions_Click(object? sender, EventArgs e)
         {
-            AppWindows.Show(WindowType.Options);
+            DesktopShellRuntime.Windows.Show(WindowType.Options);
         }
 
         #endregion

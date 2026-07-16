@@ -1,8 +1,10 @@
 using LoipvRemote.Resources.Language;
 using LoipvRemote.Tools;
 
-namespace LoipvRemote.Connection {
-    public enum VaultOpenbaoSecretEngine {
+namespace LoipvRemote.Connection
+{
+    public enum VaultOpenbaoSecretEngine
+    {
         [LocalizedAttributes.LocalizedDescription(nameof(Language.VaultOpenbaoSecretEngineKeyValue))]
         Kv = 0,
 

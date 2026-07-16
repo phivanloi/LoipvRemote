@@ -7,7 +7,10 @@ public sealed class DesktopExternalCredentialResolver(ExternalCredentialConnecto
 {
     private readonly ExternalCredentialConnectorRegistry _registry = registry ?? throw new ArgumentNullException(nameof(registry));
 
-    public ExternalCredential? Resolve(ConnectionInfo connection, bool gateway = false)
+    public async Task<ExternalCredential?> ResolveAsync(
+        ConnectionInfo connection,
+        bool gateway = false,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(connection);
 
@@ -30,6 +33,7 @@ public sealed class DesktopExternalCredentialResolver(ExternalCredentialConnecto
             (int)connection.VaultOpenbaoSecretEngine,
             protocol);
 
-        return _registry.Resolve(provider.ToString(), request);
+        return await _registry.ResolveAsync(provider.ToString(), request, cancellationToken)
+            .ConfigureAwait(false);
     }
 }

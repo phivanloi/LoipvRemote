@@ -7,9 +7,9 @@ using System.Reflection;
 
 namespace LoipvRemote.Tools
 {
-    public class PropertyGridCommandSite(object @object) : IMenuCommandService, ISite
+    public class PropertyGridCommandSite(object target) : IMenuCommandService, ISite
     {
-        private readonly object TheObject = @object;
+        private readonly object TheObject = target;
 
         public DesignerVerbCollection Verbs
         {
@@ -119,12 +119,12 @@ namespace LoipvRemote.Tools
             throw new NotSupportedException();
         }
 
-        public MenuCommand FindCommand(CommandID commandId)
+        public MenuCommand FindCommand(CommandID commandID)
         {
             throw new NotSupportedException();
         }
 
-        public bool GlobalInvoke(CommandID commandId)
+        public bool GlobalInvoke(CommandID commandID)
         {
             throw new NotSupportedException();
         }
@@ -139,12 +139,13 @@ namespace LoipvRemote.Tools
             throw new NotSupportedException();
         }
 
-        public void ShowContextMenu(CommandID menuId, int x, int y)
+        public void ShowContextMenu(CommandID menuID, int x, int y)
         {
             throw new NotSupportedException();
         }
     }
 
+    [AttributeUsage(AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
     public class CommandAttribute(bool isCommand = true) : Attribute
     {
         public bool Command { get; set; } = isCommand;

@@ -53,7 +53,7 @@ namespace LoipvRemote.UI.Window
             this.ConnectionTree.MultiSelect = true;
             this.ConnectionTree.Name = "ConnectionTree";
             this.ConnectionTree.NodeDeletionConfirmer = alwaysConfirmYes2;
-            this.ConnectionTree.PostSetupActions = new IConnectionTreeDelegate[0];
+            this.ConnectionTree.PostSetupActions = new IConnectionTreeAction[0];
             this.ConnectionTree.SelectedBackColor = System.Drawing.SystemColors.Highlight;
             this.ConnectionTree.SelectedForeColor = System.Drawing.SystemColors.HighlightText;
             this.ConnectionTree.ShowGroups = false;

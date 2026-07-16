@@ -87,7 +87,7 @@ namespace LoipvRemote.UI.Tabs
         private InertButton m_buttonWindowList = null!;
         private ToolTip m_toolTip = null!;
         private Font m_font = null!;
-        private Font m_boldFont = null!;
+        private Font? m_boldFont;
         private int m_startDisplayingTab;
         private bool m_documentTabsOverflow;
         private static string? m_toolTipSelect;
@@ -185,7 +185,7 @@ namespace LoipvRemote.UI.Tabs
 
         private static GraphicsPath GraphicsPath => LoipvRemoteAutoHideStrip.GraphicsPath;
 
-        private IContainer Components { get; }
+        private System.ComponentModel.Container Components { get; }
 
         public Font TextFont => DockPane.DockPanel.Theme.Skin.DockPaneStripSkin.TextFont;
 
@@ -194,7 +194,7 @@ namespace LoipvRemote.UI.Tabs
             get
             {
                 if (IsDisposed)
-                    return null;
+                    return SystemFonts.DefaultFont;
 
                 if (m_boldFont == null)
                 {
@@ -208,7 +208,7 @@ namespace LoipvRemote.UI.Tabs
                     m_boldFont = new Font(TextFont, FontStyle.Bold);
                 }
 
-                return m_boldFont;
+                return m_boldFont ?? TextFont;
             }
         }
 
@@ -356,7 +356,7 @@ namespace LoipvRemote.UI.Tabs
         {
             if (disposing)
             {
-                if(Components != null)
+                if (Components != null)
                     Components.Dispose();
 
                 if (m_boldFont != null)
@@ -429,7 +429,7 @@ namespace LoipvRemote.UI.Tabs
         private GraphicsPath GetOutline_Document(int index)
         {
             Rectangle? rectangle = Tabs[index].Rectangle;
-            if (rectangle == null) return null;
+            if (rectangle is null) return new GraphicsPath();
             Rectangle rectTab = rectangle.Value;
             rectTab.X -= rectTab.Height / 2;
             rectTab.Intersect(TabsRectangle);
@@ -463,7 +463,7 @@ namespace LoipvRemote.UI.Tabs
         private GraphicsPath GetOutline_ToolWindow(int index)
         {
             Rectangle? rectangle = Tabs[index].Rectangle;
-            if (rectangle == null) return null;
+            if (rectangle is null) return new GraphicsPath();
             Rectangle rectTab = rectangle.Value;
             rectTab.Intersect(TabsRectangle);
             rectTab = RectangleToScreen(DrawHelper.RtlTransform(this, rectTab));
@@ -741,7 +741,7 @@ namespace LoipvRemote.UI.Tabs
             // Draw the tabs
             Rectangle rectTabOnly = TabsRectangle;
             Rectangle rectTab;
-            LoipvRemoteTab tabActive = null;
+            LoipvRemoteTab? tabActive = null;
             g.SetClip(DrawHelper.RtlTransform(this, rectTabOnly));
             for (int i = 0; i < count; i++)
             {
@@ -775,7 +775,8 @@ namespace LoipvRemote.UI.Tabs
 
             g.SetClip(DrawHelper.RtlTransform(this, rectTabOnly));
             if (tabActive == null) return;
-            rectTab = tabActive.Rectangle.Value;
+            if (tabActive.Rectangle is not Rectangle activeRectangle) return;
+            rectTab = activeRectangle;
             if (!rectTab.IntersectsWith(rectTabOnly)) return;
             rectTab.Intersect(rectTabOnly);
             tabActive.Rectangle = rectTab;
@@ -823,7 +824,9 @@ namespace LoipvRemote.UI.Tabs
 
             Rectangle rect = new()
             {
-                X = tab.TabX, Width = tab.TabWidth, Height = rectTabStrip.Height - DocumentTabGapTop
+                X = tab.TabX,
+                Width = tab.TabWidth,
+                Height = rectTabStrip.Height - DocumentTabGapTop
             };
 
             if (DockPane.DockPanel.DocumentTabStripLocation == DocumentTabStripLocation.Bottom)
@@ -992,7 +995,7 @@ namespace LoipvRemote.UI.Tabs
             Color mouseHoverText = DockPane.DockPanel.Theme.ColorPalette.TabUnselectedHovered.Text;
 
             Color text;
-            Image image = null;
+            Image? image = null;
             Color paint;
             IImageService imageService = DockPane.DockPanel.Theme.ImageService;
             if (DockPane.ActiveContent == tab.Content)
@@ -1046,20 +1049,20 @@ namespace LoipvRemote.UI.Tabs
                 g.DrawIcon(tab.Content.DockHandler.Icon, rectIcon);
         }
 
-        private Color? GetCustomTabColor(IDockContent content)
+        private static Color? GetCustomTabColor(IDockContent content)
         {
             try
             {
                 if (content is ConnectionTab connectionTab)
                 {
-                    InterfaceControl interfaceControl = InterfaceControl.FindInterfaceControl(connectionTab);
+                    InterfaceControl? interfaceControl = InterfaceControl.FindInterfaceControl(connectionTab);
                     if (interfaceControl?.Info != null)
                     {
                         string tabColorStr = interfaceControl.Info.TabColor;
                         if (!string.IsNullOrEmpty(tabColorStr))
                         {
                             ColorConverter converter = new ColorConverter();
-                            return (Color)converter.ConvertFromString(tabColorStr);
+                            return converter.ConvertFromString(tabColorStr) is Color color ? color : null;
                         }
                     }
                 }
@@ -1183,7 +1186,7 @@ namespace LoipvRemote.UI.Tabs
             return DocumentTabMetrics.CloseButtonBounds(rectTab);
         }
 
-        private void WindowList_Click(object sender, EventArgs e)
+        private void WindowList_Click(object? sender, EventArgs e)
         {
             SelectMenu.Items.Clear();
             foreach (Tab tab1 in Tabs)
@@ -1230,11 +1233,11 @@ namespace LoipvRemote.UI.Tabs
             }
         }
 
-        private void ContextMenuItem_Click(object sender, EventArgs e)
+        private void ContextMenuItem_Click(object? sender, EventArgs e)
         {
             if (!(sender is ToolStripMenuItem item)) return;
-            IDockContent content = (IDockContent)item.Tag;
-            DockPane.ActiveContent = content;
+            if (item.Tag is IDockContent content)
+                DockPane.ActiveContent = content;
         }
 
         private void SetInertButtons()
@@ -1295,7 +1298,7 @@ namespace LoipvRemote.UI.Tabs
             ButtonWindowList.Bounds = DrawHelper.RtlTransform(this, new Rectangle(point, buttonSize));
         }
 
-        private void Close_Click(object sender, EventArgs e)
+        private void Close_Click(object? sender, EventArgs e)
         {
             CloseProtocol();
 
@@ -1357,7 +1360,7 @@ namespace LoipvRemote.UI.Tabs
             return true;
         }
 
-        private bool SetMouseOverTab(IDockContent content)
+        private bool SetMouseOverTab(IDockContent? content)
         {
             if (DockPane.MouseOverTab == content)
                 return false;
@@ -1384,8 +1387,8 @@ namespace LoipvRemote.UI.Tabs
 
         private void CloseProtocol()
         {
-            InterfaceControl ic = InterfaceControl.FindInterfaceControl(DockPane.DockPanel);
-            ic?.Protocol.Close();
+            InterfaceControl? ic = InterfaceControl.FindInterfaceControl(DockPane.DockPanel);
+            ic?.Protocol.RequestClose();
         }
 
         #region Native Methods

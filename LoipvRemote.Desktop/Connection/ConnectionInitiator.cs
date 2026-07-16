@@ -33,42 +33,52 @@ namespace LoipvRemote.Connection
         private readonly IProtocolFactory _protocolFactory;
         private readonly ExternalToolsService _externalToolsService;
         private readonly RuntimeState _runtimeState;
+        private readonly DesktopWindowCatalog? _windows;
         private readonly MessageCollector _messageCollector;
         private readonly ConnectionWorkspaceAdapter _connectionWorkspace;
         private readonly Func<string, ConnectionInfo?> _connectionLookup;
         private readonly Func<ConnectionInfo, ExternalApplicationDefinition?>? _externalApplicationResolver;
         private readonly Func<string, string, string, string>? _protectSecret;
-        private readonly Func<ConnectionInfo, bool, ExternalCredential?>? _externalCredentialResolver;
+        private readonly Func<ConnectionInfo, bool, CancellationToken, Task<ExternalCredential?>>? _externalCredentialResolver;
+        private readonly IExternalCredentialPrompt? _externalCredentialPrompt;
+        private readonly IExternalCredentialSettingsStore? _externalCredentialSettings;
 
         public ConnectionInitiator(
             IProtocolFactory protocolFactory,
             ExternalToolsService externalToolsService,
             RuntimeState runtimeState,
+            DesktopWindowCatalog? windows,
             MessageCollector messageCollector,
             ConnectionWorkspaceAdapter connectionWorkspace,
             Func<string, ConnectionInfo?> connectionLookup,
             PanelAdder panelAdder,
-            ConnectionSessionOrchestrator? sessionOrchestrator = null,
-            SessionLifecycleCoordinator? sessionLifecycleCoordinator = null,
+            ConnectionSessionOrchestrator sessionOrchestrator,
+            SessionLifecycleCoordinator sessionLifecycleCoordinator,
             Func<ConnectionInfo, ExternalApplicationDefinition?>? externalApplicationResolver = null,
             Func<string, string, string, string>? protectSecret = null,
-            Func<ConnectionInfo, bool, ExternalCredential?>? externalCredentialResolver = null)
+            Func<ConnectionInfo, bool, CancellationToken, Task<ExternalCredential?>>? externalCredentialResolver = null,
+            IExternalCredentialPrompt? externalCredentialPrompt = null,
+            IExternalCredentialSettingsStore? externalCredentialSettings = null)
         {
             _protocolFactory = protocolFactory ?? throw new ArgumentNullException(nameof(protocolFactory));
             _externalToolsService = externalToolsService ?? throw new ArgumentNullException(nameof(externalToolsService));
             _runtimeState = runtimeState ?? throw new ArgumentNullException(nameof(runtimeState));
+            _windows = windows;
             _messageCollector = messageCollector ?? throw new ArgumentNullException(nameof(messageCollector));
             _connectionWorkspace = connectionWorkspace ?? throw new ArgumentNullException(nameof(connectionWorkspace));
             _connectionLookup = connectionLookup ?? throw new ArgumentNullException(nameof(connectionLookup));
             _panelAdder = panelAdder ?? throw new ArgumentNullException(nameof(panelAdder));
-            _sessionLifecycleCoordinator = sessionLifecycleCoordinator ?? new SessionLifecycleCoordinator();
-            _sessionOrchestrator = sessionOrchestrator ?? new ConnectionSessionOrchestrator(
-                _protocolFactory,
-                _sessionLifecycleCoordinator);
+            _sessionLifecycleCoordinator = sessionLifecycleCoordinator ?? throw new ArgumentNullException(nameof(sessionLifecycleCoordinator));
+            _sessionOrchestrator = sessionOrchestrator ?? throw new ArgumentNullException(nameof(sessionOrchestrator));
             _externalApplicationResolver = externalApplicationResolver;
             _protectSecret = protectSecret;
             _externalCredentialResolver = externalCredentialResolver;
+            _externalCredentialPrompt = externalCredentialPrompt;
+            _externalCredentialSettings = externalCredentialSettings;
         }
+
+        private DesktopWindowCatalog Windows => _windows
+            ?? throw new InvalidOperationException("A desktop window catalog is required to open a connection panel.");
 
         public IEnumerable<string> ActiveConnections => _activeConnections;
 
@@ -83,7 +93,7 @@ namespace LoipvRemote.Connection
             return true;
         }
 
-        public void OpenConnection(
+        public async Task OpenConnectionAsync(
             ContainerInfo containerInfo,
             ConnectionInfo.Force force = ConnectionInfo.Force.None,
             ConnectionWindow? conForm = null)
@@ -94,14 +104,14 @@ namespace LoipvRemote.Connection
             foreach (ConnectionInfo child in containerInfo.Children)
             {
                 if (child is ContainerInfo childAsContainer)
-                    OpenConnection(childAsContainer, force, conForm);
+                    await OpenConnectionAsync(childAsContainer, force, conForm).ConfigureAwait(true);
                 else
-                    OpenConnection(child, force, conForm);
+                    await OpenConnectionAsync(child, force, conForm).ConfigureAwait(true);
             }
         }
 
         // async is necessary so UI can update while OpenConnection waits for tunnel connection to get ready in case of connection through SSH tunnel
-        public async void OpenConnection(
+        public async Task OpenConnectionAsync(
             ConnectionInfo connectionInfo,
             ConnectionInfo.Force force = ConnectionInfo.Force.None,
             ConnectionWindow? conForm = null)
@@ -126,7 +136,13 @@ namespace LoipvRemote.Connection
                 {
                     try
                     {
-                        string host = await LoipvRemote.Connectors.AWS.EC2FetchDataService.GetEC2InstanceDataAsync("AWSAPI:" + connectionInfo.EC2InstanceId, connectionInfo.EC2Region);
+                        if (_externalCredentialPrompt is null || _externalCredentialSettings is null)
+                            throw new InvalidOperationException("AWS credential services are not configured.");
+                        string host = await LoipvRemote.Connectors.AWS.EC2FetchDataService.GetEC2InstanceDataAsync(
+                            "AWSAPI:" + connectionInfo.EC2InstanceId,
+                            connectionInfo.EC2Region,
+                            _externalCredentialPrompt,
+                            _externalCredentialSettings).ConfigureAwait(true);
                         if (!string.IsNullOrEmpty(host))
                             connectionInfo.Hostname = host;
                     }
@@ -173,7 +189,7 @@ namespace LoipvRemote.Connection
                     connectionInfoSshTunnel = _connectionLookup(connectionInfoOriginal.SSHTunnelConnectionName);
                     if (connectionInfoSshTunnel == null)
                     {
-                        _messageCollector.AddMessage(MessageClass.WarningMsg, string.Format(Language.SshTunnelConfigProblem, connectionInfoOriginal.Name, connectionInfoOriginal.SSHTunnelConnectionName));
+                        _messageCollector.AddMessage(MessageClass.WarningMsg, FormatText(Language.SshTunnelConfigProblem, connectionInfoOriginal.Name, connectionInfoOriginal.SSHTunnelConnectionName));
                         return;
                     }
                     _messageCollector.AddMessage(MessageClass.DebugMsg,
@@ -197,7 +213,7 @@ namespace LoipvRemote.Connection
                     connectionInfo.Port = localSshTunnelPort;
 
                     // connect the SSH connection to setup the tunnel
-                    ConnectionInfo tunnelRuntimeInfo = EnrichRuntimeCredentials(connectionInfoSshTunnel);
+                    ConnectionInfo tunnelRuntimeInfo = await EnrichRuntimeCredentialsAsync(connectionInfoSshTunnel).ConfigureAwait(true);
                     ConnectionDefinition tunnelDefinition = ConnectionDefinitionMapper.ToDomain(
                         tunnelRuntimeInfo,
                         _protectSecret,
@@ -206,8 +222,8 @@ namespace LoipvRemote.Connection
                     if (tunnelSession is not IEmbeddedWindow)
                     {
                         _messageCollector.AddMessage(MessageClass.WarningMsg,
-                            string.Format(Language.SshTunnelIsNotPutty, connectionInfoOriginal.Name, connectionInfoSshTunnel.Name));
-                        tunnelSession.Dispose();
+                            FormatText(Language.SshTunnelIsNotPutty, connectionInfoOriginal.Name, connectionInfoSshTunnel.Name));
+                        await tunnelSession.DisposeAsync().ConfigureAwait(true);
                         return;
                     }
 
@@ -221,18 +237,20 @@ namespace LoipvRemote.Connection
                         ?? throw new InvalidOperationException("SSH tunnel interface control was not attached.");
                     tunnelControl.OriginalInfo = connectionInfoSshTunnel;
 
-                    SessionStartResult tunnelStartResult = _sessionLifecycleCoordinator.Start(protocolSshTunnel);
+                    SessionStartResult tunnelStartResult = await _sessionLifecycleCoordinator
+                        .StartAsync(protocolSshTunnel)
+                        .ConfigureAwait(true);
                     if (tunnelStartResult == SessionStartResult.InitializationFailed)
                     {
                         _messageCollector.AddMessage(MessageClass.WarningMsg,
-                            string.Format(Language.SshTunnelNotInitialized, connectionInfoOriginal.Name, connectionInfoSshTunnel.Name));
+                            FormatText(Language.SshTunnelNotInitialized, connectionInfoOriginal.Name, connectionInfoSshTunnel.Name));
                         return;
                     }
 
                     if (tunnelStartResult == SessionStartResult.ConnectionFailed)
                     {
                         _messageCollector.AddMessage(MessageClass.WarningMsg,
-                            string.Format(Language.SshTunnelNotConnected, connectionInfoOriginal.Name, connectionInfoSshTunnel.Name));
+                            FormatText(Language.SshTunnelNotConnected, connectionInfoOriginal.Name, connectionInfoSshTunnel.Name));
                         return;
                     }
 
@@ -251,9 +269,9 @@ namespace LoipvRemote.Connection
                         // awkward for user as he has already acknowledged the putty popup some seconds again when the below notification comes....
                         if (tunnelSession is not IEmbeddedWindow { IsAvailable: true })
                         {
-                            protocolSshTunnel.Close();
+                            await protocolSshTunnel.CloseAsync().ConfigureAwait(true);
                             _messageCollector.AddMessage(MessageClass.WarningMsg,
-                                string.Format(Language.SshTunnelFailed, connectionInfoOriginal.Name, connectionInfoSshTunnel.Name));
+                                FormatText(Language.SshTunnelFailed, connectionInfoOriginal.Name, connectionInfoSshTunnel.Name));
                             return;
                         }
 
@@ -271,9 +289,9 @@ namespace LoipvRemote.Connection
 
                     if (stopwatch.ElapsedMilliseconds >= 60000)
                     {
-                        protocolSshTunnel.Close();
+                        await protocolSshTunnel.CloseAsync().ConfigureAwait(true);
                         _messageCollector.AddMessage(MessageClass.WarningMsg,
-                            string.Format(Language.SshTunnelPortNotReadyInTime, connectionInfoOriginal.Name, connectionInfoSshTunnel.Name));
+                            FormatText(Language.SshTunnelPortNotReadyInTime, connectionInfoOriginal.Name, connectionInfoSshTunnel.Name));
                         return;
                     }
 
@@ -285,7 +303,7 @@ namespace LoipvRemote.Connection
                     protocolSshTunnel.InterfaceControl.Hide();
                 }
 
-                ConnectionInfo runtimeInfo = EnrichRuntimeCredentials(connectionInfo);
+                ConnectionInfo runtimeInfo = await EnrichRuntimeCredentialsAsync(connectionInfo).ConfigureAwait(true);
                 ConnectionDefinition definition = ConnectionDefinitionMapper.ToDomain(
                     runtimeInfo,
                     _protectSecret,
@@ -307,12 +325,12 @@ namespace LoipvRemote.Connection
 
                 newProtocol.Force = force;
 
-                ConnectionInfo originalRuntimeInfo = EnrichRuntimeCredentials(connectionInfoOriginal);
+                ConnectionInfo originalRuntimeInfo = await EnrichRuntimeCredentialsAsync(connectionInfoOriginal).ConfigureAwait(true);
                 definition = ConnectionDefinitionMapper.ToDomain(
                     originalRuntimeInfo,
                     _protectSecret,
                     externalApplicationResolver: _externalApplicationResolver);
-                if (!_sessionOrchestrator.Start(definition, newProtocol).IsStarted)
+                if (!(await _sessionOrchestrator.StartAsync(definition, newProtocol).ConfigureAwait(true)).IsStarted)
                     return;
 
                 connectionInfoOriginal.OpenConnections.Add(newProtocol);
@@ -326,7 +344,7 @@ namespace LoipvRemote.Connection
         }
 
         // recursively traverse the tree to find ConnectionInfo of a specific name
-        private ConnectionInfo? getSSHConnectionInfoByName(IEnumerable<ConnectionInfo> rootnodes, string SSHTunnelConnectionName)
+        private static ConnectionInfo? getSSHConnectionInfoByName(IEnumerable<ConnectionInfo> rootnodes, string SSHTunnelConnectionName)
         {
             ConnectionInfo? result = null;
             foreach (ConnectionInfo node in rootnodes)
@@ -348,17 +366,21 @@ namespace LoipvRemote.Connection
         private void StartPreConnectionExternalApp(ConnectionInfo connectionInfo)
         {
             if (connectionInfo.PreExtApp == "") return;
-            ExternalTool extA = _externalToolsService.GetExtAppByName(connectionInfo.PreExtApp);
+            ExternalTool? extA = _externalToolsService.GetExtAppByName(connectionInfo.PreExtApp);
             extA?.Start(connectionInfo);
         }
 
-        private ConnectionInfo EnrichRuntimeCredentials(ConnectionInfo connectionInfo)
+        private async Task<ConnectionInfo> EnrichRuntimeCredentialsAsync(
+            ConnectionInfo connectionInfo,
+            CancellationToken cancellationToken = default)
         {
             if (_externalCredentialResolver is null)
                 return connectionInfo;
 
-            ExternalCredential? credential = _externalCredentialResolver(connectionInfo, false);
-            ExternalCredential? gatewayCredential = _externalCredentialResolver(connectionInfo, true);
+            ExternalCredential? credential = await _externalCredentialResolver(connectionInfo, false, cancellationToken)
+                .ConfigureAwait(true);
+            ExternalCredential? gatewayCredential = await _externalCredentialResolver(connectionInfo, true, cancellationToken)
+                .ConfigureAwait(true);
             if (credential is null && gatewayCredential is null)
                 return connectionInfo;
 
@@ -393,7 +415,7 @@ namespace LoipvRemote.Connection
                 foreach (IDockContent dockContent in cwDp.Documents)
                 {
                     if (dockContent is not ConnectionTab tab) continue;
-                    InterfaceControl ic = InterfaceControl.FindInterfaceControl(tab);
+                    InterfaceControl? ic = InterfaceControl.FindInterfaceControl(tab);
                     if (ic == null) continue;
                     if (ic.Info == connectionInfo || ic.OriginalInfo == connectionInfo)
                         return ic;
@@ -428,18 +450,20 @@ namespace LoipvRemote.Connection
                 _messageCollector,
                 _externalToolsService,
                 this,
-                _connectionWorkspace);
+                _connectionWorkspace,
+                Windows);
             connectionForm.Focus();
             return connectionForm;
         }
 
         private Control SetConnectionContainer(ConnectionInfo connectionInfo, ConnectionWindow connectionForm)
         {
-            Control connectionContainer = connectionForm.AddConnectionTab(connectionInfo);
+            Control connectionContainer = connectionForm.AddConnectionTab(connectionInfo)
+                ?? throw new InvalidOperationException("The connection tab could not be created.");
 
             if (connectionInfo.Protocol != ProtocolKind.ExternalApplication) return connectionContainer;
 
-            ExternalTool extT = _externalToolsService.GetExtAppByName(connectionInfo.ExtApp);
+            ExternalTool? extT = _externalToolsService.GetExtAppByName(connectionInfo.ExtApp);
 
             if (extT == null) return connectionContainer;
 
@@ -451,15 +475,15 @@ namespace LoipvRemote.Connection
 
         private static void SetConnectionFormEventHandlers(ProtocolSessionBridge newProtocol, Form connectionForm)
         {
-            newProtocol.Closed += ((ConnectionWindow)connectionForm).Prot_Event_Closed;
-            newProtocol.TitleChanged += ((ConnectionWindow)connectionForm).Prot_Event_TitleChanged;
+            newProtocol.Closed += ((ConnectionWindow)connectionForm).OnProtocolClosed;
+            newProtocol.TitleChanged += ((ConnectionWindow)connectionForm).OnProtocolTitleChanged;
         }
 
         private void SetConnectionEventHandlers(ProtocolSessionBridge newProtocol)
         {
             newProtocol.Disconnected += Prot_Event_Disconnected;
             newProtocol.Connected += Prot_Event_Connected;
-            newProtocol.Closed += Prot_Event_Closed;
+            newProtocol.Closed += OnProtocolClosed;
             newProtocol.ErrorOccured += Prot_Event_ErrorOccured;
         }
 
@@ -474,11 +498,12 @@ namespace LoipvRemote.Connection
 
         #region Event handlers
 
-        private void Prot_Event_Disconnected(object sender, string disconnectedMessage, int? reasonCode)
+        private void Prot_Event_Disconnected(object? sender, string disconnectedMessage, int? reasonCode)
         {
             try
             {
-                ProtocolSessionBridge prot = (ProtocolSessionBridge)sender;
+                if (sender is not ProtocolSessionBridge prot)
+                    return;
                 if (prot.InterfaceControl is not { } control)
                     return;
                 MessageClass msgClass = MessageClass.InformationMsg;
@@ -497,7 +522,7 @@ namespace LoipvRemote.Connection
                     strHostname += " via SSH Tunnel " + control.SSHTunnelInfo.Name;
                 }
                 _messageCollector.AddMessage(msgClass,
-                                                    string.Format(
+                                                    FormatText(
                                                                   Language.ProtocolEventDisconnected,
                                                                   disconnectedMessage,
                                                                   strHostname,
@@ -509,11 +534,12 @@ namespace LoipvRemote.Connection
             }
         }
 
-        private void Prot_Event_Closed(object sender)
+        private void OnProtocolClosed(object? sender)
         {
             try
             {
-                ProtocolSessionBridge prot = (ProtocolSessionBridge)sender;
+                if (sender is not ProtocolSessionBridge prot)
+                    return;
                 if (prot.InterfaceControl is not { } control)
                     return;
                 _messageCollector.AddMessage(MessageClass.InformationMsg, Language.ConnenctionCloseEvent, true);
@@ -525,13 +551,13 @@ namespace LoipvRemote.Connection
                 else
                     connDetail = "UNKNOWN";
 
-                _messageCollector.AddMessage(MessageClass.InformationMsg, string.Format(Language.ConnenctionClosedByUser, connDetail, prot.InterfaceControl.Info.Protocol, Environment.UserName));
+                _messageCollector.AddMessage(MessageClass.InformationMsg, FormatText(Language.ConnenctionClosedByUser, connDetail, prot.InterfaceControl.Info.Protocol, Environment.UserName));
                 control.OriginalInfo.OpenConnections.Remove(prot);
                 if (_activeConnections.Contains(control.Info.ConstantID))
                     _activeConnections.Remove(control.Info.ConstantID);
 
                 if (control.Info.PostExtApp == "") return;
-                ExternalTool extA = _externalToolsService.GetExtAppByName(control.Info.PostExtApp);
+                ExternalTool? extA = _externalToolsService.GetExtAppByName(control.Info.PostExtApp);
                 extA?.Start(control.OriginalInfo);
             }
             catch (Exception ex)
@@ -543,34 +569,36 @@ namespace LoipvRemote.Connection
         private WindowList WindowList => _runtimeState.WindowList
             ?? throw new InvalidOperationException("Connection windows must be initialized before opening a session.");
 
-        private void Prot_Event_Connected(object sender)
+        private void Prot_Event_Connected(object? sender)
         {
-            ProtocolSessionBridge prot = (ProtocolSessionBridge)sender;
+            if (sender is not ProtocolSessionBridge prot)
+                return;
             if (prot.InterfaceControl is not { } control)
                 return;
             _messageCollector.AddMessage(MessageClass.InformationMsg, Language.ConnectionEventConnected,
                                                 true);
             _messageCollector.AddMessage(MessageClass.InformationMsg,
-                                                string.Format(Language.ConnectionEventConnectedDetail,
+                                                FormatText(Language.ConnectionEventConnectedDetail,
                                                               control.OriginalInfo.Hostname,
                                                               control.Info.Protocol, Environment.UserName,
                                                               control.Info.Description,
                                                               control.Info.UserField));
         }
 
-        private void Prot_Event_ErrorOccured(object sender, string errorMessage, int? errorCode)
+        private void Prot_Event_ErrorOccured(object? sender, string errorMessage, int? errorCode)
         {
             try
             {
-                ProtocolSessionBridge prot = (ProtocolSessionBridge)sender;
+                if (sender is not ProtocolSessionBridge prot)
+                    return;
                 if (prot.InterfaceControl is not { } control)
                     return;
 
-                string msg = string.Format(
+                string msg = FormatText(
                                         Language.ConnectionEventErrorOccured,
                                         errorMessage,
                                         control.OriginalInfo.Hostname,
-                                        errorCode?.ToString() ?? "-");
+                                        errorCode?.ToString(CultureInfo.InvariantCulture) ?? "-");
                 _messageCollector.AddMessage(MessageClass.WarningMsg, msg);
             }
             catch (Exception ex)

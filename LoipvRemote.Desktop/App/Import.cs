@@ -15,13 +15,15 @@ namespace LoipvRemote.App
 {
     [SupportedOSPlatform("windows")]
     public sealed class ConnectionImportService(
-        IConnectionWorkspace workspace,
+        IConnectionTreeWorkspace workspace,
         MessageCollector messageCollector)
     {
-        private readonly IConnectionWorkspace _workspace = workspace ?? throw new ArgumentNullException(nameof(workspace));
+        private readonly IConnectionTreeWorkspace _workspace = workspace ?? throw new ArgumentNullException(nameof(workspace));
         private readonly MessageCollector _messageCollector = messageCollector ?? throw new ArgumentNullException(nameof(messageCollector));
 
-        public void ImportFromFile(ContainerInfo importDestinationContainer)
+        public async Task ImportFromFileAsync(
+            ContainerInfo importDestinationContainer,
+            CancellationToken cancellationToken = default)
         {
             try
             {
@@ -32,25 +34,34 @@ namespace LoipvRemote.App
                     openFileDialog.Multiselect = true;
 
                     List<string> fileTypes = new();
-                    fileTypes.AddRange(new[] {Language.FilterAllImportable, "*.xml;*.rdp;*.rdg;*.dat;*.csv"});
-                    fileTypes.AddRange(new[] {"LoipvRemote XML (*.xml)", "*.xml"});
-                    fileTypes.AddRange(new[] {"LoipvRemote CSV (*.csv)", "*.csv"});
-                    fileTypes.AddRange(new[] {Language.FilterRDP, "*.rdp"});
-                    fileTypes.AddRange(new[] {Language.FilterRdgFiles, "*.rdg"});
-                    fileTypes.AddRange(new[] {Language.FilterPuttyConnectionManager, "*.dat"});
-                    fileTypes.AddRange(new[] {Language.FilterAll, "*.*"});
-                    fileTypes.AddRange(new[] { Language.FilterSecureCRT, "*.crt" });
+                    fileTypes.Add(Language.FilterAllImportable);
+                    fileTypes.Add("*.xml;*.rdp;*.rdg;*.dat;*.csv");
+                    fileTypes.Add("LoipvRemote XML (*.xml)");
+                    fileTypes.Add("*.xml");
+                    fileTypes.Add("LoipvRemote CSV (*.csv)");
+                    fileTypes.Add("*.csv");
+                    fileTypes.Add(Language.FilterRDP);
+                    fileTypes.Add("*.rdp");
+                    fileTypes.Add(Language.FilterRdgFiles);
+                    fileTypes.Add("*.rdg");
+                    fileTypes.Add(Language.FilterPuttyConnectionManager);
+                    fileTypes.Add("*.dat");
+                    fileTypes.Add(Language.FilterAll);
+                    fileTypes.Add("*.*");
+                    fileTypes.Add(Language.FilterSecureCRT);
+                    fileTypes.Add("*.crt");
 
                     openFileDialog.Filter = string.Join("|", fileTypes.ToArray());
 
                     if (openFileDialog.ShowDialog() != DialogResult.OK)
                         return;
 
-					HeadlessFileImport(
-						openFileDialog.FileNames,
-						importDestinationContainer,
-						fileName => MessageBox.Show(string.Format(Language.ImportFileFailedContent, fileName), Language.AskUpdatesMainInstruction,
-							MessageBoxButtons.OK, MessageBoxIcon.Exclamation, MessageBoxDefaultButton.Button1));
+                    await HeadlessFileImportAsync(
+                        openFileDialog.FileNames,
+                        importDestinationContainer,
+                        fileName => MessageBox.Show(FormatText(Language.ImportFileFailedContent, fileName), Language.AskUpdatesMainInstruction,
+                            MessageBoxButtons.OK, MessageBoxIcon.Exclamation, MessageBoxDefaultButton.Button1),
+                        cancellationToken);
                 }
             }
             catch (Exception ex)
@@ -59,28 +70,42 @@ namespace LoipvRemote.App
             }
         }
 
-        public void HeadlessFileImport(
-	        IEnumerable<string> filePaths,
-	        ContainerInfo importDestinationContainer,
-	        Action<string>? exceptionAction = null)
+        public async Task HeadlessFileImportAsync(
+            IEnumerable<string> filePaths,
+            ContainerInfo importDestinationContainer,
+            Action<string>? exceptionAction = null,
+            CancellationToken cancellationToken = default)
         {
-	        using (_workspace.BatchedSavingContext())
-	        {
-		        foreach (string fileName in filePaths)
-		        {
-			        try
-			        {
-                        IConnectionImporter<string> importer = BuildConnectionImporterFromFileExtension(fileName);
-				        importer.Import(fileName, importDestinationContainer);
-			        }
-			        catch (Exception ex)
-			        {
-				        exceptionAction?.Invoke(fileName);
-					    _messageCollector.AddExceptionMessage($"Error occurred while importing file '{fileName}'.", ex);
-			        }
-		        }
-	        }
-		}
+            using (_workspace.BatchedSavingContext())
+            {
+                foreach (string fileName in filePaths)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    try
+                    {
+                        object importer = BuildConnectionImporterFromFileExtension(fileName);
+                        if (importer is LoipvRemoteXmlImporter xmlImporter)
+                        {
+                            await xmlImporter.ImportAsync(fileName, importDestinationContainer, cancellationToken)
+                                .ConfigureAwait(true);
+                        }
+                        else if (importer is IConnectionImporter<string> syncImporter)
+                        {
+                            syncImporter.Import(fileName, importDestinationContainer);
+                        }
+                        else
+                        {
+                            throw new InvalidOperationException($"Importer '{importer.GetType().FullName}' is not supported.");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        exceptionAction?.Invoke(fileName);
+                        _messageCollector.AddExceptionMessage($"Error occurred while importing file '{fileName}'.", ex);
+                    }
+                }
+            }
+        }
 
         public void ImportFromActiveDirectory(string ldapPath,
                                                      ContainerInfo importDestinationContainer,
@@ -88,10 +113,10 @@ namespace LoipvRemote.App
         {
             try
             {
-	            using (_workspace.BatchedSavingContext())
-	            {
-					new ActiveDirectoryImporter(_messageCollector).Import(ldapPath, importDestinationContainer, importSubOu);
-	            }
+                using (_workspace.BatchedSavingContext())
+                {
+                    new ActiveDirectoryImporter(_messageCollector).Import(ldapPath, importDestinationContainer, importSubOu);
+                }
             }
             catch (Exception ex)
             {
@@ -105,11 +130,11 @@ namespace LoipvRemote.App
         {
             try
             {
-	            using (_workspace.BatchedSavingContext())
-	            {
+                using (_workspace.BatchedSavingContext())
+                {
                     PortScanImporter importer = new(protocol);
-					importer.Import(hosts, importDestinationContainer);
-	            }
+                    importer.Import(hosts, importDestinationContainer);
+                }
             }
             catch (Exception ex)
             {
@@ -132,7 +157,7 @@ namespace LoipvRemote.App
             }
         }
 
-        private IConnectionImporter<string> BuildConnectionImporterFromFileExtension(string fileName)
+        private object BuildConnectionImporterFromFileExtension(string fileName)
         {
             string extension = Path.GetExtension(fileName) ?? "";
             switch (extension.ToLowerInvariant())

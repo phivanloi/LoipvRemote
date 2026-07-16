@@ -23,18 +23,21 @@ namespace LoipvRemote.UI.Window
 
         private readonly MessageCollector _messageCollector;
         private readonly ConnectionImportService _connectionImportService;
+        private readonly DesktopWindowCatalog _windows;
 
-        public PortScanWindow(MessageCollector messageCollector, ConnectionImportService connectionImportService)
+        public PortScanWindow(MessageCollector messageCollector, ConnectionImportService connectionImportService, DesktopWindowCatalog windows)
         {
             _messageCollector = messageCollector ?? throw new ArgumentNullException(nameof(messageCollector));
             _connectionImportService = connectionImportService ?? throw new ArgumentNullException(nameof(connectionImportService));
+            _windows = windows ?? throw new ArgumentNullException(nameof(windows));
             InitializeComponent();
             Icon = Resources.ImageConverter.GetImageAsIcon(Properties.Resources.SearchAndApps_16x);
             WindowType = WindowType.PortScan;
             DockPnl = new DockContent();
             ApplyTheme();
             DisplayProperties display = new();
-            btnScan.Image = display.ScaleImage(btnScan.Image);
+            if (btnScan.Image is Image scanImage)
+                btnScan.Image = display.ScaleImage(scanImage);
         }
 
         #endregion
@@ -107,7 +110,7 @@ namespace LoipvRemote.UI.Window
 
         #region Event Handlers
 
-        private void PortScan_Load(object sender, EventArgs e)
+        private void PortScan_Load(object? sender, EventArgs e)
         {
             ApplyLanguage();
 
@@ -128,17 +131,17 @@ namespace LoipvRemote.UI.Window
             }
         }
 
-        private void portStart_Enter(object sender, EventArgs e)
+        private void portStart_Enter(object? sender, EventArgs e)
         {
             portStart.Select(0, portStart.Text.Length);
         }
 
-        private void portEnd_Enter(object sender, EventArgs e)
+        private void portEnd_Enter(object? sender, EventArgs e)
         {
             portEnd.Select(0, portEnd.Text.Length);
         }
 
-        private void btnScan_Click(object sender, EventArgs e)
+        private void btnScan_Click(object? sender, EventArgs e)
         {
             if (_scanning)
             {
@@ -157,10 +160,14 @@ namespace LoipvRemote.UI.Window
             }
         }
 
-        private void btnImport_Click(object sender, EventArgs e)
+        private void btnImport_Click(object? sender, EventArgs e)
         {
-            ProtocolKind protocol =
-                (ProtocolKind)Enum.Parse(typeof(ProtocolKind), Convert.ToString(cbProtocol.SelectedItem), true);
+            if (cbProtocol.SelectedItem is not string selectedProtocol ||
+                !Enum.TryParse(selectedProtocol, true, out ProtocolKind protocol))
+            {
+                _messageCollector.AddMessage(MessageClass.WarningMsg, Language.CannotStartPortScan);
+                return;
+            }
             importSelectedHosts(protocol);
         }
 
@@ -256,7 +263,7 @@ namespace LoipvRemote.UI.Window
             if (InvokeRequired)
             {
                 Invoke(new PortScannerHostScannedDelegate(PortScanner_HostScanned),
-                       new object[] {host, scannedCount, totalCount});
+                       new object[] { host, scannedCount, totalCount });
                 return;
             }
 
@@ -273,7 +280,7 @@ namespace LoipvRemote.UI.Window
         {
             if (InvokeRequired)
             {
-                Invoke(new PortScannerScanComplete(PortScanner_ScanComplete), new object[] {hosts});
+                Invoke(new PortScannerScanComplete(PortScanner_ScanComplete), new object[] { hosts });
                 return;
             }
 
@@ -310,11 +317,11 @@ namespace LoipvRemote.UI.Window
         /// </summary>
         private ContainerInfo GetDestinationContainerForImportedHosts()
         {
-            ConnectionInfo selectedNode = AppWindows.TreeForm.SelectedNode ?? AppWindows.TreeForm.ConnectionTree.ConnectionTreeModel.RootNodes.OfType<RootNodeInfo>().First();
+            ConnectionInfo selectedNode = _windows.TreeForm.SelectedNode ?? _windows.TreeForm.ConnectionTree.ConnectionTreeModel.RootNodes.OfType<RootNodeInfo>().First();
 
             // if a putty node is selected, place imported connections in the root connection node
             if (selectedNode is RootPuttySessionsNodeInfo || selectedNode is PuttySessionInfo)
-                selectedNode = AppWindows.TreeForm.ConnectionTree.ConnectionTreeModel.RootNodes.OfType<RootNodeInfo>()
+                selectedNode = _windows.TreeForm.ConnectionTree.ConnectionTreeModel.RootNodes.OfType<RootNodeInfo>()
                                       .First();
 
             // if the selected node is a connection, use its parent container
@@ -323,47 +330,47 @@ namespace LoipvRemote.UI.Window
             return selectedTreeNodeAsContainer;
         }
 
-        private void importVNCToolStripMenuItem_Click(object sender, EventArgs e)
+        private void importVNCToolStripMenuItem_Click(object? sender, EventArgs e)
         {
             importSelectedHosts(ProtocolKind.Vnc);
         }
 
-        private void importTelnetToolStripMenuItem_Click(object sender, EventArgs e)
+        private void importTelnetToolStripMenuItem_Click(object? sender, EventArgs e)
         {
             importSelectedHosts(ProtocolKind.Telnet);
         }
 
-        private void importSSH2ToolStripMenuItem_Click(object sender, EventArgs e)
+        private void importSSH2ToolStripMenuItem_Click(object? sender, EventArgs e)
         {
             importSelectedHosts(ProtocolKind.Ssh2);
         }
 
-        private void importRloginToolStripMenuItem_Click(object sender, EventArgs e)
+        private void importRloginToolStripMenuItem_Click(object? sender, EventArgs e)
         {
             importSelectedHosts(ProtocolKind.Rlogin);
         }
 
-        private void importRDPToolStripMenuItem_Click(object sender, EventArgs e)
+        private void importRDPToolStripMenuItem_Click(object? sender, EventArgs e)
         {
             importSelectedHosts(ProtocolKind.Rdp);
         }
 
-        private void importHTTPSToolStripMenuItem_Click(object sender, EventArgs e)
+        private void importHTTPSToolStripMenuItem_Click(object? sender, EventArgs e)
         {
             importSelectedHosts(ProtocolKind.Https);
         }
 
-        private void importHTTPToolStripMenuItem_Click(object sender, EventArgs e)
+        private void importHTTPToolStripMenuItem_Click(object? sender, EventArgs e)
         {
             importSelectedHosts(ProtocolKind.Http);
         }
 
-        private void NgCheckFirstPort_CheckedChanged(object sender, EventArgs e)
+        private void NgCheckFirstPort_CheckedChanged(object? sender, EventArgs e)
         {
             portStart.Enabled = ngCheckFirstPort.Checked;
         }
 
-        private void NgCheckLastPort_CheckedChanged(object sender, EventArgs e)
+        private void NgCheckLastPort_CheckedChanged(object? sender, EventArgs e)
         {
             portEnd.Enabled = ngCheckLastPort.Checked;
 

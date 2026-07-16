@@ -66,17 +66,17 @@ namespace LoipvRemote.UI.Forms
             // This allows the tab to close properly without showing connection close dialog
         }
 
-        private void llLicense_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        private void llLicense_LinkClicked(object? sender, LinkLabelLinkClickedEventArgs e)
         {
             Close();
         }
 
-        private void llChangelog_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        private void llChangelog_LinkClicked(object? sender, LinkLabelLinkClickedEventArgs e)
         {
             Close();
         }
 
-        private void llCredits_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        private void llCredits_LinkClicked(object? sender, LinkLabelLinkClickedEventArgs e)
         {
             Close();
         }

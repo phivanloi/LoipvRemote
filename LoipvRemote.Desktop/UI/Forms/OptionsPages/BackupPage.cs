@@ -231,12 +231,12 @@ namespace LoipvRemote.UI.Forms.OptionsPages
                 _frmMain.tmrAutoSave.Enabled = false;
             }
             */
-            Properties.OptionsBackupPage.Default.cbBackupEnableACL = (int)cbBackupEnableACL.SelectedValue;
-            Properties.OptionsBackupPage.Default.cbBackupTypeACL = (int)cbBackupTypeACL.SelectedValue;
-            Properties.OptionsBackupPage.Default.cbBackupFrequencyACL = (int)cbBackupFrequencyACL.SelectedValue;
-            Properties.OptionsBackupPage.Default.cbBackupNumberACL = (int)cbBackupNumberACL.SelectedValue;
-            Properties.OptionsBackupPage.Default.cbBackupNameFormatACL = (int)cbBackupNameFormatACL.SelectedValue;
-            Properties.OptionsBackupPage.Default.cbBackupLocationACL = (int)cbBackupLocationACL.SelectedValue;
+            Properties.OptionsBackupPage.Default.cbBackupEnableACL = Convert.ToInt32(cbBackupEnableACL.SelectedValue ?? 0, CultureInfo.InvariantCulture);
+            Properties.OptionsBackupPage.Default.cbBackupTypeACL = Convert.ToInt32(cbBackupTypeACL.SelectedValue ?? 0, CultureInfo.InvariantCulture);
+            Properties.OptionsBackupPage.Default.cbBackupFrequencyACL = Convert.ToInt32(cbBackupFrequencyACL.SelectedValue ?? 0, CultureInfo.InvariantCulture);
+            Properties.OptionsBackupPage.Default.cbBackupNumberACL = Convert.ToInt32(cbBackupNumberACL.SelectedValue ?? 0, CultureInfo.InvariantCulture);
+            Properties.OptionsBackupPage.Default.cbBackupNameFormatACL = Convert.ToInt32(cbBackupNameFormatACL.SelectedValue ?? 0, CultureInfo.InvariantCulture);
+            Properties.OptionsBackupPage.Default.cbBackupLocationACL = Convert.ToInt32(cbBackupLocationACL.SelectedValue ?? 0, CultureInfo.InvariantCulture);
 
             Properties.OptionsBackupPage.Default.BackupFileNameFormat = (string)txtBackupNameFormat.Text;
 
@@ -254,13 +254,13 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             Properties.OptionsBackupPage.Default.Save();
         }
 
-        private void ButtonBrowsePath_Click(object sender, EventArgs e)
+        private void ButtonBrowsePath_Click(object? sender, EventArgs e)
         {
             CommonOpenFileDialog selectFolderDialog = DialogFactory.SelectFolder(Language.lblConnectionsBackupPath);
             txtConnectionsBackupPath.Text = selectFolderDialog.ShowDialog() == CommonFileDialogResult.Ok ? selectFolderDialog.FileName : txtConnectionsBackupPath.Text;
         }
 
-        private void rbBackupEnableDisable_CheckedChanged(object sender, EventArgs e)
+        private void rbBackupEnableDisable_CheckedChanged(object? sender, EventArgs e)
         {
             if (rbBackupEnableDisable.Checked)
             {

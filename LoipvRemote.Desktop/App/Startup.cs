@@ -46,7 +46,7 @@ namespace LoipvRemote.App
             interpreter.ParseArguments(Environment.GetCommandLineArgs());
         }
 
-        public void CreateConnectionsProvider(MessageCollector messageCollector, IConnectionTreeWorkspace workspace)
+        public static void CreateConnectionsProvider(MessageCollector messageCollector, IConnectionTreeWorkspace workspace)
         {
             ArgumentNullException.ThrowIfNull(messageCollector);
             ArgumentNullException.ThrowIfNull(workspace);

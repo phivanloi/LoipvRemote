@@ -4,7 +4,7 @@ using LoipvRemote.Protocols.Abstractions;
 namespace LoipvRemote.Protocols.Vnc;
 
 /// <summary>Common VNC session adapter around the module lifecycle.</summary>
-public sealed class VncProtocolSession : IAsyncProtocolSession, IEmbeddedWindow, IRemoteScreenController, IRemoteSpecialKeysController
+public sealed class VncProtocolSession : IProtocolSession, IEmbeddedWindow, IRemoteScreenController, IRemoteSpecialKeysController
 {
     private readonly IVncClient _client;
     private readonly VncSession _lifecycle;
@@ -32,28 +32,26 @@ public sealed class VncProtocolSession : IAsyncProtocolSession, IEmbeddedWindow,
     public bool IsAvailable => State == ProtocolSessionState.Connected;
     public IntPtr WindowHandle => _client is IEmbeddedWindow embedded ? embedded.WindowHandle : IntPtr.Zero;
 
-    public bool Initialize() => _lifecycle.Initialize(Options);
+    private bool InitializeCore() => _lifecycle.Initialize(Options);
 
     public ValueTask<bool> InitializeAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return ValueTask.FromResult(Initialize());
+        return ValueTask.FromResult(InitializeCore());
     }
 
-    public bool Connect() => _lifecycle.Connect();
+    private bool ConnectCore() => _lifecycle.Connect();
 
     public ValueTask<bool> ConnectAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return ValueTask.FromResult(Connect());
+        return ValueTask.FromResult(ConnectCore());
     }
-
-    public void Disconnect() => _lifecycle.Disconnect();
 
     public ValueTask DisconnectAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        Disconnect();
+        _lifecycle.Disconnect();
         return ValueTask.CompletedTask;
     }
 
@@ -97,12 +95,10 @@ public sealed class VncProtocolSession : IAsyncProtocolSession, IEmbeddedWindow,
         });
     }
 
-    public void Close() => Disconnect();
-
     public ValueTask CloseAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        Close();
+        _lifecycle.Disconnect();
         return ValueTask.CompletedTask;
     }
 
@@ -111,7 +107,7 @@ public sealed class VncProtocolSession : IAsyncProtocolSession, IEmbeddedWindow,
         if (_disposed)
             return;
 
-        Close();
+        _lifecycle.Disconnect();
         if (_client is IDisposable disposable)
             disposable.Dispose();
         _disposed = true;

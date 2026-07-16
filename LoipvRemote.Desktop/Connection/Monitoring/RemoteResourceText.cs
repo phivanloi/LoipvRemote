@@ -9,6 +9,6 @@ namespace LoipvRemote.Connection.Monitoring
             Language.ResourceManager.GetString(resourceKey, CultureInfo.CurrentUICulture) ?? fallback;
 
         internal static string Format(string resourceKey, string fallback, params object[] arguments) =>
-            string.Format(CultureInfo.CurrentUICulture, Get(resourceKey, fallback), arguments);
+            string.Format(CultureInfo.CurrentCulture, Get(resourceKey, fallback), arguments);
     }
 }

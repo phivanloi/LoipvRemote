@@ -9,11 +9,10 @@ namespace LoipvRemote.Infrastructure.Windows.WindowMenus;
 public sealed class WindowsSystemMenu : SafeHandleZeroOrMinusOneIsInvalid
 {
     [Flags]
-    public enum Flags
+    public enum MenuOptions
     {
-        String = NativeMethods.MF_STRING,
+        Text = NativeMethods.MF_STRING,
         Separator = NativeMethods.MF_SEPARATOR,
-        ByCommand = NativeMethods.MF_BYCOMMAND,
         ByPosition = NativeMethods.MF_BYPOSITION,
         Popup = NativeMethods.MF_POPUP,
         SystemCommand = NativeMethods.WM_SYSCOMMAND
@@ -24,8 +23,7 @@ public sealed class WindowsSystemMenu : SafeHandleZeroOrMinusOneIsInvalid
 
     public WindowsSystemMenu(nint formHandle) : base(true)
     {
-        if (formHandle == nint.Zero)
-            throw new ArgumentOutOfRangeException(nameof(formHandle));
+        ArgumentOutOfRangeException.ThrowIfEqual(formHandle, nint.Zero);
 
         _formHandle = formHandle;
         SetHandle(NativeMethods.GetSystemMenu(_formHandle, false));
@@ -35,20 +33,20 @@ public sealed class WindowsSystemMenu : SafeHandleZeroOrMinusOneIsInvalid
 
     public void Reset() => SetHandle(NativeMethods.GetSystemMenu(_formHandle, true));
 
-    public void AppendMenuItem(nint parentMenu, Flags flags, nint id, string text)
+    public static void AppendMenuItem(nint parentMenu, MenuOptions flags, nint id, string text)
     {
         ArgumentNullException.ThrowIfNull(text);
         NativeMethods.AppendMenu(parentMenu, (int)flags, id, text);
     }
 
-    public nint CreatePopupMenuItem() => NativeMethods.CreatePopupMenu();
+    public static nint CreatePopupMenuItem() => NativeMethods.CreatePopupMenu();
 
-    public bool InsertMenuItem(nint systemMenu, int position, Flags flags, nint subMenu, string? text)
+    public static bool InsertMenuItem(nint systemMenu, int position, MenuOptions flags, nint subMenu, string? text)
     {
         return NativeMethods.InsertMenu(systemMenu, position, (int)flags, subMenu, text ?? string.Empty);
     }
 
-    public nint SetBitmap(nint menu, int position, Flags flags, Bitmap bitmap)
+    public static nint SetBitmap(nint menu, int position, MenuOptions flags, Bitmap bitmap)
     {
         ArgumentNullException.ThrowIfNull(bitmap);
         nint bitmapHandle = bitmap.GetHbitmap();

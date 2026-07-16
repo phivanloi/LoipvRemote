@@ -27,8 +27,7 @@ namespace LoipvRemote.App.Initialization
             foreach (string f in Directory.GetFiles(_path, "*.ico", SearchOption.AllDirectories))
             {
                 FileInfo fInfo = new(f);
-                Array.Resize(ref ConnectionIcon.Icons, ConnectionIcon.Icons.Length + 1);
-                ConnectionIcon.Icons.SetValue(fInfo.Name.Replace(".ico", ""), ConnectionIcon.Icons.Length - 1);
+                ConnectionIcon.AddIcon(fInfo.Name.Replace(".ico", ""));
             }
         }
     }

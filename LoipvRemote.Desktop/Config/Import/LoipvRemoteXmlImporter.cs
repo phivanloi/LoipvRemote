@@ -11,11 +11,14 @@ namespace LoipvRemote.Config.Import
 {
     [SupportedOSPlatform("windows")]
     // ReSharper disable once InconsistentNaming
-    public sealed class LoipvRemoteXmlImporter(MessageCollector messageCollector) : IConnectionImporter<string>
+    public sealed class LoipvRemoteXmlImporter(MessageCollector messageCollector)
     {
         private readonly MessageCollector _messageCollector = messageCollector ?? throw new ArgumentNullException(nameof(messageCollector));
 
-        public void Import(string fileName, ContainerInfo destinationContainer)
+        public async Task ImportAsync(
+            string fileName,
+            ContainerInfo destinationContainer,
+            CancellationToken cancellationToken = default)
         {
             if (fileName == null)
             {
@@ -31,14 +34,11 @@ namespace LoipvRemote.Config.Import
             }
 
             var store = new XmlConnectionDefinitionStore(fileName);
-            Domain.Connections.ConnectionTreeDefinition definition = Task.Run(
-                    () => store.LoadAsync(),
-                    CancellationToken.None)
-                .GetAwaiter()
-                .GetResult();
+            Domain.Connections.ConnectionTreeDefinition definition = await store.LoadAsync(cancellationToken)
+                .ConfigureAwait(false);
             Tree.ConnectionTreeModel connectionTreeModel = ConnectionDefinitionMapper.ToDesktopTree(definition);
 
-            ContainerInfo rootImportContainer = new() { Name = Path.GetFileNameWithoutExtension(fileName)};
+            ContainerInfo rootImportContainer = new() { Name = Path.GetFileNameWithoutExtension(fileName) };
             rootImportContainer.AddChildRange(connectionTreeModel.RootNodes.SelectMany(root => root.Children).ToArray());
             destinationContainer.AddChild(rootImportContainer);
         }

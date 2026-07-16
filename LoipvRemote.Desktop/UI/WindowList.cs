@@ -1,124 +1,99 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using LoipvRemote.UI.Window;
 
 namespace LoipvRemote.UI
 {
-    public class WindowList : CollectionBase
+    /// <summary>
+    /// Tracks open desktop windows and removes disposed instances before access.
+    /// </summary>
+    public class WindowList : IList<BaseWindow>
     {
-        #region Public Properties
+        private readonly List<BaseWindow> _items = [];
 
-        public BaseWindow this[object Index]
+        public BaseWindow this[int index]
         {
             get
             {
                 CleanUp();
-                if (Index is BaseWindow)
-                    return IndexByObject(Index);
-                if (Index is int)
-                    return IndexByNumber(Convert.ToInt32(Index));
-
-                return null;
+                return _items[index];
+            }
+            set
+            {
+                ArgumentNullException.ThrowIfNull(value);
+                _items[index] = value;
             }
         }
 
-        public new int Count
+        public int Count
         {
             get
             {
                 CleanUp();
-                return List.Count;
+                return _items.Count;
             }
         }
 
-        #endregion
-
-        #region Public Methods
+        public bool IsReadOnly => false;
 
         public void Add(BaseWindow uiWindow)
         {
-            List.Add(uiWindow);
-            //AddHandler uiWindow.FormClosing, AddressOf uiFormClosing
+            ArgumentNullException.ThrowIfNull(uiWindow);
+            _items.Add(uiWindow);
         }
 
-        public void AddRange(BaseWindow[] uiWindow)
+        public void AddRange(IEnumerable<BaseWindow> uiWindows)
         {
-            foreach (BaseWindow uW in uiWindow)
-            {
-                List.Add(uW);
-            }
+            ArgumentNullException.ThrowIfNull(uiWindows);
+            foreach (BaseWindow uiWindow in uiWindows)
+                Add(uiWindow);
         }
 
-        public void Remove(BaseWindow uiWindow)
+        public void Clear() => _items.Clear();
+
+        public bool Contains(BaseWindow item) => _items.Contains(item);
+
+        public void CopyTo(BaseWindow[] array, int arrayIndex) => _items.CopyTo(array, arrayIndex);
+
+        public IEnumerator<BaseWindow> GetEnumerator() => _items.GetEnumerator();
+
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+        public int IndexOf(BaseWindow item) => _items.IndexOf(item);
+
+        public void Insert(int index, BaseWindow item)
         {
-            List.Remove(uiWindow);
+            ArgumentNullException.ThrowIfNull(item);
+            _items.Insert(index, item);
         }
 
-        public BaseWindow FromString(string uiWindow)
+        public bool Remove(BaseWindow item) => _items.Remove(item);
+
+        public void RemoveAt(int index) => _items.RemoveAt(index);
+
+        public BaseWindow? FromString(string uiWindow)
         {
+            ArgumentNullException.ThrowIfNull(uiWindow);
             CleanUp();
-            for (int i = 0; i < List.Count; i++)
+            string escapedWindowText = uiWindow.Replace("&", "&&");
+            foreach (BaseWindow window in _items)
             {
-                if (this[i].Text == uiWindow.Replace("&", "&&"))
-                {
-                    return this[i];
-                }
+                if (window.Text == escapedWindowText)
+                    return window;
             }
 
             return null;
         }
 
-        #endregion
-
-
         private void CleanUp()
         {
-            for (int i = 0; i <= List.Count - 1; i++)
+            for (int index = _items.Count - 1; index >= 0; index--)
             {
-                if (i > List.Count - 1)
-                {
-                    CleanUp();
-                    return;
-                }
-
-                BaseWindow baseWindow = List[i] as BaseWindow;
-                if (baseWindow != null && !baseWindow.IsDisposed) continue;
-                List.RemoveAt(i);
-                CleanUp();
-                return;
+                if (_items[index].IsDisposed)
+                    _items.RemoveAt(index);
             }
         }
 
-        private BaseWindow IndexByObject(object Index)
-        {
-            try
-            {
-                int objectIndex = List.IndexOf(Index);
-                return IndexByNumber(objectIndex);
-            }
-            catch (ArgumentOutOfRangeException e)
-            {
-                throw new ArgumentOutOfRangeException(e.ParamName, "Object was not present in the collection.");
-            }
-        }
-
-        private BaseWindow IndexByNumber(int Index)
-        {
-            try
-            {
-                return List[Index] as BaseWindow;
-            }
-            catch (ArgumentOutOfRangeException e)
-            {
-                throw new ArgumentOutOfRangeException(e.ParamName, e.ActualValue, "Index was out of bounds");
-            }
-        }
-
-        /*
-		private void uiFormClosing(object sender, FormClosingEventArgs e)
-		{
-			List.Remove(sender);
-		}
-        */
     }
 }

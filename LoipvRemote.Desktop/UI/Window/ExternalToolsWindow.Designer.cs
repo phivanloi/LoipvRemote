@@ -309,7 +309,7 @@ namespace LoipvRemote.UI.Window
             //
             // ShowOnToolbarCheckBox
             //
-            this.ShowOnToolbarCheckBox._mice = MrngCheckBox.MouseState.HOVER;
+            this.ShowOnToolbarCheckBox.MouseInteractionState = MrngCheckBox.MouseState.HOVER;
             this.ShowOnToolbarCheckBox.AutoSize = true;
             this.ShowOnToolbarCheckBox.Dock = System.Windows.Forms.DockStyle.Fill;
             this.ShowOnToolbarCheckBox.Location = new System.Drawing.Point(239, 133);
@@ -382,7 +382,7 @@ namespace LoipvRemote.UI.Window
             //
             // RunElevatedCheckBox
             //
-            this.RunElevatedCheckBox._mice = MrngCheckBox.MouseState.HOVER;
+            this.RunElevatedCheckBox.MouseInteractionState = MrngCheckBox.MouseState.HOVER;
             this.RunElevatedCheckBox.AutoSize = true;
             this.RunElevatedCheckBox.Dock = System.Windows.Forms.DockStyle.Fill;
             this.RunElevatedCheckBox.Location = new System.Drawing.Point(113, 133);
@@ -407,7 +407,7 @@ namespace LoipvRemote.UI.Window
             //
             // TryToIntegrateCheckBox
             //
-            this.TryToIntegrateCheckBox._mice = MrngCheckBox.MouseState.HOVER;
+            this.TryToIntegrateCheckBox.MouseInteractionState = MrngCheckBox.MouseState.HOVER;
             this.TryToIntegrateCheckBox.AutoSize = true;
             this.TryToIntegrateCheckBox.Dock = System.Windows.Forms.DockStyle.Fill;
             this.TryToIntegrateCheckBox.Location = new System.Drawing.Point(239, 107);
@@ -443,7 +443,7 @@ namespace LoipvRemote.UI.Window
             //
             // WaitForExitCheckBox
             //
-            this.WaitForExitCheckBox._mice = MrngCheckBox.MouseState.HOVER;
+            this.WaitForExitCheckBox.MouseInteractionState = MrngCheckBox.MouseState.HOVER;
             this.WaitForExitCheckBox.AutoSize = true;
             this.WaitForExitCheckBox.Dock = System.Windows.Forms.DockStyle.Fill;
             this.WaitForExitCheckBox.Location = new System.Drawing.Point(113, 107);
@@ -458,7 +458,7 @@ namespace LoipvRemote.UI.Window
             //
             // BrowseButton
             //
-            this.BrowseButton._mice = MrngButton.MouseState.HOVER;
+            this.BrowseButton.MouseInteractionState = MrngButton.MouseState.HOVER;
             this.BrowseButton.Dock = System.Windows.Forms.DockStyle.Fill;
             this.BrowseButton.Location = new System.Drawing.Point(723, 29);
             this.BrowseButton.Name = "BrowseButton";
@@ -471,7 +471,7 @@ namespace LoipvRemote.UI.Window
             //
             // BrowseWorkingDir
             //
-            this.BrowseWorkingDir._mice = MrngButton.MouseState.HOVER;
+            this.BrowseWorkingDir.MouseInteractionState = MrngButton.MouseState.HOVER;
             this.BrowseWorkingDir.Dock = System.Windows.Forms.DockStyle.Fill;
             this.BrowseWorkingDir.Location = new System.Drawing.Point(723, 81);
             this.BrowseWorkingDir.Name = "BrowseWorkingDir";

@@ -19,7 +19,7 @@ namespace LoipvRemote.Config.Serializers.MiscSerializers
             ConnectionInfo connectionInfo = new();
             foreach (string line in rdcFileContent.Split(Environment.NewLine.ToCharArray()))
             {
-                string[] parts = line.Split(new[] { ':' }, 3);
+                string[] parts = line.Split(':', 3);
                 if (parts.Length < 3)
                 {
                     continue;
@@ -37,9 +37,9 @@ namespace LoipvRemote.Config.Serializers.MiscSerializers
         }
 
 
-        private void SetConnectionInfoParameter(ConnectionInfo connectionInfo, string key, string value)
+        private static void SetConnectionInfoParameter(ConnectionInfo connectionInfo, string key, string value)
         {
-            switch (key.ToLower())
+            switch (key.ToLowerInvariant())
             {
                 case "full address":
                     Uri uri = new("dummyscheme" + Uri.SchemeDelimiter + value);
@@ -49,7 +49,7 @@ namespace LoipvRemote.Config.Serializers.MiscSerializers
                         connectionInfo.Port = uri.Port;
                     break;
                 case "server port":
-                    connectionInfo.Port = Convert.ToInt32(value);
+                    connectionInfo.Port = Convert.ToInt32(value, CultureInfo.InvariantCulture);
                     break;
                 case "username":
                     connectionInfo.Username = value;
@@ -159,7 +159,7 @@ namespace LoipvRemote.Config.Serializers.MiscSerializers
                     connectionInfo.RDGatewayHostname = value;
                     break;
                 case "gatewaycredentialssource":
-                    switch(value)
+                    switch (value)
                     {
                         case "0":
                             connectionInfo.RDGatewayUseConnectionCredentials = RDGatewayUseConnectionCredentials.ExternalCredentialProvider;

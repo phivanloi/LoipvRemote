@@ -22,11 +22,11 @@ namespace LoipvRemote.UI.Forms
 
         public string Panel
         {
-            get => cbPanels.SelectedItem.ToString();
+            get => cbPanels.SelectedItem?.ToString() ?? string.Empty;
             set => cbPanels.SelectedItem = value;
         }
 
-        private void frmChoosePanel_Load(object sender, System.EventArgs e)
+        private void frmChoosePanel_Load(object? sender, System.EventArgs e)
         {
             ApplyLanguage();
             ApplyTheme();
@@ -82,7 +82,7 @@ namespace LoipvRemote.UI.Forms
             }
         }
 
-        private void btnNew_Click(object sender, System.EventArgs e)
+        private void btnNew_Click(object? sender, System.EventArgs e)
         {
             using (FrmInputBox frmInputBox =
                 new(Language.NewPanel, Language.PanelName + ":", Language.NewPanel))
@@ -96,7 +96,7 @@ namespace LoipvRemote.UI.Forms
             }
         }
 
-        private void btnOK_Click(object sender, System.EventArgs e)
+        private void btnOK_Click(object? sender, System.EventArgs e)
         {
             DialogResult = DialogResult.OK;
         }

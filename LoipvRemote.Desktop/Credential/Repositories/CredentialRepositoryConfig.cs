@@ -4,7 +4,7 @@ using System.Security;
 
 namespace LoipvRemote.Credential.Repositories
 {
-    public class CredentialRepositoryConfig(Guid id) : ICredentialRepositoryConfig
+    public class CredentialRepositoryConfig(Guid id) : ICredentialRepositoryConfig, IDisposable
     {
         private string _title = "New Credential Repository";
         private string _source = "";
@@ -69,6 +69,12 @@ namespace LoipvRemote.Credential.Repositories
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
+
+        public void Dispose()
+        {
+            _key.Dispose();
+            GC.SuppressFinalize(this);
+        }
 
         protected virtual void RaisePropertyChangedEvent(string propertyName)
         {

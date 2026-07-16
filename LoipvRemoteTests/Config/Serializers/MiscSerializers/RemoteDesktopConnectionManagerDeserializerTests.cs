@@ -18,14 +18,12 @@ public class RemoteDesktopConnectionManagerDeserializerTests
     private const string ExpectedDescription = "Comment text here";
     private const string ExpectedUsername = "myusername1";
     private const string ExpectedDomain = "mydomain";
-    private const string ExpectedPassword = "passwordHere!";
     private const bool ExpectedUseConsoleSession = true;
     private const int ExpectedPort = 9933;
     private const RDGatewayUsageMethod ExpectedGatewayUsageMethod = RDGatewayUsageMethod.Always;
     private const string ExpectedGatewayHostname = "gatewayserverhost.innerdomain.net";
     private const string ExpectedGatewayUsername = "gatewayusername";
     private const string ExpectedGatewayDomain = "innerdomain";
-    private const string ExpectedGatewayPassword = "gatewayPassword123";
     private const RDPResolutions ExpectedRdpResolution = RDPResolutions.FitToWindow;
     private const RDPColors ExpectedRdpColorDepth = RDPColors.Colors24Bit;
     private const RDPSounds ExpectedAudioRedirection = RDPSounds.DoNotPlay;
@@ -119,16 +117,15 @@ public class RemoteDesktopConnectionManagerDeserializerTests
         Assert.That(connection.Domain, Is.EqualTo(ExpectedDomain));
     }
 
-    // Since password is encrypted with a machine key, cant test decryption on another machine
-    //[Test]
-    //public void ConnectionPasswordImported()
-    //{
-    //    var rootNode = _connectionTreeModel.RootNodes.First();
-    //    var importedRdcmanRootNode = rootNode.Children.OfType<ContainerInfo>().First();
-    //    var group1 = importedRdcmanRootNode.Children.OfType<ContainerInfo>().First(node => node.Name == "Group1");
-    //    var connection = group1.Children.First();
-    //    Assert.That(connection.Password, Is.EqualTo(ExpectedPassword));
-    //}
+    [Test]
+    public void MachineBoundPasswordsAreNotImported()
+    {
+        var rootNode = _connectionTreeModel.RootNodes.First();
+        var importedRdcmanRootNode = rootNode.Children.OfType<ContainerInfo>().First();
+        var group1 = importedRdcmanRootNode.Children.OfType<ContainerInfo>().First(node => node.Name == "Group1");
+        var connection = group1.Children.First();
+        Assert.That(connection.Password, Is.Empty);
+    }
 
     [Test]
     public void ConnectionProtocolSetToRdp()

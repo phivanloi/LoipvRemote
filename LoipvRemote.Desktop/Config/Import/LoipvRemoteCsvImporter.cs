@@ -30,7 +30,7 @@ namespace LoipvRemote.Config.Import
             CsvConnectionsDeserializer csvDeserializer = new();
             Tree.ConnectionTreeModel connectionTreeModel = csvDeserializer.Deserialize(xmlString);
 
-            ContainerInfo rootImportContainer = new() { Name = Path.GetFileNameWithoutExtension(filePath)};
+            ContainerInfo rootImportContainer = new() { Name = Path.GetFileNameWithoutExtension(filePath) };
             rootImportContainer.AddChildRange(connectionTreeModel.RootNodes.First().Children.ToArray());
             destinationContainer.AddChild(rootImportContainer);
         }

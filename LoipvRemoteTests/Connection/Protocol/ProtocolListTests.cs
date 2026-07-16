@@ -94,22 +94,6 @@ public class ProtocolSessionCollectionTests
     }
 
     [Test]
-    public void ObjectIndexerReturnsCorrectObject()
-    {
-        var protArray = new[] { _protocol1, _protocol2, _protocol3 };
-        _protocolList.AddRange(protArray);
-        Assert.That(_protocolList[_protocol3], Is.EqualTo(_protocol3));
-    }
-
-    [Test]
-    public void IndexerSafelyHandlesUnknownObjects()
-    {
-        var protArray = new[] { _protocol1, _protocol2, _protocol3 };
-        _protocolList.AddRange(protArray);
-        Assert.That(_protocolList["unacceptablevalue"], Is.EqualTo(null));
-    }
-
-    [Test]
     public void RemovingNonexistantObjectFromListDoesNothing()
     {
         Assert.DoesNotThrow(() => _protocolList.Remove(_protocol1));
@@ -250,5 +234,10 @@ public class ProtocolSessionCollectionTests
         public void Focus() { }
         public void Close() => State = ProtocolSessionState.Closed;
         public void Dispose() { }
+        public ValueTask<bool> InitializeAsync(CancellationToken cancellationToken = default) => ValueTask.FromResult(Initialize());
+        public ValueTask<bool> ConnectAsync(CancellationToken cancellationToken = default) => ValueTask.FromResult(Connect());
+        public ValueTask DisconnectAsync(CancellationToken cancellationToken = default) { Disconnect(); return ValueTask.CompletedTask; }
+        public ValueTask CloseAsync(CancellationToken cancellationToken = default) { Close(); return ValueTask.CompletedTask; }
+        public ValueTask DisposeAsync() { Dispose(); return ValueTask.CompletedTask; }
     }
 }

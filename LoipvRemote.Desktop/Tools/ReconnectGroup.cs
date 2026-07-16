@@ -32,7 +32,7 @@ namespace LoipvRemote.Tools
             if (pbServerStatus.InvokeRequired)
             {
                 SetStatusImageCB d = new(SetStatusImage);
-                ParentForm?.Invoke(d, new object[] {Img});
+                ParentForm?.Invoke(d, new object[] { Img });
             }
             else
             {
@@ -40,7 +40,7 @@ namespace LoipvRemote.Tools
             }
         }
 
-        private void chkReconnectWhenReady_CheckedChanged(object sender, EventArgs e)
+        private void chkReconnectWhenReady_CheckedChanged(object? sender, EventArgs e)
         {
             _ReconnectWhenReady = chkReconnectWhenReady.Checked;
         }
@@ -64,7 +64,7 @@ namespace LoipvRemote.Tools
             if (chkReconnectWhenReady.InvokeRequired)
             {
                 SetCheckboxCB d = new(SetCheckbox);
-                ParentForm?.Invoke(d, new object[] {Val});
+                ParentForm?.Invoke(d, new object[] { Val });
             }
             else
             {
@@ -72,17 +72,17 @@ namespace LoipvRemote.Tools
             }
         }
 
-        public delegate void CloseClickedEventHandler();
+        public delegate void CloseClickedHandler();
 
-        public event CloseClickedEventHandler? CloseClicked;
+        public event CloseClickedHandler? CloseClicked;
 
 
-        private void btnClose_Click(object sender, EventArgs e)
+        private void btnClose_Click(object? sender, EventArgs e)
         {
             CloseClicked?.Invoke();
         }
 
-        private void tmrAnimation_Tick(object sender, EventArgs e)
+        private void tmrAnimation_Tick(object? sender, EventArgs e)
         {
             switch (lblAnimation.Text)
             {
@@ -116,7 +116,7 @@ namespace LoipvRemote.Tools
             }
         }
 
-        public void ReconnectGroup_Load(object sender, EventArgs e)
+        public void OnLoad(object? sender, EventArgs e)
         {
             ApplyLanguage();
         }

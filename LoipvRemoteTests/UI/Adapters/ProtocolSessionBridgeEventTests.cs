@@ -15,18 +15,18 @@ namespace LoipvRemoteTests.UI.Adapters;
 public sealed class ProtocolSessionBridgeEventTests
 {
     [Test]
-    public void DoesNotReportAnAsynchronousSessionAsConnectedUntilItsRuntimeConfirmsIt()
+    public async Task DoesNotReportAnAsynchronousSessionAsConnectedUntilItsRuntimeConfirmsIt()
     {
         using Panel parent = new() { Size = new System.Drawing.Size(800, 600) };
         var session = new EventSession();
-        using var bridge = CreateBridge(session);
+        await using var bridge = CreateBridge(session);
         using InterfaceControl surface = new(parent, bridge, new ConnectionInfo());
         bridge.InterfaceControl = surface;
         int connectedEvents = 0;
         bridge.Connected += _ => connectedEvents++;
 
-        Assert.That(bridge.Initialize(), Is.True);
-        Assert.That(bridge.Connect(), Is.True);
+        Assert.That(await bridge.InitializeAsync(), Is.True);
+        Assert.That(await bridge.ConnectAsync(), Is.True);
 
         Assert.Multiple(() =>
         {
@@ -44,11 +44,11 @@ public sealed class ProtocolSessionBridgeEventTests
     }
 
     [Test]
-    public void ForwardsTheRuntimeDisconnectReasonAndErrorCode()
+    public async Task ForwardsTheRuntimeDisconnectReasonAndErrorCode()
     {
         using Panel parent = new() { Size = new System.Drawing.Size(800, 600) };
         var session = new EventSession();
-        using var bridge = CreateBridge(session);
+        await using var bridge = CreateBridge(session);
         using InterfaceControl surface = new(parent, bridge, new ConnectionInfo());
         bridge.InterfaceControl = surface;
         string? disconnectMessage = null;
@@ -61,8 +61,8 @@ public sealed class ProtocolSessionBridgeEventTests
         };
         bridge.ErrorOccured += (_, _, code) => errorCode = code;
 
-        bridge.Initialize();
-        bridge.Connect();
+        await bridge.InitializeAsync();
+        await bridge.ConnectAsync();
         session.RaiseError("RDP failed", 12);
         session.RaiseDisconnected("RDP closed", 34);
 
@@ -75,6 +75,25 @@ public sealed class ProtocolSessionBridgeEventTests
         });
     }
 
+    [Test]
+    public async Task UsesAsyncProtocolLifecycleForApplicationSessionStartup()
+    {
+        using Panel parent = new() { Size = new System.Drawing.Size(800, 600) };
+        var session = new EventSession();
+        await using var bridge = CreateBridge(session);
+        using InterfaceControl surface = new(parent, bridge, new ConnectionInfo());
+        bridge.InterfaceControl = surface;
+
+        Assert.That(await bridge.InitializeAsync(), Is.True);
+        Assert.That(await bridge.ConnectAsync(), Is.True);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(session.InitializeAsyncCalls, Is.EqualTo(1));
+            Assert.That(session.ConnectAsyncCalls, Is.EqualTo(1));
+        });
+    }
+
     private static ProtocolSessionBridge CreateBridge(IProtocolSession session) => new(
         new ConnectionDefinition(
             Guid.NewGuid(), "RDP", "rdp.example", 3389, ProtocolKind.Rdp, CredentialReference.None),
@@ -82,6 +101,8 @@ public sealed class ProtocolSessionBridgeEventTests
 
     private sealed class EventSession : IProtocolSession, IProtocolSessionEvents
     {
+        public int InitializeAsyncCalls { get; private set; }
+        public int ConnectAsyncCalls { get; private set; }
         public ProtocolSessionState State { get; private set; } = ProtocolSessionState.Created;
         public ProtocolCapabilities Capabilities => ProtocolCapabilities.None;
 
@@ -106,6 +127,20 @@ public sealed class ProtocolSessionBridgeEventTests
         public void Focus() { }
         public void Close() => State = ProtocolSessionState.Closed;
         public void Dispose() { }
+        public ValueTask<bool> InitializeAsync(CancellationToken cancellationToken = default)
+        {
+            InitializeAsyncCalls++;
+            return ValueTask.FromResult(Initialize());
+        }
+
+        public ValueTask<bool> ConnectAsync(CancellationToken cancellationToken = default)
+        {
+            ConnectAsyncCalls++;
+            return ValueTask.FromResult(Connect());
+        }
+        public ValueTask DisconnectAsync(CancellationToken cancellationToken = default) { Disconnect(); return ValueTask.CompletedTask; }
+        public ValueTask CloseAsync(CancellationToken cancellationToken = default) { Close(); return ValueTask.CompletedTask; }
+        public ValueTask DisposeAsync() { Dispose(); return ValueTask.CompletedTask; }
 
         public void RaiseConnected()
         {

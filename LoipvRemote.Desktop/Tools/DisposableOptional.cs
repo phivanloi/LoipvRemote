@@ -3,7 +3,7 @@ using System.Linq;
 
 namespace LoipvRemote.Tools
 {
-    public class DisposableOptional<T>(T value) : Optional<T>(value), IDisposable
+    public class DisposableOptional<T>(T value) : OptionalValue<T>(value), IDisposable
         where T : IDisposable
     {
         public void Dispose()

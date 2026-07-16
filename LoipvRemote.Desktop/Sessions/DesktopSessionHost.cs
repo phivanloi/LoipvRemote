@@ -12,13 +12,14 @@ namespace LoipvRemote.Desktop.Sessions;
 /// </summary>
 public sealed class DesktopSessionHost(
     ConnectionDefinition definition,
-    IProtocolSession session) : IDisposable, IInputMessageTarget
+    IProtocolSession session) : IDisposable, IAsyncDisposable, IInputMessageTarget
 {
     private readonly ConnectionDefinition _definition =
         definition ?? throw new ArgumentNullException(nameof(definition));
     private readonly IProtocolSession _session =
         session ?? throw new ArgumentNullException(nameof(session));
     private IDesktopSessionSurface? _surface;
+    private SynchronizationContext? _surfaceContext;
     private bool _embeddedWindowAttached;
     private nint _attachedWindowHandle;
     private bool _disposed;
@@ -39,6 +40,7 @@ public sealed class DesktopSessionHost(
             return;
 
         _surface = surface;
+        _surfaceContext = SynchronizationContext.Current;
         _surface.Resize += OnResize;
     }
 
@@ -52,31 +54,48 @@ public sealed class DesktopSessionHost(
         return true;
     }
 
-    public bool InitializeSession()
+    public async ValueTask<bool> InitializeSessionAsync(CancellationToken cancellationToken = default)
     {
-        // In-process controls such as the RDP ActiveX host must have a WinForms
-        // parent before COM activation. External process windows do not use this
-        // path and continue to attach after Connect exposes their HWND.
-        if (_session is IManagedEmbeddedWindow)
-            AttachEmbeddedWindow();
+        cancellationToken.ThrowIfCancellationRequested();
+        return await RunOnSurfaceThreadAsync(async () =>
+        {
+            if (_surface is not null && _session is IEmbeddedWindowHost host)
+                host.SetHostWindowHandle(_surface.Handle);
 
-        return _session.Initialize();
+            if (_session is IManagedEmbeddedWindow)
+                AttachEmbeddedWindow();
+
+            return await _session.InitializeAsync(cancellationToken).ConfigureAwait(true);
+        }).ConfigureAwait(false);
     }
 
-    public bool Connect()
+    public async ValueTask<bool> ConnectAsync(CancellationToken cancellationToken = default)
     {
-        if (!_session.Connect())
+        if (!await RunOnSurfaceThreadAsync(
+                () => _session.ConnectAsync(cancellationToken).AsTask()).ConfigureAwait(false))
             return false;
 
-        _surface?.StartActivity();
-        _embeddedWindowAttached = false;
-        AttachEmbeddedWindow();
+        RunOnSurfaceThread(() =>
+        {
+            _surface?.StartActivity();
+            _embeddedWindowAttached = false;
+            AttachEmbeddedWindow();
+        });
         return true;
     }
 
-    public void Disconnect() => _session.Disconnect();
+    public async ValueTask DisconnectAsync(CancellationToken cancellationToken = default)
+    {
+        await RunOnSurfaceThreadAsync(async () =>
+        {
+            await _session.DisconnectAsync(cancellationToken).ConfigureAwait(true);
+            return true;
+        }).ConfigureAwait(false);
+    }
 
-    public void Focus()
+    public void Focus() => RunOnSurfaceThread(FocusOnSurfaceThread);
+
+    private void FocusOnSurfaceThread()
     {
         if (_surface is null || _surface.IsDisposed || !_surface.IsVisible)
             return;
@@ -97,23 +116,56 @@ public sealed class DesktopSessionHost(
     public bool TryForwardInputMessage(int message, IntPtr wParam, IntPtr lParam) =>
         _session is IInputMessageTarget target && target.TryForwardInputMessage(message, wParam, lParam);
 
-    public void Close()
+    public async ValueTask CloseAsync(CancellationToken cancellationToken = default)
     {
         if (_disposed)
             return;
 
         try
         {
-            _session.Close();
+            await RunOnSurfaceThreadAsync(async () =>
+            {
+                await _session.CloseAsync(cancellationToken).ConfigureAwait(true);
+                return true;
+            }).ConfigureAwait(false);
         }
         finally
         {
-            _session.Dispose();
-            _surface?.StopActivity();
-            _surface?.ClearParentTag();
-            _surface?.DisposeSurface();
+            await RunOnSurfaceThreadAsync(async () =>
+            {
+                await _session.DisposeAsync().ConfigureAwait(true);
+                return true;
+            }).ConfigureAwait(false);
+            RunOnSurfaceThread(() =>
+            {
+                _surface?.StopActivity();
+                _surface?.ClearParentTag();
+                _surface?.DisposeSurface();
+            });
             _disposed = true;
         }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_disposed)
+            return;
+
+        try
+        {
+            await RunOnSurfaceThreadAsync(async () =>
+            {
+                await _session.DisposeAsync().ConfigureAwait(true);
+                return true;
+            }).ConfigureAwait(false);
+        }
+        finally
+        {
+            RunOnSurfaceThread(DetachSurface);
+            _disposed = true;
+        }
+
+        GC.SuppressFinalize(this);
     }
 
     public void Dispose()
@@ -123,11 +175,11 @@ public sealed class DesktopSessionHost(
 
         try
         {
-            _session.Dispose();
+            RunOnSurfaceThread(_session.Dispose);
         }
         finally
         {
-            DetachSurface();
+            RunOnSurfaceThread(DetachSurface);
             _disposed = true;
         }
 
@@ -146,7 +198,14 @@ public sealed class DesktopSessionHost(
             return;
 
         if (_embeddedWindowAttached && _attachedWindowHandle == windowHandle)
+        {
+            // The first attach can occur before WinForms has completed the
+            // document layout. Reapply the current client bounds whenever the
+            // active tab requests focus so external windows cannot remain at
+            // their startup size or position.
+            Resize();
             return;
+        }
 
         _embeddedWindowAttached = false;
 
@@ -178,7 +237,57 @@ public sealed class DesktopSessionHost(
 
         _surface.Resize -= OnResize;
         _surface = null;
+        _surfaceContext = null;
         _embeddedWindowAttached = false;
         _attachedWindowHandle = nint.Zero;
+    }
+
+    private void RunOnSurfaceThread(Action action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+
+        SynchronizationContext? context = _surfaceContext;
+        if (context is null || ReferenceEquals(SynchronizationContext.Current, context))
+        {
+            action();
+            return;
+        }
+
+        context.Send(static state => ((Action)state!).Invoke(), action);
+    }
+
+    private Task<T> RunOnSurfaceThreadAsync<T>(Func<Task<T>> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+
+        SynchronizationContext? context = _surfaceContext;
+        if (context is null || ReferenceEquals(SynchronizationContext.Current, context))
+            return action();
+
+        TaskCompletionSource<T> completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        context.Post(static state =>
+        {
+            var work = ((Func<Task<T>> Action, TaskCompletionSource<T> Completion))state!;
+            _ = CompleteOnSurfaceThreadAsync(work.Action, work.Completion);
+        }, (action, completion));
+        return completion.Task;
+    }
+
+    private static async Task CompleteOnSurfaceThreadAsync<T>(
+        Func<Task<T>> action,
+        TaskCompletionSource<T> completion)
+    {
+        try
+        {
+            completion.TrySetResult(await action().ConfigureAwait(true));
+        }
+        catch (OperationCanceledException exception)
+        {
+            completion.TrySetCanceled(exception.CancellationToken);
+        }
+        catch (Exception exception)
+        {
+            completion.TrySetException(exception);
+        }
     }
 }

@@ -22,13 +22,13 @@ namespace LoipvRemote.Security.Factories
             ICryptographyProvider cryptoProvider;
             try
             {
-                BlockCipherEngines engine = (BlockCipherEngines)Enum.Parse(typeof(BlockCipherEngines),
-                                                            _element?.Attribute("EncryptionEngine")?.Value ?? "");
-                BlockCipherModes mode = (BlockCipherModes)Enum.Parse(typeof(BlockCipherModes),
-                                                        _element?.Attribute("BlockCipherMode")?.Value ?? "");
+                if (!Enum.TryParse(_element.Attribute("EncryptionEngine")?.Value, ignoreCase: true, out BlockCipherEngines engine) ||
+                    !Enum.TryParse(_element.Attribute("BlockCipherMode")?.Value, ignoreCase: true, out BlockCipherModes mode))
+                    throw new FormatException("Invalid credential encryption settings.");
                 cryptoProvider = new CryptoProviderFactory(engine, mode).Build();
 
-                int keyDerivationIterations = int.Parse(_element?.Attribute("KdfIterations")?.Value ?? "");
+                if (!int.TryParse(_element.Attribute("KdfIterations")?.Value, out int keyDerivationIterations))
+                    throw new FormatException("Invalid credential KDF iteration count.");
                 cryptoProvider.KeyDerivationIterations = keyDerivationIterations;
             }
             catch (Exception)

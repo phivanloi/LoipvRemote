@@ -1,4 +1,4 @@
-namespace LoipvRemote.Connectors.Delinea
+namespace LoipvRemote.Desktop.UI.Connectors.Delinea
 {
     partial class SSConnectionForm
     {

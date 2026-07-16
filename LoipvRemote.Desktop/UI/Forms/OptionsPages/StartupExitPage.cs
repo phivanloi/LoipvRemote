@@ -65,7 +65,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
         {
             Type settingsType = typeof(OptRegistryStartupExitPage);
             RegistryLoader.RegistrySettings.TryGetValue(settingsType, out var settings);
-            pageRegSettingsInstance = settings as OptRegistryStartupExitPage;
+            pageRegSettingsInstance = settings as OptRegistryStartupExitPage ?? new OptRegistryStartupExitPage();
 
             // If registry settings don't exist, create a default instance to prevent null reference exceptions
             if (pageRegSettingsInstance == null)
@@ -118,7 +118,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
                 || pageRegSettingsInstance.StartupBehavior.IsSet;
         }
 
-        private void chkStartFullScreen_CheckedChanged(object sender, EventArgs e)
+        private void chkStartFullScreen_CheckedChanged(object? sender, EventArgs e)
         {
             if (chkStartFullScreen.Checked && chkStartMinimized.Checked)
             {
@@ -126,7 +126,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             }
         }
 
-        private void chkStartMinimized_CheckedChanged(object sender, EventArgs e)
+        private void chkStartMinimized_CheckedChanged(object? sender, EventArgs e)
         {
             if (chkStartMinimized.Checked && chkStartFullScreen.Checked)
             {

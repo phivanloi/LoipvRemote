@@ -83,7 +83,7 @@ namespace LoipvRemote.UI.Window
         private DesktopShellRuntime ShellRuntime => _desktopShellRuntime
             ?? throw new InvalidOperationException("The connection-tree runtime must be attached before it handles commands.");
 
-        private void OnAppSettingsChanged(object o, PropertyChangedEventArgs propertyChangedEventArgs)
+        private void OnAppSettingsChanged(object? o, PropertyChangedEventArgs propertyChangedEventArgs)
         {
             if (propertyChangedEventArgs.PropertyName == nameof(Settings.SlowClickRenameEnabled))
                 ConnectionTree.SetupSlowClickRename();
@@ -188,7 +188,7 @@ namespace LoipvRemote.UI.Window
 
         private void SetTreePostSetupActions()
         {
-            List<IConnectionTreeDelegate> actions = new()
+            List<IConnectionTreeAction> actions = new()
             {
                 new PreviouslyOpenedFolderExpander(),
                 new RootNodeExpander()
@@ -220,7 +220,7 @@ namespace LoipvRemote.UI.Window
             ConnectionTree.DoubleClickHandler = new TreeNodeCompositeClickHandler { ClickHandlers = doubleClickHandlers };
         }
 
-        private void WorkspaceOnConnectionsLoaded(object o, ConnectionsLoadedEventArgs connectionsLoadedEventArgs)
+        private void WorkspaceOnConnectionsLoaded(object? o, ConnectionsLoadedEventArgs connectionsLoadedEventArgs)
         {
             if (ConnectionTree.InvokeRequired)
             {
@@ -267,7 +267,7 @@ namespace LoipvRemote.UI.Window
 
                 foreach (ContainerInfo node in rootNodes)
                 {
-                    foreach (ConnectionInfo containerInfo in ShellRuntime.ConnectionTreeWorkspace.ConnectionTreeModel.GetRecursiveFavoriteChildList(node))
+                    foreach (ConnectionInfo containerInfo in ConnectionTreeModel.GetRecursiveFavoriteChildList(node))
                     {
                         ToolStripMenuItem favoriteMenuItem = new()
                         {
@@ -287,8 +287,9 @@ namespace LoipvRemote.UI.Window
 
         private void FavoriteMenuItem_MouseUp(object? sender, MouseEventArgs e)
         {
-            if (((ToolStripMenuItem)sender).Tag is ContainerInfo) return;
-            ShellRuntime.ConnectionInitiator.OpenConnection((ConnectionInfo)((ToolStripMenuItem)sender).Tag);
+            if (sender is not ToolStripMenuItem item || item.Tag is not ConnectionInfo connectionInfo)
+                return;
+            _ = ShellRuntime.ConnectionInitiator.OpenConnectionAsync(connectionInfo);
         }
 
         #endregion
@@ -348,7 +349,7 @@ namespace LoipvRemote.UI.Window
                     {
                         if (SelectedNode == null)
                             return;
-                        ShellRuntime.ConnectionInitiator.OpenConnection(SelectedNode);
+                        _ = ShellRuntime.ConnectionInitiator.OpenConnectionAsync(SelectedNode);
                     }
                 }
             }
@@ -373,7 +374,7 @@ namespace LoipvRemote.UI.Window
 
             foreach (var connection in connectionsToOpen)
             {
-                ShellRuntime.ConnectionInitiator.OpenConnection(connection);
+                _ = ShellRuntime.ConnectionInitiator.OpenConnectionAsync(connection);
             }
         }
 

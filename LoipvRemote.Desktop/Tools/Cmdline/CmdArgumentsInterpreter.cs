@@ -26,7 +26,7 @@ namespace LoipvRemote.Tools.Cmdline
         private readonly MessageCollector _messageCollector;
 
         // Retrieve a parameter value if it exists
-        public string this[string param] => (_parameters[param]);
+        public string? this[string param] => _parameters[param];
 
         public CmdArgumentsInterpreter(IEnumerable<string> args, MessageCollector messageCollector)
         {
@@ -34,7 +34,7 @@ namespace LoipvRemote.Tools.Cmdline
             _parameters = [];
             Regex spliter = new("^-{1,2}|^/|=|:", RegexOptions.IgnoreCase | RegexOptions.Compiled);
             Regex remover = new("^[\'\"]?(.*?)[\'\"]?$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-            string parameter = null;
+            string? parameter = null;
 
             // Valid parameters forms:
             // {-,/,--}param{ ,=,:}((",')value(",'))

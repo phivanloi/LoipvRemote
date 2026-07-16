@@ -9,7 +9,7 @@ namespace LoipvRemote.Tools
     {
         public FullyObservableCollection<ExternalTool> ExternalTools { get; set; } = [];
 
-        public ExternalTool GetExtAppByName(string name)
+        public ExternalTool? GetExtAppByName(string name)
         {
             return ExternalTools.FirstOrDefault(extA => extA.DisplayName == name);
         }

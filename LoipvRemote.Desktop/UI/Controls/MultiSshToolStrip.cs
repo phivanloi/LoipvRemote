@@ -16,10 +16,10 @@ namespace LoipvRemote.UI.Controls
     [SupportedOSPlatform("windows")]
     public partial class MultiSshToolStrip : ToolStrip
     {
-        private IContainer components = null!;
+        private System.ComponentModel.Container? components;
         private ToolStripLabel lblMultiSsh = null!;
         private ToolStripTextBox txtMultiSsh = null!;
-        private int previousCommandIndex = 0;
+        private int previousCommandIndex;
         private readonly List<IInputMessageTarget> processHandlers = [];
         private readonly ArrayList quickConnectConnections = [];
         private readonly ArrayList previousCommands = [];
@@ -49,7 +49,7 @@ namespace LoipvRemote.UI.Controls
             txtMultiSsh.ForeColor = _themeManager.ActiveTheme.ExtendedPalette.getColor("TextBox_Foreground");
         }
 
-        private static IEnumerable<IInputMessageTarget> ProcessOpenConnections(ConnectionInfo connection)
+        private static List<IInputMessageTarget> ProcessOpenConnections(ConnectionInfo connection)
         {
             List<IInputMessageTarget> handlers = [];
 
@@ -77,7 +77,7 @@ namespace LoipvRemote.UI.Controls
 
         #region Key Event Handler
 
-        private void RefreshActiveConnections(object sender, EventArgs e)
+        private void RefreshActiveConnections(object? sender, EventArgs e)
         {
             processHandlers.Clear();
             foreach (ConnectionInfo connection in quickConnectConnections)
@@ -93,7 +93,7 @@ namespace LoipvRemote.UI.Controls
             }
         }
 
-        private void ProcessKeyPress(object sender, KeyEventArgs e)
+        private void ProcessKeyPress(object? sender, KeyEventArgs e)
         {
             if (e.KeyCode == Keys.Up || e.KeyCode == Keys.Down)
             {
@@ -114,7 +114,7 @@ namespace LoipvRemote.UI.Controls
                 }
                 catch { }
 
-                txtMultiSsh.Text = previousCommands[previousCommandIndex].ToString();
+                txtMultiSsh.Text = previousCommands[previousCommandIndex]?.ToString() ?? string.Empty;
                 txtMultiSsh.SelectAll();
             }
 
@@ -134,7 +134,7 @@ namespace LoipvRemote.UI.Controls
             }
         }
 
-        private void ProcessKeyRelease(object sender, KeyEventArgs e)
+        private void ProcessKeyRelease(object? sender, KeyEventArgs e)
         {
             if (e.KeyCode != Keys.Enter) return;
             if (string.IsNullOrWhiteSpace(txtMultiSsh.Text)) return;
@@ -153,7 +153,7 @@ namespace LoipvRemote.UI.Controls
         {
             if (disposing)
             {
-                if(components != null)
+                if (components != null)
                     components.Dispose();
             }
 

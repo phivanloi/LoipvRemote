@@ -42,12 +42,12 @@ namespace LoipvRemote.UI
             RebuildImages();
         }
 
-        public object ImageGetter(object rowObject)
+        public object ImageGetter(object? rowObject)
         {
             return GetKey(rowObject as ConnectionInfo);
         }
 
-        public Image GetImage(ConnectionInfo connectionInfo)
+        public Image? GetImage(ConnectionInfo? connectionInfo)
         {
             string key = GetKey(connectionInfo);
             return ImageList.Images.ContainsKey(key)
@@ -55,7 +55,7 @@ namespace LoipvRemote.UI
                 : null;
         }
 
-        public string GetKey(ConnectionInfo connectionInfo)
+        public string GetKey(ConnectionInfo? connectionInfo)
         {
             if (connectionInfo == null) return "";
             if (connectionInfo is RootPuttySessionsNodeInfo) return "PuttySessions";
@@ -80,7 +80,7 @@ namespace LoipvRemote.UI
             bool connected = connection.OpenConnections.Count > 0;
             string name = BuildConnectionIconName(iconName, connected);
             if (ImageList.Images.ContainsKey(name)) return name;
-            Icon image = ConnectionIcon.FromString(iconName);
+            Icon? image = ConnectionIcon.FromString(iconName);
             if (image == null)
             {
                 return DefaultConnectionIcon;
@@ -130,7 +130,7 @@ namespace LoipvRemote.UI
             RebuildImages();
         }
 
-        private int IconPixelSize => _uiScaleManager.Metrics.ScaleForDpi(
+        private int IconPixelSize => UiMetrics.ScaleForDpi(
             _uiScaleManager.Metrics.IconSize,
             _deviceDpi / 96f);
 

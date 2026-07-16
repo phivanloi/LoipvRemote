@@ -19,17 +19,17 @@ namespace LoipvRemote.Tools
                 string OrderPrefix = "";
                 for (int x = 0; x <= MaxOrder - Order; x++)
                 {
-                    OrderPrefix += Convert.ToString("\t");
+                    OrderPrefix += "\t";
                 }
 
-                return OrderPrefix + Language.ResourceManager.GetString(value);
+                return OrderPrefix + (Language.ResourceManager.GetString(value, System.Globalization.CultureInfo.CurrentUICulture) ?? value);
             }
         }
 
         [AttributeUsage(AttributeTargets.All, AllowMultiple = false, Inherited = true)]
         public class LocalizedDisplayNameAttribute(string value) : DisplayNameAttribute(value)
         {
-            private bool Localized = false;
+            private bool Localized;
 
             public override string DisplayName
             {
@@ -38,7 +38,7 @@ namespace LoipvRemote.Tools
                     if (!Localized)
                     {
                         Localized = true;
-                        DisplayNameValue = Language.ResourceManager.GetString(DisplayNameValue);
+                        DisplayNameValue = Language.ResourceManager.GetString(DisplayNameValue, System.Globalization.CultureInfo.CurrentUICulture) ?? DisplayNameValue;
                     }
 
                     return base.DisplayName;
@@ -49,7 +49,7 @@ namespace LoipvRemote.Tools
         [AttributeUsage(AttributeTargets.All, AllowMultiple = false, Inherited = true)]
         public class LocalizedDescriptionAttribute(string value) : DescriptionAttribute(value)
         {
-            private bool Localized = false;
+            private bool Localized;
 
             public override string Description
             {
@@ -58,7 +58,7 @@ namespace LoipvRemote.Tools
                     if (!Localized)
                     {
                         Localized = true;
-                        DescriptionValue = Language.ResourceManager.GetString(DescriptionValue);
+                        DescriptionValue = Language.ResourceManager.GetString(DescriptionValue, System.Globalization.CultureInfo.CurrentUICulture) ?? DescriptionValue;
                     }
 
                     return base.Description;
@@ -67,7 +67,7 @@ namespace LoipvRemote.Tools
         }
 
         [AttributeUsage(AttributeTargets.All, AllowMultiple = false, Inherited = true)]
-        public class LocalizedDefaultValueAttribute(string name) : DefaultValueAttribute(Language.ResourceManager.GetString(name))
+        public class LocalizedDefaultValueAttribute(string name) : DefaultValueAttribute(Language.ResourceManager.GetString(name, System.Globalization.CultureInfo.CurrentUICulture) ?? name)
         {
 
             // This allows localized attributes in a derived class to override a matching
@@ -80,7 +80,7 @@ namespace LoipvRemote.Tools
         [AttributeUsage(AttributeTargets.All, AllowMultiple = false, Inherited = true)]
         public class LocalizedDisplayNameInheritAttribute(string value) : DisplayNameAttribute(value)
         {
-            private bool Localized = false;
+            private bool Localized;
 
             public override string DisplayName
             {
@@ -89,8 +89,8 @@ namespace LoipvRemote.Tools
                     if (!Localized)
                     {
                         Localized = true;
-                        DisplayNameValue = string.Format(Language.FormatInherit,
-                                                         Language.ResourceManager.GetString(DisplayNameValue));
+                        DisplayNameValue = FormatText(Language.FormatInherit,
+                                                         Language.ResourceManager.GetString(DisplayNameValue, System.Globalization.CultureInfo.CurrentUICulture) ?? DisplayNameValue);
                     }
 
                     return base.DisplayName;
@@ -101,7 +101,7 @@ namespace LoipvRemote.Tools
         [AttributeUsage(AttributeTargets.All, AllowMultiple = false, Inherited = true)]
         public class LocalizedDescriptionInheritAttribute(string value) : DescriptionAttribute(value)
         {
-            private bool Localized = false;
+            private bool Localized;
 
             public override string Description
             {
@@ -110,8 +110,8 @@ namespace LoipvRemote.Tools
                     if (!Localized)
                     {
                         Localized = true;
-                        DescriptionValue = string.Format(Language.FormatInheritDescription,
-                                                         Language.ResourceManager.GetString(DescriptionValue));
+                        DescriptionValue = FormatText(Language.FormatInheritDescription,
+                                                         Language.ResourceManager.GetString(DescriptionValue, System.Globalization.CultureInfo.CurrentUICulture) ?? DescriptionValue);
                     }
 
                     return base.Description;

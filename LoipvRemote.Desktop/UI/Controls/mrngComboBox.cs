@@ -20,7 +20,7 @@ namespace LoipvRemote.UI.Controls
             OUT
         }
 
-        public MouseState _mice { get; set; }
+        public MouseState MouseInteractionState { get; set; }
 
         public MrngComboBox()
         {
@@ -40,26 +40,26 @@ namespace LoipvRemote.UI.Controls
             SetStyle(ControlStyles.OptimizedDoubleBuffer |
                      ControlStyles.UserPaint, true);
             DrawItem += NG_DrawItem;
-            _mice = MouseState.OUT;
+            MouseInteractionState = MouseState.OUT;
             MouseEnter += (sender, args) =>
             {
-                _mice = MouseState.HOVER;
+                MouseInteractionState = MouseState.HOVER;
                 Invalidate();
             };
             MouseLeave += (sender, args) =>
             {
-                _mice = MouseState.OUT;
+                MouseInteractionState = MouseState.OUT;
                 Invalidate();
             };
             MouseDown += (sender, args) =>
             {
                 if (args.Button != MouseButtons.Left) return;
-                _mice = MouseState.DOWN;
+                MouseInteractionState = MouseState.DOWN;
                 Invalidate();
             };
             MouseUp += (sender, args) =>
             {
-                _mice = MouseState.OUT;
+                MouseInteractionState = MouseState.OUT;
 
                 Invalidate();
             };
@@ -79,7 +79,7 @@ namespace LoipvRemote.UI.Controls
             Height = InputControlMetrics.InputHeight(Font.Height);
         }
 
-        private void NG_DrawItem(object sender, DrawItemEventArgs e)
+        private void NG_DrawItem(object? sender, DrawItemEventArgs e)
         {
             int index = e.Index >= 0 ? e.Index : 0;
             Brush itemBrush = new SolidBrush(_themeManager.ActiveTheme.ExtendedPalette.getColor("ComboBox_Foreground"));
@@ -103,18 +103,17 @@ namespace LoipvRemote.UI.Controls
 
             if (Items.Count > 0)
             {
+                if (Items[index] is not { } item)
+                    return;
                 if (string.IsNullOrEmpty(DisplayMember))
-                    e.Graphics.DrawString(Items[index].ToString(), Font, itemBrush, e.Bounds,
+                    e.Graphics.DrawString(item.ToString(), Font, itemBrush, e.Bounds,
                                           StringFormat.GenericDefault);
                 else
                 {
-                    if (Items[index].GetType().GetProperty(DisplayMember) != null)
+                    System.Reflection.PropertyInfo? displayProperty = item.GetType().GetProperty(DisplayMember);
+                    if (displayProperty is not null && displayProperty.GetValue(item) is { } displayValue)
                     {
-                        e.Graphics.DrawString(
-                                              Items[index]
-                                                  .GetType().GetProperty(DisplayMember)?.GetValue(Items[index], null)
-                                                  .ToString(),
-                                              Font, itemBrush, e.Bounds, StringFormat.GenericDefault);
+                        e.Graphics.DrawString(displayValue.ToString(), Font, itemBrush, e.Bounds, StringFormat.GenericDefault);
                     }
                 }
             }
@@ -137,7 +136,7 @@ namespace LoipvRemote.UI.Controls
             Color ButtBack = _themeManager.ActiveTheme.ExtendedPalette.getColor("ComboBox_Button_Background");
             Color ButtFore = _themeManager.ActiveTheme.ExtendedPalette.getColor("ComboBox_Button_Foreground");
 
-            if (_mice == MouseState.HOVER)
+            if (MouseInteractionState == MouseState.HOVER)
             {
                 Border = _themeManager.ActiveTheme.ExtendedPalette.getColor("ComboBox_MouseOver_Border");
                 ButtBack = _themeManager.ActiveTheme.ExtendedPalette.getColor("ComboBox_Button_MouseOver_Background");

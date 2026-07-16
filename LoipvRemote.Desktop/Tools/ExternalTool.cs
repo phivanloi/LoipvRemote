@@ -116,7 +116,7 @@ namespace LoipvRemote.Tools
             RunElevated = runElevated;
         }
 
-        public void Start(ConnectionInfo startConnectionInfo = null!)
+        public void Start(ConnectionInfo? startConnectionInfo = null)
         {
             try
             {
@@ -184,7 +184,7 @@ namespace LoipvRemote.Tools
                 WaitForExit);
         }
 
-    private ExternalApplicationArgumentContext BuildArgumentContext(ConnectionInfo connectionInfo)
+        private ExternalApplicationArgumentContext BuildArgumentContext(ConnectionInfo connectionInfo)
         {
             string username = connectionInfo.Username;
             string password = connectionInfo.Password;
@@ -227,7 +227,7 @@ namespace LoipvRemote.Tools
             try
             {
                 ConnectionInfo newConnectionInfo = BuildConnectionInfoForIntegratedApp();
-                RuntimeServices.ConnectionInitiator.OpenConnection(newConnectionInfo);
+                _ = RuntimeServices.ConnectionInitiator.OpenConnectionAsync(newConnectionInfo);
             }
             catch (Exception ex)
             {
@@ -261,7 +261,7 @@ namespace LoipvRemote.Tools
 
         public event PropertyChangedEventHandler? PropertyChanged = delegate { }; // Updated to match nullability
 
-        protected virtual void RaisePropertyChangedEvent(object sender, string propertyName)
+        protected virtual void RaisePropertyChangedEvent(object? sender, string propertyName)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }

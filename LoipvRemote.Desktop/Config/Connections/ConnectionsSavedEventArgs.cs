@@ -3,14 +3,14 @@ using LoipvRemote.Tree;
 
 namespace LoipvRemote.Config.Connections
 {
-    public class ConnectionsSavedEventArgs
+    public class ConnectionsSavedEvent
     {
         public ConnectionTreeModel ModelThatWasSaved { get; }
         public bool PreviouslyUsingDatabase { get; }
         public bool UsingDatabase { get; }
         public string ConnectionFileName { get; }
 
-        public ConnectionsSavedEventArgs(ConnectionTreeModel modelThatWasSaved,
+        public ConnectionsSavedEvent(ConnectionTreeModel modelThatWasSaved,
                                          bool previouslyUsingDatabase,
                                          bool usingDatabase,
                                          string connectionFileName)

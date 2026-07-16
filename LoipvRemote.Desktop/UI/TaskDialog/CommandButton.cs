@@ -1,6 +1,7 @@
 using LoipvRemote.Themes;
 using System;
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Runtime.Versioning;
@@ -40,9 +41,10 @@ namespace LoipvRemote.UI.TaskDialog
 
         //--------------------------------------------------------------------------------
         // Override this to make sure the control is invalidated (repainted) when 'Text' is changed
-        public override string? Text
+        [AllowNull]
+        public override string Text
         {
-            get => base.Text;
+            get => base.Text ?? string.Empty;
             set
             {
                 base.Text = value;
@@ -164,8 +166,9 @@ namespace LoipvRemote.UI.TaskDialog
         }
 
         //--------------------------------------------------------------------------------
-        protected override void OnPaint(PaintEventArgs e)
+        protected override void OnPaint(PaintEventArgs pevent)
         {
+            PaintEventArgs e = pevent;
             if (!_themeManager.ActiveAndExtended)
             {
                 base.OnPaint(e);
@@ -272,16 +275,18 @@ namespace LoipvRemote.UI.TaskDialog
         }
 
         //--------------------------------------------------------------------------------
-        protected override void OnMouseUp(MouseEventArgs e)
+        protected override void OnMouseUp(MouseEventArgs mevent)
         {
+            MouseEventArgs e = mevent;
             m_State = eButtonState.MouseOver;
             Invalidate();
             base.OnMouseUp(e);
         }
 
         //--------------------------------------------------------------------------------
-        protected override void OnMouseDown(MouseEventArgs e)
+        protected override void OnMouseDown(MouseEventArgs mevent)
         {
+            MouseEventArgs e = mevent;
             m_State = eButtonState.Down;
             Invalidate();
             base.OnMouseDown(e);

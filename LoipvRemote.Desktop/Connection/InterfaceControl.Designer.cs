@@ -20,7 +20,7 @@ namespace LoipvRemote.Connection
 		}
 
 		//Required by the Windows Form Designer
-		private System.ComponentModel.Container components = null;
+		private System.ComponentModel.Container components = null!;
 
         //NOTE: The following procedure is required by the Windows Form Designer
         //It can be modified using the Windows Form Designer.

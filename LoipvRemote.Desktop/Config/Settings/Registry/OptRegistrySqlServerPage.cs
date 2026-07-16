@@ -10,6 +10,7 @@ namespace LoipvRemote.Config.Settings.Registry
     [SupportedOSPlatform("windows")]
     public sealed partial class OptRegistrySqlServerPage
     {
+        private static readonly string[] s_sqlServerTypes = ["mssql", "mysql"];
         /// <summary>
         /// Specifies whether SQL Server is being used.
         /// </summary>
@@ -67,11 +68,7 @@ namespace LoipvRemote.Config.Settings.Registry
         /// </summary>
         private void SetupValidation()
         {
-            SQLServerType.SetValidation(
-                new string[] {
-                    "mssql",
-                    "mysql"
-                });
+            SQLServerType.SetValidation(s_sqlServerTypes);
         }
 
         /// <summary>
@@ -128,7 +125,7 @@ namespace LoipvRemote.Config.Settings.Registry
         {
             if (SQLPassword.IsSet)
             {
-                // Registry-provided legacy ciphertext is deliberately unsupported.
+                // Registry-provided ciphertext is deliberately unsupported.
                 SQLPassword.Clear();
             }
         }

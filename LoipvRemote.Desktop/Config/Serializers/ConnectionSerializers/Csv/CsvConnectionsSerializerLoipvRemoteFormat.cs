@@ -79,7 +79,7 @@ namespace LoipvRemote.Config.Serializers.ConnectionSerializers.Csv
 
         private void SerializeNodesRecursive(ConnectionInfo node, StringBuilder sb)
         {
-            ContainerInfo nodeAsContainer = node as ContainerInfo;
+            ContainerInfo? nodeAsContainer = node as ContainerInfo;
             if (nodeAsContainer != null)
             {
                 foreach (ConnectionInfo child in nodeAsContainer.Children)
@@ -270,9 +270,9 @@ namespace LoipvRemote.Config.Serializers.ConnectionSerializers.Csv
               .Append(FormatForCsv(con.Inheritance.ExternalCredentialProvider));
         }
 
-        private string FormatForCsv(object value)
+        private static string FormatForCsv(object? value)
         {
-            string cleanedString = value.ToString().Replace(";", "");
+            string cleanedString = (value?.ToString() ?? string.Empty).Replace(";", "", StringComparison.Ordinal);
             return cleanedString + ";";
         }
     }

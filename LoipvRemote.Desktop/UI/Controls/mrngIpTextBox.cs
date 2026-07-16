@@ -4,6 +4,7 @@
  */
 
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
 using System.Windows.Forms;
 using LoipvRemote.Themes;
@@ -21,10 +22,10 @@ namespace LoipvRemote.UI.Controls
     public class MrngIpTextBox : UserControl
     {
         private Panel panel1 = null!;
-        public MrngTextBox Octet1 = null!;
-        public MrngTextBox Octet2 = null!;
-        public MrngTextBox Octet3 = null!;
-        public MrngTextBox Octet4 = null!;
+        public MrngTextBox Octet1 { get; private set; } = null!;
+        public MrngTextBox Octet2 { get; private set; } = null!;
+        public MrngTextBox Octet3 { get; private set; } = null!;
+        public MrngTextBox Octet4 { get; private set; } = null!;
         private MrngLabel label1 = null!;
         private MrngLabel label2 = null!;
         private MrngLabel label3 = null!;
@@ -48,6 +49,7 @@ namespace LoipvRemote.UI.Controls
         }
 
         /* Set or Get the string that represents the value in the box */
+        [AllowNull]
         public override string Text
         {
             get => (Octet1.Text ?? string.Empty) + @"." + (Octet2.Text ?? string.Empty) + @"." + (Octet3.Text ?? string.Empty) + @"." + (Octet4.Text ?? string.Empty);
@@ -136,6 +138,9 @@ namespace LoipvRemote.UI.Controls
                 MrngTextBox octet = octets[index];
                 octet.Font = Font;
                 octet.AutoSize = false;
+                octet.Margin = Padding.Empty;
+                octet.Padding = Padding.Empty;
+                octet.TextAlign = HorizontalAlignment.Center;
                 octet.Bounds = new Rectangle(left, 0, octetWidth, inputHeight);
                 left += octetWidth;
 
@@ -143,6 +148,7 @@ namespace LoipvRemote.UI.Controls
                 MrngLabel separator = separators[index];
                 separator.Font = Font;
                 separator.AutoSize = false;
+                separator.Margin = Padding.Empty;
                 separator.TextAlign = ContentAlignment.MiddleCenter;
                 separator.Bounds = new Rectangle(left, 0, dotWidth, inputHeight);
                 left += dotWidth;
@@ -308,7 +314,7 @@ namespace LoipvRemote.UI.Controls
         {
             try
             {
-                int theValue = int.Parse(inString);
+                int theValue = int.Parse(inString, CultureInfo.InvariantCulture);
                 if (theValue >= 0 && theValue <= 255)
                     return true;
 

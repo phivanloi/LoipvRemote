@@ -18,7 +18,7 @@ namespace LoipvRemoteTests.Security
         public void CanAssignStringValue()
         {
             var encryptedSecString = new EncryptedSecureString();
-            TestDelegate testDelegate = () => encryptedSecString.SetValue(_clearTextData);
+            Action testDelegate = () => encryptedSecString.SetValue(_clearTextData);
             Assert.DoesNotThrow(testDelegate);
         }
 

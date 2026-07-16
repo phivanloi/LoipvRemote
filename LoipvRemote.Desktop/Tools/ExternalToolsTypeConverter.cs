@@ -37,30 +37,21 @@ namespace LoipvRemote.Tools
 
         public override StandardValuesCollection GetStandardValues([NotNull] ITypeDescriptorContext? context)
         {
-            if (context == null)
-            {
-                throw new System.ArgumentNullException(nameof(context));
-            }
+            ArgumentNullException.ThrowIfNull(context);
 
             return new StandardValuesCollection(ExternalTools);
         }
 
         public override bool GetStandardValuesExclusive([NotNull] ITypeDescriptorContext? context)
         {
-            if (context == null)
-            {
-                throw new System.ArgumentNullException(nameof(context));
-            }
+            ArgumentNullException.ThrowIfNull(context);
 
             return true;
         }
 
         public override bool GetStandardValuesSupported([NotNull] ITypeDescriptorContext? context)
         {
-            if (context == null)
-            {
-                throw new System.ArgumentNullException(nameof(context));
-            }
+            ArgumentNullException.ThrowIfNull(context);
 
             return true;
         }

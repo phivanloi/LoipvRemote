@@ -5,7 +5,7 @@ using System.Security;
 
 namespace LoipvRemote.Credential
 {
-    public class CredentialRecord : ICredentialRecord
+    public class CredentialRecord : ICredentialRecord, IDisposable
     {
         private string _title = "New Credential";
         private string _username = "";
@@ -77,6 +77,12 @@ namespace LoipvRemote.Credential
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
+
+        public void Dispose()
+        {
+            _password.Dispose();
+            GC.SuppressFinalize(this);
+        }
 
         protected virtual void RaisePropertyChangedEvent(string propertyName)
         {

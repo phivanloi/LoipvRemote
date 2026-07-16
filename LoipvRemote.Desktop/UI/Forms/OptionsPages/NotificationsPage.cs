@@ -149,7 +149,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
         {
             Type settingsType = typeof(OptRegistryNotificationsPage);
             RegistryLoader.RegistrySettings.TryGetValue(settingsType, out var settings);
-            pageRegSettingsInstance = settings as OptRegistryNotificationsPage;
+            pageRegSettingsInstance = settings as OptRegistryNotificationsPage ?? new OptRegistryNotificationsPage();
 
             // If registry settings don't exist, create a default instance to prevent null reference exceptions
             if (pageRegSettingsInstance == null)
@@ -294,10 +294,10 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             return CommonSettings || NotificationPanelSettings || LoggingSettings || PopupSettings;
         }
 
-        private void buttonSelectLogPath_Click(object sender, System.EventArgs e)
+        private void buttonSelectLogPath_Click(object? sender, System.EventArgs e)
         {
             string currentFile = textBoxLogPath.Text;
-            string currentDirectory = Path.GetDirectoryName(currentFile);
+            string currentDirectory = Path.GetDirectoryName(currentFile) ?? string.Empty;
             saveFileDialogLogging.Title = Language.ChooseLogPath;
             saveFileDialogLogging.Filter = @"Log file|*.log";
             saveFileDialogLogging.InitialDirectory = currentDirectory;
@@ -307,12 +307,12 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             textBoxLogPath.Text = saveFileDialogLogging.FileName;
         }
 
-        private void buttonRestoreDefaultLogPath_Click(object sender, System.EventArgs e)
+        private void buttonRestoreDefaultLogPath_Click(object? sender, System.EventArgs e)
         {
             textBoxLogPath.Text = Logger.DefaultLogPath;
         }
 
-        private void buttonOpenLogFile_Click(object sender, System.EventArgs e)
+        private void buttonOpenLogFile_Click(object? sender, System.EventArgs e)
         {
             string logFile = textBoxLogPath.Text;
             bool doesExist = File.Exists(logFile);
@@ -325,7 +325,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             OpenLogLocation(logFile);
         }
 
-        private void chkLogToCurrentDir_CheckedChanged(object sender, System.EventArgs e)
+        private void chkLogToCurrentDir_CheckedChanged(object? sender, System.EventArgs e)
         {
             buttonSelectLogPath.Enabled = !chkLogToCurrentDir.Checked;
             buttonRestoreDefaultLogPath.Enabled = !chkLogToCurrentDir.Checked;
@@ -357,7 +357,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
                 return true;
             }
             catch
-        {
+            {
                 // If necessary, the error can be logged here.
                 return false;
             }

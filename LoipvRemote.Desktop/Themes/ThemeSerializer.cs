@@ -22,7 +22,7 @@ namespace LoipvRemote.Themes
             if (themeToSave.Name == null || themeToSave.Name.Contains("../") || themeToSave.Name.Contains(@"..\"))
                 throw new ArgumentException("Invalid file path");
             string oldURI = baseTheme.URI;
-            string directoryName = Path.GetDirectoryName(oldURI);
+            string? directoryName = Path.GetDirectoryName(oldURI);
             if (string.IsNullOrEmpty(directoryName))
                 throw new ArgumentException("Invalid file path");
             string toSaveURI = Path.Combine(directoryName, $"{themeToSave.Name}.vstheme");
@@ -68,7 +68,7 @@ namespace LoipvRemote.Themes
             LoipvRemotePaletteManipulator extColorLoader = new(bytes, defaultTheme?.ExtendedPalette);
             ThemeInfo loadedTheme = new(Path.GetFileNameWithoutExtension(filename), themeBaseLoad, filename,
                                             VisualStudioToolStripExtender.VsVersion.Vs2015, extColorLoader.getColors());
-            if (new[] {"darcula", "vs2015blue", "vs2015dark", "vs2015light"}.Contains(
+            if (new[] { "darcula", "vs2015blue", "vs2015dark", "vs2015light" }.Contains(
                                                                                       Path
                                                                                           .GetFileNameWithoutExtension(filename))
             )

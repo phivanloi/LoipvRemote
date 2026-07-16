@@ -9,7 +9,7 @@ namespace LoipvRemote.UI.Controls.ConnectionInfoPropertyGrid
 
         internal static int RowHeightForFontHeight(int fontHeight)
         {
-            if (fontHeight <= 0) throw new ArgumentOutOfRangeException(nameof(fontHeight));
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(fontHeight);
 
             return Math.Max(MinimumRowHeight, fontHeight + VerticalTextPadding);
         }

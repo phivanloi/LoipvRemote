@@ -30,7 +30,7 @@ public class CredentialProviderSerializerTests
     {
         var mockProvider = InitializeMockProvider();
         var providers = new[] { mockProvider };
-        var serializedContent = _credentialProviderSerializer.Serialize(providers);
+        var serializedContent = CredentialRepositoryListSerializer.Serialize(providers);
         Assert.That(serializedContent, Is.Not.Null);
     }
 }

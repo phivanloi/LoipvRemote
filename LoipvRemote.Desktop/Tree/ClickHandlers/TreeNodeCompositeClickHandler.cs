@@ -9,7 +9,7 @@ namespace LoipvRemote.Tree.ClickHandlers
     public class TreeNodeCompositeClickHandler : ITreeNodeClickHandler<ConnectionInfo>
     {
         public IEnumerable<ITreeNodeClickHandler<ConnectionInfo>> ClickHandlers { get; set; } =
-            new ITreeNodeClickHandler<ConnectionInfo>[0];
+            Array.Empty<ITreeNodeClickHandler<ConnectionInfo>>();
 
         public void Execute(ConnectionInfo clickedNode)
         {

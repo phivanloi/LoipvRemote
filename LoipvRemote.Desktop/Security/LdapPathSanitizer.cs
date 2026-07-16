@@ -96,8 +96,8 @@ namespace LoipvRemote.Security
                         // Check for control characters (0x00-0x1F and 0x7F)
                         if (c < 0x20 || c == 0x7F)
                         {
-                            result.Append("\\");
-                            result.Append(((int)c).ToString("x2"));
+                            result.Append('\\');
+                            result.Append(((int)c).ToString("x2", CultureInfo.InvariantCulture));
                         }
                         else
                         {
@@ -148,8 +148,8 @@ namespace LoipvRemote.Security
                         // Check for other control characters
                         if (c < 0x20 || c == 0x7F)
                         {
-                            result.Append("\\");
-                            result.Append(((int)c).ToString("x2"));
+                            result.Append('\\');
+                            result.Append(((int)c).ToString("x2", CultureInfo.InvariantCulture));
                         }
                         else
                         {
@@ -182,7 +182,7 @@ namespace LoipvRemote.Security
             }
 
             // Check if it looks like a DN (contains attribute=value pairs)
-            return distinguishedName.Contains("=");
+            return distinguishedName.Contains('=');
         }
     }
 }

@@ -38,12 +38,12 @@ namespace LoipvRemote.App.Initialization
             messageWriterList.Add(BuildPopupMessageWriter());
         }
 
-        private static IMessageWriter BuildDebugConsoleWriter()
+        private static DebugConsoleMessageWriter BuildDebugConsoleWriter()
         {
             return new DebugConsoleMessageWriter();
         }
 
-        private static IMessageWriter BuildTextLogMessageWriter()
+        private static MessageTypeFilterDecorator BuildTextLogMessageWriter()
         {
             return new MessageTypeFilterDecorator(
                 new LogMessageTypeFilteringOptions(),
@@ -51,7 +51,7 @@ namespace LoipvRemote.App.Initialization
                 );
         }
 
-        private static IMessageWriter BuildPopupMessageWriter()
+        private static OnlyLogMessageFilter BuildPopupMessageWriter()
         {
             return new OnlyLogMessageFilter(
                 new MessageTypeFilterDecorator(

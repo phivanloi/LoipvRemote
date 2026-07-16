@@ -12,55 +12,55 @@ public class SessionLifecycleCoordinatorTests
     {
         var coordinator = new SessionLifecycleCoordinator();
         IProtocolSession session = Substitute.For<IProtocolSession>();
-        session.Initialize().Returns(true);
-        session.Connect().Returns(true);
+        session.InitializeAsync(Arg.Any<CancellationToken>()).Returns(ValueTask.FromResult(true));
+        session.ConnectAsync(Arg.Any<CancellationToken>()).Returns(ValueTask.FromResult(true));
 
-        Assert.That(coordinator.Start(session), Is.EqualTo(SessionStartResult.Started));
+        Assert.That(await coordinator.StartAsync(session), Is.EqualTo(SessionStartResult.Started));
 
         await coordinator.StopAllAsync(CancellationToken.None);
 
-        session.Received(1).Disconnect();
-        session.Received(1).Close();
-        session.Received(1).Dispose();
+        _ = session.Received(1).DisconnectAsync(Arg.Any<CancellationToken>());
+        await session.Received(1).CloseAsync(Arg.Any<CancellationToken>());
+        _ = session.Received(1).DisposeAsync();
         Assert.That(coordinator.ActiveSessionCount, Is.Zero);
     }
 
     [Test]
-    public void StartClosesSessionWhenInitializationFails()
+    public async Task StartAsyncClosesSessionWhenInitializationFails()
     {
         var session = Substitute.For<IProtocolSession>();
-        session.Initialize().Returns(false);
+        session.InitializeAsync(Arg.Any<CancellationToken>()).Returns(ValueTask.FromResult(false));
 
-        var result = new SessionLifecycleCoordinator().Start(session);
+        var result = await new SessionLifecycleCoordinator().StartAsync(session);
 
         Assert.That(result, Is.EqualTo(SessionStartResult.InitializationFailed));
-        session.Received(1).Close();
-        session.DidNotReceive().Connect();
+        await session.Received(1).CloseAsync(Arg.Any<CancellationToken>());
+        await session.DidNotReceive().ConnectAsync(Arg.Any<CancellationToken>());
     }
 
     [Test]
-    public void StartClosesSessionWhenConnectFails()
+    public async Task StartAsyncClosesSessionWhenConnectFails()
     {
         var session = Substitute.For<IProtocolSession>();
-        session.Initialize().Returns(true);
-        session.Connect().Returns(false);
+        session.InitializeAsync(Arg.Any<CancellationToken>()).Returns(ValueTask.FromResult(true));
+        session.ConnectAsync(Arg.Any<CancellationToken>()).Returns(ValueTask.FromResult(false));
 
-        var result = new SessionLifecycleCoordinator().Start(session);
+        var result = await new SessionLifecycleCoordinator().StartAsync(session);
 
         Assert.That(result, Is.EqualTo(SessionStartResult.ConnectionFailed));
-        session.Received(1).Close();
+        await session.Received(1).CloseAsync(Arg.Any<CancellationToken>());
     }
 
     [Test]
-    public void StartConnectsInitializedSession()
+    public async Task StartAsyncConnectsInitializedSession()
     {
         var session = Substitute.For<IProtocolSession>();
-        session.Initialize().Returns(true);
-        session.Connect().Returns(true);
+        session.InitializeAsync(Arg.Any<CancellationToken>()).Returns(ValueTask.FromResult(true));
+        session.ConnectAsync(Arg.Any<CancellationToken>()).Returns(ValueTask.FromResult(true));
 
-        var result = new SessionLifecycleCoordinator().Start(session);
+        var result = await new SessionLifecycleCoordinator().StartAsync(session);
 
         Assert.That(result, Is.EqualTo(SessionStartResult.Started));
-        session.DidNotReceive().Close();
+        await session.DidNotReceive().CloseAsync(Arg.Any<CancellationToken>());
     }
 }

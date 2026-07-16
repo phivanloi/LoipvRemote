@@ -1927,9 +1927,6 @@ LoipvRemote bây giờ sẽ thoát và bắt đầu cài đặt.</value>
   <data name="ErrorArchitectureMismatch" xml:space="preserve">
     <value>Kiến trúc không khớp: {0}</value>
   </data>
-  <data name="SaveConnectionsAfterEveryEdit" xml:space="preserve">
-    <value>Lưu kết nối sau mỗi lần chỉnh sửa</value>
-  </data>
   <data name="TestConnection" xml:space="preserve">
     <value>Kiểm tra kết nối</value>
   </data>

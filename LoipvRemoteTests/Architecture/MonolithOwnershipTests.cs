@@ -81,11 +81,10 @@ public sealed class MonolithOwnershipTests
         foreach (string file in shellFiles)
         {
             string source = File.ReadAllText(file);
-            if (source.Contains("PuttyImeMessageRouter", StringComparison.Ordinal) ||
+            if (source.Contains("PuttyInputMessageRouter", StringComparison.Ordinal) ||
                 source.Contains("NativeMethods.SendMessage(putty", StringComparison.Ordinal) ||
                 source.Contains("putty.PuttyHandle", StringComparison.Ordinal) ||
-                source.Contains("PostMessage(proc.PuttyHandle", StringComparison.Ordinal) ||
-                source.Contains("typeof(PuttyBase)", StringComparison.Ordinal))
+                source.Contains("PostMessage(proc.PuttyHandle", StringComparison.Ordinal))
             {
                 violations.Add($"{Path.GetRelativePath(repositoryRoot, file)} reaches PuTTY input internals directly.");
             }

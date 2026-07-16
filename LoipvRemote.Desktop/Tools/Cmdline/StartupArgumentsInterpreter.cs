@@ -52,8 +52,9 @@ namespace LoipvRemote.Tools.Cmdline
             Properties.App.Default.MainFormKiosk = false;
             int newWidth = 900;
             int newHeight = 600;
-            int newX = Screen.PrimaryScreen.WorkingArea.Width / 2 - newWidth / 2;
-            int newY = Screen.PrimaryScreen.WorkingArea.Height / 2 - newHeight / 2;
+            Rectangle workingArea = Screen.PrimaryScreen?.WorkingArea ?? SystemInformation.WorkingArea;
+            int newX = workingArea.Width / 2 - newWidth / 2;
+            int newY = workingArea.Height / 2 - newHeight / 2;
             Properties.App.Default.MainFormLocation = new Point(newX, newY);
             Properties.App.Default.MainFormSize = new Size(newWidth, newHeight);
             Properties.App.Default.MainFormState = FormWindowState.Normal;
@@ -83,31 +84,34 @@ namespace LoipvRemote.Tools.Cmdline
 
         private void ParseCustomConnectionPathArg(CmdArgumentsInterpreter args)
         {
-            string consParam = "";
-            if (args["cons"] != null)
+            string? consParam = null;
+            if (args["cons"] is not null)
                 consParam = "cons";
-            if (args["c"] != null)
+            if (args["c"] is not null)
                 consParam = "c";
 
             if (string.IsNullOrEmpty(consParam)) return;
+            string? customPath = args[consParam];
+            if (string.IsNullOrWhiteSpace(customPath)) return;
             _messageCollector.AddMessage(MessageClass.DebugMsg, "Cmdline arg: loading connections from a custom path");
-            if (File.Exists(args[consParam]) == false)
+            if (File.Exists(customPath) == false)
             {
-                if (File.Exists(Path.Combine(GeneralAppInfo.HomePath, args[consParam])))
+                string homePath = GeneralAppInfo.HomePath ?? AppContext.BaseDirectory;
+                if (File.Exists(Path.Combine(homePath, customPath)))
                 {
                     Properties.OptionsBackupPage.Default.LoadConsFromCustomLocation = true;
-                    Properties.OptionsBackupPage.Default.BackupLocation = Path.Combine(GeneralAppInfo.HomePath, args[consParam]);
+                    Properties.OptionsBackupPage.Default.BackupLocation = Path.Combine(homePath, customPath);
                     return;
                 }
 
-                if (!File.Exists(Path.Combine(ConnectionsFileInfo.DefaultConnectionsPath, args[consParam]))) return;
+                if (!File.Exists(Path.Combine(ConnectionsFileInfo.DefaultConnectionsPath, customPath))) return;
                 Properties.OptionsBackupPage.Default.LoadConsFromCustomLocation = true;
-                Properties.OptionsBackupPage.Default.BackupLocation = Path.Combine(ConnectionsFileInfo.DefaultConnectionsPath, args[consParam]);
+                Properties.OptionsBackupPage.Default.BackupLocation = Path.Combine(ConnectionsFileInfo.DefaultConnectionsPath, customPath);
             }
             else
             {
                 Properties.OptionsBackupPage.Default.LoadConsFromCustomLocation = true;
-                Properties.OptionsBackupPage.Default.BackupLocation = args[consParam];
+                Properties.OptionsBackupPage.Default.BackupLocation = customPath;
             }
         }
     }

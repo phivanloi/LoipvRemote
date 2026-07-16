@@ -37,13 +37,13 @@ namespace LoipvRemote.Config.Serializers.CredentialSerializer
             SetEncryptionAttributes(xdoc, encryptionKey);
             foreach (XElement element in xdoc.Descendants())
             {
-                XAttribute passwordAttribute = element.Attribute("Password");
+                XAttribute? passwordAttribute = element.Attribute("Password");
                 if (passwordAttribute == null) continue;
                 string encryptedPassword = _cryptographyProvider.Encrypt(passwordAttribute.Value, encryptionKey);
                 passwordAttribute.Value = encryptedPassword;
             }
 
-            return xdoc.Declaration + Environment.NewLine + xdoc;
+            return (xdoc.Declaration?.ToString() ?? string.Empty) + Environment.NewLine + xdoc;
         }
 
         private void SetEncryptionAttributes(XDocument xdoc, SecureString encryptionKey)

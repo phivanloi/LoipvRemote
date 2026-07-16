@@ -20,7 +20,7 @@ public sealed class PuttyRegistrySessionStore : IDisposable
 
     public event EventHandler? Changed;
 
-    public string[] GetSessionNames(bool raw = false)
+    public static string[] GetSessionNames(bool raw = false)
     {
         using RegistryKey? sessionsKey = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(SessionsPath);
         if (sessionsKey is null) return [];
@@ -33,15 +33,19 @@ public sealed class PuttyRegistrySessionStore : IDisposable
         return [.. names];
     }
 
-    public PuttyRegistrySession? GetSession(string sessionName)
+    public static PuttyRegistrySession? GetSession(string sessionName)
     {
         if (string.IsNullOrWhiteSpace(sessionName)) return null;
         using RegistryKey? sessionsKey = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(SessionsPath);
         using RegistryKey? sessionKey = sessionsKey?.OpenSubKey(sessionName);
         if (sessionKey is null) return null;
 
-        int.TryParse(sessionKey.GetValue("PortNumber")?.ToString(), out int port);
-        int.TryParse(sessionKey.GetValue("SshProt")?.ToString(), out int sshVersion);
+        int port = int.TryParse(sessionKey.GetValue("PortNumber")?.ToString(), out int parsedPort)
+            ? parsedPort
+            : 0;
+        int sshVersion = int.TryParse(sessionKey.GetValue("SshProt")?.ToString(), out int parsedSshVersion)
+            ? parsedSshVersion
+            : 0;
         return new PuttyRegistrySession(
             DecodeName(sessionName),
             sessionKey.GetValue("HostName")?.ToString() ?? string.Empty,
@@ -51,7 +55,7 @@ public sealed class PuttyRegistrySessionStore : IDisposable
             sshVersion);
     }
 
-    public IReadOnlyList<PuttyRegistrySession> GetSessions()
+    public static IReadOnlyList<PuttyRegistrySession> GetSessions()
     {
         List<PuttyRegistrySession> sessions = [];
         foreach (string rawName in GetSessionNames(raw: true))
@@ -93,7 +97,7 @@ public sealed class PuttyRegistrySessionStore : IDisposable
 
     public void Dispose() => StopWatcher();
 
-    private void OnEventArrived(object sender, EventArrivedEventArgs e) => Changed?.Invoke(this, EventArgs.Empty);
+    private void OnEventArrived(object? sender, EventArrivedEventArgs e) => Changed?.Invoke(this, EventArgs.Empty);
 
     private static string DecodeName(string name) => WebUtility.UrlDecode(name.Replace("+", "%2B", StringComparison.Ordinal));
 }

@@ -7,11 +7,11 @@ namespace LoipvRemote.Security.Authentication
 {
     public class PasswordAuthenticator(ICryptographyProvider cryptographyProvider,
                                  string cipherText,
-                                 Func<Optional<SecureString>> authenticationRequestor) : IAuthenticator
+                                 Func<OptionalValue<SecureString>> authenticationRequestor) : IAuthenticator
     {
         private readonly ICryptographyProvider _cryptographyProvider = cryptographyProvider.ThrowIfNull(nameof(cryptographyProvider));
         private readonly string _cipherText = cipherText.ThrowIfNullOrEmpty(nameof(cipherText));
-        private readonly Func<Optional<SecureString>> _authenticationRequestor = authenticationRequestor.ThrowIfNull(nameof(authenticationRequestor));
+        private readonly Func<OptionalValue<SecureString>> _authenticationRequestor = authenticationRequestor.ThrowIfNull(nameof(authenticationRequestor));
 
         public int MaxAttempts { get; set; } = 3;
         public SecureString? LastAuthenticatedPassword { get; private set; }
@@ -30,7 +30,7 @@ namespace LoipvRemote.Security.Authentication
                 }
                 catch
                 {
-                    Optional<SecureString> providedPassword = _authenticationRequestor();
+                    OptionalValue<SecureString> providedPassword = _authenticationRequestor();
                     if (!providedPassword.Any())
                         return false;
 

@@ -6,7 +6,7 @@ namespace LoipvRemote.UI.Controls
 {
     public partial class CredentialRecordComboBox : ComboBox
     {
-        public IEnumerable<ICredentialRecord> CredentialRecords { get; set; }
+        public IEnumerable<ICredentialRecord> CredentialRecords { get; set; } = [];
 
         public CredentialRecordComboBox()
         {

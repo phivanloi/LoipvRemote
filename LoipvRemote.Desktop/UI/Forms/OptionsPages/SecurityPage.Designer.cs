@@ -57,7 +57,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             // chkEncryptCompleteFile
             //
-            chkEncryptCompleteFile._mice = MrngCheckBox.MouseState.OUT;
+            chkEncryptCompleteFile.MouseInteractionState = MrngCheckBox.MouseState.OUT;
             chkEncryptCompleteFile.AutoSize = true;
             chkEncryptCompleteFile.Dock = System.Windows.Forms.DockStyle.Top;
             chkEncryptCompleteFile.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
@@ -72,7 +72,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             // comboBoxEncryptionEngine
             //
-            comboBoxEncryptionEngine._mice = MrngComboBox.MouseState.HOVER;
+            comboBoxEncryptionEngine.MouseInteractionState = MrngComboBox.MouseState.HOVER;
             comboBoxEncryptionEngine.Dock = System.Windows.Forms.DockStyle.Fill;
             comboBoxEncryptionEngine.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             comboBoxEncryptionEngine.FormattingEnabled = true;
@@ -109,7 +109,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             // comboBoxBlockCipher
             //
-            comboBoxBlockCipher._mice = MrngComboBox.MouseState.HOVER;
+            comboBoxBlockCipher.MouseInteractionState = MrngComboBox.MouseState.HOVER;
             comboBoxBlockCipher.Dock = System.Windows.Forms.DockStyle.Fill;
             comboBoxBlockCipher.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             comboBoxBlockCipher.FormattingEnabled = true;
@@ -187,7 +187,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             // btnTestSettings
             //
-            btnTestSettings._mice = MrngButton.MouseState.OUT;
+            btnTestSettings.MouseInteractionState = MrngButton.MouseState.OUT;
             btnTestSettings.AutoSize = true;
             btnTestSettings.Location = new System.Drawing.Point(197, 96);
             btnTestSettings.Margin = new System.Windows.Forms.Padding(4);

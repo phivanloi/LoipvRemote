@@ -20,7 +20,7 @@ namespace LoipvRemote.Config
         public void Save(IEnumerable<ICredentialRepository> repositories, string propertyNameTrigger = "")
         {
             CredentialRepositoryListSerializer serializer = new();
-            string data = serializer.Serialize(repositories);
+            string data = CredentialRepositoryListSerializer.Serialize(repositories);
             _dataProvider.Save(data);
         }
     }

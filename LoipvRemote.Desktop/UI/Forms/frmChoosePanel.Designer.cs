@@ -38,7 +38,7 @@ namespace LoipvRemote.UI.Forms
             //
             // cbPanels
             //
-            this.cbPanels._mice = MrngComboBox.MouseState.HOVER;
+            this.cbPanels.MouseInteractionState = MrngComboBox.MouseState.HOVER;
             this.cbPanels.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cbPanels.FormattingEnabled = true;
             this.cbPanels.Location = new System.Drawing.Point(12, 42);
@@ -48,7 +48,7 @@ namespace LoipvRemote.UI.Forms
             //
             // btnOK
             //
-            this.btnOK._mice = MrngButton.MouseState.HOVER;
+            this.btnOK.MouseInteractionState = MrngButton.MouseState.HOVER;
             this.btnOK.Location = new System.Drawing.Point(167, 72);
             this.btnOK.Name = "btnOK";
             this.btnOK.Size = new System.Drawing.Size(75, 24);
@@ -68,7 +68,7 @@ namespace LoipvRemote.UI.Forms
             //
             // btnNew
             //
-            this.btnNew._mice = MrngButton.MouseState.HOVER;
+            this.btnNew.MouseInteractionState = MrngButton.MouseState.HOVER;
             this.btnNew.Image = global::LoipvRemote.Properties.Resources.InsertPanel_16x;
             this.btnNew.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
             this.btnNew.Location = new System.Drawing.Point(86, 72);

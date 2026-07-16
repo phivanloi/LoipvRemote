@@ -47,7 +47,7 @@ namespace LoipvRemote.Connection
                         continue;
                     }
 
-                    property.SetValue(Instance, Convert.ChangeType(valueFromSource, property.PropertyType), null);
+                    property.SetValue(Instance, Convert.ChangeType(valueFromSource, property.PropertyType, CultureInfo.InvariantCulture), null);
                 }
                 catch (Exception ex)
                 {
@@ -77,7 +77,7 @@ namespace LoipvRemote.Connection
                     object? sourceValue = property.GetValue(Instance, null);
                     object? value = sourceValue is null
                         ? null
-                        : Convert.ChangeType(sourceValue, propertyFromDestination.PropertyType);
+                        : Convert.ChangeType(sourceValue, propertyFromDestination.PropertyType, CultureInfo.InvariantCulture);
 
                     propertyFromDestination.SetValue(destinationInstance, value, null);
                 }

@@ -5,15 +5,15 @@ namespace LoipvRemote.Infrastructure.Windows.WindowEmbedding;
 
 /// <summary>Enumerates top-level and child Win32 window handles.</summary>
 [SupportedOSPlatform("windows")]
-public sealed class WindowsHandleEnumerator
+public static class WindowsHandleEnumerator
 {
-    public IReadOnlyList<IntPtr> EnumerateTopLevelWindows() =>
+    public static IReadOnlyList<IntPtr> EnumerateTopLevelWindows() =>
         Enumerate(callback => NativeEnumWindows(callback, IntPtr.Zero));
 
-    public IReadOnlyList<IntPtr> EnumerateChildWindows(IntPtr parentWindowHandle) =>
+    public static IReadOnlyList<IntPtr> EnumerateChildWindows(IntPtr parentWindowHandle) =>
         Enumerate(callback => NativeEnumChildWindows(parentWindowHandle, callback, IntPtr.Zero));
 
-    private static IReadOnlyList<IntPtr> Enumerate(Func<WindowEnumProc, bool> enumerate)
+    private static List<IntPtr> Enumerate(Func<WindowEnumProc, bool> enumerate)
     {
         var handles = new List<IntPtr>();
         WindowEnumProc callback = (windowHandle, _) => { handles.Add(windowHandle); return true; };

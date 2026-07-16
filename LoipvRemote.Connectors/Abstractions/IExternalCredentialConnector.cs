@@ -4,10 +4,14 @@ public interface IExternalCredentialConnector
 {
     string Provider { get; }
 
-    ExternalCredential Resolve(string secretReference);
+    Task<ExternalCredential> ResolveAsync(
+        string secretReference,
+        CancellationToken cancellationToken = default);
 }
 
 public interface IContextualExternalCredentialConnector : IExternalCredentialConnector
 {
-    ExternalCredential Resolve(ExternalCredentialRequest request);
+    Task<ExternalCredential> ResolveAsync(
+        ExternalCredentialRequest request,
+        CancellationToken cancellationToken = default);
 }

@@ -8,7 +8,8 @@ public sealed class ProtocolFocusRetryPolicyTests
 {
     [TestCase(0, true, true)]
     [TestCase(1, true, true)]
-    [TestCase(4, true, false)]
+    [TestCase(39, true, true)]
+    [TestCase(40, true, false)]
     [TestCase(0, false, false)]
     public void ShouldAttempt_StopsAfterBoundedRetries(int attempt, bool active, bool expected)
     {

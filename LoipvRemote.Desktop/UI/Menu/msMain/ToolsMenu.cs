@@ -2,6 +2,7 @@ using System;
 using System.Runtime.Versioning;
 using System.Windows.Forms;
 using LoipvRemote.App;
+using LoipvRemote.App.Composition;
 using LoipvRemote.Credential;
 using LoipvRemote.Resources.Language;
 
@@ -17,11 +18,18 @@ namespace LoipvRemote.UI.Menu
 
         public Form MainForm { get; set; } = null!;
         public ICredentialRepositoryList CredentialProviderCatalog { get; set; } = null!;
+        private DesktopShellRuntime? _desktopShellRuntime;
 
         public ToolsMenu()
         {
             Initialize();
         }
+
+        internal void AttachRuntime(DesktopShellRuntime desktopShellRuntime) =>
+            _desktopShellRuntime = desktopShellRuntime ?? throw new ArgumentNullException(nameof(desktopShellRuntime));
+
+        private DesktopWindowCatalog Windows => _desktopShellRuntime?.Windows
+            ?? throw new InvalidOperationException("The desktop shell runtime must be attached before using tools.");
 
         private void Initialize()
         {
@@ -88,27 +96,27 @@ namespace LoipvRemote.UI.Menu
 
         private void mMenToolsSSHTransfer_Click(object? sender, EventArgs e)
         {
-            AppWindows.Show(WindowType.SSHTransfer);
+            Windows.Show(WindowType.SSHTransfer);
         }
 
         private void mMenToolsUVNCSC_Click(object? sender, EventArgs e)
         {
-            AppWindows.Show(WindowType.UltraVNCSC);
+            Windows.Show(WindowType.UltraVNCSC);
         }
 
         private void mMenToolsExternalApps_Click(object? sender, EventArgs e)
         {
-            AppWindows.Show(WindowType.ExternalApps);
+            Windows.Show(WindowType.ExternalApps);
         }
 
         private void mMenToolsPortScan_Click(object? sender, EventArgs e)
         {
-            AppWindows.Show(WindowType.PortScan);
+            Windows.Show(WindowType.PortScan);
         }
 
         private void mMenToolsOptions_Click(object? sender, EventArgs e)
         {
-            AppWindows.Show(WindowType.Options);
+            Windows.Show(WindowType.Options);
         }
 
         #endregion

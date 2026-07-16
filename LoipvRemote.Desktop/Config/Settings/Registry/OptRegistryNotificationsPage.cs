@@ -31,7 +31,7 @@ namespace LoipvRemote.Config.Settings.Registry
         /// <summary>
         /// Specifies whether error messages are written to the notification panel.
         /// </summary>
-        public WinRegistryEntry<bool> NfpWriteErrorMsgs { get; private set;  }
+        public WinRegistryEntry<bool> NfpWriteErrorMsgs { get; private set; }
 
         /// <summary>
         /// Specifies whether to switch to notification panel when information messages are received.
@@ -144,7 +144,7 @@ namespace LoipvRemote.Config.Settings.Registry
         /// <summary>
         /// Configures validation settings for various parameters
         /// </summary>
-        private void SetupValidation()
+        private static void SetupValidation()
         {
 
         }
@@ -290,7 +290,7 @@ namespace LoipvRemote.Config.Settings.Registry
                 return false;
 
             // Convert the path to uppercase for case-insensitive comparison
-            path = path.ToUpper();
+            path = path.ToUpperInvariant();
 
             // Check if the drive letter is valid
             char driveLetter = path[0];
@@ -305,7 +305,7 @@ namespace LoipvRemote.Config.Settings.Registry
             string invalidFileNameChars = new string(Path.GetInvalidPathChars()) + @":/?*""<>|";
             if (path.Substring(3).Any(ch => invalidFileNameChars.Contains(ch)))
                 return false;
-            if (path.EndsWith("."))
+            if (path.EndsWith('.'))
                 return false;
 
             return true;

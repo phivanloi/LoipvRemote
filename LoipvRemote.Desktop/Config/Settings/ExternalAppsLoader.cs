@@ -43,7 +43,7 @@ namespace LoipvRemote.Config.Settings
         {
 #if !PORTABLE
             string oldPath =
- Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), GeneralAppInfo.ProductName, SettingsFileInfo.ExtAppsFilesName);
+ Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), GeneralAppInfo.ProductName ?? string.Empty, SettingsFileInfo.ExtAppsFilesName);
 #endif
             string newPath = Path.Combine(SettingsFileInfo.SettingsPath, SettingsFileInfo.ExtAppsFilesName);
             XmlDocument xDom;
@@ -54,12 +54,12 @@ namespace LoipvRemote.Config.Settings
                 xDom = SecureXmlHelper.LoadXmlFromFile(newPath);
             }
 #if !PORTABLE
-			else if (File.Exists(oldPath))
-			{
+            else if (File.Exists(oldPath))
+            {
                 _messageCollector.AddMessage(MessageClass.InformationMsg, $"Loading External Apps from: {oldPath}", true);
                 xDom = SecureXmlHelper.LoadXmlFromFile(oldPath);
 
-			}
+            }
 #endif
             else
             {
@@ -73,34 +73,39 @@ namespace LoipvRemote.Config.Settings
                 return;
             }
 
-            foreach (XmlElement xEl in xDom.DocumentElement.ChildNodes)
+            XmlElement documentElement = xDom.DocumentElement;
+            foreach (XmlNode childNode in documentElement.ChildNodes)
             {
+                if (childNode is not XmlElement xEl)
+                    continue;
+
+                string RequiredAttribute(string name) => xEl.GetAttribute(name);
                 ExternalTool extA = new(runtime: _externalToolRuntime)
                 {
-                    DisplayName = xEl.Attributes["DisplayName"].Value,
-                    FileName = xEl.Attributes["FileName"].Value,
-                    Arguments = xEl.Attributes["Arguments"].Value
+                    DisplayName = RequiredAttribute("DisplayName"),
+                    FileName = RequiredAttribute("FileName"),
+                    Arguments = RequiredAttribute("Arguments")
                 };
 
                 // check before, since old save files won't have this set
                 if (xEl.HasAttribute("WorkingDir"))
-                    extA.WorkingDir = xEl.Attributes["WorkingDir"].Value;
+                    extA.WorkingDir = xEl.GetAttribute("WorkingDir");
                 if (xEl.HasAttribute("RunElevated"))
-                    extA.RunElevated = bool.Parse(xEl.Attributes["RunElevated"].Value);
+                    extA.RunElevated = bool.Parse(xEl.GetAttribute("RunElevated"));
 
                 if (xEl.HasAttribute("WaitForExit"))
                 {
-                    extA.WaitForExit = bool.Parse(xEl.Attributes["WaitForExit"].Value);
+                    extA.WaitForExit = bool.Parse(xEl.GetAttribute("WaitForExit"));
                 }
 
                 if (xEl.HasAttribute("TryToIntegrate"))
                 {
-                    extA.TryIntegrate = bool.Parse(xEl.Attributes["TryToIntegrate"].Value);
+                    extA.TryIntegrate = bool.Parse(xEl.GetAttribute("TryToIntegrate"));
                 }
 
                 if (xEl.HasAttribute("ShowOnToolbar"))
                 {
-                    extA.ShowOnToolbar = bool.Parse(xEl.Attributes["ShowOnToolbar"].Value);
+                    extA.ShowOnToolbar = bool.Parse(xEl.GetAttribute("ShowOnToolbar"));
                 }
 
                 _messageCollector.AddMessage(MessageClass.InformationMsg,

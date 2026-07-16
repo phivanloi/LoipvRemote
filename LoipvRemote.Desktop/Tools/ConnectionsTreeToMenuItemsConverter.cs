@@ -56,8 +56,7 @@ namespace LoipvRemote.Tools
                 Tag = node
             };
 
-            ContainerInfo nodeAsContainer = node as ContainerInfo;
-            if (nodeAsContainer != null)
+            if (node is ContainerInfo nodeAsContainer)
             {
                 menuItem.Image = Properties.Resources.FolderClosed_16x;
                 menuItem.Tag = nodeAsContainer;

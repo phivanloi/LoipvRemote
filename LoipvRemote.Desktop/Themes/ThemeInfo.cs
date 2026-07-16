@@ -88,7 +88,7 @@ namespace LoipvRemote.Themes
             get => _name;
             set
             {
-                if (string.Equals(_name, value, StringComparison.InvariantCulture))
+                if (string.Equals(_name, value, StringComparison.Ordinal))
                 {
                     return;
                 }

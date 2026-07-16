@@ -5,6 +5,7 @@ using System.Runtime.Versioning;
 using System.Windows.Forms;
 using LoipvRemote.Themes;
 using LoipvRemote.UI.DesignSystem;
+using LoipvRemote.App.Composition;
 
 namespace LoipvRemote.UI.Forms.OptionsPages
 {
@@ -24,7 +25,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
         [Browsable(false)] public virtual string PageName { get; set; } = string.Empty;
 
         public virtual Icon PageIcon { get; protected set; } = null!;
-        public virtual Image IconImage => PageIcon?.ToBitmap();
+        public virtual Image? IconImage => PageIcon?.ToBitmap();
 
         /// <summary>
         /// Indicates whether the settings on this page have been modified.
@@ -46,6 +47,11 @@ namespace LoipvRemote.UI.Forms.OptionsPages
 
         public virtual void SaveSettings()
         {
+        }
+
+        public virtual void AttachRuntime(DesktopShellRuntime desktopShellRuntime)
+        {
+            ArgumentNullException.ThrowIfNull(desktopShellRuntime);
         }
 
         public virtual void RevertSettings()

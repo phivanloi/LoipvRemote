@@ -6,9 +6,10 @@ public sealed class OnePasswordCredentialConnector : IExternalCredentialConnecto
 {
     public string Provider => "OnePassword";
 
-    public ExternalCredential Resolve(string secretReference)
+    public Task<ExternalCredential> ResolveAsync(
+        string secretReference,
+        CancellationToken cancellationToken = default)
     {
-        OnePasswordCli.ReadPassword(secretReference, out string username, out string password, out string domain, out string privateKey);
-        return new ExternalCredential(username, password, domain, privateKey);
+        return OnePasswordCli.ReadPasswordAsync(secretReference, cancellationToken);
     }
 }

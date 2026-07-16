@@ -1,7 +1,8 @@
 ﻿using Amazon;
 using Amazon.EC2;
 using Amazon.EC2.Model;
-using Microsoft.Win32;
+using LoipvRemote.Connectors.Abstractions;
+using LoipvRemote.Protocols.Abstractions;
 
 namespace LoipvRemote.Connectors.AWS
 {
@@ -11,21 +12,27 @@ namespace LoipvRemote.Connectors.AWS
         private static List<InstanceInfo>? lastData;
 
         // input must be in format "AWSAPI:instanceid" where instanceid is the ec2 instance id, e.g. i-066f750a76c97583d
-        public static async Task<string> GetEC2InstanceDataAsync(string input, string region)
+        public static async Task<string> GetEC2InstanceDataAsync(
+            string input,
+            string region,
+            IExternalCredentialPrompt prompt,
+            IExternalCredentialSettingsStore settings,
+            CancellationToken cancellationToken = default)
         {
             // get secret id
-            if (!input.StartsWith("AWSAPI:"))
-                throw new Exception("calling this function requires AWSAPI: input");
+            if (!input.StartsWith("AWSAPI:", StringComparison.Ordinal))
+                throw new ArgumentException("Calling this function requires AWSAPI: input.", nameof(input));
             string InstanceID = input[7..];
 
             // init connection credentials, display popup if necessary
-            AWSConnectionData.Init();
-            var alldata = await GetEC2IPDataAsync(region);
+            if (!await AWSConnectionData.InitAsync(prompt, settings, cancellationToken).ConfigureAwait(false))
+                return string.Empty;
+            var alldata = await GetEC2IPDataAsync(region, cancellationToken).ConfigureAwait(false);
             var found = alldata.Where(x => x.InstanceId == InstanceID).SingleOrDefault();
             return (found == null) ? "" : found.PublicIP;
         }
 
-        private static async Task<List<InstanceInfo>> GetEC2IPDataAsync(string region)
+        private static async Task<List<InstanceInfo>> GetEC2IPDataAsync(string region, CancellationToken cancellationToken)
         {
             // caching
             TimeSpan timeSpan = DateTime.Now - lastFetch;
@@ -44,7 +51,7 @@ namespace LoipvRemote.Connectors.AWS
             var request = new DescribeInstancesRequest();
             while (!done)
             {
-                DescribeInstancesResponse response = await _client.DescribeInstancesAsync(request);
+                DescribeInstancesResponse response = await _client.DescribeInstancesAsync(request, cancellationToken).ConfigureAwait(false);
 
                 foreach (var reservation in response.Reservations)
                 {
@@ -79,39 +86,36 @@ namespace LoipvRemote.Connectors.AWS
 
         public static class AWSConnectionData
         {
-            private static readonly RegistryKey key = Registry.CurrentUser.CreateSubKey(@"SOFTWARE\LoipvRemote\AWS");
-
-            public static string awsKeyID = "";
-            public static string awsKey = "";
+            internal static string awsKeyID = "";
+            internal static string awsKey = "";
             //public static string _region = "eu-central-1";
 
-            public static void Init()
+            public static async Task<bool> InitAsync(
+                IExternalCredentialPrompt prompt,
+                IExternalCredentialSettingsStore settings,
+                CancellationToken cancellationToken)
             {
                 if (awsKey != "")
-                    return;
-                // display gui and ask for data
-                AWSConnectionForm f = new();
-                f.tbAccesKeyID.Text = "" + key.GetValue("KeyID");
-                f.tbAccesKey.Text = "" + key.GetValue("Key");
-                //f.tbRegion.Text = "" + key.GetValue("Region");
-                //if (f.tbRegion.Text == null || f.tbRegion.Text.Length < 2)
-                //    f.tbRegion.Text = region;
-                _ = f.ShowDialog();
+                    return true;
+                cancellationToken.ThrowIfCancellationRequested();
+                AwsPromptResult? result = await prompt.PromptAwsAsync(
+                    new AwsPromptRequest(
+                        settings.GetString("AWS", "KeyID") ?? string.Empty,
+                        settings.GetString("AWS", "Key") ?? string.Empty),
+                    cancellationToken).ConfigureAwait(true);
 
-                if (f.DialogResult != DialogResult.OK)
-                    return;
+                if (result is null)
+                    return false;
 
                 // store values to memory
-                awsKeyID = f.tbAccesKeyID.Text;
-                awsKey = f.tbAccesKey.Text;
-                //region = f.tbRegion.Text;
+                awsKeyID = result.AccessKeyId;
+                awsKey = result.SecretKey;
 
 
                 // write values to registry
-                key.SetValue("KeyID", awsKeyID);
-                key.SetValue("Key", awsKey);
-                //key.SetValue("Region", region);
-                key.Close();
+                settings.SetString("AWS", "KeyID", awsKeyID);
+                settings.SetString("AWS", "Key", awsKey);
+                return true;
             }
         }
 

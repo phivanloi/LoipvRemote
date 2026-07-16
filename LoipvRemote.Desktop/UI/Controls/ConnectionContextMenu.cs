@@ -635,7 +635,7 @@ namespace LoipvRemote.UI.Controls
                 _cMenTreeDisconnect.Enabled = false;
 
             if (!(connectionInfo.Protocol == ProtocolKind.Ssh1 | connectionInfo.Protocol == ProtocolKind.Ssh2))
-            _cMenTreeToolsTransferFile.Enabled = false;
+                _cMenTreeToolsTransferFile.Enabled = false;
             _cMenTreeShowPassword.Enabled = false;
 
             _cMenTreeConnectWithOptionsConnectInFullscreen.Enabled = false;
@@ -754,97 +754,97 @@ namespace LoipvRemote.UI.Controls
 
         #region Click handlers
 
-        private void OnConnectClicked(object? sender, EventArgs e)
+        private async void OnConnectClicked(object? sender, EventArgs e)
         {
             ContainerInfo? selectedNodeAsContainer = _connectionTree.SelectedNode as ContainerInfo;
             if (selectedNodeAsContainer != null)
-            ShellRuntime.ConnectionInitiator.OpenConnection(selectedNodeAsContainer, ConnectionInfo.Force.DoNotJump);
+                await ShellRuntime.ConnectionInitiator.OpenConnectionAsync(selectedNodeAsContainer, ConnectionInfo.Force.DoNotJump);
             else
-            ShellRuntime.ConnectionInitiator.OpenConnection(_connectionTree.SelectedNode, ConnectionInfo.Force.DoNotJump);
+                await ShellRuntime.ConnectionInitiator.OpenConnectionAsync(_connectionTree.SelectedNode, ConnectionInfo.Force.DoNotJump);
         }
 
-        private void OnConnectToConsoleSessionClicked(object? sender, EventArgs e)
+        private async void OnConnectToConsoleSessionClicked(object? sender, EventArgs e)
         {
             ContainerInfo? selectedNodeAsContainer = _connectionTree.SelectedNode as ContainerInfo;
             if (selectedNodeAsContainer != null)
-            ShellRuntime.ConnectionInitiator.OpenConnection(selectedNodeAsContainer,
-                                                           ConnectionInfo.Force.UseConsoleSession |
-                                                           ConnectionInfo.Force.DoNotJump);
+                await ShellRuntime.ConnectionInitiator.OpenConnectionAsync(selectedNodeAsContainer,
+                                                               ConnectionInfo.Force.UseConsoleSession |
+                                                               ConnectionInfo.Force.DoNotJump);
             else
-            ShellRuntime.ConnectionInitiator.OpenConnection(_connectionTree.SelectedNode,
-                                                           ConnectionInfo.Force.UseConsoleSession |
-                                                           ConnectionInfo.Force.DoNotJump);
+                await ShellRuntime.ConnectionInitiator.OpenConnectionAsync(_connectionTree.SelectedNode,
+                                                               ConnectionInfo.Force.UseConsoleSession |
+                                                               ConnectionInfo.Force.DoNotJump);
 
         }
 
-        private void OnDontConnectToConsoleSessionClicked(object? sender, EventArgs e)
+        private async void OnDontConnectToConsoleSessionClicked(object? sender, EventArgs e)
         {
             ContainerInfo? selectedNodeAsContainer = _connectionTree.SelectedNode as ContainerInfo;
             if (selectedNodeAsContainer != null)
-            ShellRuntime.ConnectionInitiator.OpenConnection(selectedNodeAsContainer,
-                                                           ConnectionInfo.Force.DontUseConsoleSession |
-                                                           ConnectionInfo.Force.DoNotJump);
+                await ShellRuntime.ConnectionInitiator.OpenConnectionAsync(selectedNodeAsContainer,
+                                                               ConnectionInfo.Force.DontUseConsoleSession |
+                                                               ConnectionInfo.Force.DoNotJump);
             else
-            ShellRuntime.ConnectionInitiator.OpenConnection(_connectionTree.SelectedNode,
-                                                           ConnectionInfo.Force.DontUseConsoleSession |
-                                                           ConnectionInfo.Force.DoNotJump);
+                await ShellRuntime.ConnectionInitiator.OpenConnectionAsync(_connectionTree.SelectedNode,
+                                                               ConnectionInfo.Force.DontUseConsoleSession |
+                                                               ConnectionInfo.Force.DoNotJump);
         }
 
-        private void OnConnectInFullscreenClicked(object? sender, EventArgs e)
+        private async void OnConnectInFullscreenClicked(object? sender, EventArgs e)
         {
             ContainerInfo? selectedNodeAsContainer = _connectionTree.SelectedNode as ContainerInfo;
             if (selectedNodeAsContainer != null)
-            ShellRuntime.ConnectionInitiator.OpenConnection(selectedNodeAsContainer,
-                                                           ConnectionInfo.Force.Fullscreen | ConnectionInfo.Force.DoNotJump);
+                await ShellRuntime.ConnectionInitiator.OpenConnectionAsync(selectedNodeAsContainer,
+                                                               ConnectionInfo.Force.Fullscreen | ConnectionInfo.Force.DoNotJump);
             else
-            ShellRuntime.ConnectionInitiator.OpenConnection(_connectionTree.SelectedNode,
-                                                           ConnectionInfo.Force.Fullscreen | ConnectionInfo.Force.DoNotJump);
+                await ShellRuntime.ConnectionInitiator.OpenConnectionAsync(_connectionTree.SelectedNode,
+                                                               ConnectionInfo.Force.Fullscreen | ConnectionInfo.Force.DoNotJump);
         }
 
-        private void OnConnectWithNoCredentialsClick(object? sender, EventArgs e)
+        private async void OnConnectWithNoCredentialsClick(object? sender, EventArgs e)
         {
             ContainerInfo? selectedNodeAsContainer = _connectionTree.SelectedNode as ContainerInfo;
             if (selectedNodeAsContainer != null)
-            ShellRuntime.ConnectionInitiator.OpenConnection(selectedNodeAsContainer, ConnectionInfo.Force.NoCredentials);
+                await ShellRuntime.ConnectionInitiator.OpenConnectionAsync(selectedNodeAsContainer, ConnectionInfo.Force.NoCredentials);
             else
-            ShellRuntime.ConnectionInitiator.OpenConnection(_connectionTree.SelectedNode, ConnectionInfo.Force.NoCredentials);
+                await ShellRuntime.ConnectionInitiator.OpenConnectionAsync(_connectionTree.SelectedNode, ConnectionInfo.Force.NoCredentials);
         }
 
-        private void OnChoosePanelBeforeConnectingClicked(object? sender, EventArgs e)
+        private async void OnChoosePanelBeforeConnectingClicked(object? sender, EventArgs e)
         {
             ContainerInfo? selectedNodeAsContainer = _connectionTree.SelectedNode as ContainerInfo;
             if (selectedNodeAsContainer != null)
-            ShellRuntime.ConnectionInitiator.OpenConnection(selectedNodeAsContainer,
-                                                           ConnectionInfo.Force.OverridePanel |
-                                                           ConnectionInfo.Force.DoNotJump);
+                await ShellRuntime.ConnectionInitiator.OpenConnectionAsync(selectedNodeAsContainer,
+                                                               ConnectionInfo.Force.OverridePanel |
+                                                               ConnectionInfo.Force.DoNotJump);
             else
-            ShellRuntime.ConnectionInitiator.OpenConnection(_connectionTree.SelectedNode,
-                                                           ConnectionInfo.Force.OverridePanel |
-                                                           ConnectionInfo.Force.DoNotJump);
+                await ShellRuntime.ConnectionInitiator.OpenConnectionAsync(_connectionTree.SelectedNode,
+                                                               ConnectionInfo.Force.OverridePanel |
+                                                               ConnectionInfo.Force.DoNotJump);
         }
 
-        private void ConnectWithOptionsViewOnlyOnClick(object? sender, EventArgs e)
+        private async void ConnectWithOptionsViewOnlyOnClick(object? sender, EventArgs e)
         {
             ConnectionInfo connectionTarget = _connectionTree.SelectedNode as ContainerInfo
                                    ?? _connectionTree.SelectedNode;
-            ShellRuntime.ConnectionInitiator.OpenConnection(connectionTarget, ConnectionInfo.Force.ViewOnly);
+            await ShellRuntime.ConnectionInitiator.OpenConnectionAsync(connectionTarget, ConnectionInfo.Force.ViewOnly);
         }
 
-        private void OnDisconnectClicked(object? sender, EventArgs e)
+        private async void OnDisconnectClicked(object? sender, EventArgs e)
         {
-            DisconnectConnection(_connectionTree.SelectedNode);
+            await DisconnectConnectionAsync(_connectionTree.SelectedNode);
         }
 
-        public void DisconnectConnection(ConnectionInfo connectionInfo)
+        public async Task DisconnectConnectionAsync(ConnectionInfo connectionInfo)
         {
             try
             {
                 if (connectionInfo == null) return;
 
                 // Check if confirmation is needed based on settings
-                if (Settings.Default.ConfirmCloseConnection == (int)ConfirmCloseEnum.All)
+                if (Settings.Default.ConfirmCloseConnection == (int)ConfirmCloseMode.All)
                 {
-                    string confirmMessage = string.Format(CultureInfo.CurrentCulture, Language.ConfirmDisconnectConnection, connectionInfo.Name);
+                    string confirmMessage = FormatText(Language.ConfirmDisconnectConnection, connectionInfo.Name);
                     DialogResult result = CTaskDialog.MessageBox(this, GeneralAppInfo.ProductName ?? string.Empty,
                                                         confirmMessage, "", "", "",
                                                         Language.CheckboxDoNotShowThisMessageAgain,
@@ -852,7 +852,7 @@ namespace LoipvRemote.UI.Controls
                                                         ESysIcons.Question);
                     if (CTaskDialog.VerificationChecked)
                     {
-                        Settings.Default.ConfirmCloseConnection = (int)ConfirmCloseEnum.Never;
+                        Settings.Default.ConfirmCloseConnection = (int)ConfirmCloseMode.Never;
                         Settings.Default.Save();
                     }
 
@@ -869,7 +869,7 @@ namespace LoipvRemote.UI.Controls
                     {
                         for (int i = 0; i <= child.OpenConnections.Count - 1; i++)
                         {
-                            child.OpenConnections[i].Disconnect();
+                            await child.OpenConnections[i].DisconnectAsync();
                         }
                     }
                 }
@@ -877,7 +877,7 @@ namespace LoipvRemote.UI.Controls
                 {
                     for (int i = 0; i <= connectionInfo.OpenConnections.Count - 1; i++)
                     {
-                        connectionInfo.OpenConnections[i].Disconnect();
+                        await connectionInfo.OpenConnections[i].DisconnectAsync();
                     }
                 }
             }
@@ -976,12 +976,12 @@ namespace LoipvRemote.UI.Controls
         {
             try
             {
-                AppWindows.Show(WindowType.SSHTransfer);
-                AppWindows.SshtransferForm.Hostname = _connectionTree.SelectedNode.Hostname;
-                AppWindows.SshtransferForm.Username = _connectionTree.SelectedNode.Username;
+                ShellRuntime.Windows.Show(WindowType.SSHTransfer);
+                ShellRuntime.Windows.SshtransferForm.Hostname = _connectionTree.SelectedNode.Hostname;
+                ShellRuntime.Windows.SshtransferForm.Username = _connectionTree.SelectedNode.Username;
                 //App.Windows.SshtransferForm.Password = _connectionTree.SelectedNode.Password.ConvertToUnsecureString();
-                AppWindows.SshtransferForm.Password = _connectionTree.SelectedNode.Password;
-                AppWindows.SshtransferForm.Port = Convert.ToString(_connectionTree.SelectedNode.Port);
+                ShellRuntime.Windows.SshtransferForm.Password = _connectionTree.SelectedNode.Password;
+                ShellRuntime.Windows.SshtransferForm.Port = Convert.ToString(_connectionTree.SelectedNode.Port, CultureInfo.InvariantCulture);
             }
             catch (Exception ex)
             {
@@ -1021,7 +1021,7 @@ namespace LoipvRemote.UI.Controls
             string target = "TERMSRV/" + hostname;
 
             // Single-dialog confirmation showing both the explanation and the target.
-            string mainInstruction = string.Format(Language.ConfirmDeleteCachedRdpCredential, target);
+            string mainInstruction = FormatText(Language.ConfirmDeleteCachedRdpCredential, target);
             DialogResult confirm = CTaskDialog.MessageBox(
                 this,
                 Language.ClearCachedRdpCredentials,
@@ -1043,7 +1043,7 @@ namespace LoipvRemote.UI.Controls
                     CTaskDialog.MessageBox(
                         this,
                         Language.ClearCachedRdpCredentials,
-                        string.Format(Language.ClearedCachedRdpCredentials, target),
+                        FormatText(Language.ClearedCachedRdpCredentials, target),
                         "", "", "", "",
                         ETaskDialogButtons.Ok, ESysIcons.Information, ESysIcons.Information);
                     break;
@@ -1051,7 +1051,7 @@ namespace LoipvRemote.UI.Controls
                     CTaskDialog.MessageBox(
                         this,
                         Language.ClearCachedRdpCredentials,
-                        string.Format(Language.NoCachedRdpCredentialFound, target),
+                        FormatText(Language.NoCachedRdpCredentialFound, target),
                         "", "", "", "",
                         ETaskDialogButtons.Ok, ESysIcons.Information, ESysIcons.Information);
                     break;
@@ -1059,7 +1059,7 @@ namespace LoipvRemote.UI.Controls
                     CTaskDialog.MessageBox(
                         this,
                         Language.ClearCachedRdpCredentials,
-                        string.Format(Language.FailedToClearCachedRdpCredential, target),
+                        FormatText(Language.FailedToClearCachedRdpCredential, target),
                         "", "", "", "",
                         ETaskDialogButtons.Ok, ESysIcons.Warning, ESysIcons.Warning);
                     break;
@@ -1074,7 +1074,7 @@ namespace LoipvRemote.UI.Controls
             else
                 selectedNodeAsContainer =
                     _connectionTree.SelectedNode as ContainerInfo ?? _connectionTree.SelectedNode.Parent;
-            ShellRuntime.ConnectionImportService.ImportFromFile(selectedNodeAsContainer);
+            _ = ShellRuntime.ConnectionImportService.ImportFromFileAsync(selectedNodeAsContainer);
         }
 
         private void OnImportPuttyClicked(object? sender, EventArgs e)
@@ -1090,12 +1090,12 @@ namespace LoipvRemote.UI.Controls
 
         private void OnImportActiveDirectoryClicked(object? sender, EventArgs e)
         {
-            AppWindows.Show(WindowType.ActiveDirectoryImport);
+            ShellRuntime.Windows.Show(WindowType.ActiveDirectoryImport);
         }
 
         private void OnImportPortScanClicked(object? sender, EventArgs e)
         {
-            AppWindows.Show(WindowType.PortScan);
+            ShellRuntime.Windows.Show(WindowType.PortScan);
         }
 
         private void OnExportFileClicked(object? sender, EventArgs e)

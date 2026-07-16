@@ -13,7 +13,7 @@ namespace LoipvRemote.UI.Menu
         private readonly WindowsSystemMenu _windowMenu = new(boundControl.Handle);
         private readonly int[] _sysMenSubItems = new int[51];
 
-        public Screen GetScreenById(int id)
+        public Screen? GetScreenById(int id)
         {
             for (int i = 0; i <= _sysMenSubItems.Length - 1; i++)
             {
@@ -24,7 +24,7 @@ namespace LoipvRemote.UI.Menu
             return null;
         }
 
-        public void OnDisplayChanged(object sender, EventArgs e)
+        public void OnDisplayChanged(object? sender, EventArgs e)
         {
             ResetScreenList();
             BuildAdditionalMenuItems();
@@ -38,19 +38,19 @@ namespace LoipvRemote.UI.Menu
         public void BuildAdditionalMenuItems()
         {
             // option to send main form to another screen
-            IntPtr popMen = _windowMenu.CreatePopupMenuItem();
+            IntPtr popMen = WindowsSystemMenu.CreatePopupMenuItem();
             for (int i = 0; i <= Screen.AllScreens.Length - 1; i++)
             {
                 _sysMenSubItems[i] = 200 + i;
-                _windowMenu.AppendMenuItem(popMen, WindowsSystemMenu.Flags.String, new IntPtr(_sysMenSubItems[i]),
-                                           Language.Screen + " " + Convert.ToString(i + 1));
+                WindowsSystemMenu.AppendMenuItem(popMen, WindowsSystemMenu.MenuOptions.Text, new IntPtr(_sysMenSubItems[i]),
+                                                 Language.Screen + " " + Convert.ToString(i + 1, CultureInfo.InvariantCulture));
             }
-            _windowMenu.InsertMenuItem(_windowMenu.SystemMenuHandle, 0,
-                WindowsSystemMenu.Flags.Popup | WindowsSystemMenu.Flags.ByPosition, popMen,
+            WindowsSystemMenu.InsertMenuItem(_windowMenu.SystemMenuHandle, 0,
+                WindowsSystemMenu.MenuOptions.Popup | WindowsSystemMenu.MenuOptions.ByPosition, popMen,
                 Language.SendTo);
             // separator
-            _windowMenu.InsertMenuItem(_windowMenu.SystemMenuHandle, 1,
-                                       WindowsSystemMenu.Flags.ByPosition | WindowsSystemMenu.Flags.Separator, IntPtr.Zero,
+            WindowsSystemMenu.InsertMenuItem(_windowMenu.SystemMenuHandle, 1,
+                                       WindowsSystemMenu.MenuOptions.ByPosition | WindowsSystemMenu.MenuOptions.Separator, IntPtr.Zero,
                                        null);
         }
 

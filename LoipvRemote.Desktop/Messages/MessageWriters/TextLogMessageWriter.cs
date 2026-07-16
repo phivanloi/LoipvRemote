@@ -11,7 +11,7 @@ namespace LoipvRemote.Messages.MessageWriters
 
         public void Write(IMessage message)
         {
-            switch (message.Class)
+            switch (message.MessageClass)
             {
                 case MessageClass.InformationMsg:
                     _logger.Log.Info(message.Text);
@@ -26,7 +26,7 @@ namespace LoipvRemote.Messages.MessageWriters
                     _logger.Log.Error(message.Text);
                     break;
                 default:
-                    throw new ArgumentOutOfRangeException();
+                    throw new InvalidOperationException($"Unsupported message class: {message.MessageClass}.");
             }
         }
     }

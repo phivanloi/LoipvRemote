@@ -8,7 +8,7 @@ namespace LoipvRemoteTests.Protocols.Rdp;
 public sealed class RdpProtocolSessionEventTests
 {
     [Test]
-    public void ReportsConnectedOnlyAfterTheActiveXControlRaisesConnected()
+    public async Task ReportsConnectedOnlyAfterTheActiveXControlRaisesConnected()
     {
         var client = new EventRdpClient();
         using var session = new RdpProtocolSession(
@@ -17,8 +17,8 @@ public sealed class RdpProtocolSessionEventTests
         int connectedEvents = 0;
         ((IProtocolSessionEvents)session).Connected += (_, _) => connectedEvents++;
 
-        Assert.That(session.Initialize(), Is.True);
-        Assert.That(session.Connect(), Is.True);
+        Assert.That(await session.InitializeAsync(), Is.True);
+        Assert.That(await session.ConnectAsync(), Is.True);
 
         Assert.Multiple(() =>
         {
@@ -37,7 +37,7 @@ public sealed class RdpProtocolSessionEventTests
     }
 
     [Test]
-    public void ConvertsActiveXDisconnectAndFatalErrorIntoProtocolEvents()
+    public async Task ConvertsActiveXDisconnectAndFatalErrorIntoProtocolEvents()
     {
         var client = new EventRdpClient();
         using var session = new RdpProtocolSession(
@@ -49,8 +49,8 @@ public sealed class RdpProtocolSessionEventTests
         events.Disconnected += (_, args) => disconnected = args;
         events.ErrorOccurred += (_, args) => error = args;
 
-        session.Initialize();
-        session.Connect();
+        await session.InitializeAsync();
+        await session.ConnectAsync();
         client.RaiseFatalError(42);
 
         Assert.Multiple(() =>

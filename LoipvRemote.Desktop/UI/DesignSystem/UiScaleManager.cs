@@ -89,7 +89,7 @@ namespace LoipvRemote.UI.DesignSystem
         public void ApplyToolStrip(ToolStrip toolStrip)
         {
             toolStrip.Font = CreateFont(UiTypographyRole.Body, toolStrip.Font.Style);
-            int iconSize = Metrics.ScaleForDpi(Metrics.IconSize, Math.Max(96, toolStrip.DeviceDpi) / 96f);
+            int iconSize = UiMetrics.ScaleForDpi(Metrics.IconSize, Math.Max(96, toolStrip.DeviceDpi) / 96f);
             IconService.ApplyToToolStrip(toolStrip, iconSize);
         }
 
@@ -152,8 +152,8 @@ namespace LoipvRemote.UI.DesignSystem
             }
         }
 
-        private int ScaleForControlDpi(Control control, int logicalPixels) =>
-            Metrics.ScaleForDpi(logicalPixels, Math.Max(96, control.DeviceDpi) / 96f);
+        private static int ScaleForControlDpi(Control control, int logicalPixels) =>
+            UiMetrics.ScaleForDpi(logicalPixels, Math.Max(96, control.DeviceDpi) / 96f);
 
         private static void ExpandAbsoluteRows(TableLayoutPanel table)
         {
@@ -319,7 +319,7 @@ namespace LoipvRemote.UI.DesignSystem
                 FontFamily.Families.Any(f => f.Name.Equals(Preferences.FontFamily, StringComparison.OrdinalIgnoreCase)))
                 return Preferences.FontFamily;
 
-            return SystemFonts.MessageBoxFont.Name;
+            return (SystemFonts.MessageBoxFont ?? SystemFonts.DefaultFont).Name;
         }
 
         private static UiTypographyRole InferRole(Control control)

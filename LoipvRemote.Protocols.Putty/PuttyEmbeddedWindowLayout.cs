@@ -1,4 +1,4 @@
-using System.Drawing;
+using LoipvRemote.Protocols.Abstractions;
 
 namespace LoipvRemote.Protocols.Putty;
 
@@ -25,16 +25,4 @@ public static class PuttyEmbeddedWindowLayout
         return (style & ~nonClientChrome) | WsChild;
     }
 
-    public static Rectangle ContentBounds(Rectangle clientRectangle) => clientRectangle;
-
-    public static Rectangle ContentBounds(Rectangle clientRectangle, int titleStripHeight)
-    {
-        ArgumentOutOfRangeException.ThrowIfNegative(titleStripHeight);
-
-        return new Rectangle(
-            clientRectangle.X,
-            clientRectangle.Y - titleStripHeight,
-            clientRectangle.Width,
-            clientRectangle.Height + titleStripHeight);
-    }
 }

@@ -23,6 +23,7 @@ namespace LoipvRemote.UI.Window
         private readonly DisplayProperties _display;
         private MessageCollector? _messageCollector;
         private ConnectionWorkspaceAdapter? _connectionWorkspace;
+        private DesktopWindowCatalog? _windows;
 
         private MessageCollector MessageCollector => _messageCollector
             ?? throw new InvalidOperationException("ErrorAndInfoWindow services must be attached before use.");
@@ -51,15 +52,19 @@ namespace LoipvRemote.UI.Window
             ApplyLanguage();
         }
 
-        public void AttachServices(MessageCollector messageCollector, ConnectionWorkspaceAdapter connectionWorkspace)
+        public void AttachServices(
+            MessageCollector messageCollector,
+            ConnectionWorkspaceAdapter connectionWorkspace,
+            DesktopWindowCatalog windows)
         {
             _messageCollector = messageCollector ?? throw new ArgumentNullException(nameof(messageCollector));
             _connectionWorkspace = connectionWorkspace ?? throw new ArgumentNullException(nameof(connectionWorkspace));
+            _windows = windows ?? throw new ArgumentNullException(nameof(windows));
         }
 
         #region Form Stuff
 
-        private void ErrorsAndInfos_Load(object sender, EventArgs e)
+        private void ErrorsAndInfos_Load(object? sender, EventArgs e)
         {
         }
 
@@ -165,7 +170,7 @@ namespace LoipvRemote.UI.Window
             }
         }
 
-        private void ErrorsAndInfos_Resize(object sender, EventArgs e)
+        private void ErrorsAndInfos_Resize(object? sender, EventArgs e)
         {
             try
             {
@@ -239,7 +244,7 @@ namespace LoipvRemote.UI.Window
             }
         }
 
-        private void MC_KeyDown(object sender, KeyEventArgs e)
+        private void MC_KeyDown(object? sender, KeyEventArgs e)
         {
             try
             {
@@ -249,7 +254,8 @@ namespace LoipvRemote.UI.Window
                     if (PreviousActiveForm != null)
                         PreviousActiveForm.Show(ConnectionWorkspace.MainWindow.pnlDock);
                     else
-                        ConnectionWorkspace.Show(AppWindows.TreeForm);
+                        ConnectionWorkspace.Show(_windows?.TreeForm
+                            ?? throw new InvalidOperationException("Error window services must be attached before use."));
                 }
                 catch (Exception)
                 {
@@ -264,7 +270,7 @@ namespace LoipvRemote.UI.Window
             }
         }
 
-        private void lvErrorCollector_SelectedIndexChanged(object sender, EventArgs e)
+        private void lvErrorCollector_SelectedIndexChanged(object? sender, EventArgs e)
         {
             try
             {
@@ -277,9 +283,10 @@ namespace LoipvRemote.UI.Window
 
                 UpdateNotificationLayout();
 
-                ListViewItem sItem = lvErrorCollector.SelectedItems[0];
-                Message eMsg = (Message)sItem.Tag;
-                switch (eMsg.Class)
+                if (lvErrorCollector.SelectedItems.Count == 0 ||
+                    lvErrorCollector.SelectedItems[0].Tag is not Message eMsg)
+                    return;
+                switch (eMsg.MessageClass)
                 {
                     case MessageClass.DebugMsg:
                         pbError.Image = _display.ScaleImage(Properties.Resources.Test_16x);
@@ -342,7 +349,7 @@ namespace LoipvRemote.UI.Window
                         break;
                 }
 
-                lblMsgDate.Text = eMsg.Date.ToString(CultureInfo.InvariantCulture);
+                lblMsgDate.Text = eMsg.Timestamp.ToString(CultureInfo.InvariantCulture);
                 txtMsgText.Text = eMsg.Text;
             }
             catch (Exception ex)
@@ -354,7 +361,7 @@ namespace LoipvRemote.UI.Window
             }
         }
 
-        private void cMenMC_Opening(object sender, System.ComponentModel.CancelEventArgs e)
+        private void cMenMC_Opening(object? sender, System.ComponentModel.CancelEventArgs e)
         {
             if (lvErrorCollector.Items.Count > 0)
             {
@@ -380,7 +387,7 @@ namespace LoipvRemote.UI.Window
             }
         }
 
-        private void cMenMCCopy_Click(object sender, EventArgs e)
+        private void cMenMCCopy_Click(object? sender, EventArgs e)
         {
             CopyMessagesToClipboard();
         }
@@ -411,8 +418,8 @@ namespace LoipvRemote.UI.Window
                         continue;
                     }
 
-                    stringBuilder.AppendLine(message.Class.ToString());
-                    stringBuilder.AppendLine(message.Date.ToString(CultureInfo.InvariantCulture));
+                    stringBuilder.AppendLine(message.MessageClass.ToString());
+                    stringBuilder.AppendLine(message.Timestamp.ToString(CultureInfo.InvariantCulture));
                     stringBuilder.AppendLine(message.Text);
                     stringBuilder.AppendLine("----------");
                 }
@@ -432,7 +439,7 @@ namespace LoipvRemote.UI.Window
             }
         }
 
-        private void cMenMCDelete_Click(object sender, EventArgs e)
+        private void cMenMCDelete_Click(object? sender, EventArgs e)
         {
             DeleteMessages();
         }

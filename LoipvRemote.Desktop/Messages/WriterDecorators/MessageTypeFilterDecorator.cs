@@ -27,7 +27,7 @@ namespace LoipvRemote.Messages.WriterDecorators
         private bool WeShouldWrite(IMessage message)
         {
             // ReSharper disable once SwitchStatementMissingSomeCases
-            switch (message.Class)
+            switch (message.MessageClass)
             {
                 case MessageClass.InformationMsg:
                     if (_filter.AllowInfoMessages) return true;

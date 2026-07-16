@@ -6,8 +6,11 @@ namespace LoipvRemote.Desktop.Sessions;
 /// </summary>
 public static class ProtocolFocusRetryPolicy
 {
-    public const int MaxAttempts = 4;
-    public const int IntervalMilliseconds = 75;
+    // PuTTY creates its hosted child window asynchronously after the process
+    // reports started. Give the native window enough time to appear while
+    // keeping retries bounded and entirely on the WinForms UI timer.
+    public const int MaxAttempts = 40;
+    public const int IntervalMilliseconds = 100;
 
     public static bool ShouldAttempt(int attempt, bool active)
     {

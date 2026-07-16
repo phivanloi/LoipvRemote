@@ -4,7 +4,7 @@ namespace LoipvRemote.UI.Controls.PageSequence
 {
     public interface ISequenceChangingNotifier
     {
-        event EventHandler Next;
+        event EventHandler NextRequested;
         event EventHandler Previous;
         event SequencedPageReplcementRequestHandler PageReplacementRequested;
     }

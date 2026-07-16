@@ -6,19 +6,19 @@ namespace LoipvRemote.UI.DesignSystem
     {
         internal static int InputHeight(int textHeight)
         {
-            if (textHeight <= 0) throw new ArgumentOutOfRangeException(nameof(textHeight));
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(textHeight);
             return Math.Max(26, textHeight + 10);
         }
 
         internal static int CheckBoxGlyphSize(int textHeight)
         {
-            if (textHeight <= 0) throw new ArgumentOutOfRangeException(nameof(textHeight));
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(textHeight);
             return Math.Clamp(textHeight, 14, 20);
         }
 
         internal static int ComboBoxItemHeight(int textHeight)
         {
-            if (textHeight <= 0) throw new ArgumentOutOfRangeException(nameof(textHeight));
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(textHeight);
             return Math.Max(22, textHeight + 8);
         }
     }

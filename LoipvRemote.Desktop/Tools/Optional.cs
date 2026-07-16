@@ -6,155 +6,84 @@ using System.Linq;
 namespace LoipvRemote.Tools
 {
     /// <summary>
-    /// Represents a type that may or may not have been assigned a value.
-    /// A strongly typed collection that contains either 0 or 1 values.
+    /// Represents a value that may or may not have been assigned.
     /// </summary>
-    /// <typeparam name="T">The underlying type that may or may not have a value</typeparam>
-    public class Optional<T> : IEnumerable<T>, IComparable<Optional<T>>
+    /// <typeparam name="T">The underlying value type.</typeparam>
+    public class OptionalValue<T> : IEnumerable<T>, IComparable<OptionalValue<T>>
     {
-        private readonly T[] _optional;
+        private readonly T[] _values;
 
-        /// <summary>
-        /// Create a new empty instance of Optional
-        /// </summary>
-        public Optional()
+        public OptionalValue()
         {
-            _optional = Array.Empty<T>();
+            _values = Array.Empty<T>();
         }
 
-        /// <summary>
-        /// Create a new instance of Optional from the given value.
-        /// If the value is null, the Optional will be empty
-        /// </summary>
-        public Optional(T value)
+        public OptionalValue(T value)
         {
-            _optional = value != null
-                ? new[] {value}
-                : Array.Empty<T>();
+            _values = value != null ? [value] : Array.Empty<T>();
         }
 
-        public override string ToString()
-        {
-            // Fixes CS8602 and CS8603 by ensuring null checks and returning a non-null value
-            if (_optional.Length > 0 && _optional[0] != null)
-            {
-                return _optional[0]?.ToString() ?? string.Empty;
-            }
+        public override string ToString() =>
+            _values.Length == 0 || _values[0] is null ? string.Empty : _values[0]!.ToString() ?? string.Empty;
 
-            return string.Empty;
-        }
+        public static implicit operator OptionalValue<T>(T value) => new(value);
 
-        public static implicit operator Optional<T>(T value)
-        {
-            return new Optional<T>(value);
-        }
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-        public static Optional<TOut> FromNullable<TOut>(TOut? value) where TOut : struct
-        {
-            return value.HasValue
-                ? new Optional<TOut>(value.Value)
-                : new Optional<TOut>();
-        }
+        public IEnumerator<T> GetEnumerator() => ((IEnumerable<T>)_values).GetEnumerator();
 
-        /// <summary>
-        /// Returns an empty <see cref="Optional{T}"/>
-        /// </summary>
-        public static Optional<T> Empty => new();
-
-        #region IEnumerable
-
-        IEnumerator IEnumerable.GetEnumerator()
-        {
-            return GetEnumerator();
-        }
-
-        public IEnumerator<T> GetEnumerator()
-        {
-            return ((IEnumerable<T>)_optional).GetEnumerator();
-        }
-
-        #endregion
-
-        #region IComparable
-
-        /// <summary>
-        /// Compares this <see cref="Optional{T}"/> to another instance
-        /// of the same type. For purposes of comparison, empty Optional
-        /// objects are treated like Null and will be valued lower than
-        /// an Optional that contains a value. If both Optionals contain
-        /// values, the values are compared directly.
-        /// </summary>
-        /// <param name="other"></param>
-        public int CompareTo(Optional<T>? other)
+        public int CompareTo(OptionalValue<T>? other)
         {
             if (other is null)
-                return 1; // Treat null as less than any non-null Optional
-
-            bool otherHasAnything = other.Any();
-            bool thisHasAnything = _optional.Length > 0;
-
-            // both are empty, equivalent value
-            if (!thisHasAnything && !otherHasAnything)
-                return 0;
-            // we are empty, they are greater value
-            if (!thisHasAnything)
-                return -1;
-            // they are empty, we are greater value
-            if (!otherHasAnything)
                 return 1;
-            // neither are empty, compare wrapped objects directly
-            if (_optional[0] is IComparable<T>)
-                return ((IComparable<T>)_optional[0]).CompareTo(other.First());
 
-            throw new ArgumentException($"Cannot compare objects. Optional type {typeof(T).FullName} is not comparable to itself");
+            bool hasValue = _values.Length > 0;
+            bool otherHasValue = other._values.Length > 0;
+            if (!hasValue)
+                return otherHasValue ? -1 : 0;
+            if (!otherHasValue)
+                return 1;
+            if (_values[0] is IComparable<T> comparable)
+                return comparable.CompareTo(other._values[0]);
+
+            throw new ArgumentException($"Cannot compare objects. OptionalValue type {typeof(T).FullName} is not comparable to itself");
         }
 
         public override bool Equals(object? obj)
         {
             if (ReferenceEquals(this, obj))
                 return true;
-
-            if (obj is Optional<T> objAsOptional)
-                return Equals(objAsOptional);
-
-            if (obj is T objAsT)
-                return Equals(objAsT);
-
+            if (obj is OptionalValue<T> other)
+                return Equals(other);
+            if (obj is T value)
+                return _values.Length > 0 && EqualityComparer<T>.Default.Equals(_values[0], value);
             return false;
         }
 
-        private bool Equals(Optional<T> other)
+        private bool Equals(OptionalValue<T>? other)
         {
-            T otherObj = other.FirstOrDefault();
-            T thisObj = _optional.FirstOrDefault();
-            if (thisObj == null && otherObj == null)
-                return true;
-            if (thisObj == null)
+            if (other is null || _values.Length != other._values.Length)
                 return false;
-            return thisObj.Equals(otherObj);
+            return _values.Length == 0 || EqualityComparer<T>.Default.Equals(_values[0], other._values[0]);
         }
 
-        public override int GetHashCode()
+        public override int GetHashCode() =>
+            _values.Length == 0 ? 0 : EqualityComparer<T>.Default.GetHashCode(_values[0]!);
+
+        public static bool operator ==(OptionalValue<T>? left, OptionalValue<T>? right) => Equals(left, right);
+        public static bool operator !=(OptionalValue<T>? left, OptionalValue<T>? right) => !Equals(left, right);
+        public static bool operator <(OptionalValue<T>? left, OptionalValue<T>? right) => Compare(left, right) < 0;
+        public static bool operator <=(OptionalValue<T>? left, OptionalValue<T>? right) => Compare(left, right) <= 0;
+        public static bool operator >(OptionalValue<T>? left, OptionalValue<T>? right) => Compare(left, right) > 0;
+        public static bool operator >=(OptionalValue<T>? left, OptionalValue<T>? right) => Compare(left, right) >= 0;
+
+        private static int Compare(OptionalValue<T>? left, OptionalValue<T>? right)
         {
-            return _optional != null
-                ? _optional.GetHashCode()
-                : 0;
+            if (ReferenceEquals(left, right))
+                return 0;
+            if (left is null)
+                return -1;
+            return left.CompareTo(right);
         }
-
-        #endregion
-
-        #region Operators
-
-        public static bool operator ==(Optional<T> left, Optional<T> right)
-        {
-            return Equals(left, right);
-        }
-
-        public static bool operator !=(Optional<T> left, Optional<T> right)
-        {
-            return !Equals(left, right);
-        }
-
-        #endregion
     }
 }

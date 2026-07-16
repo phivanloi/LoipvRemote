@@ -6,7 +6,7 @@ namespace LoipvRemote.Protocols.ExternalApps;
 /// <summary>
 /// Creates the external-application session owned by the ExternalApps module.
 /// Unsupported protocol kinds are deliberately rejected so the composition root
-/// can route them to the next module without coupling this project to legacy code.
+/// can route them to the next module without coupling this project to desktop code.
 /// </summary>
 public sealed class ExternalApplicationProtocolFactory(
     IExternalApplicationHostFactory hostFactory) : IProtocolFactory

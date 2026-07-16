@@ -65,7 +65,7 @@ namespace LoipvRemote.UI.Controls
             Invalidate();
         }
 
-        private void NGListView_FormatCell(object sender, FormatCellEventArgs e)
+        private void NGListView_FormatCell(object? sender, FormatCellEventArgs e)
         {
             if (e.Column.IsVisible)
             {

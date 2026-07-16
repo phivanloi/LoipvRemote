@@ -77,7 +77,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             listPalette.FormatCell += ListPalette_FormatCell; //Color cell formatter
         }
 
-        private void ListPalette_FormatCell(object sender, FormatCellEventArgs e)
+        private void ListPalette_FormatCell(object? sender, FormatCellEventArgs e)
         {
             if (e.ColumnIndex != ColorCol.Index) return;
             PseudoKeyColor colorElem = (PseudoKeyColor)e.Model;
@@ -96,7 +96,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             if (cboTheme.SelectedItem != null
             ) // LoadSettings calls SaveSettings, so these might be null the first time around
             {
-                if (!Properties.OptionsThemePage.Default.ThemeName.Equals(((ThemeInfo)cboTheme.SelectedItem).Name))
+                if (!Properties.OptionsThemePage.Default.ThemeName.Equals(((ThemeInfo)cboTheme.SelectedItem).Name, StringComparison.Ordinal))
                 {
                     Properties.OptionsThemePage.Default.ThemeName = ((ThemeInfo)cboTheme.SelectedItem).Name;
                     // Keep the persisted dark flag in sync with the chosen theme so the next
@@ -109,7 +109,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
 
             foreach (ThemeInfo updatedTheme in modifiedThemes)
             {
-                _themeManager.updateTheme(updatedTheme);
+                ThemeManager.updateTheme(updatedTheme);
             }
         }
 
@@ -137,7 +137,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
 
         #region Event Handlers
 
-        private void cboTheme_SelectionChangeCommitted(object sender, EventArgs e)
+        private void cboTheme_SelectionChangeCommitted(object? sender, EventArgs e)
         {
             btnThemeNew.Enabled = false;
             btnThemeDelete.Enabled = false;
@@ -151,7 +151,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
 
             btnThemeNew.Enabled = true;
 
-            ThemeInfo selectedTheme = (ThemeInfo)cboTheme.SelectedItem;
+            ThemeInfo? selectedTheme = cboTheme.SelectedItem as ThemeInfo;
 
             if (selectedTheme != null && selectedTheme.IsExtendable)
             {
@@ -174,7 +174,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private void ListPalette_CellClick(object sender, CellClickEventArgs e)
+        private void ListPalette_CellClick(object? sender, CellClickEventArgs e)
         {
             PseudoKeyColor colorElem = (PseudoKeyColor)e.Model;
 
@@ -331,7 +331,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             { "Treeview_SelectedItem_Inactive_Foreground", "ツリーパネル 選択項目 (非アクティブ): 文字" },
         };
 
-        private void btnThemeNew_Click(object sender, EventArgs e)
+        private void btnThemeNew_Click(object? sender, EventArgs e)
         {
             using (FrmInputBox frmInputBox = new(Language.OptionsThemeNewThemeCaption, Language.OptionsThemeNewThemeText, _themeManager.ActiveTheme.Name))
             {
@@ -351,7 +351,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             }
         }
 
-        private void btnThemeDelete_Click(object sender, EventArgs e)
+        private void btnThemeDelete_Click(object? sender, EventArgs e)
         {
             DialogResult res = CTaskDialog.ShowTaskDialogBox(this, Language.Warnings,
                                                     Language.OptionsThemeDeleteConfirmation, "", "", "", "", "", "",

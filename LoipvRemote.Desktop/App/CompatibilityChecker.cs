@@ -35,7 +35,7 @@ namespace LoipvRemote.App
 
             if (!fipsEnabled) return;
 
-            string errorText = string.Format(Language.ErrorFipsPolicyIncompatible, GeneralAppInfo.ProductName);
+            string errorText = FormatText(Language.ErrorFipsPolicyIncompatible, GeneralAppInfo.ProductName);
             messageCollector.AddMessage(MessageClass.ErrorMsg, errorText, true);
 
             //About to pop up a message, let's not block it...
@@ -61,7 +61,7 @@ namespace LoipvRemote.App
             if (!Settings.Default.CompatibilityWarnLenovoAutoScrollUtility)
                 return;
 
-            Process[] proccesses = new Process[] { };
+            Process[] proccesses = Array.Empty<Process>();
             try
             {
                 proccesses = Process.GetProcessesByName("virtscrl");
@@ -80,7 +80,7 @@ namespace LoipvRemote.App
             messageCollector.AddMessage(MessageClass.WarningMsg, "Lenovo AutoScroll Utility found", true);
 
             CTaskDialog.MessageBox(Application.ProductName ?? string.Empty, Language.CompatibilityProblemDetected,
-                                   string.Format(Language.CompatibilityLenovoAutoScrollUtilityDetected,
+                                   FormatText(Language.CompatibilityLenovoAutoScrollUtilityDetected,
                                                  Application.ProductName), "",
                                    "", Language.CheckboxDoNotShowThisMessageAgain, ETaskDialogButtons.Ok,
                                    ESysIcons.Warning,

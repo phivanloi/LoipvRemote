@@ -10,7 +10,7 @@ namespace LoipvRemote.UI
         {
             ArgumentNullException.ThrowIfNull(message);
 
-            ImageIndex = Convert.ToInt32(message.Class);
+            ImageIndex = Convert.ToInt32(message.MessageClass, CultureInfo.InvariantCulture);
             Text = message.Text.Replace(Environment.NewLine, "  ");
             Tag = message;
         }

@@ -20,7 +20,7 @@ namespace LoipvRemote.Tree.ClickHandlers
             ArgumentNullException.ThrowIfNull(clickedNode);
             if (clickedNode.GetTreeNodeType() != TreeNodeType.Connection &&
                 clickedNode.GetTreeNodeType() != TreeNodeType.PuttySession) return;
-            _connectionInitiator.OpenConnection(clickedNode);
+            _ = _connectionInitiator.OpenConnectionAsync(clickedNode);
         }
     }
 }

@@ -13,6 +13,11 @@ namespace LoipvRemote.UI.Forms
     public sealed class FrmSplashScreen : Form
     {
         private static FrmSplashScreen? instance;
+        private readonly Panel content;
+        private readonly TableLayoutPanel branding;
+        private readonly PictureBox icon;
+        private readonly Label title;
+        private readonly Label subtitle;
         private readonly Label lblVersion;
 
         public FrmSplashScreen()
@@ -22,7 +27,7 @@ namespace LoipvRemote.UI.Forms
             FormBorderStyle = FormBorderStyle.None;
             ShowInTaskbar = false;
             StartPosition = FormStartPosition.CenterScreen;
-            ClientSize = new Size(480, 144);
+            ClientSize = new Size(600, 190);
             BackColor = Color.FromArgb(248, 250, 252);
             Padding = new Padding(1);
 
@@ -32,33 +37,48 @@ namespace LoipvRemote.UI.Forms
                 BackColor = Color.FromArgb(203, 213, 225),
                 Padding = new Padding(1)
             };
-            Panel content = new()
+            content = new()
             {
                 Dock = DockStyle.Fill,
                 BackColor = Color.FromArgb(248, 250, 252)
             };
-            PictureBox icon = new()
+            branding = new()
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 2,
+                RowCount = 1,
+                Padding = new Padding(24, 18, 24, 18),
+                Margin = Padding.Empty
+            };
+            branding.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 100));
+            branding.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            branding.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+
+            icon = new()
             {
                 Image = LoadSplashIcon(),
                 SizeMode = PictureBoxSizeMode.Zoom,
-                Location = new Point(20, 24),
-                Size = new Size(76, 76)
+                Size = new Size(76, 76),
+                Anchor = AnchorStyles.None,
+                Margin = Padding.Empty
             };
-            Label title = new()
+            title = new()
             {
                 AutoSize = true,
                 Text = "LoipvRemote",
                 Font = new Font("Segoe UI", 30F, FontStyle.Bold),
                 ForeColor = Color.FromArgb(17, 24, 39),
-                Location = new Point(148, 26)
+                Anchor = AnchorStyles.Left,
+                Margin = new Padding(0, 0, 0, 2)
             };
-            Label subtitle = new()
+            subtitle = new()
             {
                 AutoSize = true,
                 Text = "Remote Connection Manager",
                 Font = new Font("Segoe UI", 16F),
                 ForeColor = Color.FromArgb(55, 65, 81),
-                Location = new Point(149, 74)
+                Anchor = AnchorStyles.Left,
+                Margin = new Padding(0, 0, 0, 2)
             };
             lblVersion = new Label
             {
@@ -66,9 +86,25 @@ namespace LoipvRemote.UI.Forms
                 Text = $@"Phiên bản {GeneralAppInfo.ApplicationVersion}",
                 Font = new Font("Segoe UI", 14F),
                 ForeColor = Color.FromArgb(100, 116, 139),
-                Location = new Point(149, 105)
+                Anchor = AnchorStyles.Left,
+                Margin = Padding.Empty
             };
-            content.Controls.AddRange([icon, title, subtitle, lblVersion]);
+            FlowLayoutPanel textStack = new()
+            {
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                FlowDirection = FlowDirection.TopDown,
+                WrapContents = false,
+                Anchor = AnchorStyles.Left,
+                Margin = new Padding(24, 0, 0, 0),
+                Padding = Padding.Empty
+            };
+            textStack.Controls.Add(title);
+            textStack.Controls.Add(subtitle);
+            textStack.Controls.Add(lblVersion);
+            branding.Controls.Add(icon, 0, 0);
+            branding.Controls.Add(textStack, 1, 0);
+            content.Controls.Add(branding);
             border.Controls.Add(content);
             Controls.Add(border);
             FormClosed += (_, _) => instance = null;
@@ -80,7 +116,7 @@ namespace LoipvRemote.UI.Forms
             return instance;
         }
 
-        private static Image? LoadSplashIcon()
+        private static Bitmap? LoadSplashIcon()
         {
             const string resourceName = "LoipvRemote.Resources.LoipvRemote_Icon_new.png";
             using Stream? stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(resourceName);

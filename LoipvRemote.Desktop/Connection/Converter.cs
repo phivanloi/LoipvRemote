@@ -13,7 +13,7 @@ namespace LoipvRemote.Connection
         {
             try
             {
-                return (ProtocolKind)Enum.Parse(typeof(ProtocolKind), protocol, true);
+                return Enum.Parse<ProtocolKind>(protocol, true);
             }
             catch (Exception)
             {

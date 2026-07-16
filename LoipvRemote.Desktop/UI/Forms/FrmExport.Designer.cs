@@ -39,7 +39,7 @@ namespace LoipvRemote.UI.Forms
             //
             // btnCancel
             //
-            this.btnCancel._mice = MrngButton.MouseState.HOVER;
+            this.btnCancel.MouseInteractionState = MrngButton.MouseState.HOVER;
             this.btnCancel.DialogResult = System.Windows.Forms.DialogResult.Cancel;
             this.btnCancel.Location = new System.Drawing.Point(447, 473);
             this.btnCancel.Name = "btnCancel";
@@ -51,7 +51,7 @@ namespace LoipvRemote.UI.Forms
             //
             // btnOK
             //
-            this.btnOK._mice = MrngButton.MouseState.HOVER;
+            this.btnOK.MouseInteractionState = MrngButton.MouseState.HOVER;
             this.btnOK.Location = new System.Drawing.Point(366, 473);
             this.btnOK.Name = "btnOK";
             this.btnOK.Size = new System.Drawing.Size(75, 23);
@@ -71,7 +71,7 @@ namespace LoipvRemote.UI.Forms
             //
             // chkUsername
             //
-            this.chkUsername._mice = MrngCheckBox.MouseState.HOVER;
+            this.chkUsername.MouseInteractionState = MrngCheckBox.MouseState.HOVER;
             this.chkUsername.AutoSize = true;
             this.chkUsername.Checked = CommonRegistrySettings.AllowExportUsernames;
             this.chkUsername.CheckState = CommonRegistrySettings.AllowExportUsernames ?
@@ -87,7 +87,7 @@ namespace LoipvRemote.UI.Forms
             //
             // chkPassword
             //
-            this.chkPassword._mice = MrngCheckBox.MouseState.HOVER;
+            this.chkPassword.MouseInteractionState = MrngCheckBox.MouseState.HOVER;
             this.chkPassword.AutoSize = true;
             this.chkPassword.Checked = CommonRegistrySettings.AllowExportPasswords;
             this.chkPassword.CheckState = CommonRegistrySettings.AllowExportPasswords ?
@@ -103,7 +103,7 @@ namespace LoipvRemote.UI.Forms
             //
             // chkDomain
             //
-            this.chkDomain._mice = MrngCheckBox.MouseState.HOVER;
+            this.chkDomain.MouseInteractionState = MrngCheckBox.MouseState.HOVER;
             this.chkDomain.AutoSize = true;
             this.chkDomain.Checked = true;
             this.chkDomain.CheckState = System.Windows.Forms.CheckState.Checked;
@@ -116,7 +116,7 @@ namespace LoipvRemote.UI.Forms
             //
             // chkInheritance
             //
-            this.chkInheritance._mice = MrngCheckBox.MouseState.HOVER;
+            this.chkInheritance.MouseInteractionState = MrngCheckBox.MouseState.HOVER;
             this.chkInheritance.AutoSize = true;
             this.chkInheritance.Checked = true;
             this.chkInheritance.CheckState = System.Windows.Forms.CheckState.Checked;
@@ -138,7 +138,7 @@ namespace LoipvRemote.UI.Forms
             //
             // btnBrowse
             //
-            this.btnBrowse._mice = MrngButton.MouseState.HOVER;
+            this.btnBrowse.MouseInteractionState = MrngButton.MouseState.HOVER;
             this.btnBrowse.Location = new System.Drawing.Point(417, 46);
             this.btnBrowse.Name = "btnBrowse";
             this.btnBrowse.Size = new System.Drawing.Size(75, 23);
@@ -164,7 +164,7 @@ namespace LoipvRemote.UI.Forms
             //
             // chkAssignedCredential
             //
-            this.chkAssignedCredential._mice = MrngCheckBox.MouseState.HOVER;
+            this.chkAssignedCredential.MouseInteractionState = MrngCheckBox.MouseState.HOVER;
             this.chkAssignedCredential.AutoSize = true;
             this.chkAssignedCredential.Checked = true;
             this.chkAssignedCredential.CheckState = System.Windows.Forms.CheckState.Checked;
@@ -210,7 +210,7 @@ namespace LoipvRemote.UI.Forms
             //
             // cboFileFormat
             //
-            this.cboFileFormat._mice = MrngComboBox.MouseState.HOVER;
+            this.cboFileFormat.MouseInteractionState = MrngComboBox.MouseState.HOVER;
             this.cboFileFormat.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cboFileFormat.FormattingEnabled = true;
             this.cboFileFormat.Location = new System.Drawing.Point(15, 100);

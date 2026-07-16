@@ -1,5 +1,6 @@
 #region Usings
 using System;
+using System.Linq;
 using System.Runtime.Versioning;
 using LoipvRemote.Resources.Language;
 using LoipvRemote.App.Composition;
@@ -11,16 +12,22 @@ using LoipvRemote.UI.Window;
 namespace LoipvRemote.App
 {
     [SupportedOSPlatform("windows")]
-    public static class AppWindows
+    /// <summary>
+    /// Host-owned catalog for dockable desktop windows.  It deliberately has no
+    /// static state so tests and a future second shell can create an isolated
+    /// window graph.
+    /// </summary>
+    public sealed class DesktopWindowCatalog : IDisposable
     {
-        private static ActiveDirectoryImportWindow? _adimportForm;
-        private static ExternalToolsWindow? _externalappsForm;
-        private static PortScanWindow? _portscanForm;
-        private static UltraVNCWindow? _ultravncscForm;
-        private static ConnectionTreeWindow? _treeForm;
-        private static DesktopShellRuntime? _desktopShellRuntime;
+        private ActiveDirectoryImportWindow? _adimportForm;
+        private ExternalToolsWindow? _externalappsForm;
+        private PortScanWindow? _portscanForm;
+        private UltraVNCWindow? _ultravncscForm;
+        private ConnectionTreeWindow? _treeForm;
+        private DesktopShellRuntime? _desktopShellRuntime;
+        private bool _disposed;
 
-        internal static void AttachRuntime(DesktopShellRuntime desktopShellRuntime)
+        internal void AttachRuntime(DesktopShellRuntime desktopShellRuntime)
         {
             ArgumentNullException.ThrowIfNull(desktopShellRuntime);
             if (_desktopShellRuntime is not null && !ReferenceEquals(_desktopShellRuntime, desktopShellRuntime))
@@ -31,14 +38,14 @@ namespace LoipvRemote.App
                 _treeForm.AttachRuntime(desktopShellRuntime);
             ConfigForm.AttachRuntime(desktopShellRuntime);
             OptionsFormWindow?.AttachRuntime(desktopShellRuntime);
-            ErrorsForm.AttachServices(desktopShellRuntime.MessageCollector, desktopShellRuntime.ConnectionWorkspace);
+            ErrorsForm.AttachServices(desktopShellRuntime.MessageCollector, desktopShellRuntime.ConnectionWorkspace, this);
             SshtransferForm.AttachServices(desktopShellRuntime.MessageCollector);
         }
 
-        private static DesktopShellRuntime DesktopShellRuntime => _desktopShellRuntime
+        private DesktopShellRuntime DesktopShellRuntime => _desktopShellRuntime
             ?? throw new InvalidOperationException("The app-window runtime must be attached before a window is shown.");
 
-        internal static ConnectionTreeWindow TreeForm
+        internal ConnectionTreeWindow TreeForm
         {
             get
             {
@@ -50,14 +57,15 @@ namespace LoipvRemote.App
             set => _treeForm = value;
         }
 
-        internal static ConfigWindow ConfigForm { get; set; } = new ConfigWindow();
-        internal static ErrorAndInfoWindow ErrorsForm { get; set; } = new ErrorAndInfoWindow();
-        internal static SSHTransferWindow SshtransferForm { get; private set; } = new SSHTransferWindow();
-        internal static OptionsWindow? OptionsFormWindow { get; private set; }
+        internal ConfigWindow ConfigForm { get; } = new ConfigWindow();
+        internal ErrorAndInfoWindow ErrorsForm { get; } = new ErrorAndInfoWindow();
+        internal SSHTransferWindow SshtransferForm { get; private set; } = new SSHTransferWindow();
+        internal OptionsWindow? OptionsFormWindow { get; private set; }
 
 
-        public static void Show(WindowType windowType)
+        public void Show(WindowType windowType)
         {
+            ObjectDisposedException.ThrowIf(_disposed, this);
             try
             {
                 // ReSharper disable once SwitchStatementMissingSomeCases
@@ -65,7 +73,7 @@ namespace LoipvRemote.App
                 {
                     case WindowType.ActiveDirectoryImport:
                         if (_adimportForm == null || _adimportForm.IsDisposed)
-                            _adimportForm = new ActiveDirectoryImportWindow(DesktopShellRuntime.ConnectionImportService);
+                            _adimportForm = new ActiveDirectoryImportWindow(DesktopShellRuntime.ConnectionImportService, this);
                         DesktopShellRuntime.ConnectionWorkspace.Show(_adimportForm);
                         break;
                     case WindowType.Options:
@@ -81,7 +89,7 @@ namespace LoipvRemote.App
                         break;
                     case WindowType.SSHTransfer:
                         if (SshtransferForm == null || SshtransferForm.IsDisposed)
-                        SshtransferForm = new SSHTransferWindow();
+                            SshtransferForm = new SSHTransferWindow();
                         SshtransferForm.AttachServices(DesktopShellRuntime.MessageCollector);
                         DesktopShellRuntime.ConnectionWorkspace.Show(SshtransferForm);
                         break;
@@ -95,14 +103,15 @@ namespace LoipvRemote.App
                     case WindowType.PortScan:
                         _portscanForm = new PortScanWindow(
                             DesktopShellRuntime.MessageCollector,
-                            DesktopShellRuntime.ConnectionImportService);
+                            DesktopShellRuntime.ConnectionImportService,
+                            this);
                         DesktopShellRuntime.ConnectionWorkspace.Show(_portscanForm);
                         break;
                     case WindowType.UltraVNCSC:
                         if (_ultravncscForm == null || _ultravncscForm.IsDisposed)
                         {
                             _ultravncscForm = new UltraVNCWindow();
-                            _ultravncscForm.AttachServices(DesktopShellRuntime.MessageCollector);
+                            _ultravncscForm.AttachServices(DesktopShellRuntime.MessageCollector, this);
                         }
                         DesktopShellRuntime.ConnectionWorkspace.Show(_ultravncscForm);
                         break;
@@ -112,6 +121,25 @@ namespace LoipvRemote.App
             {
                 DesktopShellRuntime.MessageCollector.AddExceptionStackTrace("App.Windows.Show() failed.", ex);
             }
+        }
+
+        public void Dispose()
+        {
+            if (_disposed)
+                return;
+
+            _disposed = true;
+            foreach (Form form in new Form?[]
+            {
+                _adimportForm, _externalappsForm, _portscanForm, _ultravncscForm,
+                _treeForm, ConfigForm, ErrorsForm, SshtransferForm, OptionsFormWindow
+            }.OfType<Form>())
+            {
+                if (!form.IsDisposed)
+                    form.Dispose();
+            }
+
+            GC.SuppressFinalize(this);
         }
     }
 }

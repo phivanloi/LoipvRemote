@@ -13,7 +13,7 @@ namespace LoipvRemote.UI
             return textBox.PlaceholderText == cueText;
         }
 
-        public static string GetCueBannerText(this TextBox textBox)
+        public static string? GetCueBannerText(this TextBox textBox)
         {
             return string.IsNullOrEmpty(textBox.PlaceholderText) ? null : textBox.PlaceholderText;
         }

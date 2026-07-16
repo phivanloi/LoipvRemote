@@ -10,12 +10,14 @@ using LoipvRemote.Tools;
 using LoipvRemote.Resources.Language;
 using System.Runtime.Versioning;
 using LoipvRemote.Infrastructure.Windows.ProcessManagement;
+using LoipvRemote.App.Composition;
 
 namespace LoipvRemote.UI.Forms.OptionsPages
 {
     [SupportedOSPlatform("windows")]
     public sealed partial class AdvancedPage
     {
+        private DesktopShellRuntime? _desktopShellRuntime;
         public AdvancedPage()
         {
             InitializeComponent();
@@ -27,6 +29,9 @@ namespace LoipvRemote.UI.Forms.OptionsPages
         }
 
         #region Public Methods
+
+        public override void AttachRuntime(DesktopShellRuntime desktopShellRuntime) =>
+            _desktopShellRuntime = desktopShellRuntime ?? throw new ArgumentNullException(nameof(desktopShellRuntime));
 
         public override string PageName
         {
@@ -87,7 +92,8 @@ namespace LoipvRemote.UI.Forms.OptionsPages
 
             if (puttyPathChanged)
             {
-                PuttySessionsManager.Instance.AddSessions();
+                (_desktopShellRuntime ?? throw new InvalidOperationException("The desktop shell runtime must be attached before saving advanced settings."))
+                    .PuttySessionsManager.AddSessions();
             }
 
             Properties.OptionsAdvancedPage.Default.MaxPuttyWaitTime = (int)numPuttyWaitTime.Value;
@@ -100,19 +106,19 @@ namespace LoipvRemote.UI.Forms.OptionsPages
 
         #region Event Handlers
 
-        private void chkUseCustomPuttyPath_CheckedChanged(object sender, EventArgs e)
+        private void chkUseCustomPuttyPath_CheckedChanged(object? sender, EventArgs e)
         {
             txtCustomPuttyPath.Enabled = chkUseCustomPuttyPath.Checked;
             btnBrowseCustomPuttyPath.Enabled = chkUseCustomPuttyPath.Checked;
             SetPuttyLaunchButtonEnabled();
         }
 
-        private void txtCustomPuttyPath_TextChanged(object sender, EventArgs e)
+        private void txtCustomPuttyPath_TextChanged(object? sender, EventArgs e)
         {
             SetPuttyLaunchButtonEnabled();
         }
 
-        private void btnBrowseCustomPuttyPath_Click(object sender, EventArgs e)
+        private void btnBrowseCustomPuttyPath_Click(object? sender, EventArgs e)
         {
             using (OpenFileDialog openFileDialog = new())
             {
@@ -127,7 +133,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             }
         }
 
-        private void btnLaunchPutty_Click(object sender, EventArgs e)
+        private void btnLaunchPutty_Click(object? sender, EventArgs e)
         {
             try
             {
@@ -167,12 +173,12 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             btnLaunchPutty.Enabled = exists;
         }
 
-        private void chkNoReconnect_CheckedChanged(object sender, EventArgs e)
+        private void chkNoReconnect_CheckedChanged(object? sender, EventArgs e)
         {
 
         }
 
-        private void chkAutomaticReconnect_CheckedChanged(object sender, EventArgs e)
+        private void chkAutomaticReconnect_CheckedChanged(object? sender, EventArgs e)
         {
             chkNoReconnect.Enabled = chkAutomaticReconnect.Checked;
         }

@@ -19,7 +19,7 @@ namespace LoipvRemote.Credential.Repositories
             _credentialProviders.Add(credentialProvider);
             credentialProvider.CredentialsUpdated += RaiseCredentialsUpdatedEvent;
             credentialProvider.RepositoryConfigUpdated += OnRepoConfigChanged;
-            RaiseRepositoriesUpdatedEvent(ActionType.Added, new[] {credentialProvider});
+            RaiseRepositoriesUpdatedEvent(ActionType.Added, new[] { credentialProvider });
         }
 
         public void RemoveProvider(ICredentialRepository credentialProvider)
@@ -28,7 +28,7 @@ namespace LoipvRemote.Credential.Repositories
             credentialProvider.CredentialsUpdated -= RaiseCredentialsUpdatedEvent;
             credentialProvider.RepositoryConfigUpdated -= OnRepoConfigChanged;
             _credentialProviders.Remove(credentialProvider);
-            RaiseRepositoriesUpdatedEvent(ActionType.Removed, new[] {credentialProvider});
+            RaiseRepositoriesUpdatedEvent(ActionType.Removed, new[] { credentialProvider });
         }
 
         public bool Contains(Guid repositoryId)
@@ -81,7 +81,7 @@ namespace LoipvRemote.Credential.Repositories
         {
             ICredentialRepository? repo = sender as ICredentialRepository;
             if (repo == null) return;
-            RaiseRepositoriesUpdatedEvent(ActionType.Updated, new[] {repo});
+            RaiseRepositoriesUpdatedEvent(ActionType.Updated, new[] { repo });
         }
     }
 }

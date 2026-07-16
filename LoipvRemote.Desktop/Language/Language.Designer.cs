@@ -6206,15 +6206,6 @@ namespace LoipvRemote.Resources.Language {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Save connections after every edit.
-        /// </summary>
-        internal static string SaveConnectionsAfterEveryEdit {
-            get {
-                return ResourceManager.GetString("SaveConnectionsAfterEveryEdit", resourceCulture);
-            }
-        }
-
-        /// <summary>
         ///   Looks up a localized string similar to Do you want to save the current connections file before loading another?.
         /// </summary>
         internal static string SaveConnectionsFileBeforeOpeningAnother {

@@ -8,7 +8,7 @@ namespace LoipvRemote.UI.Controls.PageSequence
     [SupportedOSPlatform("windows")]
     public class SequencedControl : UserControl, ISequenceChangingNotifier
     {
-        public event EventHandler? Next;
+        public event EventHandler? NextRequested;
         public event EventHandler? Previous;
         public event SequencedPageReplcementRequestHandler? PageReplacementRequested;
 
@@ -20,7 +20,7 @@ namespace LoipvRemote.UI.Controls.PageSequence
 
         protected virtual void RaiseNextPageEvent()
         {
-            Next?.Invoke(this, EventArgs.Empty);
+            NextRequested?.Invoke(this, EventArgs.Empty);
         }
 
         protected virtual void ApplyTheme()

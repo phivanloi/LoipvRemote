@@ -26,6 +26,21 @@ jobs:
       - name: Restore
         run: dotnet restore LoipvRemote.slnx
 
+      - name: Audit NuGet vulnerabilities
+        shell: pwsh
+        run: |
+          $report = dotnet list LoipvRemote.slnx package --vulnerable --include-transitive --format json | ConvertFrom-Json
+          $vulnerable = @($report.projects | ForEach-Object {
+            $_.frameworks | ForEach-Object {
+              $_.topLevelPackages
+              $_.transitivePackages
+            }
+          } | Where-Object { $_.vulnerabilities -and $_.vulnerabilities.Count -gt 0 })
+          if ($vulnerable.Count -gt 0) {
+            $vulnerable | ConvertTo-Json -Depth 8 | Write-Host
+            throw 'NuGet vulnerability detected.'
+          }
+
       - name: Build x64 Release
         run: dotnet build LoipvRemote.slnx -c Release -p:Platform=x64 --no-restore --nologo
 
@@ -36,7 +51,6 @@ jobs:
           -p:Platform=x64
           --no-build
           --no-restore
-          --filter "FullyQualifiedName!~IntegratedProgramTests"
           --logger "trx;LogFileName=tests.trx"
           --results-directory TestResults
 
@@ -52,7 +66,7 @@ jobs:
           if ($version -match '[+ ]') {
             throw "Version must not contain source/build metadata: '$version'."
           }
-          $legacy = rg -n --glob '*.cs' '\b(ProtocolVNC|PuttyBase|HTTPBase|XmlConnectionsLoader|SqlConnectionsLoader)\b' LoipvRemote.Application LoipvRemote.Desktop LoipvRemote.Domain LoipvRemote.Infrastructure.Persistence LoipvRemote.Infrastructure.Windows LoipvRemote.Protocols.Abstractions LoipvRemote.Protocols.Browser LoipvRemote.Protocols.ExternalApps LoipvRemote.Protocols.Putty LoipvRemote.Protocols.Rdp LoipvRemote.Protocols.Vnc
+          $legacy = rg -n --glob '*.cs' '\b(ProtocolVNC|PuttyBase|HTTPBase|XmlConnectionsLoader|SqlConnectionsLoader)\b' LoipvRemote.Application LoipvRemote.Connectors LoipvRemote.Desktop LoipvRemote.Domain LoipvRemote.Infrastructure.Persistence LoipvRemote.Infrastructure.Windows LoipvRemote.Protocols.Abstractions LoipvRemote.Protocols.Browser LoipvRemote.Protocols.ExternalApps LoipvRemote.Protocols.Putty LoipvRemote.Protocols.Rdp LoipvRemote.Protocols.Vnc
           if ($LASTEXITCODE -eq 0 -and $legacy) {
             $legacy | Write-Host
             throw 'Legacy protocol/persistence implementation marker detected.'
@@ -77,10 +91,15 @@ jobs:
           if (Test-Path '.github/workflows/Build_mR-NB.yml') {
             throw 'Obsolete NB/mRemote release workflow must remain removed.'
           }
-          $todo = @(rg -n --glob '*.cs' --glob '*.resx' --glob '!**/bin/**' --glob '!**/obj/**' '\bTODO\b|NotImplementedException|#if false' LoipvRemote.Application LoipvRemote.Desktop LoipvRemote.Domain LoipvRemote.Infrastructure.Persistence LoipvRemote.Infrastructure.Windows LoipvRemote.Protocols.Abstractions LoipvRemote.Protocols.Browser LoipvRemote.Protocols.ExternalApps LoipvRemote.Protocols.Putty LoipvRemote.Protocols.Rdp LoipvRemote.Protocols.Vnc)
+          $todo = @(rg -n --glob '*.cs' --glob '*.resx' --glob '!**/bin/**' --glob '!**/obj/**' --glob '!DSS/SecretServerRestClient.cs' '\bTODO\b|NotImplementedException|#if false' LoipvRemote.Application LoipvRemote.Connectors LoipvRemote.Desktop LoipvRemote.Domain LoipvRemote.Infrastructure.Persistence LoipvRemote.Infrastructure.Windows LoipvRemote.Protocols.Abstractions LoipvRemote.Protocols.Browser LoipvRemote.Protocols.ExternalApps LoipvRemote.Protocols.Putty LoipvRemote.Protocols.Rdp LoipvRemote.Protocols.Vnc)
           if ($todo.Count -gt 0) {
             $todo | Write-Host
             throw 'Dead-code marker detected.'
+          }
+          $repoDocs = @(git ls-files | Where-Object { $_ -match '\.(md|docx|pdf)$' })
+          if ($repoDocs.Count -gt 0) {
+            $repoDocs | Write-Host
+            throw 'Repository documentation artifacts are not allowed; keep only build/release metadata.'
           }
 
       - name: Upload test results

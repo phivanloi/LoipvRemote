@@ -29,9 +29,19 @@ namespace LoipvRemoteTests
             #else
             "";
             #endif
-            var path = Path.GetDirectoryName(sourceFilePath);
-            var filePath = $"{path}\\..\\LoipvRemote.Desktop\\bin\\x64\\{debugOrRelease}{normalOrPortable}\\LoipvRemote.exe";
-            return filePath;
+            string? testsDirectory = Path.GetDirectoryName(sourceFilePath);
+            Assert.That(testsDirectory, Is.Not.Null.And.Not.Empty);
+
+            string desktopBinDirectory = Path.GetFullPath(Path.Combine(
+                testsDirectory!, "..", "LoipvRemote.Desktop", "bin"));
+            string directOutput = Path.Combine(desktopBinDirectory, debugOrRelease + normalOrPortable, "LoipvRemote.exe");
+            if (File.Exists(directOutput))
+                return directOutput;
+
+            string platformOutput = Path.Combine(desktopBinDirectory, "x64", debugOrRelease + normalOrPortable, "LoipvRemote.exe");
+            Assert.That(File.Exists(platformOutput), Is.True,
+                $"Expected the desktop executable at '{directOutput}' or '{platformOutput}'. Build the desktop project before running this binary test.");
+            return platformOutput;
         }
 
         private bool IsLargeAware(string file)

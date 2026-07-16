@@ -6,6 +6,23 @@
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisMode>Recommended</AnalysisMode>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
-    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <!-- Every production module enforces a warning-clean contract. -->
+    <TreatWarningsAsErrors Condition="'$(MSBuildProjectName)' == 'LoipvRemote.Application' Or
+                                      '$(MSBuildProjectName)' == 'LoipvRemote.Domain' Or
+                                      '$(MSBuildProjectName)' == 'LoipvRemote.Connectors' Or
+                                      '$(MSBuildProjectName)' == 'LoipvRemote.Infrastructure.Windows' Or
+                                      '$(MSBuildProjectName)' == 'LoipvRemote.Infrastructure.Persistence' Or
+                                      '$(MSBuildProjectName)' == 'LoipvRemote.Protocols.Abstractions' Or
+                                      '$(MSBuildProjectName)' == 'LoipvRemote.Protocols.Browser' Or
+                                      '$(MSBuildProjectName)' == 'LoipvRemote.Protocols.ExternalApps' Or
+                                      '$(MSBuildProjectName)' == 'LoipvRemote.Protocols.Putty' Or
+                                      '$(MSBuildProjectName)' == 'LoipvRemote.Protocols.Rdp' Or
+                                      '$(MSBuildProjectName)' == 'LoipvRemote.Protocols.Vnc' Or
+                                      '$(MSBuildProjectName)' == 'LoipvRemote.Desktop'">true</TreatWarningsAsErrors>
+    <TreatWarningsAsErrors Condition="'$(TreatWarningsAsErrors)' == ''">false</TreatWarningsAsErrors>
+    <!-- Keep nullable compiler diagnostics explicit for the WinForms shell. -->
+    <WarningsAsErrors Condition="'$(MSBuildProjectName)' == 'LoipvRemote.Desktop'">
+      CS0169;CS8600;CS8601;CS8602;CS8603;CS8604;CS8605;CS8618;CS8625;CS8764;CS8765;CS8777
+    </WarningsAsErrors>
   </PropertyGroup>
 </Project>

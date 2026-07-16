@@ -2371,9 +2371,6 @@ LoipvRemoteを終了してインストールを開始します</value>
   <data name="RunElevated" xml:space="preserve">
     <value>管理者権限で実行</value>
   </data>
-  <data name="SaveConnectionsAfterEveryEdit" xml:space="preserve">
-    <value>編集のたびに接続を保存</value>
-  </data>
   <data name="SaveConnectionsOnExit" xml:space="preserve">
     <value>終了時に接続を保存</value>
   </data>

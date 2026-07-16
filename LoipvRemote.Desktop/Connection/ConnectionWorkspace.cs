@@ -31,7 +31,7 @@ namespace LoipvRemote.Connection
     [SupportedOSPlatform("windows")]
     public sealed class ConnectionWorkspace(
         PuttySessionsManager puttySessionsManager,
-        ConnectionDefinitionPersistenceRuntime definitionRuntime,
+        ConnectionStoreConfigurationService configurationService,
         IConnectionStoreOptionsProvider optionsProvider,
         IStringSecretStore secretStore,
         MessageCollector messageCollector,
@@ -39,9 +39,8 @@ namespace LoipvRemote.Connection
         Action<bool>? reloadConnections = null) : IConnectionTreeWorkspace
     {
         private const int AsyncSaveCoalesceDelayMilliseconds = 75;
-        private static readonly object SaveLock = new();
         private readonly PuttySessionsManager _puttySessionsManager = puttySessionsManager ?? throw new ArgumentNullException(nameof(puttySessionsManager));
-        private readonly ConnectionDefinitionPersistenceRuntime _definitionRuntime = definitionRuntime ?? throw new ArgumentNullException(nameof(definitionRuntime));
+        private readonly ConnectionStoreConfigurationService _configurationService = configurationService ?? throw new ArgumentNullException(nameof(configurationService));
         private readonly IConnectionStoreOptionsProvider _optionsProvider = optionsProvider ?? throw new ArgumentNullException(nameof(optionsProvider));
         private readonly IStringSecretStore _secretStore = secretStore ?? throw new ArgumentNullException(nameof(secretStore));
         private readonly MessageCollector _messageCollector = messageCollector ?? throw new ArgumentNullException(nameof(messageCollector));
@@ -58,18 +57,16 @@ namespace LoipvRemote.Connection
         public string ConnectionFileName { get; private set; } = string.Empty;
         public RemoteConnectionsSyncronizer? RemoteConnectionsSyncronizer { get; set; }
         public DateTime LastSqlUpdate { get; set; }
-		public DateTime LastFileUpdate { get; set; }
+        public DateTime LastFileUpdate { get; set; }
 
         public ConnectionTreeModel ConnectionTreeModel { get; private set; } = new();
 
-        public string GetDatabaseRevision()
+        public async Task<string> GetDatabaseRevisionAsync(CancellationToken cancellationToken = default)
         {
             ConnectionDefinitionStoreOptions options = _optionsProvider.GetOptions(useDatabase: true, connectionFileName: string.Empty);
-            ConnectionTreeDefinition definition = Task.Run(
-                    () => _definitionRuntime.LoadAsync(options),
-                    CancellationToken.None)
-                .GetAwaiter()
-                .GetResult();
+            ConnectionTreeDefinition definition = await _configurationService
+                .LoadAsync(options, cancellationToken)
+                .ConfigureAwait(false);
 
             string payload = JsonSerializer.Serialize(new
             {
@@ -104,15 +101,15 @@ namespace LoipvRemote.Connection
             return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(payload)));
         }
 
-        public void NewConnectionsFile(string filename)
+        public async Task NewConnectionsFileAsync(string filename, CancellationToken cancellationToken = default)
         {
             try
             {
                 filename.ThrowIfNullOrEmpty(nameof(filename));
                 ConnectionTreeModel newConnectionsModel = new();
                 newConnectionsModel.AddRootNode(new RootNodeInfo(RootNodeType.Connection));
-                SaveConnections(newConnectionsModel, false, new SaveFilter(), filename, true);
-                LoadConnections(false, false, filename);
+                await SaveConnectionsAsync(newConnectionsModel, false, new SaveFilter(), filename, true, cancellationToken: cancellationToken);
+                await LoadConnectionsAsync(false, false, filename, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -148,7 +145,7 @@ namespace LoipvRemote.Connection
                 newConnectionInfo.CopyFrom(DefaultConnectionInfo.Instance);
 
                 newConnectionInfo.Name = Properties.OptionsTabsPanelsPage.Default.IdentifyQuickConnectTabs
-                    ? string.Format(CultureInfo.CurrentCulture, Language.Quick, uriBuilder.Host)
+                    ? FormatText(Language.Quick, uriBuilder.Host)
                     : uriBuilder.Host;
 
                 newConnectionInfo.Protocol = protocol;
@@ -185,12 +182,12 @@ namespace LoipvRemote.Connection
         /// <param name="useDatabase"></param>
         /// <param name="import"></param>
         /// <param name="connectionFileName"></param>
-        public void LoadConnections(bool useDatabase, bool import, string connectionFileName)
+        public async Task LoadConnectionsAsync(bool useDatabase, bool import, string connectionFileName, CancellationToken cancellationToken = default)
         {
             ConnectionTreeModel oldConnectionTreeModel = ConnectionTreeModel;
             bool oldIsUsingDatabaseValue = UsingDatabase;
 
-            ConnectionTreeModel newConnectionTreeModel = LoadFromStore(useDatabase, connectionFileName);
+            ConnectionTreeModel newConnectionTreeModel = await LoadFromStoreAsync(useDatabase, connectionFileName, cancellationToken);
 
             if (useDatabase)
                 LastSqlUpdate = DateTime.Now.ToUniversalTime();
@@ -227,8 +224,8 @@ namespace LoipvRemote.Connection
         }
 
         /// <summary>
-        /// When turned on, calls to <see cref="SaveConnections()"/> or
-        /// <see cref="SaveConnectionsAsync"/> will not immediately execute.
+        /// When turned on, calls to <see cref="SaveConnectionsAsync(CancellationToken)"/> or
+        /// <see cref="RequestSave"/> will not immediately execute.
         /// Instead, they will be deferred until <see cref="EndBatchingSaves"/>
         /// is called.
         /// </summary>
@@ -238,8 +235,7 @@ namespace LoipvRemote.Connection
         }
 
         /// <summary>
-        /// Immediately executes a single <see cref="SaveConnections()"/> or
-        /// <see cref="SaveConnectionsAsync"/> if one has been requested
+        /// Requests one save if a save has been requested
         /// since calling <see cref="BeginBatchingSaves"/>.
         /// </summary>
         public void EndBatchingSaves()
@@ -247,22 +243,21 @@ namespace LoipvRemote.Connection
             _batchingSaves = false;
 
             if (_saveAsyncRequested)
-                SaveConnectionsAsync();
+                RequestSave();
             else if (_saveRequested)
-                SaveConnections();
+                RequestSave();
         }
 
-		/// <summary>
-		/// All calls to <see cref="SaveConnections()"/> or <see cref="SaveConnectionsAsync"/>
-		/// will be deferred until the returned <see cref="DisposableAction"/> is disposed.
-		/// Once disposed, this will immediately executes a single <see cref="SaveConnections()"/>
-		/// or <see cref="SaveConnectionsAsync"/> if one has been requested.
-		/// Place this call in a 'using' block to represent a batched saving context.
-		/// </summary>
-		/// <returns></returns>
-		public IDisposable BatchedSavingContext()
+        /// <summary>
+        /// All calls to <see cref="SaveConnectionsAsync(CancellationToken)"/> or <see cref="RequestSave"/>
+        /// will be deferred until the returned <see cref="DisposableAction"/> is disposed.
+        /// Once disposed, this will request one save if one has been requested.
+        /// Place this call in a 'using' block to represent a batched saving context.
+        /// </summary>
+        /// <returns></returns>
+        public IDisposable BatchedSavingContext()
         {
-			return new DisposableAction(BeginBatchingSaves, EndBatchingSaves);
+            return new DisposableAction(BeginBatchingSaves, EndBatchingSaves);
         }
 
         public void DisableRemoteSynchronization() => RemoteConnectionsSyncronizer?.Disable();
@@ -273,9 +268,9 @@ namespace LoipvRemote.Connection
         /// Saves the currently loaded <see cref="ConnectionTreeModel"/> with
         /// no <see cref="SaveFilter"/>.
         /// </summary>
-        public void SaveConnections()
+        public Task SaveConnectionsAsync(CancellationToken cancellationToken = default)
         {
-            SaveConnections(ConnectionTreeModel, UsingDatabase, new SaveFilter(), ConnectionFileName);
+            return SaveConnectionsAsync(ConnectionTreeModel, UsingDatabase, new SaveFilter(), ConnectionFileName, cancellationToken: cancellationToken);
         }
 
         /// <summary>
@@ -291,7 +286,7 @@ namespace LoipvRemote.Connection
         /// Optional. The name of the property that triggered
         /// this save.
         /// </param>
-        public void SaveConnections(ConnectionTreeModel connectionTreeModel, bool useDatabase, SaveFilter saveFilter, string connectionFileName, bool forceSave = false, string propertyNameTrigger = "")
+        public async Task SaveConnectionsAsync(ConnectionTreeModel connectionTreeModel, bool useDatabase, SaveFilter saveFilter, string connectionFileName, bool forceSave = false, string propertyNameTrigger = "", CancellationToken cancellationToken = default)
         {
             if (connectionTreeModel == null)
                 return;
@@ -307,13 +302,16 @@ namespace LoipvRemote.Connection
 
             try
             {
-                Mutex? fileSaveMutex = null;
-                bool ownsFileSaveMutex = false;
+                Semaphore? fileSaveSemaphore = null;
+                bool ownsFileSaveSemaphore = false;
                 if (!useDatabase)
                 {
-                    fileSaveMutex = CreateFileSaveMutex(connectionFileName);
-                    ownsFileSaveMutex = fileSaveMutex.WaitOne(TimeSpan.FromSeconds(10));
-                    if (!ownsFileSaveMutex)
+                    Semaphore semaphore = CreateFileSaveSemaphore(connectionFileName);
+                    fileSaveSemaphore = semaphore;
+                    ownsFileSaveSemaphore = await Task.Run(
+                        () => semaphore.WaitOne(TimeSpan.FromSeconds(10)),
+                        cancellationToken).ConfigureAwait(false);
+                    if (!ownsFileSaveSemaphore)
                         throw new TimeoutException($"Timed out waiting to save connection file: {connectionFileName}");
                 }
 
@@ -328,32 +326,32 @@ namespace LoipvRemote.Connection
                         return;
                     }
 
-                _messageCollector.AddMessage(MessageClass.InformationMsg, "Saving connections...", onlyLog: true);
-                RemoteConnectionsSyncronizer?.Disable();
+                    _messageCollector.AddMessage(MessageClass.InformationMsg, "Saving connections...", onlyLog: true);
+                    RemoteConnectionsSyncronizer?.Disable();
 
-                bool previouslyUsingDatabase = UsingDatabase;
+                    bool previouslyUsingDatabase = UsingDatabase;
 
-                SaveToStore(useDatabase, connectionFileName, connectionTreeModel);
+                    await SaveToStoreAsync(useDatabase, connectionFileName, connectionTreeModel, cancellationToken).ConfigureAwait(false);
 
-                if (UsingDatabase)
-                    LastSqlUpdate = DateTime.Now.ToUniversalTime();
+                    if (UsingDatabase)
+                        LastSqlUpdate = DateTime.Now.ToUniversalTime();
 
-                UsingDatabase = useDatabase;
-                ConnectionFileName = connectionFileName;
-                _lastFileContentHash = !useDatabase ? ComputeFileHash(connectionFileName) : string.Empty;
-                RaiseConnectionsSavedEvent(connectionTreeModel, previouslyUsingDatabase, UsingDatabase, connectionFileName);
-                _messageCollector.AddMessage(MessageClass.InformationMsg, "Successfully saved connections");
+                    UsingDatabase = useDatabase;
+                    ConnectionFileName = connectionFileName;
+                    _lastFileContentHash = !useDatabase ? ComputeFileHash(connectionFileName) : string.Empty;
+                    RaiseConnectionsSavedEvent(connectionTreeModel, previouslyUsingDatabase, UsingDatabase, connectionFileName);
+                    _messageCollector.AddMessage(MessageClass.InformationMsg, "Successfully saved connections");
                 }
                 finally
                 {
-                    if (ownsFileSaveMutex)
-                        fileSaveMutex?.ReleaseMutex();
-                    fileSaveMutex?.Dispose();
+                    if (ownsFileSaveSemaphore)
+                        fileSaveSemaphore?.Release();
+                    fileSaveSemaphore?.Dispose();
                 }
             }
             catch (Exception ex)
             {
-                _messageCollector.AddExceptionMessage(string.Format(CultureInfo.CurrentCulture, Language.ConnectionsFileCouldNotSaveAs, connectionFileName), ex, logOnly: false);
+                _messageCollector.AddExceptionMessage(FormatText(Language.ConnectionsFileCouldNotSaveAs, connectionFileName), ex, logOnly: false);
             }
             finally
             {
@@ -368,7 +366,7 @@ namespace LoipvRemote.Connection
         /// Optional. The name of the property that triggered
         /// this save.
         /// </param>
-        public void SaveConnectionsAsync(string propertyNameTrigger = "")
+        public void RequestSave(string propertyNameTrigger = "")
         {
             if (_batchingSaves)
             {
@@ -379,23 +377,18 @@ namespace LoipvRemote.Connection
             if (!_asyncSaveRequestQueue.Queue(propertyNameTrigger))
                 return;
 
-            Thread t = new(ProcessAsyncSaveRequests);
-            t.SetApartmentState(ApartmentState.STA);
-            t.Start();
+            _ = ProcessAsyncSaveRequestsAsync();
         }
 
-        private void ProcessAsyncSaveRequests()
+        private async Task ProcessAsyncSaveRequestsAsync()
         {
             while (true)
             {
-                Thread.Sleep(AsyncSaveCoalesceDelayMilliseconds);
+                await Task.Delay(AsyncSaveCoalesceDelayMilliseconds).ConfigureAwait(false);
                 if (_asyncSaveRequestQueue.TryTake(out string propertyNameTrigger))
                 {
-                    lock (SaveLock)
-                    {
-                        SaveConnections(ConnectionTreeModel, UsingDatabase, new SaveFilter(), ConnectionFileName,
-                            propertyNameTrigger: propertyNameTrigger);
-                    }
+                    await SaveConnectionsAsync(ConnectionTreeModel, UsingDatabase, new SaveFilter(), ConnectionFileName,
+                        propertyNameTrigger: propertyNameTrigger).ConfigureAwait(false);
                 }
 
                 if (!_asyncSaveRequestQueue.CompleteSaveAndHasPendingRequest())
@@ -419,36 +412,28 @@ namespace LoipvRemote.Connection
             return Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(fileName)));
         }
 
-        private static Mutex CreateFileSaveMutex(string connectionFileName)
+        private static Semaphore CreateFileSaveSemaphore(string connectionFileName)
         {
-            string mutexName = "LoipvRemote_ConnectionFile_" + Convert.ToHexString(
+            string semaphoreName = "LoipvRemote_ConnectionFile_" + Convert.ToHexString(
                 SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(Path.GetFullPath(connectionFileName))));
-            return new Mutex(false, mutexName);
+            return new Semaphore(1, 1, semaphoreName);
         }
 
-        private ConnectionTreeModel LoadFromStore(bool useDatabase, string connectionFileName)
+        private async Task<ConnectionTreeModel> LoadFromStoreAsync(bool useDatabase, string connectionFileName, CancellationToken cancellationToken)
         {
             ConnectionDefinitionStoreOptions options = _optionsProvider.GetOptions(useDatabase, connectionFileName);
-            ConnectionTreeDefinition definition = Task.Run(
-                    () => _definitionRuntime.LoadAsync(options),
-                    CancellationToken.None)
-                .GetAwaiter()
-                .GetResult();
+            ConnectionTreeDefinition definition = await _configurationService.LoadAsync(options, cancellationToken).ConfigureAwait(true);
             return ConnectionDefinitionMapper.ToDesktopTree(definition, UnprotectConnectionSecret);
         }
 
-        private void SaveToStore(bool useDatabase, string connectionFileName, ConnectionTreeModel tree)
+        private async Task SaveToStoreAsync(bool useDatabase, string connectionFileName, ConnectionTreeModel tree, CancellationToken cancellationToken)
         {
             ConnectionDefinitionStoreOptions options = _optionsProvider.GetOptions(useDatabase, connectionFileName);
             ConnectionTreeDefinition definition = ConnectionDefinitionMapper.ToDomainTree(
                 tree.RootNodes,
                 ProtectConnectionSecret,
                 _externalApplicationResolver);
-            Task.Run(
-                    () => _definitionRuntime.SaveAsync(options, definition, CancellationToken.None),
-                    CancellationToken.None)
-                .GetAwaiter()
-                .GetResult();
+            await _configurationService.SaveAsync(options, definition, cancellationToken).ConfigureAwait(false);
         }
 
         private string ProtectConnectionSecret(string connectionId, string propertyName, string plaintext) =>
@@ -485,12 +470,12 @@ namespace LoipvRemote.Connection
             }
         }
 
-        public string GetDefaultStartupConnectionFileName()
+        public static string GetDefaultStartupConnectionFileName()
         {
             return ApplicationEdition.IsPortable ? GetDefaultStartupConnectionFileNamePortableEdition() : GetDefaultStartupConnectionFileNameNormalEdition();
         }
 
-        private void UpdateCustomConsPathSetting(string filename)
+        private static void UpdateCustomConsPathSetting(string filename)
         {
             if (filename == GetDefaultStartupConnectionFileName())
             {
@@ -503,7 +488,7 @@ namespace LoipvRemote.Connection
             }
         }
 
-        private string GetDefaultStartupConnectionFileNameNormalEdition()
+        private static string GetDefaultStartupConnectionFileNameNormalEdition()
         {
             string appDataPath = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -520,16 +505,16 @@ namespace LoipvRemote.Connection
         #region Events
 
         public event EventHandler<ConnectionsLoadedEventArgs>? ConnectionsLoaded;
-        public event EventHandler<ConnectionsSavedEventArgs>? ConnectionsSaved;
+        public event EventHandler<ConnectionsSavedEvent>? ConnectionsSaved;
 
-        private void RaiseConnectionsLoadedEvent(Optional<ConnectionTreeModel> previousTreeModel, ConnectionTreeModel newTreeModel, bool previousSourceWasDatabase, bool newSourceIsDatabase, string newSourcePath)
+        private void RaiseConnectionsLoadedEvent(OptionalValue<ConnectionTreeModel> previousTreeModel, ConnectionTreeModel newTreeModel, bool previousSourceWasDatabase, bool newSourceIsDatabase, string newSourcePath)
         {
             ConnectionsLoaded?.Invoke(this, new ConnectionsLoadedEventArgs(previousTreeModel, newTreeModel, previousSourceWasDatabase, newSourceIsDatabase, newSourcePath));
         }
 
         private void RaiseConnectionsSavedEvent(ConnectionTreeModel modelThatWasSaved, bool previouslyUsingDatabase, bool usingDatabase, string connectionFileName)
         {
-            ConnectionsSaved?.Invoke(this, new ConnectionsSavedEventArgs(modelThatWasSaved, previouslyUsingDatabase, usingDatabase, connectionFileName));
+            ConnectionsSaved?.Invoke(this, new ConnectionsSavedEvent(modelThatWasSaved, previouslyUsingDatabase, usingDatabase, connectionFileName));
         }
 
         #endregion

@@ -21,7 +21,7 @@ namespace LoipvRemote.Container
         public bool IsExpanded
         {
             get => _isExpanded;
-            set => SetField(ref _isExpanded, value, "IsExpanded");
+            set => SetField(ref _isExpanded, value, nameof(IsExpanded));
         }
 
         [Browsable(false)]
@@ -229,7 +229,7 @@ namespace LoipvRemote.Container
             return childList;
         }
 
-        private IEnumerable<ConnectionInfo> GetRecursiveChildList(ContainerInfo container)
+        private static List<ConnectionInfo> GetRecursiveChildList(ContainerInfo container)
         {
             List<ConnectionInfo> childList = new();
             foreach (ConnectionInfo child in container.Children)
@@ -285,7 +285,7 @@ namespace LoipvRemote.Container
             }
         }
 
-        private IEnumerable<ConnectionInfo> GetRecursiveFavoritChildList(ContainerInfo container)
+        private static List<ConnectionInfo> GetRecursiveFavoritChildList(ContainerInfo container)
         {
             List<ConnectionInfo> childList = new();
             foreach (ConnectionInfo child in container.Children)

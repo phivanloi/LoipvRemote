@@ -10,17 +10,15 @@ using LoipvRemote.Tree.Root;
 namespace LoipvRemote.Config.Putty
 {
     [SupportedOSPlatform("windows")]
-    public class PuttySessionsManager
+    public class PuttySessionsManager : IDisposable
     {
-        public static PuttySessionsManager Instance { get; } = new PuttySessionsManager();
-
         private readonly List<AbstractPuttySessionsProvider> _providers = [];
 
         public IEnumerable<AbstractPuttySessionsProvider> Providers => _providers;
 
         public List<RootPuttySessionsNodeInfo> RootPuttySessionsNodes { get; } = [];
 
-        private PuttySessionsManager()
+        public PuttySessionsManager()
         {
             AddProvider(new PuttySessionsRegistryProvider());
         }
@@ -94,7 +92,7 @@ namespace LoipvRemote.Config.Putty
                                                                                              providerToRemove));
         }
 
-        public void PuttySessionChanged(object sender, PuttySessionChangedEventArgs e)
+        public void PuttySessionChanged(object? sender, PuttySessionChangedEventArgs e)
         {
             AddSessions();
         }
@@ -103,7 +101,7 @@ namespace LoipvRemote.Config.Putty
 
         #region Private Methods
 
-        private string[] GetSessionNames(bool raw = false)
+        public string[] GetSessionNames(bool raw = false)
         {
             List<string> sessionNames = new();
             foreach (AbstractPuttySessionsProvider provider in Providers)
@@ -119,7 +117,7 @@ namespace LoipvRemote.Config.Putty
             return sessionNames.ToArray();
         }
 
-        private bool IsProviderEnabled(AbstractPuttySessionsProvider puttySessionsProvider)
+        private static bool IsProviderEnabled(AbstractPuttySessionsProvider puttySessionsProvider)
         {
             bool enabled = true;
             if (!(puttySessionsProvider is PuttySessionsRegistryProvider)) enabled = false;
@@ -133,7 +131,10 @@ namespace LoipvRemote.Config.Putty
 
         public class SessionList : StringConverter
         {
-            public static string[] Names => Instance.GetSessionNames();
+            // PropertyGrid creates type converters itself, outside the desktop
+            // composition root. Query an ephemeral catalog rather than sharing
+            // the host-owned watcher/runtime singleton.
+            public static string[] Names => new PuttySessionsManager().GetSessionNames();
 
             public override StandardValuesCollection GetStandardValues(ITypeDescriptorContext? context)
             {
@@ -155,7 +156,19 @@ namespace LoipvRemote.Config.Putty
 
         public event NotifyCollectionChangedEventHandler? PuttySessionsCollectionChanged;
 
-        protected void RaisePuttySessionCollectionChangedEvent(object sender, NotifyCollectionChangedEventArgs args)
+        public void Dispose()
+        {
+            StopWatcher();
+            foreach (AbstractPuttySessionsProvider provider in _providers)
+            {
+                if (provider is IDisposable disposable)
+                    disposable.Dispose();
+            }
+
+            GC.SuppressFinalize(this);
+        }
+
+        protected void RaisePuttySessionCollectionChangedEvent(object? sender, NotifyCollectionChangedEventArgs args)
         {
             PuttySessionsCollectionChanged?.Invoke(sender, args);
         }

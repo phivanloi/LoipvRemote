@@ -23,7 +23,6 @@ public sealed class WindowsWindowActivationService : IWindowActivationService
 
     private static void ValidateHandle(nint windowHandle)
     {
-        if (windowHandle == nint.Zero)
-            throw new ArgumentOutOfRangeException(nameof(windowHandle));
+        ArgumentOutOfRangeException.ThrowIfEqual(windowHandle, nint.Zero);
     }
 }

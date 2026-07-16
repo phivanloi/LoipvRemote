@@ -24,18 +24,11 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             ApplyTheme();
             PageIcon = Resources.ImageConverter.GetImageAsIcon(Properties.Resources.ASPWebSite_16x);
 
-            /*
-             * Comments added: Jun 15, 2024
-             * These settings are not used on the settings page. It doesn't matter if they are set or not; nothing happens:
-             * 1) chkSaveConnectionsAfterEveryEdit: never used
-            */
-            chkSaveConnectionsAfterEveryEdit.Visible = false; // Temporary hide control, never used, added: Jun 15, 2024
-
             // Reload settings when page becomes visible to reflect any changes made outside the Options dialog
             VisibleChanged += ConnectionsPage_VisibleChanged;
         }
 
-        private void ConnectionsPage_VisibleChanged(object sender, EventArgs e)
+        private void ConnectionsPage_VisibleChanged(object? sender, EventArgs e)
         {
             if (Visible)
             {
@@ -92,16 +85,16 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             // Load ConfirmCloseConnection setting
             switch (Settings.Default.ConfirmCloseConnection)
             {
-                case (int)ConfirmCloseEnum.Never:
+                case (int)ConfirmCloseMode.Never:
                     radCloseWarnNever.Checked = true;
                     break;
-                case (int)ConfirmCloseEnum.Exit:
+                case (int)ConfirmCloseMode.Exit:
                     radCloseWarnExit.Checked = true;
                     break;
-                case (int)ConfirmCloseEnum.Multiple:
+                case (int)ConfirmCloseMode.Multiple:
                     radCloseWarnMultiple.Checked = true;
                     break;
-                case (int)ConfirmCloseEnum.All:
+                case (int)ConfirmCloseMode.All:
                     radCloseWarnAll.Checked = true;
                     break;
                 default:
@@ -109,19 +102,15 @@ namespace LoipvRemote.UI.Forms.OptionsPages
                     break;
             }
 
-            if (Properties.OptionsBackupPage.Default.SaveConnectionsFrequency == (int)ConnectionsBackupFrequencyEnum.Unassigned)
+            if (Properties.OptionsBackupPage.Default.SaveConnectionsFrequency == (int)ConnectionsBackupFrequency.Unassigned)
             {
-                if (Properties.OptionsBackupPage.Default.SaveConnectionsAfterEveryEdit)
+                if (Properties.OptionsBackupPage.Default.SaveConsOnExit)
                 {
-                    Properties.OptionsBackupPage.Default.SaveConnectionsFrequency = (int)ConnectionsBackupFrequencyEnum.OnEdit;
-                }
-                else if (Properties.OptionsBackupPage.Default.SaveConsOnExit)
-                {
-                    Properties.OptionsBackupPage.Default.SaveConnectionsFrequency = (int)ConnectionsBackupFrequencyEnum.OnExit;
+                    Properties.OptionsBackupPage.Default.SaveConnectionsFrequency = (int)ConnectionsBackupFrequency.OnExit;
                 }
                 else
                 {
-                    Properties.OptionsBackupPage.Default.SaveConnectionsFrequency = (int)ConnectionsBackupFrequencyEnum.Never;
+                    Properties.OptionsBackupPage.Default.SaveConnectionsFrequency = (int)ConnectionsBackupFrequency.Never;
                 }
             }
         }
@@ -153,19 +142,19 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             // Save ConfirmCloseConnection setting
             if (radCloseWarnNever.Checked)
             {
-                Settings.Default.ConfirmCloseConnection = (int)ConfirmCloseEnum.Never;
+                Settings.Default.ConfirmCloseConnection = (int)ConfirmCloseMode.Never;
             }
             else if (radCloseWarnExit.Checked)
             {
-                Settings.Default.ConfirmCloseConnection = (int)ConfirmCloseEnum.Exit;
+                Settings.Default.ConfirmCloseConnection = (int)ConfirmCloseMode.Exit;
             }
             else if (radCloseWarnMultiple.Checked)
             {
-                Settings.Default.ConfirmCloseConnection = (int)ConfirmCloseEnum.Multiple;
+                Settings.Default.ConfirmCloseConnection = (int)ConfirmCloseMode.Multiple;
             }
             else if (radCloseWarnAll.Checked)
             {
-                Settings.Default.ConfirmCloseConnection = (int)ConfirmCloseEnum.All;
+                Settings.Default.ConfirmCloseConnection = (int)ConfirmCloseMode.All;
             }
         }
 
@@ -173,7 +162,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
         {
             Type settingsType = typeof(OptRegistryConnectionsPage);
             RegistryLoader.RegistrySettings.TryGetValue(settingsType, out var settings);
-            pageRegSettingsInstance = settings as OptRegistryConnectionsPage;
+            pageRegSettingsInstance = settings as OptRegistryConnectionsPage ?? new OptRegistryConnectionsPage();
 
             // If registry settings don't exist, create a default instance to prevent null reference exceptions
             if (pageRegSettingsInstance == null)

@@ -10,6 +10,7 @@ namespace LoipvRemote.Config.Settings.Registry
     [SupportedOSPlatform("windows")]
     public sealed partial class OptRegistryCredentialsPage
     {
+        private static readonly string[] s_credentialModes = ["noinfo", "windows", "custom"];
         #region option page credential registry settings
 
         /// <summary>
@@ -71,7 +72,7 @@ namespace LoipvRemote.Config.Settings.Registry
 
         public OptRegistryCredentialsPage()
         {
-            IRegistryRead regValueUtility = new WinRegistry();
+            WinRegistry regValueUtility = new();
             RegistryHive hive = WindowsRegistryInfo.Hive;
             string subKey = WindowsRegistryInfo.CredentialOptions;
 
@@ -94,12 +95,7 @@ namespace LoipvRemote.Config.Settings.Registry
         /// </summary>
         private void SetupValidation()
         {
-            UseCredentials.SetValidation(
-                new string[] {
-                    "noinfo",
-                    "windows",
-                    "custom"
-                });
+            UseCredentials.SetValidation(s_credentialModes);
         }
 
         /// <summary>
@@ -108,7 +104,7 @@ namespace LoipvRemote.Config.Settings.Registry
         private void Apply()
         {
             // UseCredentials musst be present in registry.
-            if (! UseCredentials.IsSet)
+            if (!UseCredentials.IsSet)
                 return;
             ApplyUseCredentials();
 
@@ -140,7 +136,7 @@ namespace LoipvRemote.Config.Settings.Registry
         {
             if (DefaultPassword.IsSet && DefaultPasswordEnabled)
             {
-                // Registry-provided legacy ciphertext is deliberately unsupported. DPAPI secrets
+                // Registry-provided ciphertext is deliberately unsupported. DPAPI secrets
                 // are scoped to the current Windows user and must be entered through the UI.
                 DefaultPassword.Clear();
             }
@@ -154,7 +150,7 @@ namespace LoipvRemote.Config.Settings.Registry
         {
             if (DefaultDomain.IsSet)
                 Properties.OptionsCredentialsPage.Default.DefaultDomain = DefaultDomain.Value;
-         }
+        }
 
         private void ApplyUserViaAPIDefault()
         {

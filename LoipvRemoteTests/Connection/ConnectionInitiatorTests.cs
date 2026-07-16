@@ -5,6 +5,7 @@ using LoipvRemote.App.Composition;
 using LoipvRemote.Connection;
 using LoipvRemote.UseCases.Configuration;
 using LoipvRemote.Protocols.Abstractions;
+using LoipvRemote.UseCases.Sessions;
 using NSubstitute;
 using LoipvRemote.Connectors.Abstractions;
 using LoipvRemoteTests.TestHelpers;
@@ -29,14 +30,19 @@ namespace LoipvRemoteTests.Connection
             RuntimeState runtimeState = new() { WindowList = [] };
             ConnectionWorkspaceAdapter connectionWorkspace = new();
             ExternalToolsService externalToolsService = new();
+            IProtocolFactory protocolFactory = Substitute.For<IProtocolFactory>();
+            SessionLifecycleCoordinator lifecycleCoordinator = new();
             _connectionInitiator = new ConnectionInitiator(
-                Substitute.For<IProtocolFactory>(),
+                protocolFactory,
                 externalToolsService,
                 runtimeState,
+                null,
                 _messageCollector,
                 connectionWorkspace,
                 _ => null,
-                new PanelAdder(runtimeState, _messageCollector, connectionWorkspace));
+                new PanelAdder(runtimeState, _messageCollector, connectionWorkspace),
+                new ConnectionSessionOrchestrator(protocolFactory, lifecycleCoordinator),
+                lifecycleCoordinator);
             _messageCollector.ClearMessages();
         }
 
@@ -47,7 +53,7 @@ namespace LoipvRemoteTests.Connection
         }
 
         [Test]
-        public void OpenConnection_WithEmptyHostname_AddsErrorMessage()
+        public async Task OpenConnection_WithEmptyHostname_AddsErrorMessage()
         {
             // Arrange
             var connectionInfo = new ConnectionInfo
@@ -58,7 +64,7 @@ namespace LoipvRemoteTests.Connection
             };
 
             // Act
-            _connectionInitiator.OpenConnection(connectionInfo);
+            await _connectionInitiator.OpenConnectionAsync(connectionInfo);
 
             // Assert - poll for message with timeout
             var foundMessage = WaitForMessage(MessageClass.ErrorMsg, timeoutMs: 1000);
@@ -67,7 +73,7 @@ namespace LoipvRemoteTests.Connection
         }
 
         [Test]
-        public void OpenConnection_WithNullHostname_AddsErrorMessage()
+        public async Task OpenConnection_WithNullHostname_AddsErrorMessage()
         {
             // Arrange
             var connectionInfo = new ConnectionInfo
@@ -78,7 +84,7 @@ namespace LoipvRemoteTests.Connection
             };
 
             // Act
-            _connectionInitiator.OpenConnection(connectionInfo);
+            await _connectionInitiator.OpenConnectionAsync(connectionInfo);
 
             // Assert - poll for message with timeout
             var foundMessage = WaitForMessage(MessageClass.ErrorMsg, timeoutMs: 1000);
@@ -87,7 +93,7 @@ namespace LoipvRemoteTests.Connection
         }
 
         [Test]
-        public void OpenConnection_WithValidHostname_DoesNotAddHostnameError()
+        public async Task OpenConnection_WithValidHostname_DoesNotAddHostnameError()
         {
             // Arrange
             var connectionInfo = new ConnectionInfo
@@ -98,10 +104,7 @@ namespace LoipvRemoteTests.Connection
             };
 
             // Act
-            _connectionInitiator.OpenConnection(connectionInfo);
-
-            // Give a moment for any potential async operations
-            System.Threading.Thread.Sleep(200);
+            await _connectionInitiator.OpenConnectionAsync(connectionInfo);
 
             // Assert
             var hostnameErrors = _messageCollector.Messages
@@ -121,7 +124,7 @@ namespace LoipvRemoteTests.Connection
             while ((DateTime.Now - startTime).TotalMilliseconds < timeoutMs)
             {
                 var message = _messageCollector.Messages
-                    .FirstOrDefault(m => m.Class == messageClass);
+                    .FirstOrDefault(m => m.MessageClass == messageClass);
 
                 if (message != null)
                     return message;

@@ -125,7 +125,7 @@ namespace LoipvRemote.Connection.Monitoring
         private async Task<LinuxResourceSample> CollectAsync(CancellationToken cancellationToken)
         {
             EnsurePasswordAuthenticationAvailable();
-            SshClient client = GetOrConnectClient(cancellationToken);
+            SshClient client = await GetOrConnectClientAsync(cancellationToken).ConfigureAwait(false);
             using SshCommand command = client.CreateCommand(LinuxResourceProbe.Command);
             command.CommandTimeout = CommandTimeout;
             string output = await Task.Run(command.Execute, cancellationToken).ConfigureAwait(false);
@@ -135,51 +135,55 @@ namespace LoipvRemote.Connection.Monitoring
             return LinuxResourceSampleParser.Parse(output);
         }
 
-        private SshClient GetOrConnectClient(CancellationToken cancellationToken)
+        private async Task<SshClient> GetOrConnectClientAsync(CancellationToken cancellationToken)
         {
             lock (_sync)
             {
                 if (_client?.IsConnected == true) return _client;
+            }
 
-                DisconnectClient();
-                PublishStatus(new(RemoteResourceMonitorState.Connecting,
-                    RemoteResourceText.Get("RemoteResourceStatusConnecting", "Connecting SSH monitoring channel")));
-                Renci.SshNet.ConnectionInfo connectionInfo = new(
+            DisconnectClient();
+            PublishStatus(new(RemoteResourceMonitorState.Connecting,
+                RemoteResourceText.Get("RemoteResourceStatusConnecting", "Connecting SSH monitoring channel")));
+            Renci.SshNet.ConnectionInfo connectionInfo = new(
+                _connection.Hostname,
+                _connection.Port,
+                _connection.Username,
+                new PasswordAuthenticationMethod(_connection.Username, _connection.Password));
+            PuttyHostKeyTrustStore.PreferCachedHostKeyAlgorithms(connectionInfo, _connection.Hostname, _connection.Port);
+            SshClient client = new(connectionInfo);
+            bool hostKeyRejected = false;
+            client.HostKeyReceived += (_, eventArgs) =>
+            {
+                eventArgs.CanTrust = PuttyHostKeyTrustStore.IsTrusted(
                     _connection.Hostname,
                     _connection.Port,
-                    _connection.Username,
-                    new PasswordAuthenticationMethod(_connection.Username, _connection.Password));
-                PuttyHostKeyTrustStore.PreferCachedHostKeyAlgorithms(connectionInfo, _connection.Hostname, _connection.Port);
-                SshClient client = new(connectionInfo);
-                bool hostKeyRejected = false;
-                client.HostKeyReceived += (_, eventArgs) =>
-                {
-                    eventArgs.CanTrust = PuttyHostKeyTrustStore.IsTrusted(
-                        _connection.Hostname,
-                        _connection.Port,
-                        eventArgs.HostKeyName,
-                        eventArgs.HostKey);
-                    hostKeyRejected = !eventArgs.CanTrust;
-                };
+                    eventArgs.HostKeyName,
+                    eventArgs.HostKey);
+                hostKeyRejected = !eventArgs.CanTrust;
+            };
 
-                try
+            try
+            {
+                // SSH.NET exposes a synchronous Connect API. Keep it off the UI
+                // thread, but do not block the async lifecycle with GetResult().
+                await Task.Run(client.Connect, cancellationToken).ConfigureAwait(false);
+                lock (_sync)
                 {
-                    Task.Run(client.Connect, cancellationToken).GetAwaiter().GetResult();
+                    _client = client;
+                    return client;
                 }
-                catch
+            }
+            catch
+            {
+                if (hostKeyRejected)
                 {
-                    if (hostKeyRejected)
-                    {
-                        client.Dispose();
-                        throw new HostKeyNotTrustedException();
-                    }
-
                     client.Dispose();
-                    throw;
+                    throw new HostKeyNotTrustedException();
                 }
 
-                _client = client;
-                return client;
+                client.Dispose();
+                throw;
             }
         }
 

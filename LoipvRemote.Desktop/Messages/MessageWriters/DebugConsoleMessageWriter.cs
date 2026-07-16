@@ -6,7 +6,7 @@ namespace LoipvRemote.Messages.MessageWriters
     {
         public void Write(IMessage message)
         {
-            string textToPrint = $"{message.Class}: {message.Text}";
+            string textToPrint = $"{message.MessageClass}: {message.Text}";
             Debug.Print(textToPrint);
         }
     }

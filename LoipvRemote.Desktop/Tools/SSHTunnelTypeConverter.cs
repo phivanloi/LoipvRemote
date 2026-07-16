@@ -22,7 +22,7 @@ namespace LoipvRemote.Tools
         {
             get
             {
-                List<string> sshTunnelList = new() { string.Empty};
+                List<string> sshTunnelList = new() { string.Empty };
 
                 // Add a blank entry to signify that no external tool is selected
                 sshTunnelList.AddRange(GetSshConnectionNames(s_rootSource()));
@@ -31,7 +31,7 @@ namespace LoipvRemote.Tools
         }
 
         // recursively traverse the connection tree to find all ConnectionInfo s of type SSH
-        private static IEnumerable<string> GetSshConnectionNames(IEnumerable<ConnectionInfo> rootnodes)
+        private static List<string> GetSshConnectionNames(IEnumerable<ConnectionInfo> rootnodes)
         {
             List<string> result = new();
             foreach (ConnectionInfo node in rootnodes)

@@ -44,7 +44,7 @@ namespace LoipvRemote.Credential
             if (!(value is Guid)) return base.ConvertFrom(context, culture, value);
             ICredentialRecord[] matchedCredentials = s_source()
                                             .Where(record => record.Id.Equals(value)).ToArray();
-            return matchedCredentials.Any() ? matchedCredentials.First() : null;
+            return matchedCredentials.Length > 0 ? matchedCredentials[0] : null;
         }
     }
 }

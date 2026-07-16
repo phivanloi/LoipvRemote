@@ -148,6 +148,17 @@ namespace LoipvRemoteTests.Connection
             public void Focus() { }
             public void Close() => State = ProtocolSessionState.Closed;
             public void Dispose() { }
+            public ValueTask<bool> InitializeAsync(CancellationToken cancellationToken = default) => ValueTask.FromResult(Initialize());
+            public ValueTask<bool> ConnectAsync(CancellationToken cancellationToken = default) => ValueTask.FromResult(Connect());
+            public ValueTask DisconnectAsync(CancellationToken cancellationToken = default) { Disconnect(); return ValueTask.CompletedTask; }
+            public ValueTask CloseAsync(CancellationToken cancellationToken = default) { Close(); return ValueTask.CompletedTask; }
+            public ValueTask DisposeAsync() { Dispose(); return ValueTask.CompletedTask; }
+        }
+
+        [Test]
+        public void NewConnectionsUseTheLoipvRemoteIconByDefault()
+        {
+            Assert.That(_connectionInfo.Icon, Is.EqualTo(ConnectionIcon.LoipvRemoteIconName));
         }
 
     }

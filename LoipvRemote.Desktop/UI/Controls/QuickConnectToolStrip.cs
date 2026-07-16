@@ -20,7 +20,7 @@ namespace LoipvRemote.UI.Controls
     [SupportedOSPlatform("windows")]
     public class QuickConnectToolStrip : ToolStrip
     {
-        private IContainer components = null!;
+        private System.ComponentModel.Container? components;
         private ToolStripLabel _lblQuickConnect = null!;
         private ToolStripDropDownButton _btnConnections = null!;
         private MrngToolStripSplitButton _btnQuickConnect = null!;
@@ -210,7 +210,7 @@ namespace LoipvRemote.UI.Controls
                 }
 
                 _cmbQuickConnect.Add(connectionInfo);
-                DesktopShellRuntime.ConnectionInitiator.OpenConnection(connectionInfo, ConnectionInfo.Force.DoNotJump);
+                _ = DesktopShellRuntime.ConnectionInitiator.OpenConnectionAsync(connectionInfo, ConnectionInfo.Force.DoNotJump);
             }
             catch (Exception ex)
             {
@@ -225,7 +225,7 @@ namespace LoipvRemote.UI.Controls
 
         private void btnQuickConnect_DropDownItemClicked(object? sender, ToolStripItemClickedEventArgs e)
         {
-            SetQuickConnectProtocol(e.ClickedItem.Text);
+            SetQuickConnectProtocol(e.ClickedItem?.Text ?? string.Empty);
             if (string.IsNullOrEmpty(_cmbQuickConnect.Text))
                 _cmbQuickConnect.Focus();
             else
@@ -238,7 +238,7 @@ namespace LoipvRemote.UI.Controls
             _btnQuickConnect.Text = protocol;
             foreach (ToolStripMenuItem menuItem in _mnuQuickConnectProtocol.Items)
             {
-                menuItem.Checked = menuItem.Text.Equals(protocol);
+                menuItem.Checked = string.Equals(menuItem.Text, protocol, StringComparison.Ordinal);
             }
         }
 
@@ -266,7 +266,7 @@ namespace LoipvRemote.UI.Controls
 
             foreach (ContainerInfo node in rootNodes)
             {
-                foreach (ConnectionInfo containerInfo in DesktopShellRuntime.ConnectionTreeWorkspace.ConnectionTreeModel.GetRecursiveFavoriteChildList(node))
+                foreach (ConnectionInfo containerInfo in Tree.ConnectionTreeModel.GetRecursiveFavoriteChildList(node))
                 {
                     ToolStripMenuItem favoriteMenuItem = new()
                     {
@@ -285,7 +285,8 @@ namespace LoipvRemote.UI.Controls
         private void ConnectionsMenuItem_MouseUp(object? sender, MouseEventArgs e)
         {
             if (e.Button != MouseButtons.Left) return;
-            ToolStripMenuItem menuItem = (ToolStripMenuItem)sender;
+            if (sender is not ToolStripMenuItem menuItem)
+                return;
 
             switch (menuItem.Tag)
             {
@@ -295,7 +296,7 @@ namespace LoipvRemote.UI.Controls
                 case ContainerInfo _:
                     return;
                 case ConnectionInfo connectionInfo:
-                    DesktopShellRuntime.ConnectionInitiator.OpenConnection(connectionInfo);
+                    _ = DesktopShellRuntime.ConnectionInitiator.OpenConnectionAsync(connectionInfo);
                     break;
             }
         }

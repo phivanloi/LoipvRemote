@@ -19,7 +19,7 @@ namespace LoipvRemote.UI.Window
             //
             // btnImport
             //
-            this.btnImport._mice = MrngButton.MouseState.HOVER;
+            this.btnImport.MouseInteractionState = MrngButton.MouseState.HOVER;
             this.btnImport.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.btnImport.Location = new System.Drawing.Point(126, 345);
             this.btnImport.Name = "btnImport";
@@ -51,7 +51,7 @@ namespace LoipvRemote.UI.Window
             //
             // btnChangeDomain
             //
-            this.btnChangeDomain._mice = MrngButton.MouseState.HOVER;
+            this.btnChangeDomain.MouseInteractionState = MrngButton.MouseState.HOVER;
             this.btnChangeDomain.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.btnChangeDomain.Location = new System.Drawing.Point(422, 23);
             this.btnChangeDomain.Name = "btnChangeDomain";
@@ -74,11 +74,11 @@ namespace LoipvRemote.UI.Window
             this.activeDirectoryTree.SelectedNode = null;
             this.activeDirectoryTree.Size = new System.Drawing.Size(510, 285);
             this.activeDirectoryTree.TabIndex = 3;
-            this.activeDirectoryTree.AdPathChanged += new LoipvRemote.UI.Controls.MrngAdTree.AdPathChangedEventHandler(this.ActiveDirectoryTree_ADPathChanged);
+            this.activeDirectoryTree.AdPathChanged += new LoipvRemote.UI.Controls.MrngAdTree.AdPathChangedHandler(this.ActiveDirectoryTree_ADPathChanged);
             //
             // btnClose
             //
-            this.btnClose._mice = MrngButton.MouseState.HOVER;
+            this.btnClose.MouseInteractionState = MrngButton.MouseState.HOVER;
             this.btnClose.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.btnClose.Location = new System.Drawing.Point(422, 344);
             this.btnClose.Name = "btnClose";
@@ -90,7 +90,7 @@ namespace LoipvRemote.UI.Window
             //
             // chkSubOU
             //
-            this.chkSubOU._mice = MrngCheckBox.MouseState.HOVER;
+            this.chkSubOU.MouseInteractionState = MrngCheckBox.MouseState.HOVER;
             this.chkSubOU.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.chkSubOU.AutoSize = true;
             this.chkSubOU.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));

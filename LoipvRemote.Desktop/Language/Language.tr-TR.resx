@@ -1963,9 +1963,6 @@ LoipvRemote şimdi kapanacak ve kurulum başlayacak.</value>
   <data name="ErrorArchitectureMismatch" xml:space="preserve">
     <value>Mimari uyuşmazlığı: {0}</value>
   </data>
-  <data name="SaveConnectionsAfterEveryEdit" xml:space="preserve">
-    <value>Her düzenlemeden sonra bağlantıları kaydet</value>
-  </data>
   <data name="TestConnection" xml:space="preserve">
     <value>Bağlantıyı test et</value>
   </data>

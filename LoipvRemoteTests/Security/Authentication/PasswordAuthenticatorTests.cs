@@ -25,7 +25,7 @@ namespace LoipvRemoteTests.Security.Authentication
         [Test]
         public void AuthenticatingWithCorrectPasswordReturnsTrue()
         {
-            var authenticator = new PasswordAuthenticator(_cryptographyProvider, _cipherText, () => Optional<SecureString>.Empty);
+            var authenticator = new PasswordAuthenticator(_cryptographyProvider, _cipherText, () => new OptionalValue<SecureString>());
             var authenticated = authenticator.Authenticate(_correctPassword);
             Assert.That(authenticated);
         }
@@ -33,7 +33,7 @@ namespace LoipvRemoteTests.Security.Authentication
         [Test]
         public void AuthenticatingWithWrongPasswordReturnsFalse()
         {
-            var authenticator = new PasswordAuthenticator(_cryptographyProvider, _cipherText, () => Optional<SecureString>.Empty);
+            var authenticator = new PasswordAuthenticator(_cryptographyProvider, _cipherText, () => new OptionalValue<SecureString>());
             var authenticated = authenticator.Authenticate(_wrongPassword);
             Assert.That(!authenticated);
         }
@@ -43,7 +43,7 @@ namespace LoipvRemoteTests.Security.Authentication
         {
             var wasCalled = false;
 
-            Optional<SecureString> AuthenticationRequestor()
+            OptionalValue<SecureString> AuthenticationRequestor()
             {
                 wasCalled = true;
                 return _correctPassword;
@@ -58,7 +58,7 @@ namespace LoipvRemoteTests.Security.Authentication
         public void AuthenticationRequestorNotCalledWhenInitialPasswordIsCorrect()
         {
             var wasCalled = false;
-            Optional<SecureString> AuthenticationRequestor()
+            OptionalValue<SecureString> AuthenticationRequestor()
             {
                 wasCalled = true;
                 return _correctPassword;
@@ -89,7 +89,7 @@ namespace LoipvRemoteTests.Security.Authentication
         public void AuthenticatorRespectsMaxAttempts()
         {
             var authAttempts = 0;
-            Optional<SecureString>  AuthenticationRequestor()
+            OptionalValue<SecureString> AuthenticationRequestor()
             {
                 authAttempts++;
                 return _wrongPassword;
@@ -105,7 +105,7 @@ namespace LoipvRemoteTests.Security.Authentication
         {
             const int customMaxAttempts = 5;
             var authAttempts = 0;
-            Optional<SecureString> AuthenticationRequestor()
+            OptionalValue<SecureString> AuthenticationRequestor()
             {
                 authAttempts++;
                 return _wrongPassword;

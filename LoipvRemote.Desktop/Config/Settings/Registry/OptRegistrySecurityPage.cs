@@ -80,7 +80,7 @@ namespace LoipvRemote.Config.Settings.Registry
         {
             if (EncryptionEngine.IsValid)
             {
-                BlockCipherEngines blockCipherEngines = (BlockCipherEngines)System.Enum.Parse(typeof(BlockCipherEngines), EncryptionEngine.Value);
+                BlockCipherEngines blockCipherEngines = Enum.Parse<BlockCipherEngines>(EncryptionEngine.Value);
                 Properties.OptionsSecurityPage.Default.EncryptionEngine = blockCipherEngines;
             }
         }
@@ -89,7 +89,7 @@ namespace LoipvRemote.Config.Settings.Registry
         {
             if (EncryptionBlockCipherMode.IsValid)
             {
-                BlockCipherModes blockCipherModes = (BlockCipherModes)System.Enum.Parse(typeof(BlockCipherModes), EncryptionBlockCipherMode.Value);
+                BlockCipherModes blockCipherModes = Enum.Parse<BlockCipherModes>(EncryptionBlockCipherMode.Value);
                 Properties.OptionsSecurityPage.Default.EncryptionBlockCipherMode = blockCipherModes;
             }
         }

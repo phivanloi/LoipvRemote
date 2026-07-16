@@ -2,7 +2,6 @@ using LoipvRemote.Connection;
 using System;
 using System.Runtime.Versioning;
 using System.Timers;
-using LoipvRemote.UseCases.Configuration;
 
 // ReSharper disable ArrangeAccessorOwnerBody
 
@@ -13,7 +12,7 @@ namespace LoipvRemote.Config.Connections.Multiuser
     {
         private readonly System.Timers.Timer _updateTimer;
         private readonly IConnectionsUpdateChecker _updateChecker;
-        private readonly IConnectionWorkspace _workspace;
+        private readonly IConnectionTreeWorkspace _workspace;
 
         public double TimerIntervalInMilliseconds
         {
@@ -22,7 +21,7 @@ namespace LoipvRemote.Config.Connections.Multiuser
 
         public RemoteConnectionsSyncronizer(
             IConnectionsUpdateChecker updateChecker,
-            IConnectionWorkspace workspace)
+            IConnectionTreeWorkspace workspace)
         {
             _updateChecker = updateChecker ?? throw new ArgumentNullException(nameof(updateChecker));
             _workspace = workspace ?? throw new ArgumentNullException(nameof(workspace));
@@ -35,14 +34,25 @@ namespace LoipvRemote.Config.Connections.Multiuser
             _updateChecker.UpdateCheckStarted += OnUpdateCheckStarted;
             _updateChecker.UpdateCheckFinished += OnUpdateCheckFinished;
             _updateChecker.ConnectionsUpdateAvailable += (sender, args) => ConnectionsUpdateAvailable?.Invoke(sender, args);
-            _updateTimer.Elapsed += (sender, args) => _updateChecker.IsUpdateAvailableAsync();
+            _updateTimer.Elapsed += OnUpdateTimerElapsed;
             ConnectionsUpdateAvailable += Load;
         }
 
-        private void Load(object sender, ConnectionsUpdateAvailableEventArgs args)
+        private void Load(object? sender, ConnectionsUpdateAvailableEventArgs args)
         {
-            _workspace.LoadConnections(true, false, "");
-            args.Handled = true;
+            _ = LoadConnectionsAsync(args);
+        }
+
+        private async Task LoadConnectionsAsync(ConnectionsUpdateAvailableEventArgs args)
+        {
+            try
+            {
+                await _workspace.LoadConnectionsAsync(true, false, "").ConfigureAwait(false);
+            }
+            finally
+            {
+                args.Handled = true;
+            }
         }
 
         public void Enable()
@@ -55,32 +65,42 @@ namespace LoipvRemote.Config.Connections.Multiuser
             _updateTimer.Stop();
         }
 
-        public bool IsUpdateAvailable()
+        private void OnUpdateTimerElapsed(object? sender, ElapsedEventArgs args)
         {
-            return _updateChecker.IsUpdateAvailable();
+            _ = CheckForUpdatesAsync();
         }
 
-        public void IsUpdateAvailableAsync()
+        private async Task CheckForUpdatesAsync()
         {
-            _updateChecker.IsUpdateAvailableAsync();
+            try
+            {
+                await IsUpdateAvailableAsync().ConfigureAwait(false);
+            }
+            catch (Exception)
+            {
+                // The checker emits its own diagnostic and always raises the completion event.
+            }
         }
 
+        public Task<bool> IsUpdateAvailableAsync(CancellationToken cancellationToken = default) =>
+            _updateChecker.IsUpdateAvailableAsync(cancellationToken);
 
-        private void OnUpdateCheckStarted(object sender, EventArgs eventArgs)
+
+        private void OnUpdateCheckStarted(object? sender, EventArgs eventArgs)
         {
             _updateTimer.Stop();
             UpdateCheckStarted?.Invoke(sender, eventArgs);
         }
 
-        private void OnUpdateCheckFinished(object sender, ConnectionsUpdateCheckFinishedEventArgs eventArgs)
+        private void OnUpdateCheckFinished(object? sender, ConnectionsUpdateCheckFinishedEventArgs eventArgs)
         {
             _updateTimer.Start();
             UpdateCheckFinished?.Invoke(sender, eventArgs);
         }
 
         public event EventHandler? UpdateCheckStarted;
-        public event UpdateCheckFinishedEventHandler? UpdateCheckFinished;
-        public event ConnectionsUpdateAvailableEventHandler? ConnectionsUpdateAvailable;
+        public event EventHandler<ConnectionsUpdateCheckFinishedEventArgs>? UpdateCheckFinished;
+        public event EventHandler<ConnectionsUpdateAvailableEventArgs>? ConnectionsUpdateAvailable;
 
 
         public void Dispose()

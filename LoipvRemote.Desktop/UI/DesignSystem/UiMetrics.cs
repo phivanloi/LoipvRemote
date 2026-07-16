@@ -52,9 +52,9 @@ namespace LoipvRemote.UI.DesignSystem
             _ => BodyFontPoints
         };
 
-        public int ScaleForDpi(int logicalPixels, float dpiScale)
+        public static int ScaleForDpi(int logicalPixels, float dpiScale)
         {
-            if (dpiScale <= 0) throw new ArgumentOutOfRangeException(nameof(dpiScale));
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(dpiScale);
             return (int)Math.Round(logicalPixels * dpiScale);
         }
     }

@@ -19,7 +19,7 @@ namespace LoipvRemoteTests.Tree
             _connectionTreeModel = CreateConnectionTreeModel();
             _connectionTree = new ConnectionTree
             {
-                PostSetupActions = new IConnectionTreeDelegate[] {new RootNodeExpander()}
+                PostSetupActions = new IConnectionTreeAction[] {new RootNodeExpander()}
             };
         }
 

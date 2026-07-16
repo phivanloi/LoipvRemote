@@ -10,7 +10,7 @@ namespace LoipvRemote.Config.DataProviders
     public class FileBackupCreator
     {
         [SupportedOSPlatform("windows")]
-        public void CreateBackupFile(string fileName)
+        public static void CreateBackupFile(string fileName)
         {
             try
             {
@@ -22,7 +22,7 @@ namespace LoipvRemote.Config.DataProviders
                     return;
 
                 string backupFileName =
-                    string.Format(Properties.OptionsBackupPage.Default.BackupFileNameFormat, fileName, DateTime.Now);
+                    FormatText(Properties.OptionsBackupPage.Default.BackupFileNameFormat, fileName, DateTime.Now);
 
                 PathValidator.ValidatePathOrThrow(backupFileName, nameof(backupFileName));
 
@@ -35,17 +35,17 @@ namespace LoipvRemote.Config.DataProviders
             }
         }
 
-        private bool WeDontNeedToBackup(string filePath)
+        private static bool WeDontNeedToBackup(string filePath)
         {
             return FeatureIsTurnedOff() || FileDoesntExist(filePath);
         }
 
-        private bool FileDoesntExist(string filePath)
+        private static bool FileDoesntExist(string filePath)
         {
             return !File.Exists(filePath);
         }
 
-        private bool FeatureIsTurnedOff()
+        private static bool FeatureIsTurnedOff()
         {
             return Properties.OptionsBackupPage.Default.BackupFileKeepCount == 0;
         }

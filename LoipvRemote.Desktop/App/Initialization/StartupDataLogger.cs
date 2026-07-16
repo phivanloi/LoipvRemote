@@ -27,7 +27,7 @@ namespace LoipvRemote.App.Initialization
         {
             string osData = GetOperatingSystemData();
             string architecture = GetArchitectureData();
-            string[] nonEmptyData = Array.FindAll(new[] {osData, architecture}, s => !string.IsNullOrEmpty(s));
+            string[] nonEmptyData = Array.FindAll(new[] { osData, architecture }, s => !string.IsNullOrEmpty(s));
             string data = string.Join(" ", nonEmptyData);
             _messageCollector.AddMessage(MessageClass.InformationMsg, data, true);
         }

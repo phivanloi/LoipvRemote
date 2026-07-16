@@ -4,7 +4,7 @@ using LoipvRemote.Protocols.Abstractions;
 namespace LoipvRemote.Protocols.Browser;
 
 /// <summary>Common protocol session adapter around the browser lifecycle and client.</summary>
-public sealed class BrowserProtocolSession : IAsyncProtocolSession, IEmbeddedWindow
+public sealed class BrowserProtocolSession : IProtocolSession, IEmbeddedWindow
 {
     private readonly IBrowserClient _client;
     private readonly BrowserSession _lifecycle;
@@ -29,28 +29,26 @@ public sealed class BrowserProtocolSession : IAsyncProtocolSession, IEmbeddedWin
     public bool IsAvailable => State == ProtocolSessionState.Connected;
     public IntPtr WindowHandle => _client is IEmbeddedWindow embedded ? embedded.WindowHandle : IntPtr.Zero;
 
-    public bool Initialize() => _lifecycle.Initialize(Options);
+    private bool InitializeCore() => _lifecycle.Initialize(Options);
 
     public ValueTask<bool> InitializeAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return ValueTask.FromResult(Initialize());
+        return ValueTask.FromResult(InitializeCore());
     }
 
-    public bool Connect() => _lifecycle.Connect();
+    private bool ConnectCore() => _lifecycle.Connect();
 
     public ValueTask<bool> ConnectAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return ValueTask.FromResult(Connect());
+        return ValueTask.FromResult(ConnectCore());
     }
-
-    public void Disconnect() => _lifecycle.Disconnect();
 
     public ValueTask DisconnectAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        Disconnect();
+        _lifecycle.Disconnect();
         return ValueTask.CompletedTask;
     }
 
@@ -75,12 +73,10 @@ public sealed class BrowserProtocolSession : IAsyncProtocolSession, IEmbeddedWin
             _windowOperations.Move(WindowHandle, bounds.X, bounds.Y, bounds.Width, bounds.Height);
     }
 
-    public void Close() => Disconnect();
-
     public ValueTask CloseAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        Close();
+        _lifecycle.Disconnect();
         return ValueTask.CompletedTask;
     }
 
@@ -89,7 +85,7 @@ public sealed class BrowserProtocolSession : IAsyncProtocolSession, IEmbeddedWin
         if (_disposed)
             return;
 
-        Close();
+        _lifecycle.Disconnect();
         if (_client is IDisposable disposable)
             disposable.Dispose();
         _disposed = true;

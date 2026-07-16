@@ -8,7 +8,7 @@ namespace LoipvRemote.Messages;
 /// <summary>Collects application messages and publishes UI-bindable changes.</summary>
 public sealed class MessageCollector : INotifyCollectionChanged
 {
-    private readonly IList<IMessage> _messageList = new List<IMessage>();
+    private readonly List<IMessage> _messageList = [];
 
     public IEnumerable<IMessage> Messages => _messageList;
 

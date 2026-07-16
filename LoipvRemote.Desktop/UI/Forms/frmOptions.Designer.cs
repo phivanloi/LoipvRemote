@@ -63,7 +63,7 @@ namespace LoipvRemote.UI.Forms
             //
             // btnApply
             //
-            this.btnApply._mice = LoipvRemote.UI.Controls.MrngButton.MouseState.OUT;
+            this.btnApply.MouseInteractionState = LoipvRemote.UI.Controls.MrngButton.MouseState.OUT;
             this.btnApply.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.btnApply.Location = new System.Drawing.Point(677, 5);
             this.btnApply.Name = "btnApply";
@@ -75,7 +75,7 @@ namespace LoipvRemote.UI.Forms
             //
             // btnCancel
             //
-            this.btnCancel._mice = LoipvRemote.UI.Controls.MrngButton.MouseState.OUT;
+            this.btnCancel.MouseInteractionState = LoipvRemote.UI.Controls.MrngButton.MouseState.OUT;
             this.btnCancel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.btnCancel.Location = new System.Drawing.Point(596, 5);
             this.btnCancel.Name = "btnCancel";
@@ -87,7 +87,7 @@ namespace LoipvRemote.UI.Forms
             //
             // btnOK
             //
-            this.btnOK._mice = LoipvRemote.UI.Controls.MrngButton.MouseState.OUT;
+            this.btnOK.MouseInteractionState = LoipvRemote.UI.Controls.MrngButton.MouseState.OUT;
             this.btnOK.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.btnOK.Location = new System.Drawing.Point(515, 5);
             this.btnOK.Name = "btnOK";

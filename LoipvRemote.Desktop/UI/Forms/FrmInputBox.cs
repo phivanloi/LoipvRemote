@@ -43,14 +43,14 @@ namespace LoipvRemote.UI.Forms
             ForeColor = _themeManager.ActiveTheme.ExtendedPalette.getColor("Dialog_Foreground");
         }
 
-        private void _Ok_Click(object sender, System.EventArgs e)
+        private void _Ok_Click(object? sender, System.EventArgs e)
         {
             DialogResult = DialogResult.OK;
             returnValue = textBox.Text;
             Close();
         }
 
-        private void buttonCancel_Click(object sender, System.EventArgs e)
+        private void buttonCancel_Click(object? sender, System.EventArgs e)
         {
             DialogResult = DialogResult.Cancel;
             Close();

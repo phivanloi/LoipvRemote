@@ -13,14 +13,14 @@ namespace LoipvRemoteTests.UseCases.Sessions;
 public class ConnectionSessionOrchestratorTests
 {
     [Test]
-    public void StartsValidatedDefinitionAndReturnsOwnedSession()
+    public async Task StartsValidatedDefinitionAndReturnsOwnedSession()
     {
         IProtocolFactory factory = Substitute.For<IProtocolFactory>();
         IProtocolSession session = CreateSession(initializeResult: true, connectResult: true);
         factory.Create(Arg.Any<ConnectionDefinition>()).Returns(session);
         var definition = CreateDefinition();
 
-        ConnectionSessionStartOutcome outcome = CreateOrchestrator(factory).Start(definition);
+        ConnectionSessionStartOutcome outcome = await CreateOrchestrator(factory).StartAsync(definition);
 
         Assert.Multiple(() =>
         {
@@ -32,7 +32,7 @@ public class ConnectionSessionOrchestratorTests
     }
 
     [Test]
-    public void StartsExistingSessionAndPublishesItsConnectedState()
+    public async Task StartsExistingSessionAndPublishesItsConnectedState()
     {
         IProtocolFactory factory = Substitute.For<IProtocolFactory>();
         IProtocolSession session = CreateSession(initializeResult: true, connectResult: true);
@@ -41,7 +41,7 @@ public class ConnectionSessionOrchestratorTests
         ConnectionDefinition definition = CreateDefinition();
         orchestrator.StateChanged += receivedEvents.Add;
 
-        ConnectionSessionStartOutcome outcome = orchestrator.Start(definition, session);
+        ConnectionSessionStartOutcome outcome = await orchestrator.StartAsync(definition, session);
 
         Assert.Multiple(() =>
         {
@@ -54,53 +54,53 @@ public class ConnectionSessionOrchestratorTests
     }
 
     [Test]
-    public void RejectsInvalidDefinitionBeforeCreatingProtocol()
+    public async Task RejectsInvalidDefinitionBeforeCreatingProtocol()
     {
         IProtocolFactory factory = Substitute.For<IProtocolFactory>();
         var invalidDefinition = CreateDefinition() with { Name = string.Empty };
 
-        ConnectionSessionStartOutcome outcome = CreateOrchestrator(factory).Start(invalidDefinition);
+        ConnectionSessionStartOutcome outcome = await CreateOrchestrator(factory).StartAsync(invalidDefinition);
 
         Assert.That(outcome.Status, Is.EqualTo(ConnectionSessionStartStatus.InvalidDefinition));
         factory.DidNotReceive().Create(Arg.Any<ConnectionDefinition>());
     }
 
     [Test]
-    public void DisposesSessionAfterConnectionFailure()
+    public async Task DisposesSessionAfterConnectionFailure()
     {
         IProtocolFactory factory = Substitute.For<IProtocolFactory>();
         IProtocolSession session = CreateSession(initializeResult: true, connectResult: false);
         factory.Create(Arg.Any<ConnectionDefinition>()).Returns(session);
 
-        ConnectionSessionStartOutcome outcome = CreateOrchestrator(factory).Start(CreateDefinition());
+        ConnectionSessionStartOutcome outcome = await CreateOrchestrator(factory).StartAsync(CreateDefinition());
 
         Assert.That(outcome.Status, Is.EqualTo(ConnectionSessionStartStatus.ConnectionFailed));
-        session.Received(1).Close();
-        session.Received(1).Dispose();
+        _ = session.Received(1).CloseAsync(Arg.Any<CancellationToken>());
+        _ = session.Received(1).DisposeAsync();
     }
 
     [Test]
-    public void ReportsUnavailableProtocolWithoutLeakingFactoryException()
+    public async Task ReportsUnavailableProtocolWithoutLeakingFactoryException()
     {
         IProtocolFactory factory = Substitute.For<IProtocolFactory>();
         factory.Create(Arg.Any<ConnectionDefinition>()).Returns(_ => throw new NotSupportedException());
 
-        ConnectionSessionStartOutcome outcome = CreateOrchestrator(factory).Start(CreateDefinition());
+        ConnectionSessionStartOutcome outcome = await CreateOrchestrator(factory).StartAsync(CreateDefinition());
 
         Assert.That(outcome.Status, Is.EqualTo(ConnectionSessionStartStatus.ProtocolUnavailable));
         Assert.That(outcome.Session, Is.Null);
     }
 
     [Test]
-    public void StopDisconnectsAndDisposesSession()
+    public async Task StopAsyncDisconnectsAndDisposesSession()
     {
         IProtocolFactory factory = Substitute.For<IProtocolFactory>();
         IProtocolSession session = Substitute.For<IProtocolSession>();
 
-        CreateOrchestrator(factory).Stop(session);
+        await CreateOrchestrator(factory).StopAsync(session);
 
-        session.Received(1).Disconnect();
-        session.Received(1).Dispose();
+        _ = session.Received(1).DisconnectAsync(Arg.Any<CancellationToken>());
+        _ = session.Received(1).DisposeAsync();
     }
 
     private static ConnectionSessionOrchestrator CreateOrchestrator(IProtocolFactory factory) =>
@@ -109,8 +109,8 @@ public class ConnectionSessionOrchestratorTests
     private static IProtocolSession CreateSession(bool initializeResult, bool connectResult)
     {
         IProtocolSession session = Substitute.For<IProtocolSession>();
-        session.Initialize().Returns(initializeResult);
-        session.Connect().Returns(connectResult);
+        session.InitializeAsync(Arg.Any<CancellationToken>()).Returns(ValueTask.FromResult(initializeResult));
+        session.ConnectAsync(Arg.Any<CancellationToken>()).Returns(ValueTask.FromResult(connectResult));
         return session;
     }
 

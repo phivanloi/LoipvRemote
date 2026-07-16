@@ -3,6 +3,7 @@ using LoipvRemote.Config.Putty;
 using LoipvRemote.Connection;
 using LoipvRemote.Container;
 using LoipvRemote.Connectors.Abstractions;
+using LoipvRemote.Desktop.UI.Adapters;
 using LoipvRemote.Connectors.Delinea;
 using LoipvRemote.Connectors.OnePassword;
 using LoipvRemote.Connectors.OpenBao;
@@ -38,27 +39,28 @@ public static class ApplicationServiceRegistration
         ArgumentNullException.ThrowIfNull(services);
 
         services.AddSingleton<RuntimeState>();
+        services.AddSingleton<DesktopWindowCatalog>();
         services.AddSingleton<MessageCollector>();
         services.AddSingleton<Startup>();
         services.AddSingleton<IExternalToolRuntime, ExternalToolRuntime>();
         services.AddSingleton<ExternalToolsService>();
         services.AddSingleton<ConnectionWorkspaceAdapter>();
         services.AddSingleton<PanelAdder>();
+        services.AddSingleton<PanelBinder>();
         services.AddSingleton<ICredentialRepositoryList, CredentialRepositoryList>();
-        services.AddSingleton<PuttySessionsManager>(_ => PuttySessionsManager.Instance);
+        services.AddSingleton<PuttySessionsManager>();
         services.AddSingleton<IConnectionTreeWorkspace>(provider => new ConnectionWorkspace(
             provider.GetRequiredService<PuttySessionsManager>(),
-            provider.GetRequiredService<ConnectionDefinitionPersistenceRuntime>(),
+            provider.GetRequiredService<ConnectionStoreConfigurationService>(),
             provider.GetRequiredService<IConnectionStoreOptionsProvider>(),
             provider.GetRequiredService<IStringSecretStore>(),
             provider.GetRequiredService<MessageCollector>(),
             connection => provider.GetRequiredService<ExternalToolsService>()
                 .GetExtAppByName(connection.ExtApp)
                 ?.ToDefinition(connection),
-            withDialog => provider.GetRequiredService<ConnectionLoadingService>().LoadConnections(withDialog)));
-        services.AddSingleton<IConnectionWorkspace>(provider => provider.GetRequiredService<IConnectionTreeWorkspace>());
+            withDialog => _ = provider.GetRequiredService<ConnectionLoadingService>().LoadConnectionsAsync(withDialog)));
         services.AddSingleton<ConnectionLoadingService>(provider => new ConnectionLoadingService(
-            provider.GetRequiredService<IConnectionWorkspace>(),
+            provider.GetRequiredService<IConnectionTreeWorkspace>(),
             provider.GetRequiredService<MessageCollector>(),
             provider.GetRequiredService<ConnectionWorkspaceAdapter>(),
             provider.GetRequiredService<ConnectionImportService>(),
@@ -78,12 +80,13 @@ public static class ApplicationServiceRegistration
         services.AddSingleton<IExternalCredentialConnector, PasswordstateCredentialConnector>();
         services.AddSingleton<IExternalCredentialConnector, OnePasswordCredentialConnector>();
         services.AddSingleton<IExternalCredentialConnector, OpenBaoCredentialConnector>();
+        services.AddSingleton<IExternalCredentialPrompt, WinFormsExternalCredentialPrompt>();
+        services.AddSingleton<IExternalCredentialSettingsStore, WindowsExternalCredentialSettingsStore>();
         services.AddSingleton<ExternalCredentialConnectorRegistry>();
         services.AddSingleton<DesktopExternalCredentialResolver>();
 
         services.AddSingleton<IConnectionDefinitionStoreFactory, ConnectionDefinitionStoreFactory>();
         services.AddSingleton<ConnectionStoreConfigurationService>();
-        services.AddSingleton<ConnectionDefinitionPersistenceRuntime>();
         services.AddSingleton<IConnectionStoreOptionsProvider, DesktopConnectionStoreOptionsProvider>();
         services.AddSingleton<IPuttyExecutablePathProvider, ConfiguredPuttyExecutablePathProvider>();
 
@@ -91,6 +94,7 @@ public static class ApplicationServiceRegistration
             provider.GetRequiredService<IProtocolFactory>(),
             provider.GetRequiredService<ExternalToolsService>(),
             provider.GetRequiredService<RuntimeState>(),
+            provider.GetRequiredService<DesktopWindowCatalog>(),
             provider.GetRequiredService<MessageCollector>(),
             provider.GetRequiredService<ConnectionWorkspaceAdapter>(),
             name =>
@@ -106,8 +110,10 @@ public static class ApplicationServiceRegistration
                 ?.ToDefinition(connection),
             (connectionId, propertyName, plaintext) => provider.GetRequiredService<IStringSecretStore>()
                 .Protect(plaintext, ConnectionSecretPurposes.ForConnectionOption(connectionId, propertyName)),
-            (connection, gateway) => provider.GetRequiredService<DesktopExternalCredentialResolver>()
-                .Resolve(connection, gateway)));
+            (connection, gateway, cancellationToken) => provider.GetRequiredService<DesktopExternalCredentialResolver>()
+                .ResolveAsync(connection, gateway, cancellationToken),
+            provider.GetRequiredService<IExternalCredentialPrompt>(),
+            provider.GetRequiredService<IExternalCredentialSettingsStore>()));
     }
 
     private static ConnectionInfo? FindSshConnection(IEnumerable<ConnectionInfo> nodes, string name)

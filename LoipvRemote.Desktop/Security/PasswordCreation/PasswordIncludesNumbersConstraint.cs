@@ -17,13 +17,13 @@ namespace LoipvRemote.Security.PasswordCreation
                 throw new ArgumentException($"{nameof(minimumCount)} must be a positive value");
 
             _minimumCount = minimumCount;
-            ConstraintHint = string.Format(Language.PasswordContainsNumbersConstraint, _minimumCount);
+            ConstraintHint = FormatText(Language.PasswordContainsNumbersConstraint, _minimumCount);
         }
 
         public bool Validate(SecureString password)
         {
             Regex regex = new(@"\d");
-            return regex.Matches(password.ConvertToUnsecureString()).Count >= _minimumCount;
+            return regex.Count(password.ConvertToUnsecureString()) >= _minimumCount;
         }
     }
 }

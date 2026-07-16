@@ -27,9 +27,10 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
 using System.Globalization;
+using System.Threading;
+using System.Threading.Tasks;
 using System.IO;
 using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 using LoipvRemote.UI.Panels;
 using WeifenLuo.WinFormsUI.Docking;
@@ -41,7 +42,6 @@ using System.Runtime.Versioning;
 using LoipvRemote.Config.Settings.Registry;
 using LoipvRemote.UseCases.Credentials;
 using LoipvRemote.Desktop.Shell;
-using System.Threading; // ADDED
 #endregion
 
 // ReSharper disable MemberCanBePrivate.Global
@@ -67,9 +67,9 @@ namespace LoipvRemote.UI.Forms
                 // If we're already on a WinForms UI thread with a sync context, marshal to it
                 if (SynchronizationContext.Current is WindowsFormsSynchronizationContext ctx)
                 {
-                    FrmMain created = null;
+                    FrmMain? created = null;
                     ctx.Send(_ => created = new FrmMain(), null);
-                    return created!;
+                    return created ?? throw new InvalidOperationException("The main window could not be created on the UI thread.");
                 }
 
                 throw new ThreadStateException("FrmMain must be created on an STA thread.");
@@ -78,8 +78,10 @@ namespace LoipvRemote.UI.Forms
             return new FrmMain();
         }
 
-        private static ClipboardchangeEventHandler? _clipboardChangedEvent;
+        private static ClipboardChangedHandler? _clipboardChangedEvent;
         private bool _inSizeMove;
+        private bool _shutdownCleanupStarted;
+        private bool _shutdownCleanupCompleted;
         private bool _inMouseActivate;
         private bool _activeConnectionFocusScheduled;
         private IntPtr _fpChainedWindowHandle;
@@ -94,7 +96,8 @@ namespace LoipvRemote.UI.Forms
         private readonly UnifiedWindowHeader _unifiedWindowHeader = null!;
         private DesktopShellRuntime? _desktopShellRuntime;
         private System.Windows.Forms.Timer? _startupMaximizeTimer;
-        public static FrmOptions OptionsForm = null!;
+        private bool _startupSidebarLayoutScheduled;
+        public static FrmOptions OptionsForm { get; private set; } = null!;
 
         internal void AttachRuntime(DesktopShellRuntime desktopShellRuntime)
         {
@@ -294,7 +297,7 @@ namespace LoipvRemote.UI.Forms
         private void FrmMain_Load(object? sender, EventArgs e)
         {
             MessageCollector messageCollector = DesktopShellRuntime.MessageCollector;
-            AppWindows.AttachRuntime(DesktopShellRuntime);
+            DesktopShellRuntime.Windows.AttachRuntime(DesktopShellRuntime);
 
             SettingsLoader settingsLoader = new(
                 this,
@@ -313,7 +316,7 @@ namespace LoipvRemote.UI.Forms
 
             SetMenuDependencies();
 
-            DockPanelLayoutLoader uiLoader = new(this, messageCollector);
+            DockPanelLayoutLoader uiLoader = new(this, messageCollector, DesktopShellRuntime.Windows);
             uiLoader.LoadPanelsFromXml();
 
             LockToolbarPositions(Properties.Settings.Default.LockToolbars);
@@ -330,7 +333,6 @@ namespace LoipvRemote.UI.Forms
             else
                 SetLayout();
 
-            ApplyStartupShellLayout();
             ShowHidePanelTabs();
 
             DesktopShellRuntime.ConnectionTreeWorkspace.ConnectionsLoaded += WorkspaceOnConnectionsLoaded;
@@ -339,29 +341,35 @@ namespace LoipvRemote.UI.Forms
             // Close splash screen before loading connections to ensure password dialog appears on top
             ProgramRoot.CloseSplash();
 
-            AppWindows.TreeForm.AttachRuntime(DesktopShellRuntime);
+            DesktopShellRuntime.Windows.TreeForm.AttachRuntime(DesktopShellRuntime);
             CredsAndConsSetup credsAndConsSetup = new(
                 DesktopShellRuntime.ConnectionTreeWorkspace,
                 DesktopShellRuntime.ConnectionLoadingService);
             credsAndConsSetup.LoadCredsAndCons();
 
             // Initialize panel binding for Connections and Config panels
-            UI.Panels.PanelBinder.Instance.Initialize();
+            DesktopShellRuntime.PanelBinder.Initialize();
+            // A persisted layout can legally contain a hidden/stale primary
+            // panel. Repair it after PanelBinder has applied its startup state.
+            uiLoader.EnsurePrimarySidebarPanels();
 
-            AppWindows.TreeForm.Focus();
+            DesktopShellRuntime.Windows.TreeForm.Focus();
 
-            PuttySessionsManager.Instance.StartWatcher();
+            DesktopShellRuntime.PuttySessionsManager.StartWatcher();
 
-            DesktopShellRuntime.Startup.CreateConnectionsProvider(messageCollector, DesktopShellRuntime.ConnectionTreeWorkspace);
+            Startup.CreateConnectionsProvider(messageCollector, DesktopShellRuntime.ConnectionTreeWorkspace);
 
             _advancedWindowMenu.BuildAdditionalMenuItems();
             SystemEvents.DisplaySettingsChanged += _advancedWindowMenu.OnDisplayChanged;
             ApplyLanguage();
 
             UiScaleManager.Instance.Apply(this);
+            // Apply the physical docking width after every control has been
+            // DPI-scaled. Doing it earlier lets UiScaleManager enlarge the
+            // sidebar again and overrides the intended 340 px shell width.
+            ApplyStartupShellLayout();
 
             Opacity = 1;
-            //Fix MagicRemove , revision on panel strategy for mdi
 
             pnlDock.ShowDocumentIcon = true;
 
@@ -436,17 +444,17 @@ namespace LoipvRemote.UI.Forms
             UpdateWindowTitle();
         }
 
-        private void WorkspaceOnConnectionsSaved(object? sender, ConnectionsSavedEventArgs connectionsSavedEventArgs)
+        private void WorkspaceOnConnectionsSaved(object? sender, ConnectionsSavedEvent connectionsSavedEvent)
         {
-            if (connectionsSavedEventArgs.UsingDatabase)
+            if (connectionsSavedEvent.UsingDatabase)
                 return;
 
-            _backupPruner.PruneBackupFiles(connectionsSavedEventArgs.ConnectionFileName, Properties.OptionsBackupPage.Default.BackupFileKeepCount);
+            FileBackupPruner.PruneBackupFiles(connectionsSavedEvent.ConnectionFileName, Properties.OptionsBackupPage.Default.BackupFileKeepCount);
         }
 
         private void SetMenuDependencies()
         {
-            fileMenu.TreeWindow = AppWindows.TreeForm;
+            fileMenu.TreeWindow = DesktopShellRuntime.Windows.TreeForm;
 
             viewMenu.TsExternalTools = _externalToolsToolStrip;
             viewMenu.TsQuickConnect = _quickConnectToolStrip;
@@ -456,6 +464,7 @@ namespace LoipvRemote.UI.Forms
 
             toolsMenu.MainForm = this;
             toolsMenu.CredentialProviderCatalog = DesktopShellRuntime.CredentialRepositoryList;
+            toolsMenu.AttachRuntime(DesktopShellRuntime);
         }
 
         // Apply the dark/light title bar before the window is shown to avoid a white flash.
@@ -544,8 +553,17 @@ namespace LoipvRemote.UI.Forms
             TopMost = false;
         }
 
-        private void FrmMain_FormClosing(object? sender, FormClosingEventArgs e)
+        private async void FrmMain_FormClosing(object? sender, FormClosingEventArgs e)
         {
+            if (_shutdownCleanupCompleted)
+                return;
+
+            if (_shutdownCleanupStarted)
+            {
+                e.Cancel = true;
+                return;
+            }
+
             if (DesktopShellRuntime.RuntimeState.WindowList != null)
             {
                 foreach (BaseWindow window in DesktopShellRuntime.RuntimeState.WindowList)
@@ -553,10 +571,6 @@ namespace LoipvRemote.UI.Forms
                     window.Close();
                 }
             }
-
-            IsClosing = true;
-
-            Hide();
 
             if (Properties.OptionsAppearancePage.Default.CloseToTray)
             {
@@ -587,14 +601,14 @@ namespace LoipvRemote.UI.Forms
                 }
 
                 if (openConnections > 0 &&
-                    (Properties.Settings.Default.ConfirmCloseConnection == (int)ConfirmCloseEnum.All |
-                     (Properties.Settings.Default.ConfirmCloseConnection == (int)ConfirmCloseEnum.Multiple &
-                      openConnections > 1) || Properties.Settings.Default.ConfirmCloseConnection == (int)ConfirmCloseEnum.Exit))
+                    (Properties.Settings.Default.ConfirmCloseConnection == (int)ConfirmCloseMode.All |
+                     (Properties.Settings.Default.ConfirmCloseConnection == (int)ConfirmCloseMode.Multiple &
+                      openConnections > 1) || Properties.Settings.Default.ConfirmCloseConnection == (int)ConfirmCloseMode.Exit))
                 {
                     DialogResult result = CTaskDialog.MessageBox(this, Application.ProductName, Language.ConfirmExitMainInstruction, "", "", "", Language.CheckboxDoNotShowThisMessageAgain, ETaskDialogButtons.YesNo, ESysIcons.Question, ESysIcons.Question);
                     if (CTaskDialog.VerificationChecked)
                     {
-                        Properties.Settings.Default.ConfirmCloseConnection = (int)ConfirmCloseEnum.Never;
+                        Properties.Settings.Default.ConfirmCloseConnection = (int)ConfirmCloseMode.Never;
                     }
 
                     if (result == DialogResult.No)
@@ -605,11 +619,26 @@ namespace LoipvRemote.UI.Forms
                 }
             }
 
+            // FormClosing cannot be awaited by WinForms. Cancel this close,
+            // complete the async persistence/lifecycle shutdown on the UI
+            // context, then re-enter Close() once the save is durable.
+            e.Cancel = true;
+            _shutdownCleanupStarted = true;
+            IsClosing = true;
+            Hide();
             WindowsShellWindowMessages.ChangeClipboardChain(Handle, _fpChainedWindowHandle);
             SystemEvents.DisplaySettingsChanged -= _advancedWindowMenu.OnDisplayChanged;
-            Shutdown.Cleanup(_quickConnectToolStrip, _externalToolsToolStrip, _multiSshToolStrip, this, DesktopShellRuntime);
 
+            await Shutdown.CleanupAsync(
+                _quickConnectToolStrip,
+                _externalToolsToolStrip,
+                _multiSshToolStrip,
+                this,
+                DesktopShellRuntime).ConfigureAwait(true);
+
+            _shutdownCleanupCompleted = true;
             Debug.Print("[END] - " + Convert.ToString(DateTime.Now, CultureInfo.InvariantCulture));
+            Close();
         }
 
         #endregion
@@ -619,7 +648,7 @@ namespace LoipvRemote.UI.Forms
         private void TmrAutoSave_Tick(object? sender, EventArgs e)
         {
             DesktopShellRuntime.MessageCollector.AddMessage(MessageClass.DebugMsg, "Doing AutoSave");
-            DesktopShellRuntime.ConnectionTreeWorkspace.SaveConnectionsAsync();
+            _ = DesktopShellRuntime.ConnectionTreeWorkspace.SaveConnectionsAsync();
         }
 
         #endregion
@@ -697,7 +726,7 @@ namespace LoipvRemote.UI.Forms
                         // Only handle this msg if it was triggered by a click
                         if (WindowsShellWindowMessages.LowWord(m.WParam) == WindowsShellWindowMessages.WaClickActive)
                         {
-                            Control controlThatWasClicked = FromChildHandle(WindowsShellWindowMessages.WindowFromPoint(MousePosition))
+                            Control? controlThatWasClicked = FromChildHandle(WindowsShellWindowMessages.WindowFromPoint(MousePosition))
                                                      ?? GetChildAtPoint(MousePosition);
                             if (controlThatWasClicked != null)
                             {
@@ -743,11 +772,11 @@ namespace LoipvRemote.UI.Forms
                         }
                         break;
                     case WindowsShellWindowMessages.WmSysCommand:
-                        Screen screen = _advancedWindowMenu.GetScreenById(m.WParam.ToInt32());
-                        if (screen != null)
+                        Screen? screen = _advancedWindowMenu.GetScreenById(m.WParam.ToInt32());
+                        if (screen is not null)
                         {
                             Screens.SendFormToScreen(screen);
-                            Console.WriteLine(_advancedWindowMenu.GetScreenById(m.WParam.ToInt32()).ToString());
+                            Console.WriteLine(screen.ToString());
                         }
                         break;
                     case WindowsShellWindowMessages.WmDrawClipboard:
@@ -765,12 +794,15 @@ namespace LoipvRemote.UI.Forms
                         // the clipboard viewer chain
                         // lParam is the Handle to the next window in the chain
                         // following the window being removed.
-                        if (m.WParam == _fpChainedWindowHandle) {
+                        if (m.WParam == _fpChainedWindowHandle)
+                        {
                             // If wParam is the next clipboard viewer then it
                             // is being removed so update pointer to the next
                             // window in the clipboard chain
                             _fpChainedWindowHandle = m.LParam;
-                        } else {
+                        }
+                        else
+                        {
                             //Send to the next window
                             WindowsShellWindowMessages.SendMessage(_fpChainedWindowHandle, m.Msg, m.LParam, m.WParam);
                         }
@@ -843,10 +875,44 @@ namespace LoipvRemote.UI.Forms
 
         private void ApplyStartupShellLayout()
         {
-            pnlDock.DockLeftPortion = AppStartupLayout.SidebarWidthForDpi(DeviceDpi);
             WindowState = AppStartupLayout.ResolveWindowState(
                 Properties.OptionsStartupExitPage.Default.StartMinimized,
                 Properties.OptionsStartupExitPage.Default.StartFullScreen);
+
+            // DockPanelSuite exposes DockLeftPortion as a ratio. Apply it only
+            // after the startup WindowState has produced the real client area;
+            // calculating from the designer size before maximize makes the
+            // sidebar several times wider on large displays.
+            if (_startupSidebarLayoutScheduled)
+                return;
+
+            _startupSidebarLayoutScheduled = true;
+            if (IsHandleCreated)
+            {
+                BeginInvoke((MethodInvoker)ApplySidebarPortionAfterStartup);
+            }
+            else
+            {
+                Shown += ApplyStartupSidebarLayoutOnShown;
+            }
+        }
+
+        private void ApplyStartupSidebarLayoutOnShown(object? sender, EventArgs e)
+        {
+            Shown -= ApplyStartupSidebarLayoutOnShown;
+            BeginInvoke((MethodInvoker)ApplySidebarPortionAfterStartup);
+        }
+
+        private void ApplySidebarPortionAfterStartup()
+        {
+            if (IsDisposed || pnlDock.IsDisposed)
+                return;
+
+            int dockPanelWidth = pnlDock.ClientSize.Width > 0
+                ? pnlDock.ClientSize.Width
+                : ClientSize.Width;
+            if (dockPanelWidth > 0)
+                pnlDock.DockLeftPortion = AppStartupLayout.SidebarPortionForWidth(dockPanelWidth, pnlDock.DeviceDpi);
         }
 
         private void UpdateMaximizedBounds()
@@ -858,16 +924,17 @@ namespace LoipvRemote.UI.Forms
 
         private void ActivateConnection()
         {
-            ConnectionWindow cw = pnlDock.ActiveDocument as ConnectionWindow;
-            DockPane dp = cw?.ActiveControl as DockPane;
+            ConnectionWindow? cw = pnlDock.ActiveDocument as ConnectionWindow;
+            DockPane? dp = cw?.ActiveControl as DockPane;
 
             if (dp?.ActiveContent is not ConnectionTab tab) return;
-            InterfaceControl ifc = InterfaceControl.FindInterfaceControl(tab);
-            if (ifc == null) return;
+            InterfaceControl? ifc = InterfaceControl.FindInterfaceControl(tab);
+            if (ifc is null) return;
 
             ifc.Protocol.Focus();
-            Form conFormWindow = ifc.FindForm();
-            ((ConnectionTab)conFormWindow)?.RefreshInterfaceController();
+            Form? conFormWindow = ifc.FindForm();
+            if (conFormWindow is ConnectionTab connectionTab)
+                connectionTab.RefreshInterfaceController();
         }
 
         /// <summary>
@@ -931,13 +998,13 @@ namespace LoipvRemote.UI.Forms
                 titleBuilder.Append(SelectedConnection.Name);
 
                 if (Properties.Settings.Default.TrackActiveConnectionInConnectionTree)
-                    AppWindows.TreeForm.JumpToNode(SelectedConnection);
+                    DesktopShellRuntime.Windows.TreeForm.JumpToNode(SelectedConnection);
             }
 
             Text = titleBuilder.ToString();
         }
 
-        public void ShowHidePanelTabs(DockContent closingDocument = null)
+        public void ShowHidePanelTabs(DockContent? closingDocument = null)
         {
             DocumentStyle newDocumentStyle;
 
@@ -971,9 +1038,9 @@ namespace LoipvRemote.UI.Forms
         {
             pnlDock.Visible = false;
 
-            AppWindows.ConfigForm.Show(pnlDock, DockState.DockLeft);
-            AppWindows.TreeForm.Show(pnlDock, DockState.DockLeft);
-            viewMenu._mMenViewErrorsAndInfos.Visible = false;
+            DesktopShellRuntime.Windows.ConfigForm.Show(pnlDock, DockState.DockLeft);
+            DesktopShellRuntime.Windows.TreeForm.Show(pnlDock, DockState.DockLeft);
+            viewMenu.ViewErrorsAndInfosMenu.Visible = false;
 
             ShowFileMenu();
 
@@ -983,7 +1050,7 @@ namespace LoipvRemote.UI.Forms
         public void ShowFileMenu()
         {
             msMain.Visible = true;
-            viewMenu._mMenViewFileMenu.Checked = true;
+            viewMenu.ViewFileMenu.Checked = true;
         }
 
         public void HideFileMenu()
@@ -996,51 +1063,51 @@ namespace LoipvRemote.UI.Forms
         {
             pnlDock.Visible = false;
 
-            viewMenu._mMenViewErrorsAndInfos.Visible = false;
+            viewMenu.ViewErrorsAndInfosMenu.Visible = false;
 
 
             if (Properties.Settings.Default.ViewMenuExternalTools == true)
             {
                 viewMenu.TsExternalTools.Visible = true;
-                viewMenu._mMenViewExtAppsToolbar.Checked = true;
+                viewMenu.ViewExternalAppsToolbar.Checked = true;
             }
             else
             {
                 viewMenu.TsExternalTools.Visible = false;
-                viewMenu._mMenViewExtAppsToolbar.Checked = false;
+                viewMenu.ViewExternalAppsToolbar.Checked = false;
             }
 
             if (Properties.Settings.Default.ViewMenuMultiSSH == true)
             {
                 viewMenu.TsMultiSsh.Visible = true;
-                viewMenu._mMenViewMultiSshToolbar.Checked = true;
+                viewMenu.ViewMultiSshToolbar.Checked = true;
             }
             else
             {
                 viewMenu.TsMultiSsh.Visible = false;
-                viewMenu._mMenViewMultiSshToolbar.Checked = false;
+                viewMenu.ViewMultiSshToolbar.Checked = false;
             }
 
             if (Properties.Settings.Default.ViewMenuQuickConnect == true)
             {
                 viewMenu.TsQuickConnect.Visible = true;
-                viewMenu._mMenViewQuickConnectToolbar.Checked = true;
+                viewMenu.ViewQuickConnectToolbar.Checked = true;
             }
             else
             {
                 viewMenu.TsQuickConnect.Visible = false;
-                viewMenu._mMenViewQuickConnectToolbar.Checked = false;
+                viewMenu.ViewQuickConnectToolbar.Checked = false;
             }
 
             if (Properties.Settings.Default.LockToolbars == true)
             {
                 Properties.Settings.Default.LockToolbars = true;
-                viewMenu._mMenViewLockToolbars.Checked = true;
+                viewMenu.ViewLockToolbars.Checked = true;
             }
             else
             {
                 Properties.Settings.Default.LockToolbars = false;
-                viewMenu._mMenViewLockToolbars.Checked = false;
+                viewMenu.ViewLockToolbars.Checked = false;
             }
 
             pnlDock.Visible = true;
@@ -1052,16 +1119,16 @@ namespace LoipvRemote.UI.Forms
 
         #region Events
 
-        public delegate void ClipboardchangeEventHandler();
+        public delegate void ClipboardChangedHandler();
 
-        public static event ClipboardchangeEventHandler ClipboardChanged
+        public static event ClipboardChangedHandler ClipboardChanged
         {
             add =>
                 _clipboardChangedEvent =
-                    (ClipboardchangeEventHandler)Delegate.Combine(_clipboardChangedEvent, value);
+                    (ClipboardChangedHandler)Delegate.Combine(_clipboardChangedEvent, value);
             remove =>
                 _clipboardChangedEvent =
-                    (ClipboardchangeEventHandler)Delegate.Remove(_clipboardChangedEvent, value);
+                    Delegate.Remove(_clipboardChangedEvent, value) as ClipboardChangedHandler;
         }
 
         #endregion

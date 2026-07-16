@@ -27,6 +27,7 @@ public sealed class RdpProtocolFactory(
         RdpVersion version = ParseEnum(Option(values, "RdpVersion"), RdpVersion.Rdc10);
         RdpGatewayConfiguration? gateway = BuildGateway(definition, _secretResolver);
         RdpRuntimeConfiguration runtime = BuildRuntimeConfiguration(definition);
+        RdpDisplayConfiguration display = BuildDisplayConfiguration(values);
         var options = new RdpConnectionOptions(
             definition.Host,
             definition.Port,
@@ -34,8 +35,22 @@ public sealed class RdpProtocolFactory(
             password,
             domain,
             gateway,
-            runtime);
+            runtime,
+            display);
         return new RdpProtocolSession(_clientFactory(version), options, _windowOperationsFactory?.Invoke());
+    }
+
+    private static RdpDisplayConfiguration BuildDisplayConfiguration(ConnectionNodeOptions? options)
+    {
+        RDPResolutions resolution = ParseEnum(Option(options, "Resolution"), RDPResolutions.SmartSize);
+
+        // Keep the ActiveX desktop inside the embedded surface.  SmartSizing
+        // scales the negotiated desktop to the current tab bounds, while the
+        // fixed virtual desktop gives the server a predictable size instead
+        // of allowing it to select a desktop larger than the host surface.
+        return resolution == RDPResolutions.Fullscreen
+            ? new RdpDisplayConfiguration(1920, 1080, true, false, 100, 100)
+            : new RdpDisplayConfiguration(1920, 1080, false, true, 100, 100);
     }
 
     private static RdpRuntimeConfiguration BuildRuntimeConfiguration(ConnectionDefinition definition)
@@ -81,23 +96,23 @@ public sealed class RdpProtocolFactory(
 
     private static int CalculatePerformanceFlags(ConnectionNodeOptions? options)
     {
-        RDPPerformanceFlags flags = 0;
+        RdpPerformanceOptions flags = 0;
         if (!ParseBool(Option(options, "DisplayThemes"), false))
-            flags |= RDPPerformanceFlags.DisableThemes;
+            flags |= RdpPerformanceOptions.DisableThemes;
         if (!ParseBool(Option(options, "DisplayWallpaper"), false))
-            flags |= RDPPerformanceFlags.DisableWallpaper;
+            flags |= RdpPerformanceOptions.DisableWallpaper;
         if (ParseBool(Option(options, "EnableFontSmoothing"), false))
-            flags |= RDPPerformanceFlags.EnableFontSmoothing;
+            flags |= RdpPerformanceOptions.EnableFontSmoothing;
         if (ParseBool(Option(options, "EnableDesktopComposition"), false))
-            flags |= RDPPerformanceFlags.EnableDesktopComposition;
+            flags |= RdpPerformanceOptions.EnableDesktopComposition;
         if (ParseBool(Option(options, "DisableFullWindowDrag"), false))
-            flags |= RDPPerformanceFlags.DisableFullWindowDrag;
+            flags |= RdpPerformanceOptions.DisableFullWindowDrag;
         if (ParseBool(Option(options, "DisableMenuAnimations"), false))
-            flags |= RDPPerformanceFlags.DisableMenuAnimations;
+            flags |= RdpPerformanceOptions.DisableMenuAnimations;
         if (ParseBool(Option(options, "DisableCursorShadow"), false))
-            flags |= RDPPerformanceFlags.DisableCursorShadow;
+            flags |= RdpPerformanceOptions.DisableCursorShadow;
         if (ParseBool(Option(options, "DisableCursorBlinking"), false))
-            flags |= RDPPerformanceFlags.DisableCursorBlinking;
+            flags |= RdpPerformanceOptions.DisableCursorBlinking;
         return (int)flags;
     }
 
@@ -131,18 +146,18 @@ public sealed class RdpProtocolFactory(
     private static string Option(ConnectionNodeOptions? options, string name) =>
         options?.Values.TryGetValue(name, out string? value) == true ? value : string.Empty;
 
-    private static bool ParseBool(string value, bool fallback) =>
-        bool.TryParse(value, out bool parsed) ? parsed : fallback;
+    private static bool ParseBool(string value, bool defaultValue) =>
+        bool.TryParse(value, out bool parsed) ? parsed : defaultValue;
 
-    private static int ParseInt(string value, int fallback) =>
+    private static int ParseInt(string value, int defaultValue) =>
         int.TryParse(value, System.Globalization.NumberStyles.Integer,
             System.Globalization.CultureInfo.InvariantCulture, out int parsed)
             ? parsed
-            : fallback;
+            : defaultValue;
 
-    private static TEnum ParseEnum<TEnum>(string value, TEnum fallback)
+    private static TEnum ParseEnum<TEnum>(string value, TEnum defaultValue)
         where TEnum : struct, Enum =>
-        Enum.TryParse(value, ignoreCase: true, out TEnum parsed) ? parsed : fallback;
+        Enum.TryParse(value, ignoreCase: true, out TEnum parsed) ? parsed : defaultValue;
 
     private static uint ParseEnumValue<TEnum>(string value)
         where TEnum : struct, Enum =>

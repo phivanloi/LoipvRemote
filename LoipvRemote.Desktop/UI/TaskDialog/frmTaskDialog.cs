@@ -27,7 +27,7 @@ namespace LoipvRemote.UI.TaskDialog
         private readonly List<CommandButton> _commandButtonCtrls = [];
         private Control? _focusControl;
 
-        private bool _isVista = false;
+        private readonly bool _isVista = OperatingSystem.IsWindowsVersionAtLeast(6);
 
         private int _mainInstructionLeftMargin;
         private int _mainInstructionRightMargin;
@@ -50,7 +50,7 @@ namespace LoipvRemote.UI.TaskDialog
         public string Title
         {
             get => Text;
-            set => Text = value;
+            set => Text = value ?? string.Empty;
         }
 
         public string MainInstruction
@@ -58,7 +58,7 @@ namespace LoipvRemote.UI.TaskDialog
             get => _mainInstruction;
             set
             {
-                _mainInstruction = value;
+                _mainInstruction = value ?? string.Empty;
                 Invalidate();
             }
         }
@@ -66,19 +66,19 @@ namespace LoipvRemote.UI.TaskDialog
         public string Content
         {
             get => lbContent.Text;
-            set => lbContent.Text = value;
+            set => lbContent.Text = value ?? string.Empty;
         }
 
         public string ExpandedInfo
         {
             get => lbExpandedInfo.Text;
-            set => lbExpandedInfo.Text = value;
+            set => lbExpandedInfo.Text = value ?? string.Empty;
         }
 
         public string Footer
         {
             get => lbFooter.Text;
-            set => lbFooter.Text = value;
+            set => lbFooter.Text = value ?? string.Empty;
         }
 
         public int DefaultButtonIndex { get; set; }
@@ -90,8 +90,8 @@ namespace LoipvRemote.UI.TaskDialog
             get
             {
                 foreach (MrngRadioButton rb in _radioButtonCtrls)
-                    if (rb.Checked)
-                        return (int)rb.Tag;
+                    if (rb.Checked && rb.Tag is int index)
+                        return index;
                 return -1;
             }
         }
@@ -104,7 +104,7 @@ namespace LoipvRemote.UI.TaskDialog
         public string VerificationText
         {
             get => cbVerify.Text;
-            set => cbVerify.Text = value;
+            set => cbVerify.Text = value ?? string.Empty;
         }
 
         public bool VerificationCheckBoxChecked
@@ -126,7 +126,6 @@ namespace LoipvRemote.UI.TaskDialog
         {
             InitializeComponent();
 
-            // _isVista = VistaTaskDialog.IsAvailableOnThisOS;
             if (!_isVista && CTaskDialog.UseToolWindowOnXp) // <- shall we use the smaller toolbar?
                 FormBorderStyle = FormBorderStyle.FixedToolWindow;
 
@@ -246,7 +245,7 @@ namespace LoipvRemote.UI.TaskDialog
                 int pnlHeight = LogicalToDeviceUnits(12);
                 for (int i = 0; i < arr.Length; i++)
                 {
-                    MrngRadioButton rb = new() { Parent = pnlRadioButtons};
+                    MrngRadioButton rb = new() { Parent = pnlRadioButtons };
                     rb.Location = new Point(LogicalToDeviceUnits(60), LogicalToDeviceUnits(4) + i * rb.Height);
                     rb.Text = arr[i];
                     rb.Tag = i;
@@ -271,7 +270,8 @@ namespace LoipvRemote.UI.TaskDialog
                 {
                     CommandButton btn = new()
                     {
-                        Parent = pnlCommandButtons, Location = new Point(LogicalToDeviceUnits(50), t)
+                        Parent = pnlCommandButtons,
+                        Location = new Point(LogicalToDeviceUnits(50), t)
                     };
                     if (_isVista) // <- tweak font if vista
                         btn.Font = new Font(btn.Font, FontStyle.Regular);
@@ -447,7 +447,7 @@ namespace LoipvRemote.UI.TaskDialog
         }
 
         //--------------------------------------------------------------------------------
-        private Image ResizeBitmap(Image srcImg, int newWidth, int newHeight)
+        private Bitmap ResizeBitmap(Image srcImg, int newWidth, int newHeight)
         {
             float percentWidth = LogicalToDeviceUnits(newWidth) / (float)srcImg.Width;
             float percentHeight = LogicalToDeviceUnits(newHeight) / (float)srcImg.Height;
@@ -489,9 +489,11 @@ namespace LoipvRemote.UI.TaskDialog
         #region EVENTS
 
         //--------------------------------------------------------------------------------
-        private void CommandButton_Click(object sender, EventArgs e)
+        private void CommandButton_Click(object? sender, EventArgs e)
         {
-            CommandButtonClickedIndex = (int)((CommandButton)sender).Tag;
+            if (sender is not CommandButton button || button.Tag is not int index)
+                return;
+            CommandButtonClickedIndex = index;
             DialogResult = DialogResult.OK;
         }
 
@@ -508,36 +510,36 @@ namespace LoipvRemote.UI.TaskDialog
         protected override void OnShown(EventArgs e)
         {
             if (!_formBuilt)
-                throw new Exception("frmTaskDialog : Please call .BuildForm() before showing the TaskDialog");
+                throw new InvalidOperationException("frmTaskDialog : Please call .BuildForm() before showing the TaskDialog");
             base.OnShown(e);
         }
 
         //--------------------------------------------------------------------------------
-        private void lbDetails_MouseEnter(object sender, EventArgs e)
+        private void lbDetails_MouseEnter(object? sender, EventArgs e)
         {
             lbShowHideDetails.ImageIndex = Expanded ? 1 : 4;
         }
 
         //--------------------------------------------------------------------------------
-        private void lbDetails_MouseLeave(object sender, EventArgs e)
+        private void lbDetails_MouseLeave(object? sender, EventArgs e)
         {
             lbShowHideDetails.ImageIndex = Expanded ? 0 : 3;
         }
 
         //--------------------------------------------------------------------------------
-        private void lbDetails_MouseUp(object sender, MouseEventArgs e)
+        private void lbDetails_MouseUp(object? sender, MouseEventArgs e)
         {
             lbShowHideDetails.ImageIndex = Expanded ? 1 : 4;
         }
 
         //--------------------------------------------------------------------------------
-        private void lbDetails_MouseDown(object sender, MouseEventArgs e)
+        private void lbDetails_MouseDown(object? sender, MouseEventArgs e)
         {
             lbShowHideDetails.ImageIndex = Expanded ? 2 : 5;
         }
 
         //--------------------------------------------------------------------------------
-        private void lbDetails_Click(object sender, EventArgs e)
+        private void lbDetails_Click(object? sender, EventArgs e)
         {
             Expanded = !Expanded;
             pnlExpandedInfo.Visible = Expanded;
@@ -549,7 +551,7 @@ namespace LoipvRemote.UI.TaskDialog
         }
 
         //--------------------------------------------------------------------------------
-        private void frmTaskDialog_Shown(object sender, EventArgs e)
+        private void frmTaskDialog_Shown(object? sender, EventArgs e)
         {
             if (CTaskDialog.PlaySystemSounds)
             {
@@ -568,7 +570,7 @@ namespace LoipvRemote.UI.TaskDialog
                         System.Media.SystemSounds.Exclamation.Play();
                         break;
                     default:
-                        throw new ArgumentOutOfRangeException();
+                        throw new InvalidOperationException($"Unsupported system icon: {MainIcon}.");
                 }
             }
 

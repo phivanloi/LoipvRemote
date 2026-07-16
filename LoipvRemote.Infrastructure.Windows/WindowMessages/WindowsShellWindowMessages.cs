@@ -37,9 +37,9 @@ public static class WindowsShellWindowMessages
 
     public static nint WindowFromPoint(Point point) => NativeMethods.WindowFromPoint(point);
 
-    public static WindowPosition ReadWindowPosition(nint pointer)
+    public static WindowPosition ReadWindowPosition(nint address)
     {
-        NativeMethods.WINDOWPOS position = NativeMethods.ReadWindowPosition(pointer);
+        NativeMethods.WINDOWPOS position = NativeMethods.ReadWindowPosition(address);
         return new WindowPosition(position.hwnd, position.hwndInsertAfter, position.x, position.y,
             position.cx, position.cy, position.flags);
     }

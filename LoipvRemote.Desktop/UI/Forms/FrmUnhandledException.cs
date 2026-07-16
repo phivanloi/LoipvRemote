@@ -12,16 +12,16 @@ using ApplicationEdition = LoipvRemote.UseCases.Hosting.ApplicationEdition;
 namespace LoipvRemote.UI.Forms
 {
     [SupportedOSPlatform("windows")]
-    public partial class FrmUnhandledException : Form
+    public partial class UnhandledExceptionForm : Form
     {
         private readonly bool _isFatal;
 
-        public FrmUnhandledException()
+        public UnhandledExceptionForm()
             : this(null, false)
         {
         }
 
-        public FrmUnhandledException(Exception exception, bool isFatal)
+        public UnhandledExceptionForm(Exception? exception, bool isFatal)
         {
             _isFatal = isFatal;
             InitializeComponent();
@@ -38,8 +38,8 @@ namespace LoipvRemote.UI.Forms
         private void SetEnvironmentText()
         {
             textBoxEnvironment.Text = new StringBuilder()
-                .AppendLine($"OS: {Environment.OSVersion}")
-                .AppendLine($"{GeneralAppInfo.ProductName} Version: {GeneralAppInfo.ApplicationVersion}")
+                .AppendLine(CultureInfo.CurrentCulture, $"OS: {Environment.OSVersion}")
+                .AppendLine(CultureInfo.CurrentCulture, $"{GeneralAppInfo.ProductName} Version: {GeneralAppInfo.ApplicationVersion}")
                 .AppendLine("Edition: " + (ApplicationEdition.IsPortable ? "Portable" : "MSI"))
                 .AppendLine("Cmd line args: " + string.Join(" ", Environment.GetCommandLineArgs().Skip(1)))
                 .ToString();
@@ -64,7 +64,7 @@ namespace LoipvRemote.UI.Forms
                 : Language._Close;
         }
 
-        private void buttonCopyAll_Click(object sender, EventArgs e)
+        private void buttonCopyAll_Click(object? sender, EventArgs e)
         {
             string text = new StringBuilder()
                .AppendLine("```")
@@ -82,7 +82,7 @@ namespace LoipvRemote.UI.Forms
             Clipboard.SetText(text);
         }
 
-        private void buttonClose_Click(object sender, EventArgs e)
+        private void buttonClose_Click(object? sender, EventArgs e)
         {
             if (_isFatal)
                 Shutdown.Quit();
@@ -90,7 +90,7 @@ namespace LoipvRemote.UI.Forms
             Close();
         }
 
-        private void buttonCreateBug_Click(object sender, EventArgs e)
+        private void buttonCreateBug_Click(object? sender, EventArgs e)
         {
             var startInfo = new ProcessStartInfo
             {

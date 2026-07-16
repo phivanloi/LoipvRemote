@@ -1790,9 +1790,6 @@ LoipvRemote se nyní ukončí a zahájí instalaci.</value>
   <data name="OptionsThemeNewThemeText" xml:space="preserve">
     <value>Zadejte nový název šablony</value>
   </data>
-  <data name="SaveConnectionsAfterEveryEdit" xml:space="preserve">
-    <value>Uložit připojení při každé úpravě</value>
-  </data>
   <data name="TestConnection" xml:space="preserve">
     <value>Test spojení</value>
   </data>

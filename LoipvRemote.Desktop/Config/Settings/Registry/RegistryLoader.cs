@@ -62,7 +62,7 @@ namespace LoipvRemote.Config.Settings.Registry
         public static void Cleanup(Type deleteEntries)
         {
             // Remove the registry setting from the dictionary
-            RegistrySettings?.TryRemove(deleteEntries, out _);
+            RegistrySettings.TryRemove(deleteEntries, out _);
 
             if (RegistrySettings.IsEmpty && instance.IsValueCreated)
             {
@@ -153,7 +153,7 @@ namespace LoipvRemote.Config.Settings.Registry
         /// <summary>
         /// Implements the IDisposable pattern for resource cleanup.
         /// </summary>
-        private bool disposedValue = false; // To detect redundant calls
+        private bool disposedValue; // To detect redundant calls
 
         /// <summary>
         /// Releases the resources used by the object.

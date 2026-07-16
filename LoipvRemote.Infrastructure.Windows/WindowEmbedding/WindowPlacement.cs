@@ -9,7 +9,7 @@ namespace LoipvRemote.Tools
     [SupportedOSPlatform("windows")]
     public class WindowPlacement(Form form)
     {
-        private Form _form = form;
+        private Form _form = form ?? throw new ArgumentNullException(nameof(form));
 
 
         #region Public Properties
@@ -17,7 +17,7 @@ namespace LoipvRemote.Tools
         public Form Form
         {
             get => _form;
-            set => _form = value;
+            set => _form = value ?? throw new ArgumentNullException(nameof(value));
         }
 
         public bool RestoreToMaximized
@@ -49,11 +49,6 @@ namespace LoipvRemote.Tools
 
         private NativeMethods.WINDOWPLACEMENT GetWindowPlacement()
         {
-            if (_form == null)
-            {
-                throw (new NullReferenceException("WindowPlacement.Form is not set."));
-            }
-
             NativeMethods.WINDOWPLACEMENT windowPlacement = new();
             windowPlacement.length = (uint)Marshal.SizeOf(windowPlacement);
             try
@@ -69,11 +64,6 @@ namespace LoipvRemote.Tools
 
         private bool SetWindowPlacement(NativeMethods.WINDOWPLACEMENT windowPlacement)
         {
-            if (_form == null)
-            {
-                throw (new NullReferenceException("WindowPlacement.Form is not set."));
-            }
-
             windowPlacement.length = (uint)Marshal.SizeOf(windowPlacement);
             try
             {

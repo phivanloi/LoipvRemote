@@ -10,7 +10,7 @@ namespace LoipvRemote.UI.Controls.PageSequence
     public class PageSequence : IDisposable
     {
         private readonly Control _pageContainer;
-        private readonly IList<SequencedControl> _pages = new List<SequencedControl>();
+        private readonly List<SequencedControl> _pages = new();
 
         public IEnumerable<SequencedControl> Pages => _pages;
         public int CurrentPageIndex { get; private set; }
@@ -76,7 +76,7 @@ namespace LoipvRemote.UI.Controls.PageSequence
         private void SubscribeToPageEvents(ISequenceChangingNotifier page)
         {
             if (_pages.Contains(page)) return;
-            page.Next += PageOnNext;
+            page.NextRequested += PageOnNext;
             page.Previous += PageOnPrevious;
             page.PageReplacementRequested += PageOnPageReplacementRequested;
         }
@@ -84,7 +84,7 @@ namespace LoipvRemote.UI.Controls.PageSequence
         private void UnsubscribeFromPageEvents(ISequenceChangingNotifier page)
         {
             if (!_pages.Contains(page)) return;
-            page.Next -= PageOnNext;
+            page.NextRequested -= PageOnNext;
             page.Previous -= PageOnPrevious;
             page.PageReplacementRequested -= PageOnPageReplacementRequested;
         }
@@ -107,6 +107,7 @@ namespace LoipvRemote.UI.Controls.PageSequence
         public void Dispose()
         {
             Dispose(true);
+            GC.SuppressFinalize(this);
         }
 
         protected virtual void Dispose(bool disposing)

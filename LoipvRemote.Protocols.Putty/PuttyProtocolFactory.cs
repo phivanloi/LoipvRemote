@@ -52,7 +52,10 @@ public sealed class PuttyProtocolFactory(
                 Username = Option(definition.Options, "Username")
                 ,PasswordPipeName = passwordPipeName
             },
-            StartMinimized: true);
+            // Starting minimized requires SW_RESTORE after reparenting. PuTTY
+            // uses that restore transition to restore its top-level styles,
+            // which turns the embedded session back into an owned overlay.
+            StartMinimized: false);
 
         options.Validate();
         return new PuttyProtocolSession(_processFactory(), _windowOperationsFactory(), options);

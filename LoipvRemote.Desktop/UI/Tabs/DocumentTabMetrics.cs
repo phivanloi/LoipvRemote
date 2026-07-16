@@ -11,8 +11,8 @@ namespace LoipvRemote.UI.Tabs
 
         internal static int MinimumHeight(int textHeight, int iconHeight)
         {
-            if (textHeight <= 0) throw new ArgumentOutOfRangeException(nameof(textHeight));
-            if (iconHeight < 0) throw new ArgumentOutOfRangeException(nameof(iconHeight));
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(textHeight);
+            ArgumentOutOfRangeException.ThrowIfNegative(iconHeight);
 
             return Math.Max(Math.Max(textHeight, iconHeight), CloseButtonSize) + (ContentPadding * 2);
         }

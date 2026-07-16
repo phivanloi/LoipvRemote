@@ -1,4 +1,4 @@
-namespace LoipvRemote.Connectors.Delinea
+namespace LoipvRemote.Desktop.UI.Connectors.Delinea
 {
     public partial class SSConnectionForm : Form
     {
@@ -7,7 +7,7 @@ namespace LoipvRemote.Connectors.Delinea
             InitializeComponent();
         }
 
-        private void SSConnectionForm_Activated(object sender, EventArgs e)
+        private void SSConnectionForm_Activated(object? sender, EventArgs e)
         {
             SetVisibility();
             if (cbUseSSO.Checked)
@@ -15,13 +15,13 @@ namespace LoipvRemote.Connectors.Delinea
             else
             {
                 if (tbPassword.Text.Length == 0)
-                    tbPassword.Focus(); 
+                    tbPassword.Focus();
                 else
                     tbOTP.Focus();
             }
         }
 
-        private void cbUseSSO_CheckedChanged(object sender, EventArgs e)
+        private void cbUseSSO_CheckedChanged(object? sender, EventArgs e)
         {
             SetVisibility();
         }

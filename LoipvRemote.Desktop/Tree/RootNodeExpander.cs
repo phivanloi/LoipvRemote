@@ -3,7 +3,7 @@ using LoipvRemote.UI.Controls.ConnectionTree;
 
 namespace LoipvRemote.Tree
 {
-    public class RootNodeExpander : IConnectionTreeDelegate
+    public class RootNodeExpander : IConnectionTreeAction
     {
         public void Execute(IConnectionTree connectionTree)
         {

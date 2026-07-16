@@ -60,7 +60,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             // chkAutomaticReconnect
             //
-            chkAutomaticReconnect._mice = MrngCheckBox.MouseState.OUT;
+            chkAutomaticReconnect.MouseInteractionState = MrngCheckBox.MouseState.OUT;
             chkAutomaticReconnect.AutoSize = true;
             chkAutomaticReconnect.Font = new System.Drawing.Font("Segoe UI", 10F);
             chkAutomaticReconnect.Location = new System.Drawing.Point(9, 8);
@@ -84,7 +84,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             // chkUseCustomPuttyPath
             //
-            chkUseCustomPuttyPath._mice = MrngCheckBox.MouseState.OUT;
+            chkUseCustomPuttyPath.MouseInteractionState = MrngCheckBox.MouseState.OUT;
             chkUseCustomPuttyPath.AutoSize = true;
             chkUseCustomPuttyPath.Font = new System.Drawing.Font("Segoe UI", 10F);
             chkUseCustomPuttyPath.Location = new System.Drawing.Point(9, 78);
@@ -129,7 +129,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             // btnLaunchPutty
             //
-            btnLaunchPutty._mice = MrngButton.MouseState.OUT;
+            btnLaunchPutty.MouseInteractionState = MrngButton.MouseState.OUT;
             btnLaunchPutty.Image = Properties.Resources.PuttyConfig;
             btnLaunchPutty.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
             btnLaunchPutty.Location = new System.Drawing.Point(379, 138);
@@ -162,7 +162,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             // btnBrowseCustomPuttyPath
             //
-            btnBrowseCustomPuttyPath._mice = MrngButton.MouseState.OUT;
+            btnBrowseCustomPuttyPath.MouseInteractionState = MrngButton.MouseState.OUT;
             btnBrowseCustomPuttyPath.Enabled = false;
             btnBrowseCustomPuttyPath.Location = new System.Drawing.Point(379, 99);
             btnBrowseCustomPuttyPath.Name = "btnBrowseCustomPuttyPath";
@@ -174,7 +174,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             // chkLoadBalanceInfoUseUtf8
             //
-            chkLoadBalanceInfoUseUtf8._mice = MrngCheckBox.MouseState.OUT;
+            chkLoadBalanceInfoUseUtf8.MouseInteractionState = MrngCheckBox.MouseState.OUT;
             chkLoadBalanceInfoUseUtf8.AutoSize = true;
             chkLoadBalanceInfoUseUtf8.Font = new System.Drawing.Font("Segoe UI", 10F);
             chkLoadBalanceInfoUseUtf8.Location = new System.Drawing.Point(9, 54);
@@ -186,7 +186,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             // chkNoReconnect
             //
-            chkNoReconnect._mice = MrngCheckBox.MouseState.OUT;
+            chkNoReconnect.MouseInteractionState = MrngCheckBox.MouseState.OUT;
             chkNoReconnect.AutoSize = true;
             chkNoReconnect.Font = new System.Drawing.Font("Segoe UI", 10F);
             chkNoReconnect.Location = new System.Drawing.Point(27, 31);

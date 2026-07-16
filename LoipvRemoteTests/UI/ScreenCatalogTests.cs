@@ -1,9 +1,9 @@
 using System.Reflection;
 using System.Windows.Forms;
-using LoipvRemote.Connectors.AWS;
-using LoipvRemote.Connectors.Delinea;
-using LoipvRemote.Connectors.OpenBao;
-using LoipvRemote.Connectors.Passwordstate;
+using LoipvRemote.Desktop.UI.Connectors.AWS;
+using LoipvRemote.Desktop.UI.Connectors.Delinea;
+using LoipvRemote.Desktop.UI.Connectors.OpenBao;
+using LoipvRemote.Desktop.UI.Connectors.Passwordstate;
 using LoipvRemote.UI.Forms;
 using LoipvRemote.UI.Forms.OptionsPages;
 using LoipvRemote.UI.Tabs;
@@ -27,7 +27,7 @@ public sealed class ScreenCatalogTests
         new(typeof(FrmInputBox), ScreenArea.Dialog),
         new(typeof(FrmOptions), ScreenArea.Dialog),
         new(typeof(FrmPassword), ScreenArea.Dialog),
-        new(typeof(FrmUnhandledException), ScreenArea.Dialog),
+        new(typeof(UnhandledExceptionForm), ScreenArea.Dialog),
         new(typeof(frmTaskDialog), ScreenArea.Dialog),
         new(typeof(BaseWindow), ScreenArea.Docking),
         new(typeof(ConfigWindow), ScreenArea.Docking),

@@ -9,10 +9,8 @@ using LoipvRemote.UI;
 using LoipvRemote.UI.Adapters;
 using LoipvRemote.UI.Forms;
 using LoipvRemote.UI.TaskDialog;
-using LoipvRemote.UseCases.Configuration;
 using System.IO;
 using System.Runtime.Versioning;
-using System.Threading;
 using System.Windows.Forms;
 
 namespace LoipvRemote.App;
@@ -20,26 +18,21 @@ namespace LoipvRemote.App;
 /// <summary>Connection-file workflow owned by the host instead of the Runtime bridge.</summary>
 [SupportedOSPlatform("windows")]
 public sealed class ConnectionLoadingService(
-    IConnectionWorkspace workspace,
+    IConnectionTreeWorkspace workspace,
     MessageCollector messageCollector,
     ConnectionWorkspaceAdapter connectionWorkspace,
     ConnectionImportService connectionImportService,
     Func<ContainerInfo> connectionRootProvider)
 {
-    private readonly IConnectionWorkspace _workspace = workspace ?? throw new ArgumentNullException(nameof(workspace));
+    private readonly IConnectionTreeWorkspace _workspace = workspace ?? throw new ArgumentNullException(nameof(workspace));
     private readonly MessageCollector _messageCollector = messageCollector ?? throw new ArgumentNullException(nameof(messageCollector));
     private readonly ConnectionWorkspaceAdapter _connectionWorkspace = connectionWorkspace ?? throw new ArgumentNullException(nameof(connectionWorkspace));
     private readonly ConnectionImportService _connectionImportService = connectionImportService ?? throw new ArgumentNullException(nameof(connectionImportService));
     private readonly Func<ContainerInfo> _connectionRootProvider = connectionRootProvider ?? throw new ArgumentNullException(nameof(connectionRootProvider));
 
-    public void LoadConnectionsAsync()
-    {
-        Thread thread = new(() => LoadConnections());
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-    }
+    public Task LoadConnectionsAsync() => LoadConnectionsAsync(false);
 
-    public void LoadConnections(bool withDialog = false)
+    public async Task LoadConnectionsAsync(bool withDialog = false)
     {
         string connectionFileName = string.Empty;
 
@@ -62,7 +55,7 @@ public sealed class ConnectionLoadingService(
                 connectionFileName = _workspace.GetStartupConnectionFileName();
             }
 
-            _workspace.LoadConnections(OptionsDBsPage.Default.UseSQLServer, false, connectionFileName);
+            await _workspace.LoadConnectionsAsync(OptionsDBsPage.Default.UseSQLServer, false, connectionFileName).ConfigureAwait(true);
             if (OptionsDBsPage.Default.UseSQLServer)
                 _workspace.LastSqlUpdate = DateTime.Now.ToUniversalTime();
             else
@@ -78,7 +71,7 @@ public sealed class ConnectionLoadingService(
             {
                 _messageCollector.AddExceptionMessage(Language.LoadFromSqlFailed, exception);
                 string commandButtons = string.Join("|", Language._TryAgain, Language.CommandOpenConnectionFile,
-                    string.Format(Language.CommandExitProgram, Application.ProductName));
+                    FormatText(Language.CommandExitProgram, Application.ProductName));
                 CTaskDialog.ShowCommandBox(Application.ProductName ?? string.Empty, Language.LoadFromSqlFailed,
                     Language.LoadFromSqlFailedContent, MiscTools.GetExceptionMessageRecursive(exception), "", "",
                     commandButtons, false, ESysIcons.Error, ESysIcons.Error);
@@ -87,11 +80,11 @@ public sealed class ConnectionLoadingService(
                 {
                     case 0:
                         OptionsDBsPage.Default.UseSQLServer = true;
-                        LoadConnections(withDialog);
+                        await LoadConnectionsAsync(withDialog);
                         return;
                     case 1:
                         OptionsDBsPage.Default.UseSQLServer = false;
-                        LoadConnections(true);
+                        await LoadConnectionsAsync(true);
                         return;
                     default:
                         OptionsDBsPage.Default.UseSQLServer = false;
@@ -104,7 +97,7 @@ public sealed class ConnectionLoadingService(
             if (exception is FileNotFoundException && !withDialog)
             {
                 _messageCollector.AddExceptionMessage(
-                    string.Format(Language.ConnectionsFileCouldNotBeLoadedNew, connectionFileName),
+                    FormatText(Language.ConnectionsFileCouldNotBeLoadedNew, connectionFileName),
                     exception,
                     MessageClass.InformationMsg);
 
@@ -129,16 +122,16 @@ public sealed class ConnectionLoadingService(
                         switch (CTaskDialog.CommandButtonResult)
                         {
                             case 0:
-                                _workspace.NewConnectionsFile(connectionFileName);
+                                await _workspace.NewConnectionsFileAsync(connectionFileName);
                                 answered = true;
                                 break;
                             case 1:
-                                LoadConnections(true);
+                                await LoadConnectionsAsync(true);
                                 answered = true;
                                 break;
                             case 2:
-                                _workspace.NewConnectionsFile(connectionFileName);
-                                _connectionImportService.ImportFromFile(_connectionRootProvider());
+                                await _workspace.NewConnectionsFileAsync(connectionFileName);
+                                await _connectionImportService.ImportFromFileAsync(_connectionRootProvider());
                                 answered = true;
                                 break;
                             case 3:
@@ -150,7 +143,7 @@ public sealed class ConnectionLoadingService(
                     catch (Exception retryException)
                     {
                         _messageCollector.AddExceptionMessage(
-                            string.Format(Language.ConnectionsFileCouldNotBeLoadedNew, connectionFileName),
+                            FormatText(Language.ConnectionsFileCouldNotBeLoadedNew, connectionFileName),
                             retryException,
                             MessageClass.InformationMsg);
                     }
@@ -160,15 +153,15 @@ public sealed class ConnectionLoadingService(
             }
 
             _messageCollector.AddExceptionStackTrace(
-                string.Format(Language.ConnectionsFileCouldNotBeLoaded, connectionFileName), exception);
+                FormatText(Language.ConnectionsFileCouldNotBeLoaded, connectionFileName), exception);
             if (connectionFileName != _workspace.GetStartupConnectionFileName())
             {
-                LoadConnections(withDialog);
+                await LoadConnectionsAsync(withDialog);
             }
             else
             {
                 _connectionWorkspace.ShowError(
-                    string.Format(Language.ErrorStartupConnectionFileLoad, Environment.NewLine, Application.ProductName,
+                    FormatText(Language.ErrorStartupConnectionFileLoad, Environment.NewLine, Application.ProductName,
                         _workspace.GetStartupConnectionFileName(), MiscTools.GetExceptionMessageRecursive(exception)),
                     @"Could not load startup file.");
                 Application.Exit();

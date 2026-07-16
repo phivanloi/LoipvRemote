@@ -1,3 +1,7 @@
+// Win32 interop signatures intentionally mirror native names, StringBuilder
+// buffers and public layout fields required by Marshal/PInvoke.
+#pragma warning disable CA1051, CA1401, CA1707, CA1711, CA1720, CA1838
+
 using System;
 using System.Drawing;
 using System.Runtime.ConstrainedExecution;
@@ -32,11 +36,17 @@ namespace LoipvRemote.Infrastructure.Windows.Interop
         [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
         public static extern IntPtr FindWindowEx(IntPtr parentHandle,
                                                    IntPtr childAfter,
-                                                   string lclassName,
-                                                   string windowTitle);
+                                                   string? lclassName,
+                                                   string? windowTitle);
 
         [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
         public static extern IntPtr GetForegroundWindow();
+
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern uint GetDpiForWindow(IntPtr hWnd);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern int GetSystemMetricsForDpi(int nIndex, uint dpi);
 
         [DllImport("user32.dll", SetLastError = true)]
         public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
@@ -110,16 +120,27 @@ namespace LoipvRemote.Infrastructure.Windows.Interop
                                                        IntPtr hBitmapChecked);
 
         [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-        public static extern long SetParent(IntPtr hWndChild, IntPtr hWndNewParent);
+        public static extern IntPtr SetParent(IntPtr hWndChild, IntPtr hWndNewParent);
 
         [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
         public static extern int GetWindowLong(IntPtr hWnd, int nIndex);
 
-        [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-        public static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
+        [DllImport("user32.dll", EntryPoint = "SetWindowLong", SetLastError = true, CharSet = CharSet.Unicode)]
+        private static extern int SetWindowLong32(IntPtr hWnd, int nIndex, int dwNewLong);
+
+        [DllImport("user32.dll", EntryPoint = "SetWindowLongPtr", SetLastError = true, CharSet = CharSet.Unicode)]
+        private static extern IntPtr SetWindowLongPtr64(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
+
+        public static IntPtr SetWindowLongPtr(IntPtr hWnd, int nIndex, IntPtr dwNewLong) =>
+            IntPtr.Size == 8
+                ? SetWindowLongPtr64(hWnd, nIndex, dwNewLong)
+                : new IntPtr(SetWindowLong32(hWnd, nIndex, dwNewLong.ToInt32()));
 
         [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
         public static extern int ShowWindow(IntPtr hWnd, int nCmdShow);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern bool ShowWindowAsync(IntPtr hWnd, int nCmdShow);
 
         [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
         public static extern IntPtr WindowFromPoint(Point point);
@@ -238,6 +259,8 @@ namespace LoipvRemote.Infrastructure.Windows.Interop
         #region Constants
 
         public const int TRUE = 1;
+        public const int SM_CYCAPTION = 4;
+        public const int SM_CYSIZEFRAME = 33;
 
         #region GetWindowLong
 
@@ -486,6 +509,11 @@ namespace LoipvRemote.Infrastructure.Windows.Interop
         /// Posted to the window with the keyboard focus when a WM_KEYDOWN message is translated by the TranslateMessage function. The WM_CHAR message contains the character code of the key that was pressed.
         /// </summary>
         public const int WM_CHAR = 0x102;
+        public const int WM_DEADCHAR = 0x103;
+        public const int WM_SYSKEYDOWN = 0x104;
+        public const int WM_SYSKEYUP = 0x105;
+        public const int WM_SYSCHAR = 0x106;
+        public const int WM_SYSDEADCHAR = 0x107;
 
         /// <summary>
         /// Sent when the user selects a command item from a menu, when a control sends a notification message to its parent window, or when an accelerator keystroke is translated.

@@ -48,7 +48,7 @@ namespace LoipvRemote.Connection
                 Info = info;
                 Parent = parent;
                 Location = new Point(0, 0);
-                Size = Parent.Size;
+                Size = parent.Size;
                 Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top;
                 InitializeComponent();
                 _protocolFocusRetryTimer = new System.Windows.Forms.Timer(components)
@@ -173,7 +173,7 @@ namespace LoipvRemote.Connection
                    ReferenceEquals(tab.DockPanel?.ActiveDocument, tab);
         }
 
-        private void InterfaceControl_Paint(object sender, PaintEventArgs e)
+        private void InterfaceControl_Paint(object? sender, PaintEventArgs e)
         {
             // Draw colored border based on ConnectionFrameColor property
             if (Info?.ConnectionFrameColor != null && Info.ConnectionFrameColor != ConnectionFrameColor.None)
@@ -211,7 +211,7 @@ namespace LoipvRemote.Connection
             }
         }
 
-        private Color GetFrameColor(ConnectionFrameColor frameColor)
+        private static Color GetFrameColor(ConnectionFrameColor frameColor)
         {
             return frameColor switch
             {
@@ -234,7 +234,7 @@ namespace LoipvRemote.Connection
             base.WndProc(ref m);
         }
 
-        public static InterfaceControl FindInterfaceControl(DockPanel DockPnl)
+        public static InterfaceControl? FindInterfaceControl(DockPanel DockPnl)
         {
             // The root shell normally contains ConnectionWindow documents. Each
             // ConnectionWindow owns a nested DockPanel whose active document is
@@ -244,12 +244,12 @@ namespace LoipvRemote.Connection
                 return FindInterfaceControl(ct);
 
             if (DockPnl.ActiveDocument is ConnectionWindow connectionWindow)
-                return connectionWindow.GetActiveInterfaceControl();
+                return connectionWindow.TryGetInterfaceControl();
 
             return null;
         }
 
-        public static InterfaceControl FindInterfaceControl(ConnectionTab tab)
+        public static InterfaceControl? FindInterfaceControl(ConnectionTab tab)
         {
             if (tab.Controls.Count < 1) return null;
             // if the tab has more than one controls and the second is an InterfaceControl than it must be a connection through SSH tunnel

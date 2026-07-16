@@ -36,19 +36,19 @@ namespace LoipvRemote.Credential.Repositories
             return newOrder.Any() ? newOrder.First() : null;
         }
 
-        private IList<ICredentialRepository> OrderListForNextLockedRepo()
+        private List<ICredentialRepository> OrderListForNextLockedRepo()
         {
             if (_repositories.Count == 0)
                 return new List<ICredentialRepository>();
             List<ICredentialRepository> reorderedList = new();
-            IList<ICredentialRepository> itemsAfterCurrent = BuildListOfItemsAfterCurrent();
-            IList<ICredentialRepository> itemsBeforeAndIncludingCurrent = BuildListOfItemsBeforeAndIncludingCurrent();
+            List<ICredentialRepository> itemsAfterCurrent = BuildListOfItemsAfterCurrent();
+            List<ICredentialRepository> itemsBeforeAndIncludingCurrent = BuildListOfItemsBeforeAndIncludingCurrent();
             reorderedList.AddRange(itemsAfterCurrent.Where(repository => !repository.IsLoaded));
             reorderedList.AddRange(itemsBeforeAndIncludingCurrent.Where(repository => !repository.IsLoaded));
             return reorderedList;
         }
 
-        private IList<ICredentialRepository> BuildListOfItemsAfterCurrent()
+        private List<ICredentialRepository> BuildListOfItemsAfterCurrent()
         {
             int lastListIndex = _repositories.Count - 1;
             int newListStartIndex = GetNewListStartIndex();
@@ -58,7 +58,7 @@ namespace LoipvRemote.Credential.Repositories
             return _repositories.GetRange(newListStartIndex, countToEndOfList);
         }
 
-        private IList<ICredentialRepository> BuildListOfItemsBeforeAndIncludingCurrent()
+        private List<ICredentialRepository> BuildListOfItemsBeforeAndIncludingCurrent()
         {
             int newListStartIndex = GetNewListStartIndex();
             return _repositories.GetRange(0, newListStartIndex);

@@ -4,9 +4,10 @@ namespace LoipvRemote.Protocols.Abstractions;
 public interface IEmbeddedWindowOperations
 {
     bool IsForegroundWindow(IntPtr windowHandle);
-    IntPtr FindChildWindow(IntPtr parentHandle);
+    IntPtr FindChildWindow(IntPtr parentHandle, IntPtr afterHandle = default);
     bool HasClassName(IntPtr windowHandle, string className);
     void Hide(IntPtr windowHandle);
+    void Show(IntPtr windowHandle);
     void Restore(IntPtr windowHandle);
     void SetParent(IntPtr childHandle, IntPtr parentHandle);
     int GetWindowStyle(IntPtr windowHandle);

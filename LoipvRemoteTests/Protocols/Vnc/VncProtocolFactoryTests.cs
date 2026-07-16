@@ -9,7 +9,7 @@ namespace LoipvRemoteTests.Protocols.Vnc;
 public sealed class VncProtocolFactoryTests
 {
     [Test]
-    public void CreatesVncSessionWithOptionsFromDomainBag()
+    public async Task CreatesVncSessionWithOptionsFromDomainBag()
     {
         var definition = new ConnectionDefinition(
             Guid.NewGuid(), "vnc", "server.example", 5901, ProtocolKind.Vnc, CredentialReference.None,
@@ -21,8 +21,8 @@ public sealed class VncProtocolFactoryTests
 
         using IProtocolSession session = new VncProtocolFactory(() => client, () => probe).Create(definition);
 
-        Assert.That(session.Initialize(), Is.True);
-        Assert.That(session.Connect(), Is.True);
+        Assert.That(await session.InitializeAsync(), Is.True);
+        Assert.That(await session.ConnectAsync(), Is.True);
         Assert.Multiple(() =>
         {
             Assert.That(client.Port, Is.EqualTo(5901));
@@ -44,7 +44,7 @@ public sealed class VncProtocolFactoryTests
     }
 
     [Test]
-    public void CreatesArdSessionThroughVncTransport()
+    public async Task CreatesArdSessionThroughVncTransport()
     {
         var definition = new ConnectionDefinition(
             Guid.NewGuid(), "ard", "mac.example", 5900, ProtocolKind.Ard, CredentialReference.None);
@@ -52,8 +52,8 @@ public sealed class VncProtocolFactoryTests
 
         using IProtocolSession session = new VncProtocolFactory(() => client, () => new FakeEndpointProbe()).Create(definition);
 
-        Assert.That(session.Initialize(), Is.True);
-        Assert.That(session.Connect(), Is.True);
+        Assert.That(await session.InitializeAsync(), Is.True);
+        Assert.That(await session.ConnectAsync(), Is.True);
         Assert.That(client.Host, Is.EqualTo("mac.example"));
         Assert.That(client.Port, Is.EqualTo(5900));
     }

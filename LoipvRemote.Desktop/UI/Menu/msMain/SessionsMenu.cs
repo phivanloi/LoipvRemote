@@ -79,7 +79,7 @@ namespace LoipvRemote.UI.Menu
                 _sessionNumberItems[i].Name = $"mMenSessionsSession{sessionNumber}";
                 _sessionNumberItems[i].ShortcutKeys = Keys.Control | (Keys)((int)Keys.D1 + i);
                 _sessionNumberItems[i].Size = new System.Drawing.Size(230, 22);
-                _sessionNumberItems[i].Text = string.Format(Language.JumpToSession.ToString(), sessionNumber);
+                _sessionNumberItems[i].Text = FormatText(Language.JumpToSession.ToString(), sessionNumber);
                 _sessionNumberItems[i].Enabled = false; // Initialize as disabled
                 int capturedIndex = i; // Capture the index for the lambda
                 _sessionNumberItems[i].Click += (s, e) => JumpToSessionNumber(capturedIndex);
@@ -101,7 +101,7 @@ namespace LoipvRemote.UI.Menu
 
             for (int i = 0; i < 9; i++)
             {
-                _sessionNumberItems[i].Text = string.Format(Language.JumpToSession.ToString(), i + 1);
+                _sessionNumberItems[i].Text = FormatText(Language.JumpToSession.ToString(), i + 1);
             }
         }
 
@@ -129,31 +129,31 @@ namespace LoipvRemote.UI.Menu
             }
         }
 
-        private void SessionsMenu_DropDownOpening(object sender, EventArgs e)
+        private void SessionsMenu_DropDownOpening(object? sender, EventArgs e)
         {
             // Update state when menu is opened (for visual feedback)
             UpdateMenuState();
         }
 
-        private void mMenSessionsNextSession_Click(object sender, EventArgs e)
+        private void mMenSessionsNextSession_Click(object? sender, EventArgs e)
         {
             var connectionWindow = GetActiveConnectionWindow();
             connectionWindow?.NavigateToNextTab();
         }
 
-        private void mMenSessionsPreviousSession_Click(object sender, EventArgs e)
+        private void mMenSessionsPreviousSession_Click(object? sender, EventArgs e)
         {
             var connectionWindow = GetActiveConnectionWindow();
             connectionWindow?.NavigateToPreviousTab();
         }
 
-        private void JumpToSessionNumber(int index)
+        private static void JumpToSessionNumber(int index)
         {
             var connectionWindow = GetActiveConnectionWindow();
             connectionWindow?.NavigateToTab(index);
         }
 
-        private ConnectionWindow GetActiveConnectionWindow()
+        private static ConnectionWindow? GetActiveConnectionWindow()
         {
             return FrmMain.Default.pnlDock?.ActiveDocument as ConnectionWindow;
         }

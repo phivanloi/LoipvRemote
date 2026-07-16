@@ -1,6 +1,6 @@
 namespace LoipvRemote.UI.Controls.ConnectionTree
 {
-    public interface IConnectionTreeDelegate
+    public interface IConnectionTreeAction
     {
         void Execute(IConnectionTree connectionTree);
     }

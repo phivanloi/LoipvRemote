@@ -17,26 +17,6 @@ public sealed class SessionLifecycleCoordinator
 
     public int ActiveSessionCount => _activeSessions.Count;
 
-    public SessionStartResult Start(IProtocolSession session)
-    {
-        ArgumentNullException.ThrowIfNull(session);
-
-        if (!session.Initialize())
-        {
-            session.Close();
-            return SessionStartResult.InitializationFailed;
-        }
-
-        if (!session.Connect())
-        {
-            session.Close();
-            return SessionStartResult.ConnectionFailed;
-        }
-
-        _activeSessions.TryAdd(session, 0);
-        return SessionStartResult.Started;
-    }
-
     public async ValueTask<SessionStartResult> StartAsync(
         IProtocolSession session,
         CancellationToken cancellationToken = default)
@@ -57,13 +37,6 @@ public sealed class SessionLifecycleCoordinator
 
         _activeSessions.TryAdd(session, 0);
         return SessionStartResult.Started;
-    }
-
-    public void Stop(IProtocolSession session)
-    {
-        ArgumentNullException.ThrowIfNull(session);
-        _activeSessions.TryRemove(session, out _);
-        session.Disconnect();
     }
 
     public async ValueTask StopAsync(IProtocolSession session, CancellationToken cancellationToken = default)
@@ -93,7 +66,7 @@ public sealed class SessionLifecycleCoordinator
                 }
                 finally
                 {
-                    session.Dispose();
+                    await session.DisposeAsync().ConfigureAwait(false);
                 }
             }
         }

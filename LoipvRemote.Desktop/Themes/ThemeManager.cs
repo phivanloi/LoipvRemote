@@ -174,8 +174,8 @@ namespace LoipvRemote.Themes
                         ThemeInfo extTheme = ThemeSerializer.LoadFromXmlFile(themeFile, defaultTheme);
                         if (extTheme.Theme == null || themes.ContainsKey(extTheme.Name)) continue;
 
-                        if (extTheme.Name.Equals("darcula") || extTheme.Name.Equals("vs2015blue") ||
-                            extTheme.Name.Equals("vs2015dark"))
+                        if (extTheme.Name.Equals("darcula", StringComparison.Ordinal) || extTheme.Name.Equals("vs2015blue", StringComparison.Ordinal) ||
+                            extTheme.Name.Equals("vs2015dark", StringComparison.Ordinal))
                             extTheme.Name = $"{extTheme.Name}NG";
 
                         themes.Add(extTheme.Name, extTheme);
@@ -240,7 +240,7 @@ namespace LoipvRemote.Themes
         }
 
         //Synchronize the theme XML values from memory to disk
-        public void updateTheme(ThemeInfo themeToUpdate)
+        public static void updateTheme(ThemeInfo themeToUpdate)
         {
             ThemeSerializer.UpdateThemeXMLValues(themeToUpdate);
         }
@@ -264,18 +264,18 @@ namespace LoipvRemote.Themes
 
         #region Events
 
-        public delegate void ThemeChangedEventHandler();
+        public delegate void ThemeChangedHandler();
 
-        private ThemeChangedEventHandler? ThemeChangedEvent;
+        private ThemeChangedHandler? ThemeChangedEvent;
 
-        public event ThemeChangedEventHandler ThemeChanged
+        public event ThemeChangedHandler ThemeChanged
         {
-            add => ThemeChangedEvent = (ThemeChangedEventHandler?)Delegate.Combine(ThemeChangedEvent, value);
-            remove => ThemeChangedEvent = (ThemeChangedEventHandler?)Delegate.Remove(ThemeChangedEvent, value);
+            add => ThemeChangedEvent = (ThemeChangedHandler?)Delegate.Combine(ThemeChangedEvent, value);
+            remove => ThemeChangedEvent = (ThemeChangedHandler?)Delegate.Remove(ThemeChangedEvent, value);
         }
 
         // ReSharper disable once UnusedParameter.Local
-        private void NotifyThemeChanged(object sender, PropertyChangedEventArgs e)
+        private void NotifyThemeChanged(object? sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == "Name")
             {
@@ -317,7 +317,7 @@ namespace LoipvRemote.Themes
                 // Default accordingly...
                 if (value == null)
                 {
-                    bool changed = !Properties.OptionsThemePage.Default.ThemeName.Equals(DefaultTheme.Name);
+                    bool changed = !Properties.OptionsThemePage.Default.ThemeName.Equals(DefaultTheme.Name, StringComparison.Ordinal);
 
                     Properties.OptionsThemePage.Default.ThemeName = DefaultTheme.Name;
                     _activeTheme = DefaultTheme;

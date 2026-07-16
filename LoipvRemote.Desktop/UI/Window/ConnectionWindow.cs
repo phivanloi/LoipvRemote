@@ -33,6 +33,7 @@ namespace LoipvRemote.UI.Window
         private ExternalToolsService? _externalToolsService;
         private IConnectionInitiator? _connectionInitiator;
         private ConnectionWorkspaceAdapter? _connectionWorkspace;
+        private DesktopWindowCatalog? _windows;
 
         private MessageCollector MessageCollector => _messageCollector
             ?? throw new InvalidOperationException("ConnectionWindow services must be attached before use.");
@@ -44,6 +45,9 @@ namespace LoipvRemote.UI.Window
             ?? throw new InvalidOperationException("ConnectionWindow services must be attached before use.");
 
         private ConnectionWorkspaceAdapter ConnectionWorkspace => _connectionWorkspace
+            ?? throw new InvalidOperationException("ConnectionWindow services must be attached before use.");
+
+        private DesktopWindowCatalog Windows => _windows
             ?? throw new InvalidOperationException("ConnectionWindow services must be attached before use.");
 
         #region Public Methods
@@ -72,17 +76,20 @@ namespace LoipvRemote.UI.Window
             MessageCollector messageCollector,
             ExternalToolsService externalToolsService,
             IConnectionInitiator connectionInitiator,
-            ConnectionWorkspaceAdapter connectionWorkspace)
+            ConnectionWorkspaceAdapter connectionWorkspace,
+            DesktopWindowCatalog windows)
         {
             _messageCollector = messageCollector ?? throw new ArgumentNullException(nameof(messageCollector));
             _externalToolsService = externalToolsService ?? throw new ArgumentNullException(nameof(externalToolsService));
             _connectionInitiator = connectionInitiator ?? throw new ArgumentNullException(nameof(connectionInitiator));
             _connectionWorkspace = connectionWorkspace ?? throw new ArgumentNullException(nameof(connectionWorkspace));
+            _windows = windows ?? throw new ArgumentNullException(nameof(windows));
         }
 
         private InterfaceControl GetInterfaceControl()
         {
-            return InterfaceControl.FindInterfaceControl(connDock);
+            return TryGetInterfaceControl()
+                ?? throw new InvalidOperationException("The connection window has no embedded interface control.");
         }
 
         // The main shell owns the outer DockPanel while this window owns the
@@ -90,7 +97,7 @@ namespace LoipvRemote.UI.Window
         // shell can route keyboard messages to the currently selected session
         // even when the active document is a ConnectionWindow rather than a
         // ConnectionTab.
-        internal InterfaceControl GetActiveInterfaceControl() => GetInterfaceControl();
+        internal InterfaceControl? TryGetInterfaceControl() => InterfaceControl.FindInterfaceControl(connDock);
 
         private void SetEventHandlers()
         {
@@ -133,7 +140,7 @@ namespace LoipvRemote.UI.Window
             TabHelper.Instance.CurrentPanel = this;
         }
 
-        public ConnectionTab AddConnectionTab(ConnectionInfo connectionInfo)
+        public ConnectionTab? AddConnectionTab(ConnectionInfo connectionInfo)
         {
             try
             {
@@ -184,6 +191,7 @@ namespace LoipvRemote.UI.Window
                 //Show the tab
                 conTab.Show(connDock, DockState.Document);
                 conTab.Focus();
+                UpdateConnectionTabChrome();
                 return conTab;
             }
             catch (Exception ex)
@@ -196,21 +204,21 @@ namespace LoipvRemote.UI.Window
 
         #endregion
 
-        public void ReconnectAll(IConnectionInitiator initiator)
+        public async Task ReconnectAllAsync(IConnectionInitiator initiator)
         {
             List<InterfaceControl> controlList = new();
             try
             {
                 foreach (IDockContent dockContent in connDock.DocumentsToArray())
                 {
-                    ConnectionTab tab = (ConnectionTab)dockContent;
-                    controlList.Add((InterfaceControl)tab.Tag);
+                    if (dockContent is ConnectionTab { Tag: InterfaceControl control })
+                        controlList.Add(control);
                 }
 
                 foreach (InterfaceControl iControl in controlList)
                 {
-                    iControl.Protocol.Close();
-                    initiator.OpenConnection(iControl.Info, ConnectionInfo.Force.DoNotJump);
+                    await iControl.Protocol.CloseAsync().ConfigureAwait(true);
+                    _ = initiator.OpenConnectionAsync(iControl.Info, ConnectionInfo.Force.DoNotJump);
                 }
             }
             catch (Exception ex)
@@ -218,8 +226,6 @@ namespace LoipvRemote.UI.Window
                 MessageCollector.AddExceptionMessage("reconnectAll (UI.Window.ConnectionWindow) failed", ex);
             }
 
-            // ReSharper disable once RedundantAssignment
-            controlList = null;
         }
 
         #region Form
@@ -321,14 +327,14 @@ namespace LoipvRemote.UI.Window
         private void Connection_FormClosing(object? sender, FormClosingEventArgs e)
         {
             if (!ConnectionWorkspace.MainWindow.IsClosing &&
-                (Settings.Default.ConfirmCloseConnection == (int)ConfirmCloseEnum.All & connDock.Documents.Any() ||
-                 Settings.Default.ConfirmCloseConnection == (int)ConfirmCloseEnum.Multiple &
+                (Settings.Default.ConfirmCloseConnection == (int)ConfirmCloseMode.All & connDock.Documents.Any() ||
+                 Settings.Default.ConfirmCloseConnection == (int)ConfirmCloseMode.Multiple &
                  connDock.Documents.Count() > 1))
             {
-                DialogResult result = CTaskDialog.MessageBox(this, GeneralAppInfo.ProductName, string.Format(Language.ConfirmCloseConnectionPanelMainInstruction, Text), "", "", "", Language.CheckboxDoNotShowThisMessageAgain, ETaskDialogButtons.YesNo, ESysIcons.Question, ESysIcons.Question);
+                DialogResult result = CTaskDialog.MessageBox(this, GeneralAppInfo.ProductName ?? string.Empty, FormatText(Language.ConfirmCloseConnectionPanelMainInstruction, Text), "", "", "", Language.CheckboxDoNotShowThisMessageAgain, ETaskDialogButtons.YesNo, ESysIcons.Question, ESysIcons.Question);
                 if (CTaskDialog.VerificationChecked)
                 {
-                    Settings.Default.ConfirmCloseConnection = (int)ConfirmCloseEnum.Never;
+                    Settings.Default.ConfirmCloseConnection = (int)ConfirmCloseMode.Never;
                     Settings.Default.Save();
                 }
 
@@ -348,6 +354,7 @@ namespace LoipvRemote.UI.Window
                     tabP.silentClose = true;
                     tabP.Close();
                 }
+                UpdateConnectionTabChrome();
             }
             catch (Exception ex)
             {
@@ -449,18 +456,35 @@ namespace LoipvRemote.UI.Window
 
         #endregion
 
+        // A ConnectionWindow is itself the shell tab. Showing a second tab
+        // strip for a single embedded SSH/RDP session wastes client height and
+        // makes the native surface appear inset. Keep the inner strip only
+        // when there are multiple sessions to switch between.
+        private void UpdateConnectionTabChrome()
+        {
+            DocumentStyle style = connDock.Documents.Count() > 1
+                ? DocumentStyle.DockingWindow
+                : DocumentStyle.DockingSdi;
+            if (connDock.DocumentStyle != style)
+                connDock.DocumentStyle = style;
+        }
+
         #region Events
 
         private void ConnDockOnActiveContentChanged(object? sender, EventArgs e)
         {
-            InterfaceControl ic = GetInterfaceControl();
-            if (ic?.Info == null) return;
+            // DockPanel raises this event while a document is being created or
+            // torn down. During that transition there is no embedded protocol
+            // control yet; message/focus routing must simply wait for the next
+            // active-content notification instead of throwing on the UI thread.
+            InterfaceControl? ic = TryGetInterfaceControl();
+            if (ic?.Info is null) return;
             ConnectionWorkspace.Select(ic.Info);
 
             foreach (IDockContent document in connDock.DocumentsToArray())
             {
                 if (document is not ConnectionTab tab) continue;
-                InterfaceControl candidate = InterfaceControl.FindInterfaceControl(tab);
+                InterfaceControl? candidate = InterfaceControl.FindInterfaceControl(tab);
                 candidate?.RemoteResourceBar?.SetIsActive(ReferenceEquals(candidate, ic));
             }
 
@@ -474,7 +498,7 @@ namespace LoipvRemote.UI.Window
 
             BeginInvoke((Action)(() =>
             {
-                if (IsDisposed || !ReferenceEquals(GetInterfaceControl(), expectedInterface))
+                if (IsDisposed || !ReferenceEquals(TryGetInterfaceControl(), expectedInterface))
                     return;
 
                 expectedInterface.Protocol.Focus();
@@ -591,14 +615,14 @@ namespace LoipvRemote.UI.Window
                 InterfaceControl interfaceControl = GetInterfaceControl();
                 if (interfaceControl == null) return;
 
-                AppWindows.Show(WindowType.SSHTransfer);
+                Windows.Show(WindowType.SSHTransfer);
                 ConnectionInfo connectionInfo = interfaceControl.Info;
 
-                AppWindows.SshtransferForm.Hostname = connectionInfo.Hostname;
-                AppWindows.SshtransferForm.Username = connectionInfo.Username;
+                Windows.SshtransferForm.Hostname = connectionInfo.Hostname;
+                Windows.SshtransferForm.Username = connectionInfo.Username;
                 //App.Windows.SshtransferForm.Password = connectionInfo.Password.ConvertToUnsecureString();
-                AppWindows.SshtransferForm.Password = connectionInfo.Password;
-                AppWindows.SshtransferForm.Port = Convert.ToString(connectionInfo.Port);
+                Windows.SshtransferForm.Password = connectionInfo.Password;
+                Windows.SshtransferForm.Port = Convert.ToString(connectionInfo.Port, CultureInfo.InvariantCulture);
             }
             catch (Exception ex)
             {
@@ -707,7 +731,11 @@ namespace LoipvRemote.UI.Window
                         Image = externalTool.Image ?? Properties.Resources.LoipvRemote_Icon.ToBitmap()
                     };
 
-                    nItem.Click += (sender, args) => StartExternalApp(((ToolStripMenuItem)sender)?.Tag as ExternalTool);
+                    nItem.Click += (sender, args) =>
+                    {
+                        if (sender is ToolStripMenuItem { Tag: ExternalTool tool })
+                            StartExternalApp(tool);
+                    };
                     cmenTabExternalApps.DropDownItems.Add(nItem);
                 }
             }
@@ -733,8 +761,7 @@ namespace LoipvRemote.UI.Window
 
         private void CloseTabMenu()
         {
-            ConnectionTab selectedTab = (ConnectionTab)GetInterfaceControl()?.Parent;
-            if (selectedTab == null) return;
+            if (GetInterfaceControl()?.Parent is not ConnectionTab selectedTab) return;
 
             try
             {
@@ -748,19 +775,18 @@ namespace LoipvRemote.UI.Window
 
         private void CloseOtherTabs()
         {
-            ConnectionTab selectedTab = (ConnectionTab)GetInterfaceControl()?.Parent;
-            if (selectedTab == null) return;
-            if (Settings.Default.ConfirmCloseConnection == (int)ConfirmCloseEnum.Multiple)
+            if (GetInterfaceControl()?.Parent is not ConnectionTab selectedTab) return;
+            if (Settings.Default.ConfirmCloseConnection == (int)ConfirmCloseMode.Multiple)
             {
                 DialogResult result = CTaskDialog.MessageBox(this, GeneralAppInfo.ProductName,
-                                                    string.Format(Language.ConfirmCloseConnectionOthersInstruction,
+                                                    FormatText(Language.ConfirmCloseConnectionOthersInstruction,
                                                                   selectedTab.TabText), "", "", "",
                                                     Language.CheckboxDoNotShowThisMessageAgain,
                                                     ETaskDialogButtons.YesNo, ESysIcons.Question,
                                                     ESysIcons.Question);
                 if (CTaskDialog.VerificationChecked)
                 {
-                    Settings.Default.ConfirmCloseConnection = (int)ConfirmCloseEnum.Never;
+                    Settings.Default.ConfirmCloseConnection = (int)ConfirmCloseMode.Never;
                     Settings.Default.Save();
                 }
 
@@ -784,8 +810,7 @@ namespace LoipvRemote.UI.Window
         {
             try
             {
-                ConnectionTab selectedTab = (ConnectionTab)GetInterfaceControl()?.Parent;
-                if (selectedTab == null) return;
+                if (GetInterfaceControl()?.Parent is not ConnectionTab selectedTab) return;
                 DockPane dockPane = selectedTab.Pane;
 
                 bool pastTabToKeepAlive = false;
@@ -817,7 +842,7 @@ namespace LoipvRemote.UI.Window
             {
                 InterfaceControl interfaceControl = GetInterfaceControl();
                 if (interfaceControl == null) return;
-                ConnectionInitiator.OpenConnection(interfaceControl.Info, ConnectionInfo.Force.DoNotJump);
+                _ = ConnectionInitiator.OpenConnectionAsync(interfaceControl.Info, ConnectionInfo.Force.DoNotJump);
             }
             catch (Exception ex)
             {
@@ -836,8 +861,8 @@ namespace LoipvRemote.UI.Window
                     return;
                 }
 
-                Invoke(new Action(() => Prot_Event_Closed(interfaceControl.Protocol)));
-                ConnectionInitiator.OpenConnection(interfaceControl.Info, ConnectionInfo.Force.DoNotJump);
+                Invoke(new Action(() => OnProtocolClosed(interfaceControl.Protocol)));
+                _ = ConnectionInitiator.OpenConnectionAsync(interfaceControl.Info, ConnectionInfo.Force.DoNotJump);
             }
             catch (Exception ex)
             {
@@ -849,15 +874,13 @@ namespace LoipvRemote.UI.Window
         {
             try
             {
-                InterfaceControl interfaceControl = GetInterfaceControl();
-                if (interfaceControl == null) return;
-                using (FrmInputBox frmInputBox = new(Language.NewTitle, Language.NewTitle,
-                                                         ((ConnectionTab)interfaceControl.Parent).TabText))
+                if (GetInterfaceControl() is not { Parent: ConnectionTab selectedTab }) return;
+                using (FrmInputBox frmInputBox = new(Language.NewTitle, Language.NewTitle, selectedTab.TabText))
                 {
                     DialogResult dr = frmInputBox.ShowDialog();
                     if (dr != DialogResult.OK) return;
                     if (!string.IsNullOrEmpty(frmInputBox.returnValue))
-                        ((ConnectionTab)interfaceControl.Parent).TabText = frmInputBox.returnValue.Replace("&", "&&");
+                        selectedTab.TabText = frmInputBox.returnValue.Replace("&", "&&");
                 }
             }
             catch (Exception ex)
@@ -870,10 +893,10 @@ namespace LoipvRemote.UI.Window
 
         #region Protocols
 
-        public void Prot_Event_Closed(object sender)
+        public void OnProtocolClosed(object? sender)
         {
-            ProtocolSessionBridge protocolBase = sender as ProtocolSessionBridge;
-            if (!(protocolBase?.InterfaceControl.Parent is ConnectionTab tabPage)) return;
+            if (sender is not ProtocolSessionBridge protocolBase ||
+                protocolBase.InterfaceControl is not { Parent: ConnectionTab tabPage }) return;
             if (tabPage.Disposing || tabPage.IsDisposed) return;
             if (IsDisposed || Disposing) return;
 
@@ -903,11 +926,11 @@ namespace LoipvRemote.UI.Window
             }
         }
 
-        public void Prot_Event_TitleChanged(object sender, string newTitle)
+        public void OnProtocolTitleChanged(object? sender, string newTitle)
         {
             if (!Properties.OptionsTabsPanelsPage.Default.UseTerminalTitleForTabs) return;
-            ProtocolSessionBridge protocolBase = sender as ProtocolSessionBridge;
-            if (!(protocolBase?.InterfaceControl?.Parent is ConnectionTab tabPage)) return;
+            if (sender is not ProtocolSessionBridge protocolBase ||
+                protocolBase.InterfaceControl is not { Parent: ConnectionTab tabPage }) return;
             if (tabPage.Disposing || tabPage.IsDisposed) return;
             if (IsDisposed || Disposing) return;
 

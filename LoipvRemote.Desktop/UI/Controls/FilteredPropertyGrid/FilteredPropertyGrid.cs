@@ -21,21 +21,21 @@ namespace LoipvRemote.UI.Controls.FilteredPropertyGrid
         /// <summary>
         /// Contain a reference to the array of properties to display in the PropertyGrid.
         /// </summary>
-        private AttributeCollection _hiddenAttributes = null!;
+        private AttributeCollection? _hiddenAttributes;
 
-        private AttributeCollection _browsableAttributes = null!;
+        private AttributeCollection? _browsableAttributes;
 
         /// <summary>
         /// Contain references to the arrays of properties or categories to hide.
         /// </summary>
-        private string[] _mBrowsableProperties = null!;
+        private string[]? _mBrowsableProperties;
 
-        private string[] _mHiddenProperties = null!;
+        private string[]? _mHiddenProperties;
 
         /// <summary>
         /// Contain a reference to the wrapper that contains the object to be displayed into the PropertyGrid.
         /// </summary>
-        private ObjectWrapper _mWrapper = null!;
+        private ObjectWrapper? _mWrapper;
 
         protected virtual bool SuppressModifiedValueBold => false;
 
@@ -53,7 +53,7 @@ namespace LoipvRemote.UI.Controls.FilteredPropertyGrid
         /// </summary>
         public IEnumerable<string> VisibleProperties => _propertyDescriptors.Select(p => p.Name);
 
-        public new AttributeCollection BrowsableAttributes
+        public new AttributeCollection? BrowsableAttributes
         {
             get => _browsableAttributes;
             set
@@ -68,7 +68,7 @@ namespace LoipvRemote.UI.Controls.FilteredPropertyGrid
         /// <summary>
         /// Get or set the categories to hide.
         /// </summary>
-        public AttributeCollection HiddenAttributes
+        public AttributeCollection? HiddenAttributes
         {
             get => _hiddenAttributes;
             set
@@ -84,7 +84,7 @@ namespace LoipvRemote.UI.Controls.FilteredPropertyGrid
         /// Get or set the properties to show.
         /// </summary>
         /// <exception cref="ArgumentException">if one or several properties don't exist.</exception>
-        public string[] BrowsableProperties
+        public string[]? BrowsableProperties
         {
             get => _mBrowsableProperties;
             set
@@ -96,7 +96,7 @@ namespace LoipvRemote.UI.Controls.FilteredPropertyGrid
         }
 
         /// <summary>Get or set the properties to hide.</summary>
-        public string[] HiddenProperties
+        public string[]? HiddenProperties
         {
             get => _mHiddenProperties;
             set
@@ -111,18 +111,17 @@ namespace LoipvRemote.UI.Controls.FilteredPropertyGrid
         /// Overwrite the PropertyGrid.SelectedObject property.
         /// </summary>
         /// <remarks>The object passed to the base PropertyGrid is the wrapper.</remarks>
-        public new object SelectedObject
+        public new object? SelectedObject
         {
-            get =>
-                _mWrapper != null
-                    ? ((ObjectWrapper)base.SelectedObject).SelectedObject
-                    : null;
+            get => _mWrapper is not null && base.SelectedObject is ObjectWrapper wrapper
+                ? wrapper.SelectedObject
+                : null;
             set
             {
                 // Set the new object to the wrapper and create one if necessary.
                 if (_mWrapper == null)
                 {
-                    _mWrapper = new ObjectWrapper(value);
+                    _mWrapper = new ObjectWrapper(value ?? new object());
                     RefreshProperties();
                 }
                 else if (_mWrapper.SelectedObject != value)
@@ -134,24 +133,29 @@ namespace LoipvRemote.UI.Controls.FilteredPropertyGrid
                 }
 
                 // Set the list of properties to the wrapper.
-                _mWrapper.PropertyDescriptors = _propertyDescriptors;
-                _mWrapper.SuppressModifiedValueBold = SuppressModifiedValueBold;
+                ObjectWrapper wrapper = _mWrapper ?? throw new InvalidOperationException("Property grid wrapper was not initialized.");
+                wrapper.PropertyDescriptors = _propertyDescriptors;
+                wrapper.SuppressModifiedValueBold = SuppressModifiedValueBold;
                 // Link the wrapper to the parent PropertyGrid.
-                base.SelectedObject = _mWrapper;
+                base.SelectedObject = wrapper;
             }
         }
 
         public List<GridItem> GetVisibleGridItems()
         {
-            GridItem gridRoot = SelectedGridItem;
+            GridItem? gridRoot = SelectedGridItem;
+            if (gridRoot is null)
+                return [];
             while (gridRoot.GridItemType != GridItemType.Root)
             {
                 gridRoot = gridRoot.Parent;
+                if (gridRoot is null)
+                    return [];
             }
             return GetVisibleGridItemsRecursive(gridRoot, []);
         }
 
-        private List<GridItem> GetVisibleGridItemsRecursive(GridItem item, List<GridItem> gridItems)
+        private static List<GridItem> GetVisibleGridItemsRecursive(GridItem item, List<GridItem> gridItems)
         {
             if (item.GridItemType == GridItemType.Property && !gridItems.Contains(item))
                 gridItems.Add(item);
@@ -167,7 +171,7 @@ namespace LoipvRemote.UI.Controls.FilteredPropertyGrid
             return gridItems;
         }
 
-        public GridItem FindPreviousGridItemProperty(GridItem startItem)
+        public GridItem? FindPreviousGridItemProperty(GridItem? startItem)
         {
             List<GridItem> gridItems = GetVisibleGridItems();
 
@@ -208,7 +212,7 @@ namespace LoipvRemote.UI.Controls.FilteredPropertyGrid
             return !previousIndexValid ? null : gridItems[previousIndex];
         }
 
-        public GridItem FindNextGridItemProperty(GridItem startItem)
+        public GridItem? FindNextGridItemProperty(GridItem? startItem)
         {
             List<GridItem> gridItems = GetVisibleGridItems();
 
@@ -256,7 +260,7 @@ namespace LoipvRemote.UI.Controls.FilteredPropertyGrid
         /// </summary>
         public void SelectNextGridItem()
         {
-            GridItem nextGridItem = FindNextGridItemProperty(SelectedGridItem);
+            GridItem? nextGridItem = FindNextGridItemProperty(SelectedGridItem);
             if (nextGridItem != null)
                 SelectedGridItem = nextGridItem;
         }
@@ -268,7 +272,7 @@ namespace LoipvRemote.UI.Controls.FilteredPropertyGrid
         /// </summary>
         public void SelectPreviousGridItem()
         {
-            GridItem previousGridItem = FindPreviousGridItemProperty(SelectedGridItem);
+            GridItem? previousGridItem = FindPreviousGridItemProperty(SelectedGridItem);
             if (previousGridItem != null)
                 SelectedGridItem = previousGridItem;
         }
@@ -280,7 +284,7 @@ namespace LoipvRemote.UI.Controls.FilteredPropertyGrid
         /// <param name="propertyName"></param>
         public void SelectGridItem(string propertyName)
         {
-            GridItem item = GetVisibleGridItems()
+            GridItem? item = GetVisibleGridItems()
                 .FirstOrDefault(gridItem => gridItem.PropertyDescriptor?.Name == propertyName);
 
             if (item != null)
@@ -299,7 +303,7 @@ namespace LoipvRemote.UI.Controls.FilteredPropertyGrid
         /// </summary>
         private void RefreshProperties()
         {
-            if (_mWrapper == null)
+            if (_mWrapper is not { } wrapper)
                 return;
 
             // Clear the list of properties to be displayed.
@@ -315,13 +319,13 @@ namespace LoipvRemote.UI.Controls.FilteredPropertyGrid
             // Display if necessary, some properties
             if (_mBrowsableProperties != null && _mBrowsableProperties.Length > 0)
             {
-                PropertyDescriptorCollection allproperties = TypeDescriptor.GetProperties(_mWrapper.SelectedObject);
+                PropertyDescriptorCollection allproperties = TypeDescriptor.GetProperties(wrapper.SelectedObject);
                 foreach (string propertyname in _mBrowsableProperties)
                 {
-                    PropertyDescriptor property = allproperties[propertyname];
+                    PropertyDescriptor? property = allproperties[propertyname];
 
                     if (property == null)
-                        throw new InvalidOperationException($"Property '{propertyname}' not found on object '{_mWrapper.GetClassName()}'");
+                        throw new InvalidOperationException($"Property '{propertyname}' not found on object '{wrapper.GetClassName()}'");
 
                     ShowProperty(property);
                 }
@@ -332,7 +336,7 @@ namespace LoipvRemote.UI.Controls.FilteredPropertyGrid
             {
                 // Fill the collection with all the properties.
                 IEnumerable<PropertyDescriptor> originalPropertyDescriptors = TypeDescriptor
-                                                  .GetProperties(_mWrapper.SelectedObject)
+                                                  .GetProperties(wrapper.SelectedObject)
                                                   .OfType<PropertyDescriptor>()
                                                   .Where(PropertyDoesntHaveBrowsableFalseAttribute);
 
@@ -351,7 +355,7 @@ namespace LoipvRemote.UI.Controls.FilteredPropertyGrid
                 // Remove from the list the properties that mustn't be displayed.
                 foreach (string propertyname in _mHiddenProperties)
                 {
-                    PropertyDescriptor property = _propertyDescriptors.FirstOrDefault(p => p.Name == propertyname);
+                    PropertyDescriptor? property = _propertyDescriptors.FirstOrDefault(p => p.Name == propertyname);
 
                     // Remove from the list the property
                     HideProperty(property);
@@ -377,8 +381,10 @@ namespace LoipvRemote.UI.Controls.FilteredPropertyGrid
         /// <remarks>For better performance, include the BrowsableAttribute with true value.</remarks>
         private void HideAttribute(Attribute attribute)
         {
+            if (_mWrapper is not { } wrapper)
+                return;
             PropertyDescriptorCollection filteredoriginalpropertydescriptors =
-                TypeDescriptor.GetProperties(_mWrapper.SelectedObject, new[] {attribute});
+                TypeDescriptor.GetProperties(wrapper.SelectedObject, new[] { attribute });
             if (filteredoriginalpropertydescriptors == null || filteredoriginalpropertydescriptors.Count == 0)
                 throw new ArgumentException("Attribute not found", attribute.ToString());
 
@@ -392,8 +398,10 @@ namespace LoipvRemote.UI.Controls.FilteredPropertyGrid
         /// <param name="attribute">The attribute to be added.</param>
         private void ShowAttribute(Attribute attribute)
         {
+            if (_mWrapper is not { } wrapper)
+                return;
             PropertyDescriptorCollection filteredoriginalpropertydescriptors =
-                TypeDescriptor.GetProperties(_mWrapper.SelectedObject, new[] {attribute});
+                TypeDescriptor.GetProperties(wrapper.SelectedObject, new[] { attribute });
             if (filteredoriginalpropertydescriptors == null || filteredoriginalpropertydescriptors.Count == 0)
                 throw new ArgumentException("Attribute not found", attribute.ToString());
 
@@ -415,10 +423,11 @@ namespace LoipvRemote.UI.Controls.FilteredPropertyGrid
         /// Allows to hide a property to the parent PropertyGrid.
         /// </summary>
         /// <param name="property">The name of the property to be hidden.</param>
-        private void HideProperty(PropertyDescriptor property)
+        private void HideProperty(PropertyDescriptor? property)
         {
-            if (_propertyDescriptors.Contains(property))
-                _propertyDescriptors.Remove(property);
+            if (property is null)
+                return;
+            _propertyDescriptors.Remove(property);
         }
     }
 }

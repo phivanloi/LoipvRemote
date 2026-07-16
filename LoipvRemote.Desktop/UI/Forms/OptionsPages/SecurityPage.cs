@@ -63,17 +63,19 @@ namespace LoipvRemote.UI.Forms.OptionsPages
         public override void LoadSettings()
         {
             chkEncryptCompleteFile.Checked = Properties.OptionsSecurityPage.Default.EncryptCompleteConnectionsFile;
-            comboBoxEncryptionEngine.Text = Enum.GetName(typeof(BlockCipherEngines), Properties.OptionsSecurityPage.Default.EncryptionEngine);
+            comboBoxEncryptionEngine.Text = Enum.GetName(Properties.OptionsSecurityPage.Default.EncryptionEngine);
             comboBoxBlockCipher.Text =
-                Enum.GetName(typeof(BlockCipherModes), Properties.OptionsSecurityPage.Default.EncryptionBlockCipherMode);
+                Enum.GetName(Properties.OptionsSecurityPage.Default.EncryptionBlockCipherMode);
             numberBoxKdfIterations.Value = Properties.OptionsSecurityPage.Default.EncryptionKeyDerivationIterations;
         }
 
         public override void SaveSettings()
         {
             Properties.OptionsSecurityPage.Default.EncryptCompleteConnectionsFile = chkEncryptCompleteFile.Checked;
-            Properties.OptionsSecurityPage.Default.EncryptionEngine = (BlockCipherEngines)comboBoxEncryptionEngine.SelectedItem;
-            Properties.OptionsSecurityPage.Default.EncryptionBlockCipherMode = (BlockCipherModes)comboBoxBlockCipher.SelectedItem;
+            if (comboBoxEncryptionEngine.SelectedItem is BlockCipherEngines encryptionEngine)
+                Properties.OptionsSecurityPage.Default.EncryptionEngine = encryptionEngine;
+            if (comboBoxBlockCipher.SelectedItem is BlockCipherModes blockCipherMode)
+                Properties.OptionsSecurityPage.Default.EncryptionBlockCipherMode = blockCipherMode;
             Properties.OptionsSecurityPage.Default.EncryptionKeyDerivationIterations = (int)numberBoxKdfIterations.Value;
         }
 
@@ -81,7 +83,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
         {
             Type settingsType = typeof(OptRegistrySecurityPage);
             RegistryLoader.RegistrySettings.TryGetValue(settingsType, out var settings);
-            pageRegSettingsInstance = settings as OptRegistrySecurityPage;
+            pageRegSettingsInstance = settings as OptRegistrySecurityPage ?? new OptRegistrySecurityPage();
 
             // If registry settings don't exist, create a default instance to prevent null reference exceptions
             if (pageRegSettingsInstance == null)
@@ -125,18 +127,18 @@ namespace LoipvRemote.UI.Forms.OptionsPages
 
         private void PopulateEncryptionEngineDropDown()
         {
-            comboBoxEncryptionEngine.DataSource = Enum.GetValues(typeof(BlockCipherEngines));
+            comboBoxEncryptionEngine.DataSource = Enum.GetValues<BlockCipherEngines>();
         }
 
         private void PopulateBlockCipherDropDown()
         {
-            comboBoxBlockCipher.DataSource = Enum.GetValues(typeof(BlockCipherModes));
+            comboBoxBlockCipher.DataSource = Enum.GetValues<BlockCipherModes>();
         }
 
-        private void BtnTestSettings_Click(object sender, EventArgs e)
+        private void BtnTestSettings_Click(object? sender, EventArgs e)
         {
             Tree.ConnectionTreeModel? connectionTree = FrmMain.Default.TryGetConnectionTreeModel();
-            if (connectionTree is null || !connectionTree.RootNodes.Any())
+            if (connectionTree is null || connectionTree.RootNodes.Count == 0)
                 return;
 
             ConnectionTreeDefinition definition = ConnectionDefinitionMapper.ToDomainTree(connectionTree.RootNodes);
@@ -159,7 +161,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             timer.Stop();
 
             MessageBox.Show(this,
-                string.Format(Language.EncryptionTestResultMessage,
+                FormatText(Language.EncryptionTestResultMessage,
                 nodeCount, "DPAPI", "canonical XML", 0, timer.Elapsed.TotalSeconds),
                 Language.EncryptionTest,
                 MessageBoxButtons.OK,
@@ -173,7 +175,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
         /// </summary>
         /// <param name="sender">Event source.</param>
         /// <param name="e">Event data.</param>
-        private void btnPasswdGenerator_Click(object sender, EventArgs e)
+        private void btnPasswdGenerator_Click(object? sender, EventArgs e)
         {
             if (string.IsNullOrEmpty(txtPasswdGenerator.Text)) return;
 
@@ -222,7 +224,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
         /// </summary>
         /// <param name="sender">Event source.</param>
         /// <param name="e">Event data.</param>
-        private void ClipboardClearTimer_Tick(object sender, EventArgs e)
+        private void ClipboardClearTimer_Tick(object? sender, EventArgs e)
         {
             if (countdownSeconds > 0)
             {
@@ -266,7 +268,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
         /// </summary>
         /// <param name="sender">Event source.</param>
         /// <param name="e">Event data.</param>
-        private void txtPasswdGenerator_TextChanged(object sender, EventArgs e)
+        private void txtPasswdGenerator_TextChanged(object? sender, EventArgs e)
         {
             // Enable the button if there's text in the TextBox, disable it otherwise.
             btnPasswdGenerator.Enabled = !string.IsNullOrWhiteSpace(txtPasswdGenerator.Text);

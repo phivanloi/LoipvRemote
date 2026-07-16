@@ -75,20 +75,20 @@ public class DesktopApplicationHostTests
     {
         IProtocolFactory protocolFactory = Substitute.For<IProtocolFactory>();
         IProtocolSession session = Substitute.For<IProtocolSession>();
-        session.Initialize().Returns(true);
-        session.Connect().Returns(true);
+        session.InitializeAsync(Arg.Any<CancellationToken>()).Returns(ValueTask.FromResult(true));
+        session.ConnectAsync(Arg.Any<CancellationToken>()).Returns(ValueTask.FromResult(true));
 
         using IHost host = DesktopApplicationHost.Create([], services =>
             services.AddSingleton(protocolFactory));
         await host.StartAsync();
 
         SessionLifecycleCoordinator lifecycle = host.Services.GetRequiredService<SessionLifecycleCoordinator>();
-        Assert.That(lifecycle.Start(session), Is.EqualTo(SessionStartResult.Started));
+        Assert.That(await lifecycle.StartAsync(session), Is.EqualTo(SessionStartResult.Started));
 
         await host.StopAsync();
 
-        session.Received(1).Disconnect();
-        session.Received(1).Close();
-        session.Received(1).Dispose();
+        _ = session.Received(1).DisconnectAsync(Arg.Any<CancellationToken>());
+        _ = session.Received(1).CloseAsync(Arg.Any<CancellationToken>());
+        _ = session.Received(1).DisposeAsync();
     }
 }

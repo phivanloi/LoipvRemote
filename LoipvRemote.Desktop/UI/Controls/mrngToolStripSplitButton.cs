@@ -18,7 +18,7 @@ namespace LoipvRemote.UI.Controls
             }
         }
 
-        private void DropDown_Closing(object sender, ToolStripDropDownClosingEventArgs e)
+        private void DropDown_Closing(object? sender, ToolStripDropDownClosingEventArgs e)
         {
             if (e.CloseReason != ToolStripDropDownCloseReason.AppClicked)
             {
@@ -27,8 +27,12 @@ namespace LoipvRemote.UI.Controls
 
             Rectangle dropDownButtonBoundsClient = DropDownButtonBounds; // Relative to the ToolStripSplitButton
             dropDownButtonBoundsClient.Offset(Bounds.Location); // Relative to the parent of the ToolStripSplitButton
+            ToolStrip? currentParent = GetCurrentParent();
+            if (currentParent is null)
+                return;
+
             Rectangle dropDownButtonBoundsScreen =
-                GetCurrentParent().RectangleToScreen(dropDownButtonBoundsClient); // Relative to the screen
+                currentParent.RectangleToScreen(dropDownButtonBoundsClient); // Relative to the screen
 
             if (dropDownButtonBoundsScreen.Contains(Control.MousePosition))
             {

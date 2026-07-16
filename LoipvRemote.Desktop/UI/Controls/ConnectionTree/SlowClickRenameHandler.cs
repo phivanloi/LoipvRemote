@@ -50,7 +50,7 @@ namespace LoipvRemote.UI.Controls.ConnectionTree
             if (_pendingNode == clickedNode)
             {
                 // Slow second click on the same node — start rename timer
-                _timer.Stop();
+                _timer.StopTimer();
                 _timer.Start();
             }
             else
@@ -63,7 +63,7 @@ namespace LoipvRemote.UI.Controls.ConnectionTree
 
         public void Cancel()
         {
-            _timer.Stop();
+            _timer.StopTimer();
             _pendingNode = null;
         }
 
@@ -78,9 +78,9 @@ namespace LoipvRemote.UI.Controls.ConnectionTree
                 Cancel();
         }
 
-        private void OnTimerTick(object sender, EventArgs e)
+        private void OnTimerTick(object? sender, EventArgs e)
         {
-            _timer.Stop();
+            _timer.StopTimer();
             if (_pendingNode != null && _pendingNode == _getSelectedNode())
                 _triggerRename();
             _pendingNode = null;

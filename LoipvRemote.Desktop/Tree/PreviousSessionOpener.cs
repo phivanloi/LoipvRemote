@@ -8,7 +8,7 @@ using System.Runtime.Versioning;
 namespace LoipvRemote.Tree
 {
     [SupportedOSPlatform("windows")]
-    public class PreviousSessionOpener : IConnectionTreeDelegate
+    public class PreviousSessionOpener : IConnectionTreeAction
     {
         private readonly IConnectionInitiator _connectionInitiator;
 
@@ -30,7 +30,7 @@ namespace LoipvRemote.Tree
 
             foreach (ConnectionInfo connectionInfo in previouslyOpenedConnections)
             {
-                _connectionInitiator.OpenConnection(connectionInfo);
+                _ = _connectionInitiator.OpenConnectionAsync(connectionInfo);
             }
         }
     }

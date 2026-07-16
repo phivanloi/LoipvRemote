@@ -26,9 +26,9 @@ namespace LoipvRemote.UI.Forms
         private readonly DisplayProperties _display = new();
         private readonly List<string> _optionPageObjectNames;
         private bool _isLoading = true;
-        private bool _isInitialized = false;
-        private bool _isFontOverrideApplied = false;
-        private bool _isHandlingSelectionChange = false; // Guard flag to prevent recursive event handling
+        private bool _isInitialized;
+        private bool _isFontOverrideApplied;
+        private bool _isHandlingSelectionChange; // Guard flag to prevent recursive event handling
 
         /// <summary>
         /// Raised when the user clicks OK or Cancel, signalling the host window to hide.
@@ -69,7 +69,7 @@ namespace LoipvRemote.UI.Forms
         public void AttachRuntime(DesktopShellRuntime desktopShellRuntime)
         {
             ArgumentNullException.ThrowIfNull(desktopShellRuntime);
-            foreach (SqlServerPage page in _optionPages.OfType<SqlServerPage>())
+            foreach (OptionsPage page in _optionPages.OfType<OptionsPage>())
                 page.AttachRuntime(desktopShellRuntime);
         }
 
@@ -80,7 +80,7 @@ namespace LoipvRemote.UI.Forms
             ThemeManager.getInstance().ApplyThemeToTitleBar(this);
         }
 
-        private void FrmOptions_Load(object sender, EventArgs e)
+        private void FrmOptions_Load(object? sender, EventArgs e)
         {
             Logger.Instance.Log?.Debug($"[FrmOptions_Load] START - IsInitialized: {_isInitialized}, Visible: {this.Visible}, Handle: {this.Handle}");
 
@@ -110,7 +110,7 @@ namespace LoipvRemote.UI.Forms
             Logger.Instance.Log?.Debug($"[FrmOptions_Load] END (first initialization complete)");
         }
 
-        private void FrmOptions_Shown(object sender, EventArgs e)
+        private void FrmOptions_Shown(object? sender, EventArgs e)
         {
             if (_isFontOverrideApplied)
             {
@@ -143,7 +143,7 @@ namespace LoipvRemote.UI.Forms
             Logger.Instance.Log?.Debug($"[InitOptionsPagesToListView] START - Loading {_optionPageObjectNames.Count} pages");
 
             lstOptionPages.RowHeight = _display.ScaleHeight(lstOptionPages.RowHeight);
-            lstOptionPages.AllColumns.First().ImageGetter = ImageGetter;
+            lstOptionPages.AllColumns.First().ImageGetter = row => ImageGetter(row);
 
             // Suspend layout to prevent flickering during batch loading
             lstOptionPages.BeginUpdate();
@@ -171,7 +171,7 @@ namespace LoipvRemote.UI.Forms
 
         private void InitOptionsPage(string pageName)
         {
-            OptionsPage page = null;
+            OptionsPage? page = null;
 
             switch (pageName)
             {
@@ -266,9 +266,9 @@ namespace LoipvRemote.UI.Forms
             TrackChangesInControls(page);
         }
 
-        private object ImageGetter(object rowobject)
+        private static Bitmap ImageGetter(object rowobject)
         {
-            OptionsPage page = rowobject as OptionsPage;
+            OptionsPage? page = rowobject as OptionsPage;
             if (page?.PageIcon == null)
                 return IconService.Resize(Properties.Resources.F1Help_16x, UiScaleManager.Instance.Metrics.IconSize);
 
@@ -276,7 +276,7 @@ namespace LoipvRemote.UI.Forms
             return IconService.Resize(source, UiScaleManager.Instance.Metrics.IconSize);
         }
 
-        public void SetActivatedPage(string pageName = default)
+        public void SetActivatedPage(string? pageName = null)
         {
             _pageName = pageName ?? Language.StartupExit;
 
@@ -297,7 +297,7 @@ namespace LoipvRemote.UI.Forms
             bool isSet = false;
             for (int i = 0; i < lstOptionPages.Items.Count; i++)
             {
-                if (!lstOptionPages.Items[i].Text.Equals(_pageName)) continue;
+                if (!lstOptionPages.Items[i].Text.Equals(_pageName, StringComparison.Ordinal)) continue;
                 lstOptionPages.Items[i].Selected = true;
                 isSet = true;
                 break;
@@ -307,7 +307,7 @@ namespace LoipvRemote.UI.Forms
                 lstOptionPages.Items[0].Selected = true;
         }
 
-        private void BtnOK_Click(object sender, EventArgs e)
+        private void BtnOK_Click(object? sender, EventArgs e)
         {
             Logger.Instance.Log?.Debug($"[BtnOK_Click] START");
             SaveOptions();
@@ -316,7 +316,7 @@ namespace LoipvRemote.UI.Forms
             Logger.Instance.Log?.Debug($"[BtnOK_Click] END");
         }
 
-        private void BtnApply_Click(object sender, EventArgs e)
+        private void BtnApply_Click(object? sender, EventArgs e)
         {
             Logger.Instance.Log?.Debug($"[BtnApply_Click] START");
             SaveOptions();
@@ -337,7 +337,7 @@ namespace LoipvRemote.UI.Forms
             Settings.Default.Save();
         }
 
-        private void LstOptionPages_SelectedIndexChanged(object sender, EventArgs e)
+        private void LstOptionPages_SelectedIndexChanged(object? sender, EventArgs e)
         {
             // Guard against recursive calls that can cause infinite loops
             if (_isHandlingSelectionChange)
@@ -399,7 +399,7 @@ namespace LoipvRemote.UI.Forms
             }
         }
 
-        private void BtnCancel_Click(object sender, EventArgs e)
+        private void BtnCancel_Click(object? sender, EventArgs e)
         {
             Logger.Instance.Log?.Debug($"[BtnCancel_Click] START");
             ReloadAllSettings();
@@ -491,7 +491,7 @@ namespace LoipvRemote.UI.Forms
             if (_isLoading) return;
 
             // Find the parent OptionsPage
-            Control current = control;
+            Control? current = control;
             while (current != null && !(current is OptionsPage))
             {
                 current = current.Parent;

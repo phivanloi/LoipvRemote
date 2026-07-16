@@ -39,8 +39,7 @@ public sealed class WindowsExternalApplicationHost : IExternalApplicationHost
 
     public bool WaitForMainWindow(TimeSpan timeout)
     {
-        if (timeout < TimeSpan.Zero)
-            throw new ArgumentOutOfRangeException(nameof(timeout));
+        ArgumentOutOfRangeException.ThrowIfLessThan(timeout, TimeSpan.Zero);
 
         Stopwatch stopwatch = Stopwatch.StartNew();
         while (IsRunning && stopwatch.Elapsed <= timeout)

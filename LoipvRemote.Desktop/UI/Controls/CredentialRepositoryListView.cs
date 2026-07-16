@@ -27,7 +27,7 @@ namespace LoipvRemote.UI.Controls
         }
 
         public Func<ICredentialRepository, bool> RepositoryFilter { get; set; } = null!;
-        public ICredentialRepository SelectedRepository => GetSelectedRepository();
+        public ICredentialRepository? SelectedRepository => GetSelectedRepository();
         public Func<ICredentialRepository, bool> DoubleClickHandler { get; set; } = null!;
         public CredentialRepositoryListView()
         {
@@ -69,12 +69,11 @@ namespace LoipvRemote.UI.Controls
             if (mouseEventArgs.Clicks < 2) return;
             OLVColumn column;
             OLVListItem listItem = objectListView1.GetItemAt(mouseEventArgs.X, mouseEventArgs.Y, out column);
-            ICredentialRepository clickedNode = listItem.RowObject as ICredentialRepository;
-            if (clickedNode == null) return;
+            if (listItem.RowObject is not ICredentialRepository clickedNode) return;
             DoubleClickHandler?.Invoke(clickedNode);
         }
 
-        private ICredentialRepository GetSelectedRepository()
+        private ICredentialRepository? GetSelectedRepository()
         {
             return objectListView1.SelectedObject as ICredentialRepository;
         }

@@ -215,14 +215,14 @@ namespace LoipvRemote.Config.Settings
             toolStripPanel.Join(_multiSshToolStrip, Properties.Settings.Default.MultiSshToolbarLocation);
         }
 
-        private void SetToolstripGripStyle(ToolStrip toolbar)
+        private static void SetToolstripGripStyle(ToolStrip toolbar)
         {
             toolbar.GripStyle = Properties.Settings.Default.LockToolbars ? ToolStripGripStyle.Hidden : ToolStripGripStyle.Visible;
         }
 
         private ToolStripPanel ToolStripPanelFromString(string panel)
         {
-            switch (panel.ToLower())
+            switch (panel.ToLowerInvariant())
             {
                 case "top":
                     return MainForm.tsContainer.TopToolStripPanel;

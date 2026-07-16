@@ -59,16 +59,6 @@ namespace LoipvRemoteTests.UI
         }
 
         [Test]
-        public void IndexingByObjectReturnsTheCorrectObject()
-        {
-            BaseWindow window1 = new();
-            BaseWindow window2 = new();
-            _windowList.Add(window1);
-            _windowList.Add(window2);
-            Assert.That(_windowList[window1], Is.EqualTo(window1));
-        }
-
-        [Test]
         public void IndexingByNumberReturnsTheCorrectObject()
         {
             BaseWindow window1 = new();
@@ -79,21 +69,14 @@ namespace LoipvRemoteTests.UI
         }
 
         [Test]
-        public void ThrowsExceptionWhenIndexingByObjectFails()
-        {
-            BaseWindow window1 = new();
-            Assert.That(() => _windowList[window1], Throws.TypeOf<ArgumentOutOfRangeException>());
-        }
-
-        [Test]
-        public void ItemIsNotInListAfterBeingRemoved()
+        public void IndexOfReturnsMinusOneAfterItemIsRemoved()
         {
             BaseWindow window1 = new();
             BaseWindow window2 = new();
             _windowList.Add(window1);
             _windowList.Add(window2);
             _windowList.Remove(window1);
-            Assert.That(() => _windowList[window1], Throws.TypeOf<ArgumentOutOfRangeException>());
+            Assert.That(_windowList.IndexOf(window1), Is.EqualTo(-1));
         }
 
         [Test]

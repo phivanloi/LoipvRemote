@@ -27,7 +27,7 @@ namespace LoipvRemote.UI.Controls.ConnectionTree
     public partial class ConnectionTree : TreeListView, IConnectionTree
     {
         private readonly ConnectionTreeDragAndDropHandler _dragAndDropHandler = new();
-        private readonly PuttySessionsManager _puttySessionsManager = PuttySessionsManager.Instance;
+        private PuttySessionsManager? _puttySessionsManager;
         private readonly StatusImageList _statusImageList = new();
         private ThemeManager _themeManager;
 
@@ -35,14 +35,15 @@ namespace LoipvRemote.UI.Controls.ConnectionTree
         private bool _allowEdit;
         private ConnectionContextMenu _contextMenu = null!;
         private ConnectionTreeModel _connectionTreeModel = null!;
-        private ISlowClickRenameHandler? _slowClickRenameHandler;
+        private SlowClickRenameHandler? _slowClickRenameHandler;
         private DesktopShellRuntime? _desktopShellRuntime;
+        private bool _puttyManagerSubscriptionAttached;
 
         public ConnectionInfo SelectedNode => (ConnectionInfo)SelectedObject;
 
         public IConfirm<ConnectionInfo> NodeDeletionConfirmer { get; set; } = new AlwaysConfirmYes();
 
-        public IEnumerable<IConnectionTreeDelegate> PostSetupActions { get; set; } = Array.Empty<IConnectionTreeDelegate>();
+        public IEnumerable<IConnectionTreeAction> PostSetupActions { get; set; } = Array.Empty<IConnectionTreeAction>();
 
         public ITreeNodeClickHandler<ConnectionInfo> DoubleClickHandler { get; set; } = new TreeNodeCompositeClickHandler();
 
@@ -96,6 +97,8 @@ namespace LoipvRemote.UI.Controls.ConnectionTree
                 throw new InvalidOperationException("The connection-tree runtime is already attached.");
 
             _desktopShellRuntime = desktopShellRuntime;
+            _puttySessionsManager = desktopShellRuntime.PuttySessionsManager;
+            AttachPuttySessionUpdates();
             _contextMenu.AttachRuntime(desktopShellRuntime);
         }
 
@@ -170,7 +173,7 @@ namespace LoipvRemote.UI.Controls.ConnectionTree
         {
             CanExpandGetter = item =>
             {
-                ContainerInfo itemAsContainer = item as ContainerInfo;
+                ContainerInfo? itemAsContainer = item as ContainerInfo;
                 return itemAsContainer?.Children.Count > 0;
             };
             ChildrenGetter = item => ((ContainerInfo)item).Children;
@@ -202,8 +205,8 @@ namespace LoipvRemote.UI.Controls.ConnectionTree
             MouseDoubleClick += OnMouse_DoubleClick;
             MouseClick += OnMouse_SingleClick;
             CellToolTipShowing += TvConnections_CellToolTipShowing;
-            ModelCanDrop += _dragAndDropHandler.HandleEvent_ModelCanDrop;
-            ModelDropped += _dragAndDropHandler.HandleEvent_ModelDropped;
+            ModelCanDrop += _dragAndDropHandler.HandleModelCanDrop;
+            ModelDropped += _dragAndDropHandler.HandleModelDropped;
             BeforeLabelEdit += OnBeforeLabelEdit;
             AfterLabelEdit += OnAfterLabelEdit;
             FormatCell += ConnectionTree_FormatCell;
@@ -245,20 +248,33 @@ namespace LoipvRemote.UI.Controls.ConnectionTree
 
         private void RegisterModelUpdateHandlers(ConnectionTreeModel newModel)
         {
-            _puttySessionsManager.PuttySessionsCollectionChanged += OnPuttySessionsCollectionChanged;
+            AttachPuttySessionUpdates();
             newModel.CollectionChanged += HandleCollectionChanged;
             newModel.PropertyChanged += HandleCollectionPropertyChanged;
         }
 
         private void UnregisterModelUpdateHandlers(ConnectionTreeModel oldConnectionTreeModel)
         {
-            _puttySessionsManager.PuttySessionsCollectionChanged -= OnPuttySessionsCollectionChanged;
+            if (_puttyManagerSubscriptionAttached && _puttySessionsManager is not null)
+            {
+                _puttySessionsManager.PuttySessionsCollectionChanged -= OnPuttySessionsCollectionChanged;
+                _puttyManagerSubscriptionAttached = false;
+            }
 
             if (oldConnectionTreeModel == null)
                 return;
 
             oldConnectionTreeModel.CollectionChanged -= HandleCollectionChanged;
             oldConnectionTreeModel.PropertyChanged -= HandleCollectionPropertyChanged;
+        }
+
+        private void AttachPuttySessionUpdates()
+        {
+            if (_puttyManagerSubscriptionAttached || _puttySessionsManager is null)
+                return;
+
+            _puttySessionsManager.PuttySessionsCollectionChanged += OnPuttySessionsCollectionChanged;
+            _puttyManagerSubscriptionAttached = true;
         }
 
         private void OnPuttySessionsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs args)
@@ -270,7 +286,7 @@ namespace LoipvRemote.UI.Controls.ConnectionTree
         {
             // for some reason property changed events are getting triggered twice for each changed property. should be just once. cant find source of duplication
             // Removed "TO DO" from above comment. Per #142 it apperas that this no longer occurs with ObjectListView 2.9.1
-            string property = propertyChangedEventArgs.PropertyName;
+            string property = propertyChangedEventArgs.PropertyName ?? string.Empty;
             if (property != nameof(ConnectionInfo.Name)
              && property != nameof(ConnectionInfo.OpenConnections)
              && property != nameof(ConnectionInfo.Icon))
@@ -287,7 +303,7 @@ namespace LoipvRemote.UI.Controls.ConnectionTree
 
         private void ExecutePostSetupActions()
         {
-            foreach (IConnectionTreeDelegate action in PostSetupActions)
+            foreach (IConnectionTreeAction action in PostSetupActions)
             {
                 action.Execute(this);
             }
@@ -356,8 +372,10 @@ namespace LoipvRemote.UI.Controls.ConnectionTree
             ConnectionInfo parentNode = SelectedNode ?? GetRootConnectionNode();
             DefaultConnectionInfo.Instance.SaveTo(newNode);
             DefaultConnectionInheritance.Instance.SaveTo(newNode.Inheritance);
-            ContainerInfo selectedContainer = parentNode as ContainerInfo;
-            ContainerInfo parent = selectedContainer ?? parentNode?.Parent;
+            ContainerInfo? selectedContainer = parentNode as ContainerInfo;
+            ContainerInfo? parent = selectedContainer ?? parentNode?.Parent;
+            if (parent is null)
+                return;
             newNode.SetParent(parent);
             Expand(parent);
             SelectObject(newNode, true);
@@ -448,7 +466,7 @@ namespace LoipvRemote.UI.Controls.ConnectionTree
             try
             {
                 _slowClickRenameHandler?.CancelIfDifferentNode(SelectedNode);
-                AppWindows.ConfigForm.SelectedTreeNode = SelectedNode;
+                _desktopShellRuntime!.Windows.ConfigForm.SelectedTreeNode = SelectedNode;
             }
             catch (Exception ex)
             {
@@ -518,7 +536,10 @@ namespace LoipvRemote.UI.Controls.ConnectionTree
 
             if (connectionInfo.OpenConnections.Count > 0)
             {
-                e.SubItem.ForeColor = System.Drawing.Color.FromArgb(22, 163, 74);
+                // Use the same blue accent as the active document/tab state.
+                // Green was indistinguishable from user-defined status colors
+                // and did not match the shell's connected-state affordance.
+                e.SubItem.ForeColor = System.Drawing.Color.FromArgb(0, 120, 215);
                 return;
             }
 
@@ -529,8 +550,8 @@ namespace LoipvRemote.UI.Controls.ConnectionTree
             try
             {
                 System.Drawing.ColorConverter converter = new();
-                System.Drawing.Color color = (System.Drawing.Color)converter.ConvertFromString(colorString);
-                e.SubItem.ForeColor = color;
+                if (converter.ConvertFromString(colorString) is System.Drawing.Color color)
+                    e.SubItem.ForeColor = color;
             }
             catch
             {
@@ -546,11 +567,11 @@ namespace LoipvRemote.UI.Controls.ConnectionTree
             try
             {
                 _contextMenu.EnableShortcutKeys();
-                ConnectionTreeModel.RenameNode(SelectedNode, e.Label);
+                ConnectionTreeModel.RenameNode(SelectedNode, e.Label ?? string.Empty);
                 _nodeInEditMode = false;
                 _allowEdit = false;
                 _slowClickRenameHandler?.Cancel();
-                AppWindows.ConfigForm.SelectedTreeNode = SelectedNode;
+                _desktopShellRuntime!.Windows.ConfigForm.SelectedTreeNode = SelectedNode;
             }
             catch (Exception ex)
             {

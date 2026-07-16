@@ -104,6 +104,9 @@ namespace LoipvRemoteTests.UI.Controls
                 Assert.That(ipInput.Controls[0].Controls.Contains(ipInput.Octet1), Is.True);
                 Assert.That(ipInput.Octet1.Font.SizeInPoints, Is.EqualTo(ipInput.Font.SizeInPoints));
                 Assert.That(ipInput.Height, Is.EqualTo(InputControlMetrics.InputHeight(ipInput.Font.Height)));
+                Assert.That(ipInput.Octet1.Margin, Is.EqualTo(Padding.Empty));
+                Assert.That(ipInput.Octet1.Padding, Is.EqualTo(Padding.Empty));
+                Assert.That(ipInput.Octet1.TextAlign, Is.EqualTo(HorizontalAlignment.Center));
             });
         }
 

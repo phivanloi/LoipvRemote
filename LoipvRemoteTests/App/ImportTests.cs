@@ -29,7 +29,7 @@ public class ImportTests
     }
 
     [Test]
-    public void CanonicalXmlImporterReadsTheDomainConnectionStoreFormat()
+    public async Task CanonicalXmlImporterReadsTheDomainConnectionStoreFormat()
     {
         string file = Path.Combine(Path.GetTempPath(), $"loipvremote-import-{Guid.NewGuid():N}.xml");
         _temporaryFiles.Add(file);
@@ -42,17 +42,17 @@ public class ImportTests
                 22,
                 ProtocolKind.Ssh2,
                 CredentialReference.None)]);
-        new XmlConnectionDefinitionStore(file).SaveAsync(definition).GetAwaiter().GetResult();
+        await new XmlConnectionDefinitionStore(file).SaveAsync(definition);
 
         ContainerInfo destination = new();
-        new LoipvRemoteXmlImporter(RuntimeHostFixture.Services.GetRequiredService<MessageCollector>())
-            .Import(file, destination);
+        await new LoipvRemoteXmlImporter(RuntimeHostFixture.Services.GetRequiredService<MessageCollector>())
+            .ImportAsync(file, destination);
 
         Assert.That(((ContainerInfo)destination.Children.Single()).Children.Single().Name, Is.EqualTo("canonical-ssh"));
     }
 
     [Test]
-    public void ErrorHandlerCalledWhenUnsupportedFileExtensionFound()
+    public async Task ErrorHandlerCalledWhenUnsupportedFileExtensionFound()
     {
         using (FileTestHelpers.DisposableTempFile(out var file, ".blah"))
         {
@@ -61,14 +61,14 @@ public class ImportTests
             var exceptionOccurred = false;
 
             var importService = new ConnectionImportService(conService, RuntimeHostFixture.Services.GetRequiredService<MessageCollector>());
-            importService.HeadlessFileImport(new[] { file }, container, s => exceptionOccurred = true);
+            await importService.HeadlessFileImportAsync(new[] { file }, container, s => exceptionOccurred = true);
 
             Assert.That(exceptionOccurred);
         }
     }
 
     [Test]
-    public void AnErrorInOneFileDoNotPreventOtherFilesFromProcessing()
+    public async Task AnErrorInOneFileDoNotPreventOtherFilesFromProcessing()
     {
         using (FileTestHelpers.DisposableTempFile(out var badFile, ".blah"))
         using (FileTestHelpers.DisposableTempFile(out var rdpFile, ".rdp"))
@@ -79,7 +79,7 @@ public class ImportTests
             var exceptionCount = 0;
 
             var importService = new ConnectionImportService(conService, RuntimeHostFixture.Services.GetRequiredService<MessageCollector>());
-            importService.HeadlessFileImport(new[] { badFile, rdpFile }, container, s => exceptionCount++);
+            await importService.HeadlessFileImportAsync(new[] { badFile, rdpFile }, container, s => exceptionCount++);
 
             Assert.That(exceptionCount, Is.EqualTo(1));
             Assert.That(container.Children, Has.One.Items);

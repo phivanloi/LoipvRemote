@@ -12,7 +12,7 @@ namespace LoipvRemoteTests.Desktop.Sessions;
 public sealed class DesktopSessionHostTests
 {
     [Test]
-    public void Connect_AttachesEmbeddedWindowAndStartsSurfaceActivity()
+    public async Task Connect_AttachesEmbeddedWindowAndStartsSurfaceActivity()
     {
         FakeSession session = new();
         FakeSurface surface = new();
@@ -20,8 +20,8 @@ public sealed class DesktopSessionHostTests
         host.AttachSurface(surface);
 
         Assert.That(host.InitializeSurface(), Is.True);
-        Assert.That(host.InitializeSession(), Is.True);
-        Assert.That(host.Connect(), Is.True);
+        Assert.That(await host.InitializeSessionAsync(), Is.True);
+        Assert.That(await host.ConnectAsync(), Is.True);
 
         Assert.Multiple(() =>
         {
@@ -34,7 +34,7 @@ public sealed class DesktopSessionHostTests
     }
 
     [Test]
-    public void InitializeSession_AttachesManagedSurfaceBeforeProtocolInitialization()
+    public async Task InitializeSession_AttachesManagedSurfaceBeforeProtocolInitialization()
     {
         FakeManagedSession session = new() { IsAvailableBeforeConnect = true };
         FakeSurface surface = new();
@@ -42,7 +42,7 @@ public sealed class DesktopSessionHostTests
         host.AttachSurface(surface);
 
         Assert.That(host.InitializeSurface(), Is.True);
-        Assert.That(host.InitializeSession(), Is.True);
+        Assert.That(await host.InitializeSessionAsync(), Is.True);
 
         Assert.Multiple(() =>
         {
@@ -53,15 +53,15 @@ public sealed class DesktopSessionHostTests
     }
 
     [Test]
-    public void ResizeSurface_ForwardsCurrentBoundsToEmbeddedWindow()
+    public async Task ResizeSurface_ForwardsCurrentBoundsToEmbeddedWindow()
     {
         FakeSession session = new();
         FakeSurface surface = new() { Bounds = new Rectangle(1, 2, 300, 200) };
         using DesktopSessionHost host = new(CreateDefinition(), session);
         host.AttachSurface(surface);
         host.InitializeSurface();
-        host.InitializeSession();
-        host.Connect();
+        await host.InitializeSessionAsync();
+        await host.ConnectAsync();
 
         surface.Bounds = new Rectangle(4, 5, 640, 480);
         surface.RaiseResize();
@@ -70,15 +70,15 @@ public sealed class DesktopSessionHostTests
     }
 
     [Test]
-    public void Focus_RetriesEmbeddingWhenChildWindowWasNotReadyAtConnect()
+    public async Task Focus_RetriesEmbeddingWhenChildWindowWasNotReadyAtConnect()
     {
         FakeSession session = new() { AllowAttach = false };
         FakeSurface surface = new();
         using DesktopSessionHost host = new(CreateDefinition(), session);
         host.AttachSurface(surface);
         host.InitializeSurface();
-        host.InitializeSession();
-        host.Connect();
+        await host.InitializeSessionAsync();
+        await host.ConnectAsync();
 
         session.AllowAttach = true;
         host.Focus();
@@ -92,15 +92,15 @@ public sealed class DesktopSessionHostTests
     }
 
     [Test]
-    public void Focus_ReattachesWhenEmbeddedProcessRecreatesItsWindow()
+    public async Task Focus_ReattachesWhenEmbeddedProcessRecreatesItsWindow()
     {
         FakeSession session = new() { WindowHandle = new IntPtr(99) };
         FakeSurface surface = new();
         using DesktopSessionHost host = new(CreateDefinition(), session);
         host.AttachSurface(surface);
         host.InitializeSurface();
-        host.InitializeSession();
-        host.Connect();
+        await host.InitializeSessionAsync();
+        await host.ConnectAsync();
 
         session.WindowHandle = new IntPtr(100);
         host.Focus();
@@ -109,17 +109,92 @@ public sealed class DesktopSessionHostTests
     }
 
     [Test]
-    public void Close_DisposesSessionAndSurfaceExactlyOnce()
+    public async Task Focus_ReappliesCurrentBoundsWhenTheEmbeddedWindowIsAlreadyAttached()
+    {
+        FakeSession session = new();
+        FakeSurface surface = new() { Bounds = new Rectangle(0, 0, 1280, 720) };
+        using DesktopSessionHost host = new(CreateDefinition(), session);
+        host.AttachSurface(surface);
+        host.InitializeSurface();
+        await host.InitializeSessionAsync();
+        await host.ConnectAsync();
+
+        surface.Bounds = new Rectangle(0, 0, 1920, 1000);
+        host.Focus();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(session.AttachCalls, Is.EqualTo(1));
+            Assert.That(session.ResizeCalls, Is.EqualTo(2));
+            Assert.That(session.LastBounds, Is.EqualTo(new EmbeddedWindowBounds(0, 0, 1920, 1000)));
+        });
+    }
+
+    [Test]
+    public async Task SessionLifecycleMarshalsWinFormsSurfaceOperationsToAttachContext()
+    {
+        FakeManagedSession session = new() { IsAvailableBeforeConnect = true };
+        FakeSurface surface = new();
+        RecordingSynchronizationContext context = new();
+        using DesktopSessionHost host = new(CreateDefinition(), session);
+
+        SynchronizationContext? previous = SynchronizationContext.Current;
+        SynchronizationContext.SetSynchronizationContext(context);
+        try
+        {
+            host.AttachSurface(surface);
+        }
+        finally
+        {
+            SynchronizationContext.SetSynchronizationContext(previous);
+        }
+
+        Assert.That(await Task.Run(() => host.InitializeSessionAsync().AsTask()), Is.True);
+        Assert.That(context.PostCalls, Is.GreaterThanOrEqualTo(1));
+        Assert.That(session.AttachedParent, Is.EqualTo(surface.Handle));
+    }
+
+    [Test]
+    public async Task SessionLifecycleMarshalsInitializeAndConnectToAttachContext()
+    {
+        FakeSession session = new();
+        FakeSurface surface = new();
+        RecordingSynchronizationContext context = new();
+        using DesktopSessionHost host = new(CreateDefinition(), session);
+
+        SynchronizationContext? previous = SynchronizationContext.Current;
+        SynchronizationContext.SetSynchronizationContext(context);
+        try
+        {
+            host.AttachSurface(surface);
+        }
+        finally
+        {
+            SynchronizationContext.SetSynchronizationContext(previous);
+        }
+
+        Assert.That(await Task.Run(() => host.InitializeSessionAsync().AsTask()), Is.True);
+        Assert.That(await Task.Run(() => host.ConnectAsync().AsTask()), Is.True);
+        Assert.Multiple(() =>
+        {
+            Assert.That(context.PostCalls, Is.EqualTo(2));
+            Assert.That(session.InitializeCalls, Is.EqualTo(1));
+            Assert.That(session.ConnectCalls, Is.EqualTo(1));
+        });
+    }
+
+    [Test]
+    public async Task Close_DisposesSessionAndSurfaceExactlyOnce()
     {
         FakeSession session = new();
         FakeSurface surface = new();
         using DesktopSessionHost host = new(CreateDefinition(), session);
         host.AttachSurface(surface);
         host.InitializeSurface();
-        host.InitializeSession();
+        await host.InitializeSessionAsync();
 
-        host.Close();
-        host.Close();
+        await host.CloseAsync();
+        await host.CloseAsync();
 
         Assert.Multiple(() =>
         {
@@ -192,6 +267,11 @@ public sealed class DesktopSessionHostTests
         }
 
         public void Dispose() => DisposeCalls++;
+        public ValueTask<bool> InitializeAsync(CancellationToken cancellationToken = default) => ValueTask.FromResult(Initialize());
+        public ValueTask<bool> ConnectAsync(CancellationToken cancellationToken = default) => ValueTask.FromResult(Connect());
+        public ValueTask DisconnectAsync(CancellationToken cancellationToken = default) { Disconnect(); return ValueTask.CompletedTask; }
+        public ValueTask CloseAsync(CancellationToken cancellationToken = default) { Close(); return ValueTask.CompletedTask; }
+        public ValueTask DisposeAsync() { Dispose(); return ValueTask.CompletedTask; }
     }
 
     private sealed class FakeManagedSession : FakeSession, IManagedEmbeddedWindow
@@ -224,5 +304,23 @@ public sealed class DesktopSessionHostTests
         }
 
         public void RaiseResize() => Resize?.Invoke(this, EventArgs.Empty);
+    }
+
+    private sealed class RecordingSynchronizationContext : SynchronizationContext
+    {
+        public int SendCalls { get; private set; }
+        public int PostCalls { get; private set; }
+
+        public override void Send(SendOrPostCallback d, object? state)
+        {
+            SendCalls++;
+            d(state);
+        }
+
+        public override void Post(SendOrPostCallback d, object? state)
+        {
+            PostCalls++;
+            d(state);
+        }
     }
 }

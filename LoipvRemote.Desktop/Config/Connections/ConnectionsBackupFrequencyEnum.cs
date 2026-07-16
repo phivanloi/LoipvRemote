@@ -1,6 +1,6 @@
 namespace LoipvRemote.Config.Connections
 {
-    public enum ConnectionsBackupFrequencyEnum
+    public enum ConnectionsBackupFrequency
     {
         Unassigned = 0,
         Never = 1,

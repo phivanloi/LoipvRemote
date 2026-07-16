@@ -33,7 +33,7 @@ namespace LoipvRemote.UI.Controls
         internal void AttachServices(MessageCollector messageCollector) =>
             _messageCollector = messageCollector ?? throw new ArgumentNullException(nameof(messageCollector));
 
-        private void ComboBox_PreviewKeyDown(object sender, PreviewKeyDownEventArgs e)
+        private void ComboBox_PreviewKeyDown(object? sender, PreviewKeyDownEventArgs e)
         {
             if (e.KeyCode == Keys.Enter & _comboBox.DroppedDown)
             {
@@ -62,7 +62,9 @@ namespace LoipvRemote.UI.Controls
                     // Items can't be removed from the ComboBox while it is dropped down without possibly causing
                     // an exception so we must close it, delete the item, and then drop it down again. When we
                     // close it programmatically, the SelectedItem may revert to Nothing, so we must save it first.
-                    object item = _comboBox.SelectedItem;
+                    object? item = _comboBox.SelectedItem;
+                    if (item is null)
+                        return;
                     _comboBox.DroppedDown = false;
                     _comboBox.Items.Remove(item);
                     _comboBox.SelectedIndex = -1;
@@ -76,7 +78,7 @@ namespace LoipvRemote.UI.Controls
             }
         }
 
-        private void ComboBox_SelectedIndexChanged(object sender, EventArgs e)
+        private void ComboBox_SelectedIndexChanged(object? sender, EventArgs e)
         {
             if (!(_comboBox.SelectedItem is HistoryItem))
             {
@@ -87,15 +89,14 @@ namespace LoipvRemote.UI.Controls
             OnProtocolChanged(new ProtocolChangedEventArgs(historyItem.ConnectionInfo.Protocol));
         }
 
-        private static void ComboBox_DrawItem(object sender, DrawItemEventArgs e)
+        private static void ComboBox_DrawItem(object? sender, DrawItemEventArgs e)
         {
-            ComboBox comboBox = sender as ComboBox;
-            if (comboBox == null)
+            if (sender is not ComboBox comboBox)
             {
                 return;
             }
 
-            object drawItem = comboBox.Items[e.Index];
+            object? drawItem = comboBox.Items[e.Index];
 
             string drawString;
             if (drawItem is HistoryItem)
@@ -105,11 +106,11 @@ namespace LoipvRemote.UI.Controls
             }
             else
             {
-                drawString = drawItem.ToString();
+                drawString = drawItem?.ToString() ?? string.Empty;
             }
 
             e.DrawBackground();
-            e.Graphics.DrawString(drawString, e.Font, new SolidBrush(e.ForeColor),
+            e.Graphics.DrawString(drawString, e.Font ?? SystemFonts.DefaultFont, new SolidBrush(e.ForeColor),
                                   new RectangleF(e.Bounds.X, e.Bounds.Y, e.Bounds.Width, e.Bounds.Height));
             e.DrawFocusRectangle();
         }
@@ -132,6 +133,10 @@ namespace LoipvRemote.UI.Controls
 
                 return ConnectionInfo.Protocol == other.ConnectionInfo.Protocol;
             }
+
+            public override bool Equals(object? obj) => obj is HistoryItem other && Equals(other);
+
+            public override int GetHashCode() => HashCode.Combine(ConnectionInfo.Hostname, ConnectionInfo.Port, ConnectionInfo.Protocol);
 
             public override string ToString()
             {
@@ -175,7 +180,7 @@ namespace LoipvRemote.UI.Controls
         {
             try
             {
-                HistoryItem historyItem = new() { ConnectionInfo = connectionInfo};
+                HistoryItem historyItem = new() { ConnectionInfo = connectionInfo };
                 if (!Exists(historyItem))
                 {
                     _comboBox.Items.Insert(0, historyItem);
@@ -197,20 +202,12 @@ namespace LoipvRemote.UI.Controls
             public string ConnectionString { get; } = connectionString;
         }
 
-        public delegate void ConnectRequestedEventHandler(object sender, ConnectRequestedEventArgs e);
-
-        private ConnectRequestedEventHandler? ConnectRequestedEvent;
-
-        public event ConnectRequestedEventHandler ConnectRequested
-        {
-            add => ConnectRequestedEvent = (ConnectRequestedEventHandler)Delegate.Combine(ConnectRequestedEvent, value);
-            remove => ConnectRequestedEvent = (ConnectRequestedEventHandler)Delegate.Remove(ConnectRequestedEvent, value);
-        }
+        public event EventHandler<ConnectRequestedEventArgs>? ConnectRequested;
 
 
         private void OnConnectRequested(ConnectRequestedEventArgs e)
         {
-            ConnectRequestedEvent?.Invoke(this, e);
+            ConnectRequested?.Invoke(this, e);
         }
 
         public class ProtocolChangedEventArgs(ProtocolKind protocol) : EventArgs
@@ -218,20 +215,12 @@ namespace LoipvRemote.UI.Controls
             public ProtocolKind Protocol { get; } = protocol;
         }
 
-        public delegate void ProtocolChangedEventHandler(object sender, ProtocolChangedEventArgs e);
-
-        private ProtocolChangedEventHandler? ProtocolChangedEvent;
-
-        public event ProtocolChangedEventHandler ProtocolChanged
-        {
-            add => ProtocolChangedEvent = (ProtocolChangedEventHandler)Delegate.Combine(ProtocolChangedEvent, value);
-            remove => ProtocolChangedEvent = (ProtocolChangedEventHandler)Delegate.Remove(ProtocolChangedEvent, value);
-        }
+        public event EventHandler<ProtocolChangedEventArgs>? ProtocolChanged;
 
 
         private void OnProtocolChanged(ProtocolChangedEventArgs e)
         {
-            ProtocolChangedEvent?.Invoke(this, e);
+            ProtocolChanged?.Invoke(this, e);
         }
 
         #endregion

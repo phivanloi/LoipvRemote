@@ -32,7 +32,8 @@ namespace LoipvRemote.Credential.Repositories
         public ICredentialRepository Build(XElement repositoryXElement)
         {
             string? stringId = repositoryXElement.Attribute("Id")?.Value;
-            Guid.TryParse(stringId, out Guid id);
+            if (!Guid.TryParse(stringId, out Guid id))
+                id = Guid.Empty;
             if (id.Equals(Guid.Empty)) id = Guid.NewGuid();
             CredentialRepositoryConfig config = new(id)
             {
@@ -43,7 +44,7 @@ namespace LoipvRemote.Credential.Repositories
             return BuildXmlRepo(config);
         }
 
-        private ICredentialRepository BuildXmlRepo(ICredentialRepositoryConfig config)
+        private XmlCredentialRepository BuildXmlRepo(ICredentialRepositoryConfig config)
         {
             FileDataProvider dataProvider = new(config.Source);
             CredentialRecordSaver saver = new(dataProvider, _serializer);

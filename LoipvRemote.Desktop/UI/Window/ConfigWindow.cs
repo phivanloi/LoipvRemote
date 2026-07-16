@@ -26,12 +26,12 @@ namespace LoipvRemote.UI.Window
     public class ConfigWindow : BaseWindow
     {
         private MessageCollector? _messageCollector;
-        private IConnectionWorkspace? _connectionWorkspace;
+        private IConnectionTreeWorkspace? _connectionWorkspace;
 
         private MessageCollector MessageCollector => _messageCollector
             ?? throw new InvalidOperationException("ConfigWindow services must be attached before use.");
 
-        private IConnectionWorkspace ConnectionWorkspace => _connectionWorkspace
+        private IConnectionTreeWorkspace ConnectionWorkspace => _connectionWorkspace
             ?? throw new InvalidOperationException("ConfigWindow services must be attached before use.");
         private bool _originalPropertyGridToolStripItemCountValid;
         private int _originalPropertyGridToolStripItemCount;
@@ -220,10 +220,10 @@ namespace LoipvRemote.UI.Window
                                           _pGrid.SelectedConnectionInfo?.Parent != null;
 
         public bool DefaultPropertiesVisible => _btnShowDefaultProperties.Checked;
-        public bool CanShowDefaultProperties => true;
+        public static bool CanShowDefaultProperties => true;
 
         public bool DefaultInheritanceVisible => _btnShowDefaultInheritance.Checked;
-        public bool CanShowDefaultInheritance => true;
+        public static bool CanShowDefaultInheritance => true;
 
         /// <summary>
         /// A list of properties being shown for the current object.
@@ -413,7 +413,7 @@ namespace LoipvRemote.UI.Window
 
             _btnIcon.Image = _btnIcon.Enabled
                 ? ConnectionIcon
-                    .FromString(_pGrid.SelectedConnectionInfo?.Icon)?
+                    .FromString(_pGrid.SelectedConnectionInfo?.Icon ?? string.Empty)?
                     .ToBitmap()
                 : null;
         }
@@ -433,16 +433,16 @@ namespace LoipvRemote.UI.Window
 
                 ToolStrip propertyGridToolStrip = new();
 
-                ToolStrip toolStrip = null;
+                ToolStrip? toolStrip = null;
                 foreach (Control control in _pGrid.Controls)
                 {
                     toolStrip = control as ToolStrip;
-                    if (toolStrip == null) continue;
+                    if (toolStrip is null) continue;
                     propertyGridToolStrip = toolStrip;
                     break;
                 }
 
-                if (toolStrip == null)
+                if (toolStrip is null)
                 {
                     MessageCollector.AddMessage(MessageClass.ErrorMsg,
                                                         Language.CouldNotFindToolStripInFilteredPropertyGrid, true);
@@ -488,14 +488,18 @@ namespace LoipvRemote.UI.Window
             AddToolStripItems();
         }
 
-        private void PGrid_PropertyValueChanged(object s, PropertyValueChangedEventArgs e)
+        private void PGrid_PropertyValueChanged(object? s, PropertyValueChangedEventArgs e)
         {
             try
             {
-                if (e.ChangedItem.Label == Language.Icon)
+                if (e.ChangedItem is not { Label: var changedLabel })
+                    return;
+                if (changedLabel == Language.Icon)
                 {
-                    Icon conIcon = ConnectionIcon.FromString(ConnectionIcon.GetConnectionDisplayIcon(_pGrid.SelectedConnectionInfo.Icon));
-                    if (conIcon != null)
+                    if (_pGrid.SelectedConnectionInfo is not { } selectedConnection)
+                        return;
+                    Icon? conIcon = ConnectionIcon.FromString(ConnectionIcon.GetConnectionDisplayIcon(selectedConnection.Icon));
+                    if (conIcon is not null)
                         _btnIcon.Image = conIcon.ToBitmap();
                 }
                 else if (e.ChangedItem.Label == Language.HostnameIp)
@@ -551,10 +555,11 @@ namespace LoipvRemote.UI.Window
 
                 foreach (string iStr in ConnectionIcon.Icons)
                 {
+                    Icon? icon = ConnectionIcon.FromString(iStr);
                     ToolStripMenuItem tI = new()
                     {
                         Text = iStr,
-                        Image = ConnectionIcon.FromString(iStr).ToBitmap()
+                        Image = icon?.ToBitmap()
                     };
                     tI.Click += IconMenu_Click;
 
@@ -574,23 +579,22 @@ namespace LoipvRemote.UI.Window
         {
             try
             {
-                ConnectionInfo connectionInfo = (ConnectionInfo)_pGrid.SelectedObject;
-                if (connectionInfo == null) return;
+                if (_pGrid.SelectedObject is not ConnectionInfo connectionInfo) return;
 
-                ToolStripMenuItem selectedMenuItem = (ToolStripMenuItem)sender;
+                if (sender is not ToolStripMenuItem selectedMenuItem) return;
 
-                string iconName = selectedMenuItem?.Text;
+                string? iconName = selectedMenuItem.Text;
                 if (string.IsNullOrEmpty(iconName)) return;
 
-                Icon connectionIcon = ConnectionIcon.FromString(iconName);
-                if (connectionIcon == null) return;
+                Icon? connectionIcon = ConnectionIcon.FromString(iconName);
+                if (connectionIcon is null) return;
 
                 _btnIcon.Image = connectionIcon.ToBitmap();
 
                 connectionInfo.Icon = iconName;
                 _pGrid.Refresh();
 
-                ConnectionWorkspace.SaveConnectionsAsync();
+                _ = ConnectionWorkspace.SaveConnectionsAsync();
             }
             catch (Exception ex)
             {
@@ -604,7 +608,7 @@ namespace LoipvRemote.UI.Window
 
         private Thread _pThread = null!;
 
-        private void CheckHostAlive(object hostName)
+        private void CheckHostAlive(object? hostName)
         {
             if (string.IsNullOrEmpty(hostName as string))
             {
@@ -619,7 +623,7 @@ namespace LoipvRemote.UI.Window
                 PingReply pReply = pingSender.Send((string)hostName);
                 if (pReply?.Status == IPStatus.Success)
                 {
-                    if ((string)_btnHostStatus.Tag == "checking")
+                    if (string.Equals(_btnHostStatus.Tag as string, "checking", StringComparison.Ordinal))
                     {
                         ShowStatusImage(Properties.Resources.HostStatus_On);
                     }
@@ -627,7 +631,7 @@ namespace LoipvRemote.UI.Window
                 }
                 else
                 {
-                    if ((string)_btnHostStatus.Tag == "checking")
+                    if (string.Equals(_btnHostStatus.Tag as string, "checking", StringComparison.Ordinal))
                     {
                         ShowStatusImage(Properties.Resources.HostStatus_Off);
                     }
@@ -636,7 +640,7 @@ namespace LoipvRemote.UI.Window
             }
             catch (Exception)
             {
-                if ((string)_btnHostStatus.Tag == "checking")
+                if (string.Equals(_btnHostStatus.Tag as string, "checking", StringComparison.Ordinal))
                 {
                     ShowStatusImage(Properties.Resources.HostStatus_Off);
                 }
@@ -671,7 +675,7 @@ namespace LoipvRemote.UI.Window
             }
         }
 
-        private void SetHostStatus(object connectionInfo)
+        private void SetHostStatus(object? connectionInfo)
         {
             try
             {
@@ -684,7 +688,7 @@ namespace LoipvRemote.UI.Window
                 _pThread = new Thread(CheckHostAlive);
                 _pThread.SetApartmentState(ApartmentState.STA);
                 _pThread.IsBackground = true;
-                _pThread.Start(((ConnectionInfo)connectionInfo).Hostname);
+                _pThread.Start(info.Hostname);
             }
             catch (Exception ex)
             {
@@ -703,7 +707,7 @@ namespace LoipvRemote.UI.Window
             try
             {
                 _propertyGridContextMenuShowHelpText.Checked = Settings.Default.ShowConfigHelpText;
-                GridItem gridItem = _pGrid.SelectedGridItem;
+                GridItem? gridItem = _pGrid.SelectedGridItem;
                 _propertyGridContextMenuReset.Enabled = Convert.ToBoolean(_pGrid.SelectedObject != null &&
                                                                           gridItem?.PropertyDescriptor != null &&
                                                                           gridItem.PropertyDescriptor.CanResetValue(_pGrid.SelectedObject));
@@ -718,7 +722,7 @@ namespace LoipvRemote.UI.Window
         {
             try
             {
-                GridItem gridItem = _pGrid.SelectedGridItem;
+                GridItem? gridItem = _pGrid.SelectedGridItem;
                 if (_pGrid.SelectedObject != null && gridItem?.PropertyDescriptor != null &&
                     gridItem.PropertyDescriptor.CanResetValue(_pGrid.SelectedObject))
                 {

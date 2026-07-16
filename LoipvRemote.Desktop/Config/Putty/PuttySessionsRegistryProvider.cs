@@ -8,7 +8,7 @@ using LoipvRemote.Infrastructure.Windows.Registry;
 namespace LoipvRemote.Config.Putty
 {
     [SupportedOSPlatform("windows")]
-    public class PuttySessionsRegistryProvider : AbstractPuttySessionsProvider
+    public class PuttySessionsRegistryProvider : AbstractPuttySessionsProvider, IDisposable
     {
         private readonly PuttyRegistrySessionStore _store = new();
 
@@ -16,12 +16,12 @@ namespace LoipvRemote.Config.Putty
 
         public override string[] GetSessionNames(bool raw = false)
         {
-            return _store.GetSessionNames(raw);
+            return PuttyRegistrySessionStore.GetSessionNames(raw);
         }
 
-        public override PuttySessionInfo GetSession(string sessionName)
+        public override PuttySessionInfo? GetSession(string sessionName)
         {
-            PuttyRegistrySession session = _store.GetSession(sessionName);
+            PuttyRegistrySession? session = PuttyRegistrySessionStore.GetSession(sessionName);
             if (session is null) return null;
 
             PuttySessionInfo sessionInfo = new()
@@ -87,9 +87,16 @@ namespace LoipvRemote.Config.Putty
             _store.StopWatcher();
         }
 
+        public void Dispose()
+        {
+            StopWatcher();
+            _store.Dispose();
+            GC.SuppressFinalize(this);
+        }
+
         #endregion
 
-        private void OnRegistryChanged(object sender, EventArgs e)
+        private void OnRegistryChanged(object? sender, EventArgs e)
         {
             RaiseSessionChangedEvent(new PuttySessionChangedEventArgs());
         }

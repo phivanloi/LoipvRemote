@@ -1856,9 +1856,6 @@ LoipvRemote va se fermer et l'installation va commencer.</value>
   <data name="DatabaseNotAvailable" xml:space="preserve">
     <value>Base de données '{0}' indisponible.</value>
   </data>
-  <data name="SaveConnectionsAfterEveryEdit" xml:space="preserve">
-    <value>Enregistrer les connexions après chaque modification</value>
-  </data>
   <data name="TestConnection" xml:space="preserve">
     <value>Tester la connexion</value>
   </data>

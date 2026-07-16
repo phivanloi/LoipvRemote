@@ -1,16 +1,28 @@
-﻿using Microsoft.Win32;
-using Org.BouncyCastle.Crypto;
+﻿using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.Parameters;
 using Org.BouncyCastle.OpenSsl;
 using Org.BouncyCastle.Security;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using LoipvRemote.Connectors.Abstractions;
+using LoipvRemote.Protocols.Abstractions;
 
 namespace LoipvRemote.Connectors.Passwordstate;
 
 public class PasswordstateInterface
 {
+    private readonly IExternalCredentialPrompt _prompt;
+    private readonly IExternalCredentialSettingsStore _settings;
+
+    public PasswordstateInterface(
+        IExternalCredentialPrompt prompt,
+        IExternalCredentialSettingsStore settings)
+    {
+        _prompt = prompt ?? throw new ArgumentNullException(nameof(prompt));
+        _settings = settings ?? throw new ArgumentNullException(nameof(settings));
+    }
+
     private static class CPSConnectionData
     {
         public static string ssUsername = "";
@@ -19,15 +31,18 @@ public class PasswordstateInterface
         public static string ssOTP = "";
         public static DateTime ssOTPTimeStampExpiration;
 
-        public static bool ssSSO = false;
-        public static bool initdone = false;
+        public static bool ssSSO;
+        public static bool initdone;
 
         //token 
         //public static string ssTokenBearer = "";
         //public static DateTime ssTokenExpiresOn = DateTime.UtcNow;
         //public static string ssTokenRefresh = "";
 
-        public static void Init()
+        public static async Task InitAsync(
+            IExternalCredentialPrompt prompt,
+            IExternalCredentialSettingsStore settings,
+            CancellationToken cancellationToken)
         {
             // 2024-05-04 passwordstate currently does not support auth tokens, so we need to re-enter otp codes frequently
             if (!string.IsNullOrEmpty(ssOTP) && DateTime.Now > ssOTPTimeStampExpiration)
@@ -39,46 +54,33 @@ public class PasswordstateInterface
             if (initdone == true)
                 return;
 
-            RegistryKey key = Registry.CurrentUser.CreateSubKey(@"SOFTWARE\LoipvRemote\Passwordstate");
             try
             {
-                // display gui and ask for data
-                CPSConnectionForm f = new CPSConnectionForm();
-                //string? un = key.GetValue("Username") as string;
-                //f.tbUsername.Text = un ?? "";
-                f.tbAPIKey.Text = CPSConnectionData.ssPassword;    // in OTP refresh cases, this value might already be filled
-
-                string? url = key.GetValue("URL") as string;
+                string? url = settings.GetString("Passwordstate", "URL");
                 if (url == null || !url.Contains("://"))
                     url = "https://cred.domain.local/SecretServer";
-                f.tbServerURL.Text = url;
 
-                var b = key.GetValue("SSO");
-                if (b == null || (string)b != "True")
-                    ssSSO = false;
-                else
-                    ssSSO = true;
-                f.cbUseSSO.Checked = ssSSO;
+                ssSSO = settings.GetBoolean("Passwordstate", "SSO");
                 
-                // show dialog
                 while (true)
                 {
-                    _ = f.ShowDialog();
-
-                    if (f.DialogResult != DialogResult.OK)
+                    PasswordstatePromptResult? result = await prompt.PromptPasswordstateAsync(
+                        new PasswordstatePromptRequest(url, ssPassword, ssOTP, ssSSO),
+                        cancellationToken).ConfigureAwait(true);
+                    if (result is null)
                         return;
 
                     // store values to memory
-                    //ssUsername = f.tbUsername.Text;
-                    ssPassword = f.tbAPIKey.Text;
-                    ssUrl = f.tbServerURL.Text;
-                    ssSSO = f.cbUseSSO.Checked;
-                    ssOTP = f.tbOTP.Text;
+                    ssPassword = result.ApiKey;
+                    ssUrl = result.ServerUrl;
+                    url = ssUrl;
+                    ssSSO = result.UseSso;
+                    ssOTP = result.OneTimePassword;
                     ssOTPTimeStampExpiration = DateTime.Now.AddSeconds(30);
                     // check connection first
                     try
                     {
-                        if (TestCredentials() == true)
+                        if (await TestCredentialsAsync(cancellationToken).ConfigureAwait(true))
                         {
                             initdone = true;
                             break;
@@ -86,32 +88,26 @@ public class PasswordstateInterface
                     }
                     catch (Exception)
                     {
-                        MessageBox.Show("Test Credentials failed - please check your credentials");
+                        // Prompt again without coupling the connector runtime to a UI toolkit.
                     }
                 }
 
 
-                // write values to registry
-                //key.SetValue("Username", ssUsername);
-                key.SetValue("URL", ssUrl);
-                key.SetValue("SSO", ssSSO);
+                settings.SetString("Passwordstate", "URL", ssUrl);
+                settings.SetBoolean("Passwordstate", "SSO", ssSSO);
             }
             catch (Exception)
             {
                 throw;
             }
-            finally
-            {
-                key.Close();
-            }
         }
     }
 
-    private static bool TestCredentials()
+    private static Task<bool> TestCredentialsAsync(CancellationToken cancellationToken)
     {
-        return ConnectionTest();
+        return ConnectionTestAsync(cancellationToken);
     }
-    private static bool ConnectionTest()
+    private static async Task<bool> ConnectionTestAsync(CancellationToken cancellationToken)
     {
         if (CPSConnectionData.ssSSO)
         {
@@ -122,7 +118,7 @@ public class PasswordstateInterface
             client.DefaultRequestHeaders.Add("User-Agent", "LoipvRemote");
             client.DefaultRequestHeaders.Add("OTP", CPSConnectionData.ssOTP);
 
-            var json = client.GetStringAsync(url).Result;
+            var json = await client.GetStringAsync(url, cancellationToken).ConfigureAwait(false);
             JsonNode? data = JsonSerializer.Deserialize<JsonNode>(json);
             if (data == null)
                 return false;
@@ -137,7 +133,7 @@ public class PasswordstateInterface
             client.DefaultRequestHeaders.Add("APIKey", CPSConnectionData.ssPassword);
             client.DefaultRequestHeaders.Add("OTP", CPSConnectionData.ssOTP);
 
-            var json = client.GetStringAsync(url).Result;
+            var json = await client.GetStringAsync(url, cancellationToken).ConfigureAwait(false);
             JsonNode? data = JsonSerializer.Deserialize<JsonNode>(json);
             if (data == null)
                 return false;
@@ -145,7 +141,7 @@ public class PasswordstateInterface
         }
     }
 
-    private static JsonNode? FetchDataWinAuth(int secretID)
+    private static async Task<JsonNode?> FetchDataWinAuthAsync(int secretID, CancellationToken cancellationToken)
     {
         string url = $"{CPSConnectionData.ssUrl}/winapi/passwords/{secretID}";
 
@@ -154,14 +150,14 @@ public class PasswordstateInterface
         client.DefaultRequestHeaders.Add("User-Agent", "LoipvRemote");
         client.DefaultRequestHeaders.Add("OTP", CPSConnectionData.ssOTP);
 
-        var json = client.GetStringAsync(url).Result;
+        var json = await client.GetStringAsync(url, cancellationToken).ConfigureAwait(false);
         JsonNode? data = JsonSerializer.Deserialize<JsonNode>(json);
         if (data == null)
             return null;
         JsonNode? element = data[0];
         return element;
     }
-    private static JsonNode? FetchDataAPIKeyAuth(int secretID)
+    private static async Task<JsonNode?> FetchDataAPIKeyAuthAsync(int secretID, CancellationToken cancellationToken)
     {
         string url = $"{CPSConnectionData.ssUrl}/api/passwords/{secretID}";
 
@@ -171,7 +167,7 @@ public class PasswordstateInterface
         client.DefaultRequestHeaders.Add("APIKey", CPSConnectionData.ssPassword);
         client.DefaultRequestHeaders.Add("OTP", CPSConnectionData.ssOTP);
 
-        var json = client.GetStringAsync(url).Result;
+        var json = await client.GetStringAsync(url, cancellationToken).ConfigureAwait(false);
         JsonNode? data = JsonSerializer.Deserialize<JsonNode>(json);
         if (data == null)
             return null;
@@ -179,23 +175,23 @@ public class PasswordstateInterface
         return element;
     }
 
-    private static void FetchSecret(int secretID, out string secretUsername, out string secretPassword, out string secretDomain, out string privatekey)
+    private static async Task<ExternalCredential> FetchSecretAsync(int secretID, CancellationToken cancellationToken)
     {
         // clear return variables
-        secretDomain = "";
-        secretUsername = "";
-        secretPassword = "";
-        privatekey = "";
+        string secretDomain = "";
+        string secretUsername = "";
+        string secretPassword = "";
+        string privatekey = "";
         string privatekeypassphrase = "";
         JsonNode? element = null;
 
         if (CPSConnectionData.ssSSO)
-            element = FetchDataWinAuth(secretID);
+            element = await FetchDataWinAuthAsync(secretID, cancellationToken).ConfigureAwait(false);
         else
-            element = FetchDataAPIKeyAuth(secretID);
+            element = await FetchDataAPIKeyAuthAsync(secretID, cancellationToken).ConfigureAwait(false);
 
         if (element == null)
-            return;
+            return new ExternalCredential(secretUsername, secretPassword, secretDomain, privatekey);
 
         var dom = element["Domain"];
         if (dom != null) secretDomain = dom.ToString();
@@ -227,7 +223,7 @@ public class PasswordstateInterface
         }
 
         // conversion to putty format necessary?
-        if (!string.IsNullOrEmpty(privatekey) && !privatekey.StartsWith("PuTTY-User-Key-File-2"))
+        if (!string.IsNullOrEmpty(privatekey) && !privatekey.StartsWith("PuTTY-User-Key-File-2", StringComparison.Ordinal))
         {
             try
             {
@@ -239,6 +235,8 @@ public class PasswordstateInterface
 
             }
         }
+
+        return new ExternalCredential(secretUsername, secretPassword, secretDomain, privatekey);
     }
 
     #region PUTTY KEY HANDLING
@@ -257,7 +255,7 @@ public class PasswordstateInterface
 
         return ""+textWriter.ToString();
     }
-    private class PasswordFinder(string password) : IPasswordFinder
+    private sealed class PasswordFinder(string password) : IPasswordFinder
     {
         private string password = password;
 
@@ -287,15 +285,17 @@ public class PasswordstateInterface
 
 
     // input: must be the secret id to fetch
-    public static void FetchSecretFromServer(string secretID, out string username, out string password, out string domain, out string privatekey)
+    public async Task<ExternalCredential> FetchSecretFromServerAsync(
+        string secretID,
+        CancellationToken cancellationToken = default)
     {
         // get secret id
-        int sid = Int32.Parse(secretID);
+        int sid = int.Parse(secretID, System.Globalization.CultureInfo.InvariantCulture);
 
         // init connection credentials, display popup if necessary
-        CPSConnectionData.Init();
+        await CPSConnectionData.InitAsync(_prompt, _settings, cancellationToken).ConfigureAwait(true);
 
         // get the secret
-        FetchSecret(sid, out username, out password, out domain, out privatekey);
+        return await FetchSecretAsync(sid, cancellationToken).ConfigureAwait(false);
     }
 }

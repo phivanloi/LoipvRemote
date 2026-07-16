@@ -1903,9 +1903,6 @@ LoipvRemote zostanie teraz zamknięty i rozpocznie instalację.</value>
   <data name="DatabaseNotAvailable" xml:space="preserve">
     <value>Baza danych '{0}' nie jest dostępna.</value>
   </data>
-  <data name="SaveConnectionsAfterEveryEdit" xml:space="preserve">
-    <value>Zapisz połączenia po każdej edycji</value>
-  </data>
   <data name="TestConnection" xml:space="preserve">
     <value>Test połączenia</value>
   </data>

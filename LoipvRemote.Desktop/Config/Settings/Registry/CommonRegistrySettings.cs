@@ -82,7 +82,7 @@ namespace LoipvRemote.Config.Settings.Registry
 
         static CommonRegistrySettings()
         {
-            IRegistryRead regValueUtility = new WinRegistry();
+            WinRegistry regValueUtility = new();
             RegistryHive hive = WindowsRegistryInfo.Hive;
 
             #region update registry settings

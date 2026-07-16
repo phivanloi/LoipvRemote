@@ -67,7 +67,7 @@ namespace LoipvRemote.UI
                         case 0: // New
                             SaveFileDialog saveAsDialog = ConnectionsSaveAsDialog();
                             saveAsDialog.ShowDialog();
-                            connectionWorkspace.NewConnectionsFile(saveAsDialog.FileName);
+                            _ = connectionWorkspace.NewConnectionsFileAsync(saveAsDialog.FileName);
                             answered = true;
                             break;
                         case 1: // Load
@@ -85,7 +85,7 @@ namespace LoipvRemote.UI
                 }
                 catch (Exception exception)
                 {
-                    messageCollector.AddExceptionMessage(string.Format(Language.ConnectionsFileCouldNotBeLoadedNew, connectionFileName), exception, MessageClass.WarningMsg);
+                    messageCollector.AddExceptionMessage(FormatText(Language.ConnectionsFileCouldNotBeLoadedNew, connectionFileName), exception, MessageClass.WarningMsg);
                 }
             }
         }

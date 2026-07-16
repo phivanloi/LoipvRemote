@@ -36,7 +36,7 @@ namespace LoipvRemote.Config.Connections
 
         private void ConnectionTreeModelOnPropertyChanged(object? sender, PropertyChangedEventArgs propertyChangedEventArgs)
         {
-            SaveConnectionOnEdit(propertyChangedEventArgs.PropertyName);
+            SaveConnectionOnEdit(propertyChangedEventArgs.PropertyName ?? string.Empty);
         }
 
         private void ConnectionTreeModelOnCollectionChanged(object? sender, NotifyCollectionChangedEventArgs notifyCollectionChangedEventArgs)
@@ -46,15 +46,13 @@ namespace LoipvRemote.Config.Connections
 
         private void SaveConnectionOnEdit(string propertyName = "")
         {
-            //OBSOLETE: LoipvRemote.Settings.Default.SaveConnectionsAfterEveryEdit is obsolete and should be removed in a future release
             if (ShouldPersistImmediately(propertyName) ||
-                Properties.OptionsBackupPage.Default.SaveConnectionsAfterEveryEdit ||
-                Properties.OptionsBackupPage.Default.SaveConnectionsFrequency == (int)ConnectionsBackupFrequencyEnum.OnEdit)
+                Properties.OptionsBackupPage.Default.SaveConnectionsFrequency == (int)ConnectionsBackupFrequency.OnEdit)
             {
                 if (FrmMain.Default.IsClosing)
                     return;
 
-                _workspace.SaveConnectionsAsync(propertyName);
+                _workspace.RequestSave(propertyName);
             }
         }
 

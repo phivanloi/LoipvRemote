@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
@@ -484,63 +485,74 @@ namespace LoipvRemote.Connection
 
         #region VNC
         [LocalizedAttributes.LocalizedCategory(nameof(Language.Appearance), 9),
-		LocalizedAttributes.LocalizedDisplayNameInherit(nameof(Language.Compression)),
-		LocalizedAttributes.LocalizedDescriptionInherit(nameof(Language.PropertyDescriptionCompression)),
-		TypeConverter(typeof(MiscTools.YesNoTypeConverter))]public bool VNCCompression {get; set;}
+        LocalizedAttributes.LocalizedDisplayNameInherit(nameof(Language.Compression)),
+        LocalizedAttributes.LocalizedDescriptionInherit(nameof(Language.PropertyDescriptionCompression)),
+        TypeConverter(typeof(MiscTools.YesNoTypeConverter))]
+        public bool VNCCompression { get; set; }
 
-		[LocalizedAttributes.LocalizedCategory(nameof(Language.Appearance), 9),
-		LocalizedAttributes.LocalizedDisplayNameInherit(nameof(Language.Encoding)),
-		LocalizedAttributes.LocalizedDescriptionInherit(nameof(Language.PropertyDescriptionEncoding)),
-		TypeConverter(typeof(MiscTools.YesNoTypeConverter))]public bool VNCEncoding {get; set;}
+        [LocalizedAttributes.LocalizedCategory(nameof(Language.Appearance), 9),
+        LocalizedAttributes.LocalizedDisplayNameInherit(nameof(Language.Encoding)),
+        LocalizedAttributes.LocalizedDescriptionInherit(nameof(Language.PropertyDescriptionEncoding)),
+        TypeConverter(typeof(MiscTools.YesNoTypeConverter))]
+        public bool VNCEncoding { get; set; }
 
-		[LocalizedAttributes.LocalizedCategory(nameof(Language.Connection), 9),
-		LocalizedAttributes.LocalizedDisplayNameInherit(nameof(Language.AuthenticationMode)),
-		LocalizedAttributes.LocalizedDescriptionInherit(nameof(Language.PropertyDescriptionAuthenticationMode)),
-		TypeConverter(typeof(MiscTools.YesNoTypeConverter))]public bool VNCAuthMode {get; set;}
+        [LocalizedAttributes.LocalizedCategory(nameof(Language.Connection), 9),
+        LocalizedAttributes.LocalizedDisplayNameInherit(nameof(Language.AuthenticationMode)),
+        LocalizedAttributes.LocalizedDescriptionInherit(nameof(Language.PropertyDescriptionAuthenticationMode)),
+        TypeConverter(typeof(MiscTools.YesNoTypeConverter))]
+        public bool VNCAuthMode { get; set; }
 
-		[LocalizedAttributes.LocalizedCategory(nameof(Language.Proxy), 9),
-		LocalizedAttributes.LocalizedDisplayNameInherit(nameof(Language.ProxyType)),
-		LocalizedAttributes.LocalizedDescriptionInherit(nameof(Language.PropertyDescriptionVNCProxyType)),
-		TypeConverter(typeof(MiscTools.YesNoTypeConverter))]public bool VNCProxyType {get; set;}
+        [LocalizedAttributes.LocalizedCategory(nameof(Language.Proxy), 9),
+        LocalizedAttributes.LocalizedDisplayNameInherit(nameof(Language.ProxyType)),
+        LocalizedAttributes.LocalizedDescriptionInherit(nameof(Language.PropertyDescriptionVNCProxyType)),
+        TypeConverter(typeof(MiscTools.YesNoTypeConverter))]
+        public bool VNCProxyType { get; set; }
 
-		[LocalizedAttributes.LocalizedCategory(nameof(Language.Proxy), 9),
-		LocalizedAttributes.LocalizedDisplayNameInherit(nameof(Language.ProxyAddress)),
-		LocalizedAttributes.LocalizedDescriptionInherit(nameof(Language.PropertyDescriptionVNCProxyAddress)),
-		TypeConverter(typeof(MiscTools.YesNoTypeConverter))]public bool VNCProxyIP {get; set;}
+        [LocalizedAttributes.LocalizedCategory(nameof(Language.Proxy), 9),
+        LocalizedAttributes.LocalizedDisplayNameInherit(nameof(Language.ProxyAddress)),
+        LocalizedAttributes.LocalizedDescriptionInherit(nameof(Language.PropertyDescriptionVNCProxyAddress)),
+        TypeConverter(typeof(MiscTools.YesNoTypeConverter))]
+        public bool VNCProxyIP { get; set; }
 
-		[LocalizedAttributes.LocalizedCategory(nameof(Language.Proxy), 9),
-		LocalizedAttributes.LocalizedDisplayNameInherit(nameof(Language.ProxyPort)),
-		LocalizedAttributes.LocalizedDescriptionInherit(nameof(Language.PropertyDescriptionVNCProxyPort)),
-		TypeConverter(typeof(MiscTools.YesNoTypeConverter))]public bool VNCProxyPort {get; set;}
+        [LocalizedAttributes.LocalizedCategory(nameof(Language.Proxy), 9),
+        LocalizedAttributes.LocalizedDisplayNameInherit(nameof(Language.ProxyPort)),
+        LocalizedAttributes.LocalizedDescriptionInherit(nameof(Language.PropertyDescriptionVNCProxyPort)),
+        TypeConverter(typeof(MiscTools.YesNoTypeConverter))]
+        public bool VNCProxyPort { get; set; }
 
-		[LocalizedAttributes.LocalizedCategory(nameof(Language.Proxy), 9),
-		LocalizedAttributes.LocalizedDisplayNameInherit(nameof(Language.ProxyUsername)),
-		LocalizedAttributes.LocalizedDescriptionInherit(nameof(Language.PropertyDescriptionVNCProxyUsername)),
-		TypeConverter(typeof(MiscTools.YesNoTypeConverter))]public bool VNCProxyUsername {get; set;}
+        [LocalizedAttributes.LocalizedCategory(nameof(Language.Proxy), 9),
+        LocalizedAttributes.LocalizedDisplayNameInherit(nameof(Language.ProxyUsername)),
+        LocalizedAttributes.LocalizedDescriptionInherit(nameof(Language.PropertyDescriptionVNCProxyUsername)),
+        TypeConverter(typeof(MiscTools.YesNoTypeConverter))]
+        public bool VNCProxyUsername { get; set; }
 
-		[LocalizedAttributes.LocalizedCategory(nameof(Language.Proxy), 9),
-		LocalizedAttributes.LocalizedDisplayNameInherit(nameof(Language.ProxyPassword)),
-		LocalizedAttributes.LocalizedDescriptionInherit(nameof(Language.PropertyDescriptionVNCProxyPassword)),
-		TypeConverter(typeof(MiscTools.YesNoTypeConverter))]public bool VNCProxyPassword {get; set;}
+        [LocalizedAttributes.LocalizedCategory(nameof(Language.Proxy), 9),
+        LocalizedAttributes.LocalizedDisplayNameInherit(nameof(Language.ProxyPassword)),
+        LocalizedAttributes.LocalizedDescriptionInherit(nameof(Language.PropertyDescriptionVNCProxyPassword)),
+        TypeConverter(typeof(MiscTools.YesNoTypeConverter))]
+        public bool VNCProxyPassword { get; set; }
 
-		[LocalizedAttributes.LocalizedCategory(nameof(Language.Appearance), 9),
-		LocalizedAttributes.LocalizedDisplayNameInherit(nameof(Language.Colors)),
-		LocalizedAttributes.LocalizedDescriptionInherit(nameof(Language.PropertyDescriptionColors)),
-		TypeConverter(typeof(MiscTools.YesNoTypeConverter))]public bool VNCColors {get; set;}
+        [LocalizedAttributes.LocalizedCategory(nameof(Language.Appearance), 9),
+        LocalizedAttributes.LocalizedDisplayNameInherit(nameof(Language.Colors)),
+        LocalizedAttributes.LocalizedDescriptionInherit(nameof(Language.PropertyDescriptionColors)),
+        TypeConverter(typeof(MiscTools.YesNoTypeConverter))]
+        public bool VNCColors { get; set; }
 
-		[LocalizedAttributes.LocalizedCategory(nameof(Language.Appearance), 9),
-		LocalizedAttributes.LocalizedDisplayNameInherit(nameof(Language.SmartSizeMode)),
-		LocalizedAttributes.LocalizedDescriptionInherit(nameof(Language.PropertyDescriptionSmartSizeMode)),
-		TypeConverter(typeof(MiscTools.YesNoTypeConverter))]public bool VNCSmartSizeMode {get; set;}
+        [LocalizedAttributes.LocalizedCategory(nameof(Language.Appearance), 9),
+        LocalizedAttributes.LocalizedDisplayNameInherit(nameof(Language.SmartSizeMode)),
+        LocalizedAttributes.LocalizedDescriptionInherit(nameof(Language.PropertyDescriptionSmartSizeMode)),
+        TypeConverter(typeof(MiscTools.YesNoTypeConverter))]
+        public bool VNCSmartSizeMode { get; set; }
 
-		[LocalizedAttributes.LocalizedCategory(nameof(Language.Appearance), 9),
-		LocalizedAttributes.LocalizedDisplayNameInherit(nameof(Language.ViewOnly)),
-		LocalizedAttributes.LocalizedDescriptionInherit(nameof(Language.PropertyDescriptionViewOnly)),
-		TypeConverter(typeof(MiscTools.YesNoTypeConverter))]public bool VNCViewOnly {get; set;}
+        [LocalizedAttributes.LocalizedCategory(nameof(Language.Appearance), 9),
+        LocalizedAttributes.LocalizedDisplayNameInherit(nameof(Language.ViewOnly)),
+        LocalizedAttributes.LocalizedDescriptionInherit(nameof(Language.PropertyDescriptionViewOnly)),
+        TypeConverter(typeof(MiscTools.YesNoTypeConverter))]
+        public bool VNCViewOnly { get; set; }
         #endregion
 
         [Browsable(false)]
-        public ConnectionInfo Parent { get; private set; }
+        public ConnectionInfo? Parent { get; private set; }
 
         /// <summary>
         /// Indicates whether this inheritance object is enabled.
@@ -553,7 +565,7 @@ namespace LoipvRemote.Connection
         #endregion
 
 
-        public ConnectionInfoInheritance(ConnectionInfo parent, bool ignoreDefaultInheritance = false)
+        public ConnectionInfoInheritance(ConnectionInfo? parent, bool ignoreDefaultInheritance = false)
         {
             Parent = parent;
             if (!ignoreDefaultInheritance)
@@ -591,7 +603,7 @@ namespace LoipvRemote.Connection
 
         private void StashInheritanceData()
         {
-            _tempInheritanceStorage = Clone(Parent);
+            _tempInheritanceStorage = Clone(Parent ?? throw new InvalidOperationException("Inheritance parent is not attached."));
         }
 
         public void TurnOnInheritanceCompletely()
@@ -607,7 +619,7 @@ namespace LoipvRemote.Connection
         private bool EverythingIsInherited()
         {
             IEnumerable<PropertyInfo> inheritanceProperties = GetProperties();
-            bool everythingInherited = inheritanceProperties.All((p) => (bool)p.GetValue(this, null));
+            bool everythingInherited = inheritanceProperties.All(p => p.GetValue(this, null) is true);
             return everythingInherited;
         }
 
@@ -627,7 +639,7 @@ namespace LoipvRemote.Connection
         {
             return InheritanceActive
                 ? GetProperties()
-                    .Where(property => (bool)property.GetValue(this))
+                    .Where(property => property.GetValue(this) is true)
                     .Select(property => property.Name)
                     .ToList()
                 : Enumerable.Empty<string>();
@@ -660,7 +672,7 @@ namespace LoipvRemote.Connection
             IEnumerable<PropertyInfo> properties = GetProperties();
             foreach (PropertyInfo property in properties)
             {
-                object newPropertyValue = property.GetValue(otherInheritanceObject, null);
+                object? newPropertyValue = property.GetValue(otherInheritanceObject, null);
                 property.SetValue(this, newPropertyValue, null);
             }
         }

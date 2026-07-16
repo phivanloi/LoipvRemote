@@ -16,10 +16,12 @@ namespace LoipvRemote.UI.Window
     {
         private string _currentDomain;
         private readonly ConnectionImportService _connectionImportService;
+        private readonly DesktopWindowCatalog _windows;
 
-        public ActiveDirectoryImportWindow(ConnectionImportService connectionImportService)
+        public ActiveDirectoryImportWindow(ConnectionImportService connectionImportService, DesktopWindowCatalog windows)
         {
             _connectionImportService = connectionImportService ?? throw new ArgumentNullException(nameof(connectionImportService));
+            _windows = windows ?? throw new ArgumentNullException(nameof(windows));
             WindowType = WindowType.ActiveDirectoryImport;
             DockPnl = new DockContent();
             Icon = Resources.ImageConverter.GetImageAsIcon(Properties.Resources.Schema_16x);
@@ -45,31 +47,31 @@ namespace LoipvRemote.UI.Window
             activeDirectoryTree.ForeColor = ThemeManager.getInstance().ActiveTheme.ExtendedPalette.getColor("List_Item_Foreground");
         }
 
-        private void BtnImport_Click(object sender, EventArgs e)
+        private void BtnImport_Click(object? sender, EventArgs e)
         {
-            Connection.ConnectionInfo selectedNode = AppWindows.TreeForm.SelectedNode;
+            Connection.ConnectionInfo selectedNode = _windows.TreeForm.SelectedNode;
             ContainerInfo importDestination;
             if (selectedNode != null)
                 importDestination = selectedNode as ContainerInfo ?? selectedNode.Parent;
             else
-                importDestination = AppWindows.TreeForm.ConnectionTree.ConnectionTreeModel.RootNodes.First();
+                importDestination = _windows.TreeForm.ConnectionTree.ConnectionTreeModel.RootNodes.First();
 
             _connectionImportService.ImportFromActiveDirectory(activeDirectoryTree.AdPath, importDestination, chkSubOU.Checked);
         }
 
-        private void TxtDomain_KeyDown(object sender, KeyEventArgs e)
+        private void TxtDomain_KeyDown(object? sender, KeyEventArgs e)
         {
             if (e.KeyCode != Keys.Enter) return;
             ChangeDomain();
             e.SuppressKeyPress = true;
         }
 
-        private void BtnChangeDomain_Click(object sender, EventArgs e)
+        private void BtnChangeDomain_Click(object? sender, EventArgs e)
         {
             ChangeDomain();
         }
 
-        private void ActiveDirectoryTree_ADPathChanged(object sender)
+        private void ActiveDirectoryTree_ADPathChanged(object? sender)
         {
             EnableDisableImportButton();
         }
@@ -94,7 +96,7 @@ namespace LoipvRemote.UI.Window
         {
             btnImport.Enabled = !string.IsNullOrEmpty(activeDirectoryTree.AdPath);
         }
-        private void BtnClose_Click(object sender, EventArgs e)
+        private void BtnClose_Click(object? sender, EventArgs e)
         {
             Close();
         }

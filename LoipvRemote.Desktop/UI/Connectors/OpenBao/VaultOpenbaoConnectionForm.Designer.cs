@@ -1,4 +1,4 @@
-namespace LoipvRemote.Connectors.OpenBao
+namespace LoipvRemote.Desktop.UI.Connectors.OpenBao
 {
     partial class VaultOpenbaoConnectionForm
     {

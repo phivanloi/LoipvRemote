@@ -26,11 +26,11 @@ namespace LoipvRemote.Config.Serializers.MiscSerializers
 
             XmlDocument xmlDocument = SecureXmlHelper.LoadXmlFromString(rdcmConnectionsXml);
 
-            XmlNode rdcManNode = xmlDocument.SelectSingleNode("/RDCMan");
+            XmlNode rdcManNode = RequireNode(xmlDocument.SelectSingleNode("/RDCMan"), "/RDCMan");
             VerifySchemaVersion(rdcManNode);
             VerifyFileVersion(rdcManNode);
 
-            XmlNode fileNode = rdcManNode?.SelectSingleNode("./file");
+            XmlNode fileNode = RequireNode(rdcManNode.SelectSingleNode("./file"), "/RDCMan/file");
             ImportFileOrGroup(fileNode, root);
 
             connectionTreeModel.AddRootNode(root);
@@ -39,8 +39,8 @@ namespace LoipvRemote.Config.Serializers.MiscSerializers
 
         private static void VerifySchemaVersion(XmlNode rdcManNode)
         {
-	        if (!int.TryParse(rdcManNode?.Attributes?["schemaVersion"]?.Value, out int version))
-		        throw new FileFormatException("Could not find schema version attribute.");
+            if (!int.TryParse(rdcManNode?.Attributes?["schemaVersion"]?.Value, out int version))
+                throw new FileFormatException("Could not find schema version attribute.");
 
             if (version != 1 && version != 3)
             {
@@ -52,7 +52,7 @@ namespace LoipvRemote.Config.Serializers.MiscSerializers
 
         private static void VerifyFileVersion(XmlNode rdcManNode)
         {
-            string versionAttribute = rdcManNode?.Attributes?["programVersion"]?.Value;
+            string? versionAttribute = rdcManNode.Attributes?["programVersion"]?.Value;
             if (versionAttribute != null)
             {
                 Version version = new(versionAttribute);
@@ -63,7 +63,7 @@ namespace LoipvRemote.Config.Serializers.MiscSerializers
             }
             else
             {
-                string versionNode = rdcManNode?.SelectSingleNode("./version")?.InnerText;
+                string? versionNode = rdcManNode.SelectSingleNode("./version")?.InnerText;
                 if (versionNode != null)
                 {
                     Version version = new(versionNode);
@@ -83,7 +83,7 @@ namespace LoipvRemote.Config.Serializers.MiscSerializers
         {
             ContainerInfo newContainer = ImportContainer(xmlNode, parentContainer);
 
-            XmlNodeList childNodes = xmlNode.SelectNodes("./group|./server");
+            XmlNodeList? childNodes = xmlNode.SelectNodes("./group|./server");
             if (childNodes == null) return;
             foreach (XmlNode childNode in childNodes)
             {
@@ -105,7 +105,7 @@ namespace LoipvRemote.Config.Serializers.MiscSerializers
             if (_schemaVersion == 1)
             {
                 // Program Version 2.2 wraps all setting inside the Properties tags
-                containerPropertiesNode = containerPropertiesNode.SelectSingleNode("./properties");
+                containerPropertiesNode = RequireNode(containerPropertiesNode.SelectSingleNode("./properties"), "RDCMan container properties");
             }
 
             ContainerInfo newContainer = new();
@@ -115,11 +115,11 @@ namespace LoipvRemote.Config.Serializers.MiscSerializers
             if (_schemaVersion == 3)
             {
                 // Program Version 2.7 wraps these properties
-                containerPropertiesNode = containerPropertiesNode.SelectSingleNode("./properties");
+                containerPropertiesNode = RequireNode(containerPropertiesNode.SelectSingleNode("./properties"), "RDCMan container properties");
             }
             newContainer.Name = containerPropertiesNode?.SelectSingleNode("./name")?.InnerText ?? Language.NewFolder;
             if (bool.TryParse(containerPropertiesNode?.SelectSingleNode("./expanded")?.InnerText, out bool expanded))
-				newContainer.IsExpanded = expanded;
+                newContainer.IsExpanded = expanded;
             parentContainer.AddChild(newContainer);
             return newContainer;
         }
@@ -132,44 +132,36 @@ namespace LoipvRemote.Config.Serializers.MiscSerializers
 
         private static ConnectionInfo ConnectionInfoFromXml(XmlNode xmlNode)
         {
-            ConnectionInfo connectionInfo = new() { Protocol = ProtocolKind.Rdp};
+            ConnectionInfo connectionInfo = new() { Protocol = ProtocolKind.Rdp };
 
-            XmlNode propertiesNode = xmlNode.SelectSingleNode("./properties");
+            XmlNode? propertiesNode = xmlNode.SelectSingleNode("./properties");
             if (_schemaVersion == 1)
-	            propertiesNode = xmlNode;  // Version 2.2 defines the container name at the root instead
+                propertiesNode = xmlNode;  // Version 2.2 defines the container name at the root instead
 
             connectionInfo.VmId = propertiesNode?.SelectSingleNode("./vmid")?.InnerText ?? "";
 
             connectionInfo.Hostname = propertiesNode?.SelectSingleNode("./name")?.InnerText ?? "";
 
-            string connectionDisplayName = propertiesNode?.SelectSingleNode("./displayName")?.InnerText;
-			connectionInfo.Name = !string.IsNullOrWhiteSpace(connectionDisplayName)
+            string? connectionDisplayName = propertiesNode?.SelectSingleNode("./displayName")?.InnerText;
+            connectionInfo.Name = !string.IsNullOrWhiteSpace(connectionDisplayName)
                 ? connectionDisplayName
-	            : string.IsNullOrWhiteSpace(connectionInfo.Hostname)
-	                ? connectionInfo.Name
-	                : connectionInfo.Hostname;
+                : string.IsNullOrWhiteSpace(connectionInfo.Hostname)
+                    ? connectionInfo.Name
+                    : connectionInfo.Hostname;
 
             connectionInfo.Description = propertiesNode?.SelectSingleNode("./comment")?.InnerText ?? string.Empty;
 
-            XmlNode logonCredentialsNode = xmlNode.SelectSingleNode("./logonCredentials");
+            XmlNode? logonCredentialsNode = xmlNode.SelectSingleNode("./logonCredentials");
             if (logonCredentialsNode?.Attributes?["inherit"]?.Value == "None")
             {
                 connectionInfo.Username = logonCredentialsNode.SelectSingleNode("userName")?.InnerText ?? string.Empty;
 
-                XmlNode passwordNode = logonCredentialsNode.SelectSingleNode("./password");
-                if (_schemaVersion == 1) // Version 2.2 allows clear text passwords
-                {
-                    connectionInfo.Password = passwordNode?.Attributes?["storeAsClearText"]?.Value == "True"
-                        //? passwordNode.InnerText.ConvertToSecureString()
-                        //: DecryptRdcManPassword(passwordNode?.InnerText).ConvertToSecureString();
-                        ? passwordNode.InnerText
-                        : DecryptRdcManPassword(passwordNode?.InnerText);
-                }
-                else
-                {
-                    //connectionInfo.Password = DecryptRdcManPassword(passwordNode?.InnerText).ConvertToSecureString();
-                    connectionInfo.Password = DecryptRdcManPassword(passwordNode?.InnerText);
-                }
+                XmlNode? passwordNode = logonCredentialsNode.SelectSingleNode("./password");
+                string passwordText = passwordNode?.InnerText ?? string.Empty;
+                // Only clear-text values are imported. Machine-bound RDCMan
+                // ciphertext is intentionally not migrated into the new
+                // credential model; the user must enter a new credential.
+                connectionInfo.Password = ReadClearTextPassword(passwordNode, passwordText);
 
                 connectionInfo.Domain = logonCredentialsNode.SelectSingleNode("./domain")?.InnerText ?? string.Empty;
             }
@@ -180,15 +172,15 @@ namespace LoipvRemote.Config.Serializers.MiscSerializers
                 connectionInfo.Inheritance.Domain = true;
             }
 
-            XmlNode connectionSettingsNode = xmlNode.SelectSingleNode("./connectionSettings");
+            XmlNode? connectionSettingsNode = xmlNode.SelectSingleNode("./connectionSettings");
             if (connectionSettingsNode?.Attributes?["inherit"]?.Value == "None")
             {
-				if (bool.TryParse(connectionSettingsNode.SelectSingleNode("./connectToConsole")?.InnerText, out bool useConsole))
-					connectionInfo.UseConsoleSession = useConsole;
+                if (bool.TryParse(connectionSettingsNode.SelectSingleNode("./connectToConsole")?.InnerText, out bool useConsole))
+                    connectionInfo.UseConsoleSession = useConsole;
                 connectionInfo.RDPStartProgram = connectionSettingsNode.SelectSingleNode("./startProgram")?.InnerText ?? string.Empty;
                 connectionInfo.RDPStartProgramWorkDir = connectionSettingsNode.SelectSingleNode("./startProgramWorkDir")?.InnerText ?? string.Empty;
                 if (int.TryParse(connectionSettingsNode.SelectSingleNode("./port")?.InnerText, out int port))
-					connectionInfo.Port = port;
+                    connectionInfo.Port = port;
             }
             else
             {
@@ -196,7 +188,7 @@ namespace LoipvRemote.Config.Serializers.MiscSerializers
                 connectionInfo.Inheritance.Port = true;
             }
 
-            XmlNode gatewaySettingsNode = xmlNode.SelectSingleNode("./gatewaySettings");
+            XmlNode? gatewaySettingsNode = xmlNode.SelectSingleNode("./gatewaySettings");
             if (gatewaySettingsNode?.Attributes?["inherit"]?.Value == "None")
             {
                 connectionInfo.RDGatewayUsageMethod =
@@ -206,10 +198,9 @@ namespace LoipvRemote.Config.Serializers.MiscSerializers
                 connectionInfo.RDGatewayHostname = gatewaySettingsNode.SelectSingleNode("./hostName")?.InnerText ?? string.Empty;
                 connectionInfo.RDGatewayUsername = gatewaySettingsNode.SelectSingleNode("./userName")?.InnerText ?? string.Empty;
 
-                XmlNode passwordNode = gatewaySettingsNode.SelectSingleNode("./password");
-                connectionInfo.RDGatewayPassword = passwordNode?.Attributes?["storeAsClearText"]?.Value == "True"
-                    ? passwordNode.InnerText
-                    : DecryptRdcManPassword(passwordNode?.InnerText);
+                XmlNode? passwordNode = gatewaySettingsNode.SelectSingleNode("./password");
+                string passwordText = passwordNode?.InnerText ?? string.Empty;
+                connectionInfo.RDGatewayPassword = ReadClearTextPassword(passwordNode, passwordText);
 
                 connectionInfo.RDGatewayDomain = gatewaySettingsNode.SelectSingleNode("./domain")?.InnerText ?? string.Empty;
                 // ./logonMethod
@@ -225,12 +216,12 @@ namespace LoipvRemote.Config.Serializers.MiscSerializers
                 connectionInfo.Inheritance.RDGatewayDomain = true;
             }
 
-            XmlNode remoteDesktopNode = xmlNode.SelectSingleNode("./remoteDesktop");
+            XmlNode? remoteDesktopNode = xmlNode.SelectSingleNode("./remoteDesktop");
             if (remoteDesktopNode?.Attributes?["inherit"]?.Value == "None")
             {
                 connectionInfo.Resolution =
-	                Enum.TryParse<RDPResolutions>(remoteDesktopNode.SelectSingleNode("./size")?.InnerText.Replace(" ", ""), true, out RDPResolutions rdpResolution)
-	                ? rdpResolution
+                    Enum.TryParse<RDPResolutions>(remoteDesktopNode.SelectSingleNode("./size")?.InnerText.Replace(" ", ""), true, out RDPResolutions rdpResolution)
+                    ? rdpResolution
                     : RDPResolutions.SmartSize;
 
                 if (remoteDesktopNode.SelectSingleNode("./sameSizeAsClientArea")?.InnerText == "True")
@@ -244,7 +235,7 @@ namespace LoipvRemote.Config.Serializers.MiscSerializers
                 }
 
                 if (Enum.TryParse<RDPColors>(remoteDesktopNode.SelectSingleNode("./colorDepth")?.InnerText, true, out RDPColors rdpColors))
-	                connectionInfo.Colors = rdpColors;
+                    connectionInfo.Colors = rdpColors;
             }
             else
             {
@@ -252,7 +243,7 @@ namespace LoipvRemote.Config.Serializers.MiscSerializers
                 connectionInfo.Inheritance.Colors = true;
             }
 
-            XmlNode localResourcesNode = xmlNode.SelectSingleNode("./localResources");
+            XmlNode? localResourcesNode = xmlNode.SelectSingleNode("./localResources");
             if (localResourcesNode?.Attributes?["inherit"]?.Value == "None")
             {
                 // ReSharper disable once SwitchStatementMissingSomeCases
@@ -294,19 +285,19 @@ namespace LoipvRemote.Config.Serializers.MiscSerializers
 
                 // ./redirectClipboard
                 if (bool.TryParse(localResourcesNode?.SelectSingleNode("./redirectDrives")?.InnerText, out bool redirectDisks))
-	                connectionInfo.RedirectDiskDrives = redirectDisks ? RDPDiskDrives.Local : RDPDiskDrives.None;
+                    connectionInfo.RedirectDiskDrives = redirectDisks ? RDPDiskDrives.Local : RDPDiskDrives.None;
 
                 if (bool.TryParse(localResourcesNode?.SelectSingleNode("./redirectPorts")?.InnerText, out bool redirectPorts))
-	                connectionInfo.RedirectPorts = redirectPorts;
+                    connectionInfo.RedirectPorts = redirectPorts;
 
                 if (bool.TryParse(localResourcesNode?.SelectSingleNode("./redirectPrinters")?.InnerText, out bool redirectPrinters))
-	                connectionInfo.RedirectPrinters = redirectPrinters;
+                    connectionInfo.RedirectPrinters = redirectPrinters;
 
                 if (bool.TryParse(localResourcesNode?.SelectSingleNode("./redirectSmartCards")?.InnerText, out bool redirectSmartCards))
-	                connectionInfo.RedirectSmartCards = redirectSmartCards;
+                    connectionInfo.RedirectSmartCards = redirectSmartCards;
 
-				if (bool.TryParse(localResourcesNode?.SelectSingleNode("./redirectClipboard")?.InnerText, out bool redirectClipboard))
-					connectionInfo.RedirectClipboard = redirectClipboard;
+                if (bool.TryParse(localResourcesNode?.SelectSingleNode("./redirectClipboard")?.InnerText, out bool redirectClipboard))
+                    connectionInfo.RedirectClipboard = redirectClipboard;
             }
             else
             {
@@ -319,7 +310,7 @@ namespace LoipvRemote.Config.Serializers.MiscSerializers
                 connectionInfo.Inheritance.RedirectClipboard = true;
             }
 
-            XmlNode securitySettingsNode = xmlNode.SelectSingleNode("./securitySettings");
+            XmlNode? securitySettingsNode = xmlNode.SelectSingleNode("./securitySettings");
             if (securitySettingsNode?.Attributes?["inherit"]?.Value == "None")
             {
                 // ReSharper disable once SwitchStatementMissingSomeCases
@@ -351,19 +342,14 @@ namespace LoipvRemote.Config.Serializers.MiscSerializers
             return connectionInfo;
         }
 
-        private static string DecryptRdcManPassword(string ciphertext)
+        private static string ReadClearTextPassword(XmlNode? passwordNode, string passwordText)
         {
-            if (string.IsNullOrEmpty(ciphertext))
-                return string.Empty;
-
-            try
-            {
-                return Infrastructure.Windows.Dpapi.WindowsDpapiCompatibility.UnprotectLocalMachineUnicode(ciphertext);
-            }
-            catch (Exception)
-            {
-                return string.Empty;
-            }
+            return passwordNode?.Attributes?["storeAsClearText"]?.Value == "True"
+                ? passwordText
+                : string.Empty;
         }
+
+        private static XmlNode RequireNode(XmlNode? node, string description) =>
+            node ?? throw new FileFormatException($"Required RDCMan node '{description}' was not found.");
     }
 }

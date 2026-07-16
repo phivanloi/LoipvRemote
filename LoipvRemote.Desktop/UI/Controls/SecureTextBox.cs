@@ -13,7 +13,7 @@ namespace LoipvRemote.UI.Controls
             TextChanged += SecureTextBox_TextChanged;
         }
 
-        private void SecureTextBox_TextChanged(object sender, System.EventArgs e)
+        private void SecureTextBox_TextChanged(object? sender, System.EventArgs e)
         {
             SecString = Text.ConvertToSecureString();
         }

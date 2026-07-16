@@ -53,7 +53,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             // chkAlwaysShowPanelTabs
             //
-            chkAlwaysShowPanelTabs._mice = MrngCheckBox.MouseState.OUT;
+            chkAlwaysShowPanelTabs.MouseInteractionState = MrngCheckBox.MouseState.OUT;
             chkAlwaysShowPanelTabs.AutoSize = true;
             chkAlwaysShowPanelTabs.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkAlwaysShowPanelTabs.Location = new System.Drawing.Point(3, 3);
@@ -65,7 +65,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             // chkAlwaysShowConnectionTabs
             //
-            chkAlwaysShowConnectionTabs._mice = MrngCheckBox.MouseState.OUT;
+            chkAlwaysShowConnectionTabs.MouseInteractionState = MrngCheckBox.MouseState.OUT;
             chkAlwaysShowConnectionTabs.AutoSize = true;
             chkAlwaysShowConnectionTabs.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkAlwaysShowConnectionTabs.Location = new System.Drawing.Point(3, 26);
@@ -78,7 +78,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             // chkIdentifyQuickConnectTabs
             //
-            chkIdentifyQuickConnectTabs._mice = MrngCheckBox.MouseState.OUT;
+            chkIdentifyQuickConnectTabs.MouseInteractionState = MrngCheckBox.MouseState.OUT;
             chkIdentifyQuickConnectTabs.AutoSize = true;
             chkIdentifyQuickConnectTabs.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkIdentifyQuickConnectTabs.Location = new System.Drawing.Point(3, 95);
@@ -90,7 +90,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             // chkOpenNewTabRightOfSelected
             //
-            chkOpenNewTabRightOfSelected._mice = MrngCheckBox.MouseState.OUT;
+            chkOpenNewTabRightOfSelected.MouseInteractionState = MrngCheckBox.MouseState.OUT;
             chkOpenNewTabRightOfSelected.AutoSize = true;
             chkOpenNewTabRightOfSelected.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkOpenNewTabRightOfSelected.Location = new System.Drawing.Point(3, 49);
@@ -102,7 +102,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             // chkAlwaysShowPanelSelectionDlg
             //
-            chkAlwaysShowPanelSelectionDlg._mice = MrngCheckBox.MouseState.OUT;
+            chkAlwaysShowPanelSelectionDlg.MouseInteractionState = MrngCheckBox.MouseState.OUT;
             chkAlwaysShowPanelSelectionDlg.AutoSize = true;
             chkAlwaysShowPanelSelectionDlg.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkAlwaysShowPanelSelectionDlg.Location = new System.Drawing.Point(3, 141);
@@ -114,7 +114,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             // chkShowLogonInfoOnTabs
             //
-            chkShowLogonInfoOnTabs._mice = MrngCheckBox.MouseState.OUT;
+            chkShowLogonInfoOnTabs.MouseInteractionState = MrngCheckBox.MouseState.OUT;
             chkShowLogonInfoOnTabs.AutoSize = true;
             chkShowLogonInfoOnTabs.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkShowLogonInfoOnTabs.Location = new System.Drawing.Point(3, 26);
@@ -126,7 +126,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             // chkDoubleClickClosesTab
             //
-            chkDoubleClickClosesTab._mice = MrngCheckBox.MouseState.OUT;
+            chkDoubleClickClosesTab.MouseInteractionState = MrngCheckBox.MouseState.OUT;
             chkDoubleClickClosesTab.AutoSize = true;
             chkDoubleClickClosesTab.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkDoubleClickClosesTab.Location = new System.Drawing.Point(3, 118);
@@ -138,7 +138,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             // chkShowProtocolOnTabs
             //
-            chkShowProtocolOnTabs._mice = MrngCheckBox.MouseState.OUT;
+            chkShowProtocolOnTabs.MouseInteractionState = MrngCheckBox.MouseState.OUT;
             chkShowProtocolOnTabs.AutoSize = true;
             chkShowProtocolOnTabs.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkShowProtocolOnTabs.Location = new System.Drawing.Point(3, 49);
@@ -150,7 +150,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             // chkUseTerminalTitleForTabs
             //
-            chkUseTerminalTitleForTabs._mice = MrngCheckBox.MouseState.OUT;
+            chkUseTerminalTitleForTabs.MouseInteractionState = MrngCheckBox.MouseState.OUT;
             chkUseTerminalTitleForTabs.AutoSize = true;
             chkUseTerminalTitleForTabs.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkUseTerminalTitleForTabs.Location = new System.Drawing.Point(3, 72);
@@ -162,7 +162,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             // chkCreateEmptyPanelOnStart
             //
-            chkCreateEmptyPanelOnStart._mice = MrngCheckBox.MouseState.OUT;
+            chkCreateEmptyPanelOnStart.MouseInteractionState = MrngCheckBox.MouseState.OUT;
             chkCreateEmptyPanelOnStart.AutoSize = true;
             chkCreateEmptyPanelOnStart.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkCreateEmptyPanelOnStart.Location = new System.Drawing.Point(3, 164);
@@ -175,7 +175,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             // chkBindConnectionsAndConfigPanels
             //
-            chkBindConnectionsAndConfigPanels._mice = MrngCheckBox.MouseState.OUT;
+            chkBindConnectionsAndConfigPanels.MouseInteractionState = MrngCheckBox.MouseState.OUT;
             chkBindConnectionsAndConfigPanels.AutoSize = true;
             chkBindConnectionsAndConfigPanels.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkBindConnectionsAndConfigPanels.Location = new System.Drawing.Point(3, 233);

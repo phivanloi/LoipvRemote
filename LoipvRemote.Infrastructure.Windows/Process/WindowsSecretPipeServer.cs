@@ -12,13 +12,12 @@ public static class WindowsSecretPipeServer
     public static string StartPassword(string prefix, string password)
     {
         string pipeName = $"{prefix}{Guid.NewGuid():N}";
-        Thread thread = new(() =>
+        _ = Task.Run(async () =>
         {
-            try { WritePassword(pipeName, password); }
+            try { await WritePasswordAsync(pipeName, password).ConfigureAwait(false); }
             catch (OperationCanceledException) { }
             catch (IOException) { }
-        }) { IsBackground = true, Name = $"{prefix} writer" };
-        thread.Start();
+        });
         return pipeName;
     }
 
@@ -67,14 +66,14 @@ public static class WindowsSecretPipeServer
             cancellation.Token).ConfigureAwait(false);
     }
 
-    private static void WritePassword(string pipeName, string password)
+    private static async Task WritePasswordAsync(string pipeName, string password)
     {
         using NamedPipeServerStream server = CreatePipeServer(pipeName, PipeDirection.Out);
         using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(10));
-        server.WaitForConnectionAsync(timeout.Token).GetAwaiter().GetResult();
+        await server.WaitForConnectionAsync(timeout.Token).ConfigureAwait(false);
         using StreamWriter writer = new(server, Utf8NoBom, 1024, leaveOpen: true);
-        writer.Write(password);
-        writer.Flush();
+        await writer.WriteAsync(password).ConfigureAwait(false);
+        await writer.FlushAsync().ConfigureAwait(false);
     }
 
     private static NamedPipeServerStream CreatePipeServer(string pipeName, PipeDirection direction)

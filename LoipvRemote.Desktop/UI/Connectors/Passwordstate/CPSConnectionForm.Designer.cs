@@ -1,4 +1,4 @@
-namespace LoipvRemote.Connectors.Passwordstate
+namespace LoipvRemote.Desktop.UI.Connectors.Passwordstate
 {
     partial class CPSConnectionForm
     {
@@ -230,7 +230,6 @@ namespace LoipvRemote.Connectors.Passwordstate
         private System.Windows.Forms.Button btnOK;
         private System.Windows.Forms.Button btnCancel;
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanel1;
-        private System.Windows.Forms.Label label2;
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanel2;
         public System.Windows.Forms.CheckBox cbUseSSO;

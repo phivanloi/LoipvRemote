@@ -164,7 +164,7 @@ namespace LoipvRemote.UI.Forms
             UiMetrics metrics = UiScaleManager.Instance.Metrics;
             int uncompressedHeight = Math.Max(44, (int)Math.Ceiling(metrics.InteractiveHeight * metrics.FontScale + 4));
             int baseHeight = ReduceHeaderHeight(uncompressedHeight);
-            Height = metrics.ScaleForDpi(baseHeight, _owner.DeviceDpi / 96f);
+            Height = UiMetrics.ScaleForDpi(baseHeight, _owner.DeviceDpi / 96f);
             int buttonWidth = Math.Max(46, Height);
             _windowButtons.Width = buttonWidth * 3;
             _menuHost.Width = MenuHostWidthFor(Height);
@@ -174,8 +174,7 @@ namespace LoipvRemote.UI.Forms
 
         internal static int ReduceHeaderHeight(int uncompressedHeight)
         {
-            if (uncompressedHeight <= 0)
-                throw new ArgumentOutOfRangeException(nameof(uncompressedHeight));
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(uncompressedHeight);
 
             return Math.Max(MinimumHeaderHeight,
                 (int)Math.Round(uncompressedHeight * HeaderHeightReductionFactor, MidpointRounding.AwayFromZero));
@@ -183,8 +182,7 @@ namespace LoipvRemote.UI.Forms
 
         internal static int MenuHostWidthFor(int headerHeight)
         {
-            if (headerHeight <= 0)
-                throw new ArgumentOutOfRangeException(nameof(headerHeight));
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(headerHeight);
 
             // The main menu contains the app icon plus four localized menu items.
             // Keep a stable minimum so the last item cannot overflow when the

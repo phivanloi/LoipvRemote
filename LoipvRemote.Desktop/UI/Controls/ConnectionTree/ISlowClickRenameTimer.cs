@@ -10,6 +10,6 @@ namespace LoipvRemote.UI.Controls.ConnectionTree
         bool Enabled { get; }
         event EventHandler Tick;
         void Start();
-        void Stop();
+        void StopTimer();
     }
 }

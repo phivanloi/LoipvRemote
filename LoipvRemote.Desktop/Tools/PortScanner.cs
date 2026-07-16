@@ -42,8 +42,7 @@ namespace LoipvRemote.Tools
             if (portStart == 0)
                 portStart = portEnd;
 
-            if (timeoutInMilliseconds < 0)
-                throw new ArgumentOutOfRangeException(nameof(timeoutInMilliseconds));
+            ArgumentOutOfRangeException.ThrowIfNegative(timeoutInMilliseconds);
             _messageCollector = messageCollector ?? throw new ArgumentNullException(nameof(messageCollector));
 
             _timeoutInMilliseconds = timeoutInMilliseconds;
@@ -73,7 +72,7 @@ namespace LoipvRemote.Tools
         {
             _scanThread = new Thread(ScanAsync);
 
-            if(RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 _scanThread.SetApartmentState(ApartmentState.STA);
 
             _scanThread.IsBackground = true;
@@ -87,15 +86,13 @@ namespace LoipvRemote.Tools
                 p.SendAsyncCancel();
             }
 
-            // Obsolete: https://learn.microsoft.com/en-us/dotnet/core/compatibility/core-libraries/5.0/thread-abort-obsolete
-            //_scanThread.Abort();
         }
 
         public static bool IsPortOpen(string hostname, string port)
         {
             try
             {
-                TcpClient tcpClient = new(hostname, Convert.ToInt32(port));
+                TcpClient tcpClient = new(hostname, Convert.ToInt32(port, CultureInfo.InvariantCulture));
                 tcpClient.Close();
                 return true;
             }
@@ -145,13 +142,16 @@ namespace LoipvRemote.Tools
         /* Some examples found here:
          * http://stackoverflow.com/questions/2114266/convert-ping-application-to-multithreaded-version-to-increase-speed-c-sharp
          */
-        private void PingSender_PingCompleted(object sender, PingCompletedEventArgs e)
+        private void PingSender_PingCompleted(object? sender, PingCompletedEventArgs e)
         {
             // used for clean up later...
-            Ping p = (Ping)sender;
+            if (sender is not Ping p)
+                return;
 
             // UserState is the IP Address
-            string ip = e.UserState.ToString();
+            string ip = e.UserState?.ToString() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(ip))
+                return;
             ScanHost scanHost = new(ip);
             _hostCount++;
 
@@ -178,7 +178,7 @@ namespace LoipvRemote.Tools
                 scanHost.ClosedPorts.AddRange(_ports);
                 scanHost.SetAllProtocols(false);
             }
-            else if (e.Reply.Status == IPStatus.Success)
+            else if (e.Reply is { Status: IPStatus.Success })
             {
                 /* ping was successful, try to resolve the hostname */
                 try
@@ -243,10 +243,10 @@ namespace LoipvRemote.Tools
                     }
                 }
             }
-            else if (e.Reply.Status != IPStatus.Success)
+            else if (e.Reply is { Status: not IPStatus.Success } reply)
             {
                 _messageCollector.AddMessage(MessageClass.InformationMsg,
-                                                    $"Ping did not complete to {e.UserState} : {e.Reply.Status}", true);
+                                                    $"Ping did not complete to {e.UserState} : {reply.Status}", true);
                 scanHost.ClosedPorts.AddRange(_ports);
                 scanHost.SetAllProtocols(false);
             }
@@ -266,7 +266,7 @@ namespace LoipvRemote.Tools
                 RaiseScanCompleteEvent(_scannedHosts);
         }
 
-        private static IEnumerable<IPAddress> IpAddressArrayFromRange(IPAddress ipAddress1, IPAddress ipAddress2)
+        private static IPAddress[] IpAddressArrayFromRange(IPAddress ipAddress1, IPAddress ipAddress2)
         {
             IPAddress startIpAddress = IpAddressMin(ipAddress1, ipAddress2);
             IPAddress endIpAddress = IpAddressMax(ipAddress1, ipAddress2);
@@ -305,7 +305,7 @@ namespace LoipvRemote.Tools
         {
             if (ipAddress.AddressFamily != AddressFamily.InterNetwork)
             {
-                throw (new ArgumentException("ipAddress"));
+                throw new ArgumentException("Only IPv4 addresses are supported.", nameof(ipAddress));
             }
 
             byte[] addressBytes = ipAddress.GetAddressBytes(); // in network order (big-endian)
@@ -336,27 +336,27 @@ namespace LoipvRemote.Tools
 
         #region Events
 
-        public delegate void BeginHostScanEventHandler(string host);
+        public delegate void BeginHostScanHandler(string host);
 
-        public event BeginHostScanEventHandler? BeginHostScan;
+        public event BeginHostScanHandler? BeginHostScan;
 
         private void RaiseBeginHostScanEvent(IPAddress ipAddress)
         {
             BeginHostScan?.Invoke(ipAddress.ToString());
         }
 
-        public delegate void HostScannedEventHandler(ScanHost scanHost, int scannedHostCount, int totalHostCount);
+        public delegate void HostScannedHandler(ScanHost scanHost, int scannedHostCount, int totalHostCount);
 
-        public event HostScannedEventHandler? HostScanned;
+        public event HostScannedHandler? HostScanned;
 
         private void RaiseHostScannedEvent(ScanHost scanHost, int scannedHostCount, int totalHostCount)
         {
             HostScanned?.Invoke(scanHost, scannedHostCount, totalHostCount);
         }
 
-        public delegate void ScanCompleteEventHandler(List<ScanHost> hosts);
+        public delegate void ScanCompleteHandler(List<ScanHost> hosts);
 
-        public event ScanCompleteEventHandler? ScanComplete;
+        public event ScanCompleteHandler? ScanComplete;
 
         private void RaiseScanCompleteEvent(List<ScanHost> hosts)
         {

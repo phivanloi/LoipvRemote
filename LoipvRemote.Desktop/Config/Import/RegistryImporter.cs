@@ -27,7 +27,7 @@ namespace LoipvRemote.Config.Import
                 };
 
                 PuttyRegistrySessionStore store = new();
-                foreach (PuttyRegistrySession session in store.GetSessions())
+                foreach (PuttyRegistrySession session in PuttyRegistrySessionStore.GetSessions())
                 {
                     ProtocolKind protocol = session.Protocol.Equals("raw", StringComparison.OrdinalIgnoreCase)
                         ? ProtocolKind.Raw

@@ -48,7 +48,6 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             radCloseWarnMultiple = new MrngRadioButton();
             radCloseWarnExit = new MrngRadioButton();
             radCloseWarnNever = new MrngRadioButton();
-            chkSaveConnectionsAfterEveryEdit = new MrngCheckBox();
             tableLayoutPanel2 = new System.Windows.Forms.TableLayoutPanel();
             chkConnectionTreeTrackActiveConnection = new MrngCheckBox();
             chkDoNotTrimUsername = new MrngCheckBox();
@@ -107,7 +106,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             // chkSingleClickOnConnectionOpensIt
             //
-            chkSingleClickOnConnectionOpensIt._mice = MrngCheckBox.MouseState.OUT;
+            chkSingleClickOnConnectionOpensIt.MouseInteractionState = MrngCheckBox.MouseState.OUT;
             chkSingleClickOnConnectionOpensIt.AutoSize = true;
             chkSingleClickOnConnectionOpensIt.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkSingleClickOnConnectionOpensIt.Location = new System.Drawing.Point(6, 3);
@@ -119,7 +118,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             // chkHostnameLikeDisplayName
             //
-            chkHostnameLikeDisplayName._mice = MrngCheckBox.MouseState.OUT;
+            chkHostnameLikeDisplayName.MouseInteractionState = MrngCheckBox.MouseState.OUT;
             chkHostnameLikeDisplayName.AutoSize = true;
             chkHostnameLikeDisplayName.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkHostnameLikeDisplayName.Location = new System.Drawing.Point(6, 72);
@@ -131,7 +130,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             // chkSingleClickOnOpenedConnectionSwitchesToIt
             //
-            chkSingleClickOnOpenedConnectionSwitchesToIt._mice = MrngCheckBox.MouseState.OUT;
+            chkSingleClickOnOpenedConnectionSwitchesToIt.MouseInteractionState = MrngCheckBox.MouseState.OUT;
             chkSingleClickOnOpenedConnectionSwitchesToIt.AutoSize = true;
             chkSingleClickOnOpenedConnectionSwitchesToIt.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkSingleClickOnOpenedConnectionSwitchesToIt.Location = new System.Drawing.Point(6, 26);
@@ -230,17 +229,6 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             radCloseWarnNever.Text = "Do not warn me when closing connections";
             radCloseWarnNever.UseVisualStyleBackColor = false;
             //
-            // chkSaveConnectionsAfterEveryEdit
-            //
-            chkSaveConnectionsAfterEveryEdit._mice = MrngCheckBox.MouseState.OUT;
-            chkSaveConnectionsAfterEveryEdit.AutoSize = true;
-            chkSaveConnectionsAfterEveryEdit.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
-            chkSaveConnectionsAfterEveryEdit.Location = new System.Drawing.Point(6, 95);
-            chkSaveConnectionsAfterEveryEdit.Name = "chkSaveConnectionsAfterEveryEdit";
-            chkSaveConnectionsAfterEveryEdit.Size = new System.Drawing.Size(194, 17);
-            chkSaveConnectionsAfterEveryEdit.TabIndex = 7;
-            chkSaveConnectionsAfterEveryEdit.Text = "Save connections after every edit";
-            chkSaveConnectionsAfterEveryEdit.UseVisualStyleBackColor = true;
             //
             // tableLayoutPanel2
             //
@@ -265,7 +253,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             // chkConnectionTreeTrackActiveConnection
             //
-            chkConnectionTreeTrackActiveConnection._mice = MrngCheckBox.MouseState.OUT;
+            chkConnectionTreeTrackActiveConnection.MouseInteractionState = MrngCheckBox.MouseState.OUT;
             chkConnectionTreeTrackActiveConnection.AutoSize = true;
             chkConnectionTreeTrackActiveConnection.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkConnectionTreeTrackActiveConnection.Location = new System.Drawing.Point(6, 49);
@@ -277,7 +265,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             // chkDoNotTrimUsername
             //
-            chkDoNotTrimUsername._mice = MrngCheckBox.MouseState.OUT;
+            chkDoNotTrimUsername.MouseInteractionState = MrngCheckBox.MouseState.OUT;
             chkDoNotTrimUsername.AutoSize = true;
             chkDoNotTrimUsername.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkDoNotTrimUsername.Location = new System.Drawing.Point(6, 118);
@@ -289,7 +277,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             // chkSlowClickRename
             //
-            chkSlowClickRename._mice = MrngCheckBox.MouseState.OUT;
+            chkSlowClickRename.MouseInteractionState = MrngCheckBox.MouseState.OUT;
             chkSlowClickRename.AutoSize = true;
             chkSlowClickRename.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkSlowClickRename.Location = new System.Drawing.Point(6, 141);
@@ -301,7 +289,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             // chkOpenMultipleConnectionsWithEnter
             //
-            chkOpenMultipleConnectionsWithEnter._mice = MrngCheckBox.MouseState.OUT;
+            chkOpenMultipleConnectionsWithEnter.MouseInteractionState = MrngCheckBox.MouseState.OUT;
             chkOpenMultipleConnectionsWithEnter.AutoSize = true;
             chkOpenMultipleConnectionsWithEnter.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             chkOpenMultipleConnectionsWithEnter.Location = new System.Drawing.Point(6, 164);
@@ -320,7 +308,6 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             pnlOptions.Controls.Add(chkSingleClickOnOpenedConnectionSwitchesToIt);
             pnlOptions.Controls.Add(chkConnectionTreeTrackActiveConnection);
             pnlOptions.Controls.Add(chkHostnameLikeDisplayName);
-            pnlOptions.Controls.Add(chkSaveConnectionsAfterEveryEdit);
             pnlOptions.Dock = System.Windows.Forms.DockStyle.Top;
             pnlOptions.Location = new System.Drawing.Point(0, 30);
             pnlOptions.Name = "pnlOptions";
@@ -376,7 +363,6 @@ namespace LoipvRemote.UI.Forms.OptionsPages
         internal Controls.MrngNumericUpDown numRDPConTimeout;
         internal Controls.MrngLabel lblRDPConTimeout;
         internal Controls.MrngNumericUpDown numRdpReconnectionCount;
-        internal MrngCheckBox chkSaveConnectionsAfterEveryEdit;
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanel2;
         private MrngCheckBox chkConnectionTreeTrackActiveConnection;
         private MrngCheckBox chkDoNotTrimUsername;

@@ -13,9 +13,11 @@ namespace LoipvRemote.Config.Serializers.ConnectionSerializers.Csv
     [SupportedOSPlatform("windows")]
     public class CsvConnectionsDeserializer : IDeserializer<string, ConnectionTreeModel>
     {
+        private static readonly string[] s_lineSeparators = ["\r\n", "\r", "\n"];
+
         public ConnectionTreeModel Deserialize(string serializedData)
         {
-            string[] lines = serializedData.Split(new[] {"\r\n", "\r", "\n"}, StringSplitOptions.RemoveEmptyEntries);
+            string[] lines = serializedData.Split(s_lineSeparators, StringSplitOptions.RemoveEmptyEntries);
             List<string> csvHeaders = new();
             // used to map a connectioninfo to it's parent's GUID
             Dictionary<ConnectionInfo, string> parentMapping = new();
@@ -38,7 +40,7 @@ namespace LoipvRemote.Config.Serializers.ConnectionSerializers.Csv
             return connectionTreeModel;
         }
 
-        private RootNodeInfo CreateTreeStructure(Dictionary<ConnectionInfo, string> parentMapping)
+        private static RootNodeInfo CreateTreeStructure(Dictionary<ConnectionInfo, string> parentMapping)
         {
             RootNodeInfo root = new(RootNodeType.Connection);
 
@@ -52,7 +54,7 @@ namespace LoipvRemote.Config.Serializers.ConnectionSerializers.Csv
                 }
 
                 // search for parent in the list by GUID
-                ContainerInfo parent = parentMapping
+                ContainerInfo? parent = parentMapping
                              .Keys
                              .OfType<ContainerInfo>()
                              .FirstOrDefault(info => info.ConstantID == node.Value);
@@ -70,14 +72,14 @@ namespace LoipvRemote.Config.Serializers.ConnectionSerializers.Csv
             return root;
         }
 
-        private ConnectionInfo ParseConnectionInfo(IList<string> headers, string[] connectionCsv)
+        private static ConnectionInfo ParseConnectionInfo(List<string> headers, string[] connectionCsv)
         {
             TreeNodeType nodeType = headers.Contains("NodeType")
-                ? (TreeNodeType)Enum.Parse(typeof(TreeNodeType), connectionCsv[headers.IndexOf("NodeType")], true)
+                ? Enum.Parse<TreeNodeType>(connectionCsv[headers.IndexOf("NodeType")] ?? string.Empty, true)
                 : TreeNodeType.Connection;
 
             string nodeId = headers.Contains("Id")
-                ? connectionCsv[headers.IndexOf("Id")]
+                ? connectionCsv[headers.IndexOf("Id")] ?? string.Empty
                 : Guid.NewGuid().ToString();
 
             ConnectionInfo connectionRecord = nodeType == TreeNodeType.Connection
@@ -133,7 +135,7 @@ namespace LoipvRemote.Config.Serializers.ConnectionSerializers.Csv
             connectionRecord.VmId = headers.Contains("VmId")
                 ? connectionCsv[headers.IndexOf("VmId")] : "";
 
-            connectionRecord.SSHOptions =headers.Contains("SSHOptions")
+            connectionRecord.SSHOptions = headers.Contains("SSHOptions")
                 ? connectionCsv[headers.IndexOf("SSHOptions")]
                 : "";
 

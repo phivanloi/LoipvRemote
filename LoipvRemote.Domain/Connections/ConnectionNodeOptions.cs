@@ -3,7 +3,7 @@ namespace LoipvRemote.Domain.Connections;
 /// <summary>
 /// Secret-free protocol and display settings plus the inherited property names
 /// for one connection-tree node. Values use invariant strings so Domain stays
-/// independent from the legacy WinForms enum types.
+/// independent from desktop UI enum types.
 /// </summary>
 public sealed record ConnectionNodeOptions(
     IReadOnlyDictionary<string, string> Values,

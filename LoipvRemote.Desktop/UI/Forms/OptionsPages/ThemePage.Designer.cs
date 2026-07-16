@@ -54,7 +54,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             // btnThemeDelete
             //
-            btnThemeDelete._mice = MrngButton.MouseState.OUT;
+            btnThemeDelete.MouseInteractionState = MrngButton.MouseState.OUT;
             btnThemeDelete.Dock = System.Windows.Forms.DockStyle.Fill;
             btnThemeDelete.Location = new System.Drawing.Point(507, 3);
             btnThemeDelete.Name = "btnThemeDelete";
@@ -66,7 +66,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             // btnThemeNew
             //
-            btnThemeNew._mice = MrngButton.MouseState.OUT;
+            btnThemeNew.MouseInteractionState = MrngButton.MouseState.OUT;
             btnThemeNew.Dock = System.Windows.Forms.DockStyle.Fill;
             btnThemeNew.Location = new System.Drawing.Point(407, 3);
             btnThemeNew.Name = "btnThemeNew";
@@ -78,7 +78,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             //
             // cboTheme
             //
-            cboTheme._mice = MrngComboBox.MouseState.HOVER;
+            cboTheme.MouseInteractionState = MrngComboBox.MouseState.HOVER;
             cboTheme.Dock = System.Windows.Forms.DockStyle.Fill;
             cboTheme.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             cboTheme.FormattingEnabled = true;

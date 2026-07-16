@@ -1,4 +1,4 @@
-namespace LoipvRemote.Connectors.Passwordstate
+namespace LoipvRemote.Desktop.UI.Connectors.Passwordstate
 {
     public partial class CPSConnectionForm : Form
     {
@@ -7,7 +7,7 @@ namespace LoipvRemote.Connectors.Passwordstate
             InitializeComponent();
         }
 
-        private void CPSConnectionForm_Activated(object sender, EventArgs e)
+        private void CPSConnectionForm_Activated(object? sender, EventArgs e)
         {
             SetVisibility();
             if (cbUseSSO.Checked)
@@ -15,7 +15,7 @@ namespace LoipvRemote.Connectors.Passwordstate
             else
             {
                 if (tbAPIKey.Text.Length == 0)
-                    tbAPIKey.Focus(); 
+                    tbAPIKey.Focus();
                 else
                     tbOTP.Focus();
             }
@@ -27,7 +27,7 @@ namespace LoipvRemote.Connectors.Passwordstate
 
         }
 
-        private void cbUseSSO_CheckedChanged(object sender, EventArgs e)
+        private void cbUseSSO_CheckedChanged(object? sender, EventArgs e)
         {
             SetVisibility();
         }

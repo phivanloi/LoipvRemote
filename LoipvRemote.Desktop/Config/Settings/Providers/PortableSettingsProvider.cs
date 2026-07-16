@@ -51,7 +51,8 @@ namespace LoipvRemote.Config.Settings.Providers
 
         private XmlNode _globalSettingsNode => GetSettingsNode(_globalSettingsNodeName);
 
-        private XmlNode _rootNode => _rootDocument.SelectSingleNode(_rootNodeName);
+        private XmlNode _rootNode => _rootDocument.SelectSingleNode(_rootNodeName)
+            ?? throw new InvalidOperationException("Portable settings root node is missing.");
 
         private XmlDocument _rootDocument
         {
@@ -129,10 +130,10 @@ namespace LoipvRemote.Config.Settings.Providers
         {
             XmlNode targetNode = IsGlobal(propertyValue.Property) ? _globalSettingsNode : _localSettingsNode;
 
-            XmlNode settingNode = targetNode.SelectSingleNode($"setting[@name='{propertyValue.Name}']");
+            XmlNode? settingNode = targetNode.SelectSingleNode($"setting[@name='{propertyValue.Name}']");
 
             if (settingNode != null)
-                settingNode.InnerText = propertyValue.SerializedValue.ToString();
+                settingNode.InnerText = propertyValue.SerializedValue?.ToString() ?? string.Empty;
             else
             {
                 settingNode = _rootDocument.CreateElement("setting");
@@ -141,7 +142,7 @@ namespace LoipvRemote.Config.Settings.Providers
                 nameAttribute.Value = propertyValue.Name;
 
                 settingNode.Attributes?.Append(nameAttribute);
-                settingNode.InnerText = propertyValue.SerializedValue.ToString();
+                settingNode.InnerText = propertyValue.SerializedValue?.ToString() ?? string.Empty;
 
                 targetNode.AppendChild(settingNode);
             }
@@ -150,10 +151,10 @@ namespace LoipvRemote.Config.Settings.Providers
         private string GetValue(SettingsProperty property)
         {
             XmlNode targetNode = IsGlobal(property) ? _globalSettingsNode : _localSettingsNode;
-            XmlNode settingNode = targetNode.SelectSingleNode($"setting[@name='{property.Name}']");
+            XmlNode? settingNode = targetNode.SelectSingleNode($"setting[@name='{property.Name}']");
 
             if (settingNode == null)
-                return property.DefaultValue != null ? property.DefaultValue.ToString() : string.Empty;
+                return property.DefaultValue?.ToString() ?? string.Empty;
 
             return settingNode.InnerText;
         }
@@ -162,7 +163,7 @@ namespace LoipvRemote.Config.Settings.Providers
         {
             foreach (DictionaryEntry attribute in property.Attributes)
             {
-                if ((Attribute)attribute.Value is SettingsManageabilityAttribute)
+                if (attribute.Value is SettingsManageabilityAttribute)
                     return true;
             }
 
@@ -171,7 +172,7 @@ namespace LoipvRemote.Config.Settings.Providers
 
         private XmlNode GetSettingsNode(string name)
         {
-            XmlNode settingsNode = _rootNode.SelectSingleNode(name);
+            XmlNode? settingsNode = _rootNode.SelectSingleNode(name);
 
             if (settingsNode != null) return settingsNode;
             settingsNode = _rootDocument.CreateElement(name);

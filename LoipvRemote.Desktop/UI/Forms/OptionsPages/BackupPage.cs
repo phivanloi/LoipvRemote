@@ -15,7 +15,6 @@ namespace LoipvRemote.UI.Forms.OptionsPages
     [SupportedOSPlatform("windows")]
     public sealed partial class BackupPage
     {
-        private readonly FrmMain _frmMain = FrmMain.Default;
         private List<DropdownList> _permissionsListing = null!;
 
         public BackupPage()
@@ -220,17 +219,6 @@ namespace LoipvRemote.UI.Forms.OptionsPages
         public override void SaveSettings()
         {
             Properties.OptionsBackupPage.Default.BackupFileKeepCount = (int)numMaxBackups.Value;
-            /*
-            if (Properties.OptionsBackupPage.Default.AutoSaveEveryMinutes > 0)
-            {
-                _frmMain.tmrAutoSave.Interval = Properties.OptionsBackupPage.Default.AutoSaveEveryMinutes * 60000;
-                _frmMain.tmrAutoSave.Enabled = true;
-            }
-            else
-            {
-                _frmMain.tmrAutoSave.Enabled = false;
-            }
-            */
             Properties.OptionsBackupPage.Default.cbBackupEnableACL = Convert.ToInt32(cbBackupEnableACL.SelectedValue ?? 0, CultureInfo.InvariantCulture);
             Properties.OptionsBackupPage.Default.cbBackupTypeACL = Convert.ToInt32(cbBackupTypeACL.SelectedValue ?? 0, CultureInfo.InvariantCulture);
             Properties.OptionsBackupPage.Default.cbBackupFrequencyACL = Convert.ToInt32(cbBackupFrequencyACL.SelectedValue ?? 0, CultureInfo.InvariantCulture);

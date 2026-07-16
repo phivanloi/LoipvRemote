@@ -251,7 +251,7 @@ namespace LoipvRemote.UI.Window
         {
             ArgumentNullException.ThrowIfNull(desktopShellRuntime);
             _messageCollector = desktopShellRuntime.MessageCollector;
-            _connectionWorkspace = desktopShellRuntime.ConnectionWorkspaceRuntime;
+            _connectionWorkspace = desktopShellRuntime.ConnectionTreeWorkspace;
             _pGrid.AttachRuntime(desktopShellRuntime);
         }
 

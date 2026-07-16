@@ -8,6 +8,7 @@
     <ProjectReference Include="..\LoipvRemote.Application\LoipvRemote.Application.csproj" />
     <ProjectReference Include="..\LoipvRemote.Domain\LoipvRemote.Domain.csproj" />
     <ProjectReference Include="..\LoipvRemote.Protocols.Abstractions\LoipvRemote.Protocols.Abstractions.csproj" />
+    <ProjectReference Include="..\LoipvRemote.Protocols.Putty\LoipvRemote.Protocols.Putty.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="System.Management" />

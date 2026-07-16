@@ -1,5 +1,5 @@
 using System;
-using LoipvRemote.Connection.Monitoring;
+using LoipvRemote.Protocols.Putty.Monitoring;
 using NUnit.Framework;
 
 namespace LoipvRemoteTests.Connection.Monitoring

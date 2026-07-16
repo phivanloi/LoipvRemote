@@ -1,7 +1,6 @@
 using System;
 using System.Text;
-using LoipvRemote.Connection.Monitoring;
-using LoipvRemote.Infrastructure.Windows.Registry;
+using LoipvRemote.Protocols.Putty.Monitoring;
 using NUnit.Framework;
 
 namespace LoipvRemoteTests.Connection.Monitoring
@@ -48,7 +47,8 @@ namespace LoipvRemoteTests.Connection.Monitoring
             byte[] hostKey = BuildHostKey("ssh-rsa", exponent, modulus);
             var registry = new FakeRegistryValueReader("0x10001,0xabcdef");
 
-            bool trusted = PuttyHostKeyTrustStore.IsTrusted("host.example", 22, "rsa-sha2-512", hostKey, registry);
+            bool trusted = new PuttyHostKeyTrustStore(registry)
+                .IsTrusted("host.example", 22, "rsa-sha2-512", hostKey);
 
             Assert.Multiple(() =>
             {
@@ -93,7 +93,7 @@ namespace LoipvRemoteTests.Connection.Monitoring
             destination[offset + 3] = (byte)length;
         }
 
-        private sealed class FakeRegistryValueReader(string? value) : IWindowsRegistryValueReader
+        private sealed class FakeRegistryValueReader(string? value) : IPuttyHostKeyRegistry
         {
             public string? LastSubKeyPath { get; private set; }
             public string? LastValueName { get; private set; }

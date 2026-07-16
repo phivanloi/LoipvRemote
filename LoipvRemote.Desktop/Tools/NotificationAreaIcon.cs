@@ -144,9 +144,9 @@ namespace LoipvRemote.Tools
                 _ = _desktopShellRuntime.ConnectionInitiator.OpenConnectionAsync(connectionInfo);
         }
 
-        private static void cMenExit_Click(object? sender, EventArgs e)
+        private void cMenExit_Click(object? sender, EventArgs e)
         {
-            Shutdown.Quit();
+            Shutdown.Quit(_mainForm);
         }
     }
 }

@@ -116,16 +116,17 @@ namespace LoipvRemote.UI.Forms.OptionsPages
 
             Properties.OptionsAppearancePage.Default.ShowDescriptionTooltipsInTree = chkShowDescriptionTooltipsInTree.Checked;
             Properties.OptionsAppearancePage.Default.ShowCompleteConsPathInTitle = chkShowFullConnectionsFilePathInTitle.Checked;
-            FrmMain.Default.ShowFullPathInTitle = chkShowFullConnectionsFilePathInTitle.Checked;
+            if (MainWindow is { } mainWindow)
+                mainWindow.ShowFullPathInTitle = chkShowFullConnectionsFilePathInTitle.Checked;
 
             Properties.OptionsAppearancePage.Default.ShowSystemTrayIcon = chkShowSystemTrayIcon.Checked;
             if (Properties.OptionsAppearancePage.Default.ShowSystemTrayIcon)
             {
-                FrmMain.Default.EnsureNotificationAreaIcon();
+                MainWindow?.EnsureNotificationAreaIcon();
             }
             else
             {
-                FrmMain.Default.DisposeNotificationAreaIcon();
+                MainWindow?.DisposeNotificationAreaIcon();
             }
 
             Properties.OptionsAppearancePage.Default.MinimizeToTray = chkMinimizeToSystemTray.Checked;

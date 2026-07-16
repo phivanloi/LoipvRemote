@@ -37,7 +37,7 @@ namespace LoipvRemote.UI.Window
         {
             ArgumentNullException.ThrowIfNull(desktopShellRuntime);
             _desktopShellRuntime = desktopShellRuntime;
-            FrmMain.OptionsForm?.AttachRuntime(desktopShellRuntime);
+            _optionsForm?.AttachRuntime(desktopShellRuntime);
         }
 
         #endregion
@@ -90,10 +90,6 @@ namespace LoipvRemote.UI.Window
 
         private void LoadOptionsForm()
         {
-            // Check if FrmMain.OptionsForm is disposed (source of truth)
-            if (FrmMain.OptionsForm != null && FrmMain.OptionsForm.IsDisposed)
-                FrmMain.RecreateOptionsForm(_desktopShellRuntime);
-
             // If the local reference is disposed, clean up
             if (_optionsForm != null && _optionsForm.IsDisposed)
             {
@@ -106,10 +102,7 @@ namespace LoipvRemote.UI.Window
             // Get fresh reference if needed
             if (_optionsForm == null)
             {
-                _optionsForm = FrmMain.OptionsForm;
-
-                if (_optionsForm == null || _optionsForm.IsDisposed)
-                    return;
+                _optionsForm = new FrmOptions();
 
                 if (_desktopShellRuntime is not null)
                     _optionsForm.AttachRuntime(_desktopShellRuntime);

@@ -105,6 +105,60 @@ public sealed class ModuleDependencyTests
     }
 
     [Test]
+    public void PuttyResourceMonitoringPrimitivesLiveWithThePuttyProtocolModule()
+    {
+        string root = FindRepositoryRoot();
+        Assert.Multiple(() =>
+        {
+            Assert.That(File.Exists(Path.Combine(root, "LoipvRemote.Protocols.Putty", "Monitoring", "LinuxResourceProbe.cs")), Is.True);
+            Assert.That(File.Exists(Path.Combine(root, "LoipvRemote.Protocols.Putty", "Monitoring", "LinuxResourceSampleParser.cs")), Is.True);
+            Assert.That(File.Exists(Path.Combine(root, "LoipvRemote.Protocols.Putty", "Monitoring", "RemoteResourceSnapshot.cs")), Is.True);
+            Assert.That(File.Exists(Path.Combine(root, "LoipvRemote.Desktop", "Connection", "Monitoring", "LinuxResourceProbe.cs")), Is.False);
+            Assert.That(File.Exists(Path.Combine(root, "LoipvRemote.Desktop", "Connection", "Monitoring", "LinuxResourceSampleParser.cs")), Is.False);
+            Assert.That(File.Exists(Path.Combine(root, "LoipvRemote.Desktop", "Connection", "Monitoring", "RemoteResourceSnapshot.cs")), Is.False);
+        });
+    }
+
+    [Test]
+    public void PuttyMonitoringRuntimeDoesNotRemainInDesktopShell()
+    {
+        string root = FindRepositoryRoot();
+        string desktopMonitoringRoot = Path.Combine(root, "LoipvRemote.Desktop", "Connection", "Monitoring");
+        string puttyMonitoringRoot = Path.Combine(root, "LoipvRemote.Protocols.Putty", "Monitoring");
+
+        string[] desktopSources = Directory.EnumerateFiles(desktopMonitoringRoot, "*.cs", SearchOption.AllDirectories)
+            .Select(File.ReadAllText)
+            .ToArray();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(File.Exists(Path.Combine(puttyMonitoringRoot, "PuttyResourceMonitor.cs")), Is.True);
+            Assert.That(File.Exists(Path.Combine(puttyMonitoringRoot, "PuttyHostKeyTrustStore.cs")), Is.True);
+            Assert.That(desktopSources.Any(source => source.Contains("using Renci.SshNet", StringComparison.Ordinal)), Is.False);
+            Assert.That(desktopSources.Any(source => source.Contains("SshClient", StringComparison.Ordinal)), Is.False);
+            Assert.That(File.Exists(Path.Combine(desktopMonitoringRoot, "PuttyHostKeyTrustStore.cs")), Is.False);
+        });
+    }
+
+    [Test]
+    public void DesktopDoesNotReferenceSshNetTransferImplementation()
+    {
+        string root = FindRepositoryRoot();
+        string project = File.ReadAllText(Path.Combine(root, "LoipvRemote.Desktop", "LoipvRemote.Desktop.csproj"));
+        string[] sourceFiles = Directory.EnumerateFiles(Path.Combine(root, "LoipvRemote.Desktop"), "*.cs", SearchOption.AllDirectories)
+            .Where(path => !path.Contains(Path.Combine("bin", string.Empty), StringComparison.OrdinalIgnoreCase))
+            .Where(path => !path.Contains(Path.Combine("obj", string.Empty), StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(project, Does.Not.Contain("SSH.NET"));
+            Assert.That(sourceFiles.Select(File.ReadAllText).Any(source => source.Contains("Renci.SshNet", StringComparison.Ordinal)), Is.False);
+            Assert.That(File.Exists(Path.Combine(root, "LoipvRemote.Protocols.Putty", "Transfers", "PuttyFileTransfer.cs")), Is.True);
+        });
+    }
+
+    [Test]
     public void CompositionRootDoesNotPublishConcreteConnectionStoreService()
     {
         string source = File.ReadAllText(Path.Combine(
@@ -421,7 +475,6 @@ public sealed class ModuleDependencyTests
     [TestCase("Config", "Serializers", "MiscSerializers", "RemoteDesktopConnectionManagerDeserializer.cs")]
     [TestCase("Tools", "Cmdline", "CmdArgumentsInterpreter.cs")]
     [TestCase("Tools", "ScanHost.cs")]
-    [TestCase("Tools", "SecureTransfer.cs")]
     [TestCase("Config", "Putty", "PuttySessionsRegistryProvider.cs")]
     [TestCase("Connection", "InterfaceControl.cs")]
     [TestCase("UI", "StatusImageList.cs")]

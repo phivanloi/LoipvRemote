@@ -147,15 +147,16 @@ namespace LoipvRemote.UI.Menu
             connectionWindow?.NavigateToPreviousTab();
         }
 
-        private static void JumpToSessionNumber(int index)
+        private void JumpToSessionNumber(int index)
         {
             var connectionWindow = GetActiveConnectionWindow();
             connectionWindow?.NavigateToTab(index);
         }
 
-        private static ConnectionWindow? GetActiveConnectionWindow()
+        private ConnectionWindow? GetActiveConnectionWindow()
         {
-            return FrmMain.Default.pnlDock?.ActiveDocument as ConnectionWindow;
+            Form? owner = GetCurrentParent()?.FindForm();
+            return (owner as FrmMain)?.pnlDock?.ActiveDocument as ConnectionWindow;
         }
     }
 }

@@ -156,7 +156,8 @@ namespace LoipvRemote.App
         private static void StartApplication(IServiceProvider services)
         {
             ArgumentNullException.ThrowIfNull(services);
-            CatchAllUnhandledExceptions();
+            MainWindowContext mainWindowContext = services.GetRequiredService<MainWindowContext>();
+            CatchAllUnhandledExceptions(mainWindowContext);
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 
@@ -171,7 +172,7 @@ namespace LoipvRemote.App
 
             ShowSplashOnStaThread();
 
-            FrmMain mainWindow = FrmMain.Default;
+            FrmMain mainWindow = new();
             mainWindow.AttachRuntime(services.GetRequiredService<DesktopShellRuntime>());
             services.GetRequiredService<ConnectionWorkspaceAdapter>().Attach(mainWindow);
             Application.Run(mainWindow);
@@ -234,27 +235,29 @@ namespace LoipvRemote.App
             return windowHandle;
         }
 
-        private static void CatchAllUnhandledExceptions()
+        private static void CatchAllUnhandledExceptions(MainWindowContext mainWindowContext)
         {
             Application.ThreadException += ApplicationOnThreadException;
             Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
             AppDomain.CurrentDomain.UnhandledException += CurrentDomainOnUnhandledException;
+
+            void ApplicationOnThreadException(object? sender, ThreadExceptionEventArgs e) =>
+                ShowUnhandledException(mainWindowContext, e.Exception, false);
+
+            void CurrentDomainOnUnhandledException(object? sender, UnhandledExceptionEventArgs e) =>
+                ShowUnhandledException(mainWindowContext,
+                    e.ExceptionObject as Exception ?? new InvalidOperationException(e.ExceptionObject?.ToString() ?? "Unknown error"),
+                    e.IsTerminating);
         }
 
-        private static void ApplicationOnThreadException(object? sender, ThreadExceptionEventArgs e)
+        private static void ShowUnhandledException(MainWindowContext mainWindowContext, Exception exception, bool isFatal)
         {
             CloseSplash();
-            if (FrmMain.Default.IsDisposed) return;
-            UnhandledExceptionForm window = new(e.Exception, false);
-            window.ShowDialog(FrmMain.Default);
-        }
+            if (mainWindowContext.Current is not { IsDisposed: false } mainWindow)
+                return;
 
-        private static void CurrentDomainOnUnhandledException(object? sender, UnhandledExceptionEventArgs e)
-        {
-            Exception exception = e.ExceptionObject as Exception
-                                  ?? new InvalidOperationException(e.ExceptionObject?.ToString() ?? "Unknown error");
-            UnhandledExceptionForm window = new(exception, e.IsTerminating);
-            window.ShowDialog(FrmMain.Default);
+            using UnhandledExceptionForm window = new(exception, isFatal, mainWindow);
+            window.ShowDialog(mainWindow);
         }
 
         private static void ShowSplashOnStaThread()

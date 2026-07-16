@@ -1,8 +1,7 @@
 using LoipvRemote.App;
 using System;
 using System.IO;
-using System.Threading;
-using LoipvRemote.Tools;
+using LoipvRemote.Protocols.Putty.Transfers;
 using WeifenLuo.WinFormsUI.Docking;
 using System.Windows.Forms;
 using LoipvRemote.Messages;
@@ -382,9 +381,9 @@ namespace LoipvRemote.UI.Window
 
         #region Private Methods
 
-        private SecureTransfer st = null!;
+        private PuttyFileTransfer? _transfer;
 
-        private void StartTransfer(SecureTransfer.SSHTransferProtocol Protocol)
+        private void StartTransfer(PuttyFileTransferProtocol protocol)
         {
             if (AllFieldsSet() == false)
             {
@@ -400,91 +399,50 @@ namespace LoipvRemote.UI.Window
 
             try
             {
-                st = new SecureTransfer(txtHost.Text, txtUser.Text, txtPassword.Text, int.Parse(txtPort.Text, CultureInfo.InvariantCulture), Protocol,
-                                        txtLocalFile.Text, txtRemoteFile.Text, MessageCollector);
-
-                // Connect creates the protocol objects and makes the initial connection.
-                st.Connect();
-
-                switch (Protocol)
-                {
-                    case SecureTransfer.SSHTransferProtocol.SCP:
-                        st.ScpClt.Uploading += ScpClt_Uploading;
-                        break;
-                    case SecureTransfer.SSHTransferProtocol.SFTP:
-                        st.asyncCallback = AsyncCallback;
-                        break;
-                }
-
-                Thread t = new(StartTransferBG);
-                t.SetApartmentState(ApartmentState.STA);
-                t.IsBackground = true;
-                t.Start();
+                _transfer?.Dispose();
+                _transfer = new PuttyFileTransfer(new PuttyFileTransferRequest(
+                    txtHost.Text,
+                    int.Parse(txtPort.Text, CultureInfo.InvariantCulture),
+                    txtUser.Text,
+                    txtPassword.Text,
+                    txtLocalFile.Text,
+                    txtRemoteFile.Text,
+                    protocol));
+                _transfer.ProgressChanged += OnTransferProgress;
+                _ = StartTransferAsync(_transfer, txtLocalFile.Text);
             }
             catch (Exception ex)
             {
                 MessageCollector.AddExceptionStackTrace(Language.SshTransferFailed, ex);
-                st?.Disconnect();
-                st?.Dispose();
             }
         }
 
-        private void AsyncCallback(IAsyncResult ar)
+        private async Task StartTransferAsync(PuttyFileTransfer transfer, string sourcePath)
         {
-            MessageCollector.AddMessage(MessageClass.InformationMsg, $"SFTP AsyncCallback completed.", true);
-        }
-
-        private void ScpClt_Uploading(object? sender, Renci.SshNet.Common.ScpUploadEventArgs e)
-        {
-            // If the file size is over 2 gigs, convert to kb. This means we'll support a 2TB file.
-            int max = e.Size > int.MaxValue ? Convert.ToInt32(e.Size / 1024) : Convert.ToInt32(e.Size);
-
-            // yes, compare to size since that's the total/original file size
-            int cur = e.Size > int.MaxValue ? Convert.ToInt32(e.Uploaded / 1024) : Convert.ToInt32(e.Uploaded);
-
-            SshTransfer_Progress(cur, max);
-        }
-
-        private void StartTransferBG()
-        {
+            DisableButtons();
             try
             {
-                DisableButtons();
-                MessageCollector.AddMessage(MessageClass.InformationMsg,
-                                                    $"Transfer of {Path.GetFileName(st.SrcFile)} started.", true);
-                st.Upload();
-
-                // SftpClient is Asynchronous, so we need to wait here after the upload and handle the status directly since no status events are raised.
-                if (st.Protocol == SecureTransfer.SSHTransferProtocol.SFTP)
-                {
-                    FileInfo fi = new(st.SrcFile);
-                    while (!st.asyncResult.IsCompleted)
-                    {
-                        int max = fi.Length > int.MaxValue
-                            ? Convert.ToInt32(fi.Length / 1024)
-                            : Convert.ToInt32(fi.Length);
-
-                        int cur = fi.Length > int.MaxValue
-                            ? Convert.ToInt32(st.asyncResult.UploadedBytes / 1024)
-                            : Convert.ToInt32(st.asyncResult.UploadedBytes);
-                        SshTransfer_Progress(cur, max);
-                        Thread.Sleep(50);
-                    }
-                }
-
-                MessageCollector.AddMessage(MessageClass.InformationMsg,
-                                                    $"Transfer of {Path.GetFileName(st.SrcFile)} completed.", true);
-                st.Disconnect();
-                st.Dispose();
-                EnableButtons();
+                MessageCollector.AddMessage(MessageClass.InformationMsg, $"Transfer of {Path.GetFileName(sourcePath)} started.", true);
+                await transfer.UploadAsync().ConfigureAwait(false);
+                MessageCollector.AddMessage(MessageClass.InformationMsg, $"Transfer of {Path.GetFileName(sourcePath)} completed.", true);
             }
             catch (Exception ex)
             {
                 MessageCollector.AddExceptionStackTrace(Language.SshBackgroundTransferFailed, ex,
                                                                 MessageClass.ErrorMsg, false);
-                st?.Disconnect();
-                st?.Dispose();
             }
+            finally
+            {
+                transfer.Dispose();
+                EnableButtons();
+            }
+        }
+
+        private void OnTransferProgress(long transferredBytes, long totalBytes)
+        {
+            int max = totalBytes > int.MaxValue ? int.MaxValue : (int)Math.Max(totalBytes, 1);
+            int current = transferredBytes > int.MaxValue ? max : (int)Math.Min(Math.Max(transferredBytes, 0), max);
+            SshTransfer_Progress(current, max);
         }
 
         private bool AllFieldsSet()
@@ -612,11 +570,11 @@ namespace LoipvRemote.UI.Window
         {
             if (radProtSCP.Checked)
             {
-                StartTransfer(SecureTransfer.SSHTransferProtocol.SCP);
+                StartTransfer(PuttyFileTransferProtocol.Scp);
             }
             else if (radProtSFTP.Checked)
             {
-                StartTransfer(SecureTransfer.SSHTransferProtocol.SFTP);
+                StartTransfer(PuttyFileTransferProtocol.Sftp);
             }
         }
 

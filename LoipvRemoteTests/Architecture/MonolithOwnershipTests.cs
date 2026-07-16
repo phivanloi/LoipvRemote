@@ -15,6 +15,8 @@ public sealed class MonolithOwnershipTests
         "using AxMSTSCLib;",
         "using VncSharp;",
         "using Microsoft.Web.WebView2;",
+        "using Renci.SshNet;",
+        "using Renci.SshNet.",
         "ProtectedData.Unprotect(",
         "ProtectedData.Protect(",
         "Marshal."
@@ -123,6 +125,29 @@ public sealed class MonolithOwnershipTests
 
         Assert.That(source, Does.Not.Contain("ConnectionsService"));
         Assert.That(source, Does.Contain("Func<string, ConnectionInfo?> connectionLookup"));
+    }
+
+    [Test]
+    public void DesktopShellDoesNotCreateOrResolveTheMainWindowThroughAStaticSingleton()
+    {
+        string root = FindRepositoryRoot();
+        string[] productionSources = Directory.EnumerateFiles(
+                Path.Combine(root, "LoipvRemote.Desktop"),
+                "*.cs",
+                SearchOption.AllDirectories)
+            .Where(path => !IsBuildArtifact(path))
+            .Select(File.ReadAllText)
+            .ToArray();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(productionSources.Any(source => source.Contains("FrmMain.Default", StringComparison.Ordinal)), Is.False);
+            Assert.That(productionSources.Any(source => source.Contains("static FrmMain", StringComparison.Ordinal)), Is.False);
+            Assert.That(productionSources.Any(source => source.Contains("FrmMain.OptionsForm", StringComparison.Ordinal)), Is.False);
+            Assert.That(
+                File.Exists(Path.Combine(root, "LoipvRemote.Desktop", "App", "Composition", "MainWindowContext.cs")),
+                Is.True);
+        });
     }
 
     private static bool IsBuildArtifact(string path) =>

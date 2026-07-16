@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using LoipvRemote.Messages.MessageFilteringOptions;
 using LoipvRemote.Messages.MessageWriters;
+using LoipvRemote.App.Composition;
 using LoipvRemote.UI.Forms;
 using LoipvRemote.UI.Window;
 using WeifenLuo.WinFormsUI.Docking;
@@ -11,12 +12,16 @@ using WeifenLuo.WinFormsUI.Docking;
 namespace LoipvRemote.Messages.WriterDecorators
 {
     [SupportedOSPlatform("windows")]
-    public class MessageFocusDecorator(ErrorAndInfoWindow messageWindow, IMessageTypeFilteringOptions filter, IMessageWriter decoratedWriter) : IMessageWriter
+    public class MessageFocusDecorator(
+        ErrorAndInfoWindow messageWindow,
+        IMessageTypeFilteringOptions filter,
+        IMessageWriter decoratedWriter,
+        MainWindowContext mainWindowContext) : IMessageWriter
     {
         private readonly IMessageTypeFilteringOptions _filter = filter ?? throw new ArgumentNullException(nameof(filter));
         private readonly IMessageWriter _decoratedWriter = decoratedWriter ?? throw new ArgumentNullException(nameof(decoratedWriter));
         private readonly ErrorAndInfoWindow _messageWindow = messageWindow ?? throw new ArgumentNullException(nameof(messageWindow));
-        private readonly FrmMain _frmMain = FrmMain.Default;
+        private readonly MainWindowContext _mainWindowContext = mainWindowContext ?? throw new ArgumentNullException(nameof(mainWindowContext));
 
         public void Write(IMessage message)
         {
@@ -55,14 +60,15 @@ namespace LoipvRemote.Messages.WriterDecorators
         private void SwitchToMessage()
         {
             // do not attempt to focus the notification panel if the application is closing
-            if (_frmMain == null || _frmMain.IsClosing || !_frmMain.IsAccessible || _frmMain.IsDisposed)
+            FrmMain? mainWindow = _mainWindowContext.Current;
+            if (mainWindow is null || mainWindow.IsClosing || !mainWindow.IsAccessible || mainWindow.IsDisposed)
             {
                 return;
             }
 
             if (_messageWindow.InvokeRequired)
             {
-                _frmMain.Invoke((MethodInvoker)SwitchToMessage);
+                mainWindow.Invoke((MethodInvoker)SwitchToMessage);
                 return;
             }
 
@@ -70,14 +76,14 @@ namespace LoipvRemote.Messages.WriterDecorators
             if (_messageWindow.DockState == DockState.Unknown)
                 return;
 
-            _messageWindow.PreviousActiveForm = (DockContent)_frmMain.pnlDock.ActiveContent;
+            _messageWindow.PreviousActiveForm = (DockContent)mainWindow.pnlDock.ActiveContent;
 
             // Show the notifications panel solution:
             // https://stackoverflow.com/questions/13843604/calling-up-dockpanel-suites-autohidden-dockcontent-programmatically
             if (AutoHideEnabled(_messageWindow))
-                _frmMain.pnlDock.ActiveAutoHideContent = _messageWindow;
+                mainWindow.pnlDock.ActiveAutoHideContent = _messageWindow;
             else
-                _messageWindow.Show(_frmMain.pnlDock);
+                _messageWindow.Show(mainWindow.pnlDock);
 
             _messageWindow.lvErrorCollector.Focus();
             _messageWindow.lvErrorCollector.SelectedItems.Clear();

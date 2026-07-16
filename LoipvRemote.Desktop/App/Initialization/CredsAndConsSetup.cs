@@ -7,9 +7,12 @@ using LoipvRemote.Properties;
 namespace LoipvRemote.App.Initialization
 {
     [SupportedOSPlatform("windows")]
-    public sealed class CredsAndConsSetup(IConnectionTreeWorkspace workspace, ConnectionLoadingService connectionLoadingService)
+    public sealed class CredsAndConsSetup(
+        IConnectionTreeWorkspace workspace,
+        ConnectionLoadingService connectionLoadingService,
+        Func<bool>? isClosing = null)
     {
-        private readonly SaveConnectionsOnEdit _saveConnectionsOnEdit = new(workspace);
+        private readonly SaveConnectionsOnEdit _saveConnectionsOnEdit = new(workspace, isClosing);
 
         public void LoadCredsAndCons()
         {

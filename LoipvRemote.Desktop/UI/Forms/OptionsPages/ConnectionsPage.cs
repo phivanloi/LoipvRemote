@@ -14,8 +14,6 @@ namespace LoipvRemote.UI.Forms.OptionsPages
     {
         #region Private Fields
         private OptRegistryConnectionsPage pageRegSettingsInstance = null!;
-        private readonly FrmMain _frmMain = FrmMain.Default;
-
         #endregion
 
         public ConnectionsPage()
@@ -131,12 +129,16 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             Properties.OptionsBackupPage.Default.AutoSaveEveryMinutes = (int)numAutoSave.Value;
             if (Properties.OptionsBackupPage.Default.AutoSaveEveryMinutes > 0)
             {
-                _frmMain.tmrAutoSave.Interval = Properties.OptionsBackupPage.Default.AutoSaveEveryMinutes * 60000;
-                _frmMain.tmrAutoSave.Enabled = true;
+                if (MainWindow is { } mainWindow)
+                {
+                    mainWindow.tmrAutoSave.Interval = Properties.OptionsBackupPage.Default.AutoSaveEveryMinutes * 60000;
+                    mainWindow.tmrAutoSave.Enabled = true;
+                }
             }
             else
             {
-                _frmMain.tmrAutoSave.Enabled = false;
+                if (MainWindow is { } mainWindow)
+                    mainWindow.tmrAutoSave.Enabled = false;
             }
 
             // Save ConfirmCloseConnection setting

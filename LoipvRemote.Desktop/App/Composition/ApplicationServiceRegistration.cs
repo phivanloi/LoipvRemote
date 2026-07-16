@@ -1,6 +1,7 @@
 using LoipvRemote.App.Configuration;
 using LoipvRemote.Config.Putty;
 using LoipvRemote.Connection;
+using LoipvRemote.Connection.Monitoring;
 using LoipvRemote.Container;
 using LoipvRemote.Connectors.Abstractions;
 using LoipvRemote.Desktop.UI.Adapters;
@@ -17,6 +18,7 @@ using LoipvRemote.Infrastructure.Windows.Process;
 using LoipvRemote.Infrastructure.Windows.Registry;
 using LoipvRemote.Messages;
 using LoipvRemote.Protocols.Abstractions;
+using LoipvRemote.Protocols.Putty.Monitoring;
 using LoipvRemote.Infrastructure.Windows.Com;
 using LoipvRemote.Infrastructure.Windows.WindowEmbedding;
 using LoipvRemote.Desktop.Composition;
@@ -39,6 +41,7 @@ public static class ApplicationServiceRegistration
         ArgumentNullException.ThrowIfNull(services);
 
         services.AddSingleton<RuntimeState>();
+        services.AddSingleton<MainWindowContext>();
         services.AddSingleton<DesktopWindowCatalog>();
         services.AddSingleton<MessageCollector>();
         services.AddSingleton<Startup>();
@@ -74,6 +77,9 @@ public static class ApplicationServiceRegistration
         services.AddSingleton<IStringSecretStore>(provider => provider.GetRequiredService<DpapiStringSecretStore>());
         services.AddSingleton<IConnectionSecretResolver, DesktopConnectionSecretResolver>();
         services.AddSingleton<IWindowsRegistryValueReader, WindowsRegistryValueReader>();
+        services.AddSingleton<IPuttyHostKeyRegistry, WindowsPuttyHostKeyRegistry>();
+        services.AddSingleton<IPuttyHostKeyTrustStore, PuttyHostKeyTrustStore>();
+        services.AddSingleton<PuttyResourceMonitorFactory>();
         services.AddSingleton<IExternalApplicationHostFactory, WindowsExternalApplicationHostFactory>();
 
         services.AddSingleton<IExternalCredentialConnector, DelineaCredentialConnector>();
@@ -105,6 +111,7 @@ public static class ApplicationServiceRegistration
             provider.GetRequiredService<PanelAdder>(),
             provider.GetRequiredService<ConnectionSessionOrchestrator>(),
             provider.GetRequiredService<SessionLifecycleCoordinator>(),
+            provider.GetRequiredService<PuttyResourceMonitorFactory>(),
             connection => provider.GetRequiredService<ExternalToolsService>()
                 .GetExtAppByName(connection.ExtApp)
                 ?.ToDefinition(connection),

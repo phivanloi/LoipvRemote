@@ -413,13 +413,6 @@ namespace LoipvRemote.Tools.WindowsRegistry
                 TypeCode.Int64 => RegistryValueKind.QWord,
                 TypeCode.Boolean => RegistryValueKind.DWord,
                 TypeCode.Byte => RegistryValueKind.Binary,
-                /*
-                TypeCode.Single => RegistryValueKind.String,
-                TypeCode.Double => RegistryValueKind.String;
-                TypeCode.DateTime => RegistryValueKind.String;
-                TypeCode.Char => RegistryValueKind.String;
-                TypeCode.Decimal => RegistryValueKind.String;
-                */
                 _ => RegistryValueKind.String,// Default to String for unsupported types
             };
         }

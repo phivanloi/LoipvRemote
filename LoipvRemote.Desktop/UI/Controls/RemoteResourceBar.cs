@@ -4,6 +4,7 @@ using System.Linq;
 using System.Windows.Forms;
 using LoipvRemote.Connection;
 using LoipvRemote.Connection.Monitoring;
+using LoipvRemote.Protocols.Putty.Monitoring;
 using System.Runtime.Versioning;
 
 namespace LoipvRemote.UI.Controls
@@ -24,7 +25,7 @@ namespace LoipvRemote.UI.Controls
         private RemoteResourceMonitorState _monitorState = RemoteResourceMonitorState.WaitingForActiveTab;
         private readonly ResourceMetricLabel[] _metrics;
 
-        public RemoteResourceBar(ConnectionInfo connection)
+        public RemoteResourceBar(ConnectionInfo connection, PuttyResourceMonitorFactory monitorFactory)
         {
             Dock = DockStyle.Bottom;
             Height = 28;
@@ -66,7 +67,8 @@ namespace LoipvRemote.UI.Controls
             Paint += DrawTopBorder;
             Resize += (_, _) => ApplyResponsiveLayout();
 
-            _monitor = new SshResourceMonitor(connection);
+            _monitor = monitorFactory?.Create(connection)
+                ?? throw new ArgumentNullException(nameof(monitorFactory));
             _monitor.SnapshotUpdated += OnSnapshotUpdated;
             _monitor.StatusChanged += OnStatusChanged;
             ApplyResponsiveLayout();

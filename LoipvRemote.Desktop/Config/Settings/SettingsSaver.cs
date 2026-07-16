@@ -23,7 +23,7 @@ namespace LoipvRemote.Config.Settings
         {
             try
             {
-                WindowPlacement windowPlacement = new(FrmMain.Default);
+                WindowPlacement windowPlacement = new(frmMain);
                 if (frmMain.WindowState == FormWindowState.Minimized & windowPlacement.RestoreToMaximized)
                 {
                     frmMain.Opacity = 0;
@@ -70,7 +70,7 @@ namespace LoipvRemote.Config.Settings
 
                 Properties.Settings.Default.Save();
 
-                SaveDockPanelLayout(messageCollector);
+                SaveDockPanelLayout(frmMain, messageCollector);
                 SaveExternalApps(externalToolsService, messageCollector);
             }
             catch (Exception ex)
@@ -113,7 +113,7 @@ namespace LoipvRemote.Config.Settings
             }
         }
 
-        private static void SaveDockPanelLayout(MessageCollector messageCollector)
+        private static void SaveDockPanelLayout(FrmMain frmMain, MessageCollector messageCollector)
         {
             string panelLayoutXmlFilePath = SettingsFileInfo.SettingsPath + "\\" + SettingsFileInfo.LayoutFileName;
             DockPanelLayoutSaver panelLayoutSaver = new(
@@ -121,7 +121,7 @@ namespace LoipvRemote.Config.Settings
                                                             new FileDataProvider(panelLayoutXmlFilePath),
                                                             messageCollector
                                                            );
-            panelLayoutSaver.Save();
+            panelLayoutSaver.Save(frmMain);
         }
 
         private static void SaveExternalApps(ExternalToolsService externalToolsService, MessageCollector messageCollector)

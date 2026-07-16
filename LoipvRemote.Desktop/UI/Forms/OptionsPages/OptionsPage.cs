@@ -6,12 +6,17 @@ using System.Windows.Forms;
 using LoipvRemote.Themes;
 using LoipvRemote.UI.DesignSystem;
 using LoipvRemote.App.Composition;
+using LoipvRemote.UI.Forms;
 
 namespace LoipvRemote.UI.Forms.OptionsPages
 {
     [SupportedOSPlatform("windows")]
     public class OptionsPage : UserControl
     {
+        protected DesktopShellRuntime? ShellRuntime { get; private set; }
+
+        protected FrmMain? MainWindow => ShellRuntime?.MainWindowContext.Current;
+
         protected OptionsPage()
         {
             InitializeComponent();
@@ -52,6 +57,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
         public virtual void AttachRuntime(DesktopShellRuntime desktopShellRuntime)
         {
             ArgumentNullException.ThrowIfNull(desktopShellRuntime);
+            ShellRuntime = desktopShellRuntime;
         }
 
         public virtual void RevertSettings()

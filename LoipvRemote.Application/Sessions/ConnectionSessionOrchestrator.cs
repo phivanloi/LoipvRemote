@@ -76,9 +76,18 @@ public sealed class ConnectionSessionOrchestrator(
         IProtocolSession session,
         CancellationToken cancellationToken)
     {
-        SessionStartResult result = await _lifecycleCoordinator
-            .StartAsync(session, cancellationToken)
-            .ConfigureAwait(false);
+        SessionStartResult result;
+        try
+        {
+            result = await _lifecycleCoordinator
+                .StartAsync(session, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch
+        {
+            await session.DisposeAsync().ConfigureAwait(false);
+            throw;
+        }
         if (result == SessionStartResult.Started)
         {
             PublishState(definition.Id, session.State);
@@ -113,8 +122,14 @@ public sealed class ConnectionSessionOrchestrator(
     public async ValueTask StopAsync(IProtocolSession session, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(session);
-        await _lifecycleCoordinator.StopAsync(session, cancellationToken).ConfigureAwait(false);
-        await session.DisposeAsync().ConfigureAwait(false);
+        try
+        {
+            await _lifecycleCoordinator.StopAsync(session, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            await session.DisposeAsync().ConfigureAwait(false);
+        }
     }
 }
 

@@ -22,8 +22,9 @@ public sealed class ConnectionLoadingService(
     MessageCollector messageCollector,
     ConnectionWorkspaceAdapter connectionWorkspace,
     ConnectionImportService connectionImportService,
-    Func<ContainerInfo> connectionRootProvider)
+    Func<ContainerInfo> connectionRootProvider) : IDisposable
 {
+    private readonly CancellationTokenSource _shutdownCancellation = new();
     private readonly IConnectionTreeWorkspace _workspace = workspace ?? throw new ArgumentNullException(nameof(workspace));
     private readonly MessageCollector _messageCollector = messageCollector ?? throw new ArgumentNullException(nameof(messageCollector));
     private readonly ConnectionWorkspaceAdapter _connectionWorkspace = connectionWorkspace ?? throw new ArgumentNullException(nameof(connectionWorkspace));
@@ -32,12 +33,22 @@ public sealed class ConnectionLoadingService(
 
     public Task LoadConnectionsAsync() => LoadConnectionsAsync(false);
 
+    public void CancelPendingLoads() => _shutdownCancellation.Cancel();
+
+    public void Dispose()
+    {
+        _shutdownCancellation.Dispose();
+        GC.SuppressFinalize(this);
+    }
+
     public async Task LoadConnectionsAsync(bool withDialog = false)
     {
+        CancellationToken cancellationToken = _shutdownCancellation.Token;
         string connectionFileName = string.Empty;
 
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
             _workspace.DisableRemoteSynchronization();
 
             if (withDialog)
@@ -55,13 +66,22 @@ public sealed class ConnectionLoadingService(
                 connectionFileName = _workspace.GetStartupConnectionFileName();
             }
 
-            await _workspace.LoadConnectionsAsync(OptionsDBsPage.Default.UseSQLServer, false, connectionFileName).ConfigureAwait(true);
+            await _workspace.LoadConnectionsAsync(
+                OptionsDBsPage.Default.UseSQLServer,
+                false,
+                connectionFileName,
+                cancellationToken).ConfigureAwait(true);
             if (OptionsDBsPage.Default.UseSQLServer)
                 _workspace.LastSqlUpdate = DateTime.Now.ToUniversalTime();
             else
                 _workspace.LastFileUpdate = File.GetLastWriteTime(connectionFileName);
 
             _workspace.EnableRemoteSynchronization();
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // Shutdown cancels a fire-and-forget startup load so it cannot
+            // raise dialogs or mutate the tree after the shell has closed.
         }
         catch (Exception exception)
         {

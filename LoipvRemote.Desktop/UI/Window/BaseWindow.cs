@@ -85,24 +85,6 @@ namespace LoipvRemote.UI.Window
         }
 
 
-        #region Private Methods
-
-        /*
-                private void Base_Load(object? sender, EventArgs e)
-                {
-                    FrmMain.Default.ShowHidePanelTabs();
-                }
-        */
-
-        /*
-                private void Base_FormClosed(object? sender, System.Windows.Forms.FormClosedEventArgs e)
-                {
-                    FrmMain.Default.ShowHidePanelTabs(this);
-                }
-        */
-
-        #endregion
-
         private void InitializeComponent()
         {
             this.SuspendLayout();

@@ -8,8 +8,8 @@ using LoipvRemote.Protocols.ExternalApps;
 using LoipvRemote.Protocols.Putty;
 using LoipvRemote.Protocols.Rdp;
 using LoipvRemote.Protocols.Vnc;
-using LoipvRemote.UseCases.Credentials;
 using LoipvRemote.UseCases.Configuration;
+using LoipvRemote.UseCases.Credentials;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace LoipvRemote.Desktop.Composition;
@@ -20,8 +20,6 @@ public static class ProtocolServiceRegistration
     public static void Register(IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
-
-        services.AddSingleton<IPuttyExecutablePathProvider, SystemPuttyExecutablePathProvider>();
 
         services.AddSingleton<ExternalApplicationProtocolFactory>();
         services.AddSingleton<LocalProtocolFactory>();

@@ -56,9 +56,10 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             }
 
             txtCredentialsUsername.Text = Properties.OptionsCredentialsPage.Default.DefaultUsername;
-            txtCredentialsPassword.Text = FrmMain.Default.UnprotectUserSecret(
-                Properties.OptionsCredentialsPage.Default.DefaultPassword,
-                SecretPurposes.DefaultCredentialPassword);
+            string storedPassword = Properties.OptionsCredentialsPage.Default.DefaultPassword;
+            txtCredentialsPassword.Text = ShellRuntime is null
+                ? storedPassword
+                : ShellRuntime.UserSecretStore.Unprotect(storedPassword, SecretPurposes.DefaultCredentialPassword);
             txtCredentialsDomain.Text = Properties.OptionsCredentialsPage.Default.DefaultDomain;
             txtCredentialsUserViaAPI.Text = Properties.OptionsCredentialsPage.Default.UserViaAPIDefault;
         }
@@ -79,9 +80,9 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             }
 
             Properties.OptionsCredentialsPage.Default.DefaultUsername = txtCredentialsUsername.Text;
-            Properties.OptionsCredentialsPage.Default.DefaultPassword = FrmMain.Default.ProtectUserSecret(
-                txtCredentialsPassword.Text,
-                SecretPurposes.DefaultCredentialPassword);
+            Properties.OptionsCredentialsPage.Default.DefaultPassword = ShellRuntime is null
+                ? txtCredentialsPassword.Text
+                : ShellRuntime.UserSecretStore.Protect(txtCredentialsPassword.Text, SecretPurposes.DefaultCredentialPassword);
             Properties.OptionsCredentialsPage.Default.DefaultDomain = txtCredentialsDomain.Text;
             Properties.OptionsCredentialsPage.Default.UserViaAPIDefault = txtCredentialsUserViaAPI.Text;
         }

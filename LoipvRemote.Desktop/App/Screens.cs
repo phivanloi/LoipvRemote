@@ -8,9 +8,10 @@ namespace LoipvRemote.App
     public static class Screens
     {
         [SupportedOSPlatform("windows")]
-        public static void SendFormToScreen(Screen screen)
+        public static void SendFormToScreen(FrmMain frmMain, Screen screen)
         {
-            FrmMain frmMain = FrmMain.Default;
+            ArgumentNullException.ThrowIfNull(frmMain);
+            ArgumentNullException.ThrowIfNull(screen);
             bool wasMax = false;
 
             if (frmMain.WindowState == FormWindowState.Maximized)

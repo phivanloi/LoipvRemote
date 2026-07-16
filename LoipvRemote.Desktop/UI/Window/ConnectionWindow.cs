@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Windows.Forms;
 using LoipvRemote.App;
@@ -86,18 +87,41 @@ namespace LoipvRemote.UI.Window
             _windows = windows ?? throw new ArgumentNullException(nameof(windows));
         }
 
-        private InterfaceControl GetInterfaceControl()
-        {
-            return TryGetInterfaceControl()
-                ?? throw new InvalidOperationException("The connection window has no embedded interface control.");
-        }
-
         // The main shell owns the outer DockPanel while this window owns the
         // per-connection DockPanel. Expose the active embedded surface so the
         // shell can route keyboard messages to the currently selected session
         // even when the active document is a ConnectionWindow rather than a
         // ConnectionTab.
-        internal InterfaceControl? TryGetInterfaceControl() => InterfaceControl.FindInterfaceControl(connDock);
+        internal InterfaceControl? TryGetInterfaceControl()
+        {
+            // DockPanel can raise ActiveContentChanged while its native handle is
+            // being created or destroyed. Treat that transition as an empty
+            // workspace; callers that need a live protocol surface can retry on
+            // the next notification instead of taking down the UI thread.
+            try
+            {
+                if (IsDisposed || connDock.IsDisposed)
+                    return null;
+
+                return InterfaceControl.FindInterfaceControl(connDock);
+            }
+            catch (ObjectDisposedException)
+            {
+                return null;
+            }
+            catch (InvalidOperationException)
+            {
+                return null;
+            }
+            catch (Exception ex)
+            {
+                // Docking libraries can surface other transition exceptions while
+                // native handles are being replaced. This lookup is best-effort;
+                // never let focus/message routing terminate the UI thread.
+                Trace.TraceWarning($"Could not resolve the active interface control: {ex}");
+                return null;
+            }
+        }
 
         private void SetEventHandlers()
         {
@@ -473,22 +497,38 @@ namespace LoipvRemote.UI.Window
 
         private void ConnDockOnActiveContentChanged(object? sender, EventArgs e)
         {
-            // DockPanel raises this event while a document is being created or
-            // torn down. During that transition there is no embedded protocol
-            // control yet; message/focus routing must simply wait for the next
-            // active-content notification instead of throwing on the UI thread.
-            InterfaceControl? ic = TryGetInterfaceControl();
-            if (ic?.Info is null) return;
-            ConnectionWorkspace.Select(ic.Info);
-
-            foreach (IDockContent document in connDock.DocumentsToArray())
+            try
             {
-                if (document is not ConnectionTab tab) continue;
-                InterfaceControl? candidate = InterfaceControl.FindInterfaceControl(tab);
-                candidate?.RemoteResourceBar?.SetIsActive(ReferenceEquals(candidate, ic));
-            }
+                // DockPanel raises this event while a document is being created or
+                // torn down. During that transition there is no embedded protocol
+                // control yet; message/focus routing must simply wait for the next
+                // active-content notification instead of throwing on the UI thread.
+                InterfaceControl? ic = TryGetInterfaceControl();
+                if (ic?.Info is null) return;
+                ConnectionWorkspace.Select(ic.Info);
 
-            FocusActiveProtocolAfterDocking(ic);
+                foreach (IDockContent document in connDock.DocumentsToArray())
+                {
+                    if (document is not ConnectionTab tab) continue;
+                    InterfaceControl? candidate = InterfaceControl.FindInterfaceControl(tab);
+                    candidate?.RemoteResourceBar?.SetIsActive(ReferenceEquals(candidate, ic));
+                }
+
+                FocusActiveProtocolAfterDocking(ic);
+            }
+            catch (ObjectDisposedException)
+            {
+                // The shell is closing; no UI work is required.
+            }
+            catch (InvalidOperationException)
+            {
+                // DockPanel may be between native-handle transitions. Ignore the
+                // event and let the next activation reconcile the active surface.
+            }
+            catch (Exception ex)
+            {
+                _messageCollector?.AddExceptionMessage("Active connection changed (UI.Window.ConnectionWindow) failed", ex);
+            }
         }
 
         private void FocusActiveProtocolAfterDocking(InterfaceControl expectedInterface)
@@ -496,13 +536,24 @@ namespace LoipvRemote.UI.Window
             if (IsDisposed || !IsHandleCreated)
                 return;
 
-            BeginInvoke((Action)(() =>
+            try
             {
-                if (IsDisposed || !ReferenceEquals(TryGetInterfaceControl(), expectedInterface))
-                    return;
+                BeginInvoke((Action)(() =>
+                {
+                    if (IsDisposed || !ReferenceEquals(TryGetInterfaceControl(), expectedInterface))
+                        return;
 
-                expectedInterface.Protocol.Focus();
-            }));
+                    expectedInterface.Protocol.Focus();
+                }));
+            }
+            catch (ObjectDisposedException)
+            {
+                // The window was disposed between the guard and BeginInvoke.
+            }
+            catch (InvalidOperationException)
+            {
+                // No native handle is available during teardown.
+            }
         }
 
         #endregion
@@ -513,7 +564,7 @@ namespace LoipvRemote.UI.Window
         {
             try
             {
-                InterfaceControl interfaceControl = GetInterfaceControl();
+                InterfaceControl? interfaceControl = TryGetInterfaceControl();
                 if (interfaceControl == null) return;
 
                 if (interfaceControl.Protocol is IViewOnlySession viewOnly)
@@ -580,7 +631,7 @@ namespace LoipvRemote.UI.Window
         {
             try
             {
-                InterfaceControl interfaceControl = GetInterfaceControl();
+                InterfaceControl? interfaceControl = TryGetInterfaceControl();
 
                 if (interfaceControl?.Protocol is ISmartSizingSession smartSizing)
                     smartSizing.ToggleSmartSize();
@@ -595,7 +646,7 @@ namespace LoipvRemote.UI.Window
         {
             try
             {
-                InterfaceControl interfaceControl = GetInterfaceControl();
+                InterfaceControl? interfaceControl = TryGetInterfaceControl();
                 if (interfaceControl == null) return;
 
                 if (interfaceControl.Info.Protocol == ProtocolKind.Ssh1 |
@@ -612,7 +663,7 @@ namespace LoipvRemote.UI.Window
         {
             try
             {
-                InterfaceControl interfaceControl = GetInterfaceControl();
+                InterfaceControl? interfaceControl = TryGetInterfaceControl();
                 if (interfaceControl == null) return;
 
                 Windows.Show(WindowType.SSHTransfer);
@@ -634,7 +685,7 @@ namespace LoipvRemote.UI.Window
         {
             try
             {
-                InterfaceControl interfaceControl = GetInterfaceControl();
+                InterfaceControl? interfaceControl = TryGetInterfaceControl();
                 if (!(interfaceControl?.Protocol is IViewOnlySession viewOnly))
                     return;
 
@@ -651,7 +702,7 @@ namespace LoipvRemote.UI.Window
         {
             try
             {
-                InterfaceControl interfaceControl = GetInterfaceControl();
+                InterfaceControl? interfaceControl = TryGetInterfaceControl();
                 if (interfaceControl?.Protocol is IRemoteScreenController screen)
                     screen.RefreshScreen();
             }
@@ -665,7 +716,7 @@ namespace LoipvRemote.UI.Window
         {
             try
             {
-                InterfaceControl interfaceControl = GetInterfaceControl();
+                InterfaceControl? interfaceControl = TryGetInterfaceControl();
                 if (interfaceControl?.Protocol is IRemoteSpecialKeysController specialKeys)
                     specialKeys.SendSpecialKeys(key);
             }
@@ -679,7 +730,7 @@ namespace LoipvRemote.UI.Window
         {
             try
             {
-                InterfaceControl interfaceControl = GetInterfaceControl();
+                InterfaceControl? interfaceControl = TryGetInterfaceControl();
                 if (interfaceControl?.Protocol is IFullscreenSession fullscreen)
                     fullscreen.ToggleFullscreen();
             }
@@ -694,7 +745,7 @@ namespace LoipvRemote.UI.Window
         {
             try
             {
-                InterfaceControl interfaceControl = GetInterfaceControl();
+                InterfaceControl? interfaceControl = TryGetInterfaceControl();
                 if (interfaceControl?.Protocol is IPuttySettingsSession puttySettings)
                     puttySettings.ShowSettingsDialog();
             }
@@ -749,7 +800,7 @@ namespace LoipvRemote.UI.Window
         {
             try
             {
-                InterfaceControl interfaceControl = GetInterfaceControl();
+                InterfaceControl? interfaceControl = TryGetInterfaceControl();
                 externalTool.Start(interfaceControl?.Info);
             }
             catch (Exception ex)
@@ -761,7 +812,7 @@ namespace LoipvRemote.UI.Window
 
         private void CloseTabMenu()
         {
-            if (GetInterfaceControl()?.Parent is not ConnectionTab selectedTab) return;
+            if (TryGetInterfaceControl()?.Parent is not ConnectionTab selectedTab) return;
 
             try
             {
@@ -775,7 +826,7 @@ namespace LoipvRemote.UI.Window
 
         private void CloseOtherTabs()
         {
-            if (GetInterfaceControl()?.Parent is not ConnectionTab selectedTab) return;
+            if (TryGetInterfaceControl()?.Parent is not ConnectionTab selectedTab) return;
             if (Settings.Default.ConfirmCloseConnection == (int)ConfirmCloseMode.Multiple)
             {
                 DialogResult result = CTaskDialog.MessageBox(this, GeneralAppInfo.ProductName,
@@ -810,7 +861,7 @@ namespace LoipvRemote.UI.Window
         {
             try
             {
-                if (GetInterfaceControl()?.Parent is not ConnectionTab selectedTab) return;
+                if (TryGetInterfaceControl()?.Parent is not ConnectionTab selectedTab) return;
                 DockPane dockPane = selectedTab.Pane;
 
                 bool pastTabToKeepAlive = false;
@@ -840,7 +891,7 @@ namespace LoipvRemote.UI.Window
         {
             try
             {
-                InterfaceControl interfaceControl = GetInterfaceControl();
+                InterfaceControl? interfaceControl = TryGetInterfaceControl();
                 if (interfaceControl == null) return;
                 _ = ConnectionInitiator.OpenConnectionAsync(interfaceControl.Info, ConnectionInfo.Force.DoNotJump);
             }
@@ -854,7 +905,7 @@ namespace LoipvRemote.UI.Window
         {
             try
             {
-                InterfaceControl interfaceControl = GetInterfaceControl();
+                InterfaceControl? interfaceControl = TryGetInterfaceControl();
                 if (interfaceControl == null)
                 {
                     MessageCollector.AddMessage(MessageClass.WarningMsg, "Reconnect (UI.Window.ConnectionWindow) failed. Could not find InterfaceControl.");
@@ -874,7 +925,7 @@ namespace LoipvRemote.UI.Window
         {
             try
             {
-                if (GetInterfaceControl() is not { Parent: ConnectionTab selectedTab }) return;
+                if (TryGetInterfaceControl() is not { Parent: ConnectionTab selectedTab }) return;
                 using (FrmInputBox frmInputBox = new(Language.NewTitle, Language.NewTitle, selectedTab.TabText))
                 {
                     DialogResult dr = frmInputBox.ShowDialog();

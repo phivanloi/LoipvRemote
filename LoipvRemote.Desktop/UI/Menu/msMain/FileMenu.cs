@@ -185,7 +185,7 @@ namespace LoipvRemote.UI.Menu
         {
             using (SaveFileDialog saveFileDialog = DialogFactory.ConnectionsSaveAsDialog())
             {
-                if (saveFileDialog.ShowDialog(FrmMain.Default) != DialogResult.OK)
+                if (saveFileDialog.ShowDialog(DesktopShellRuntime.MainWindowContext.Current) != DialogResult.OK)
                     return;
 
                 string newFileName = saveFileDialog.FileName;
@@ -206,7 +206,7 @@ namespace LoipvRemote.UI.Menu
 
         private void mMenFileExit_Click(object? sender, EventArgs e)
         {
-            Shutdown.Quit();
+            Shutdown.Quit(DesktopShellRuntime.MainWindowContext.Current);
         }
 
         private void mMenToolsOptions_Click(object? sender, EventArgs e)

@@ -37,6 +37,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
         public override void AttachRuntime(DesktopShellRuntime desktopShellRuntime)
         {
             ArgumentNullException.ThrowIfNull(desktopShellRuntime);
+            base.AttachRuntime(desktopShellRuntime);
             _connectionWorkspace = desktopShellRuntime.ConnectionTreeWorkspace;
             _userSecretStore = desktopShellRuntime.UserSecretStore;
             _messageCollector = desktopShellRuntime.MessageCollector;

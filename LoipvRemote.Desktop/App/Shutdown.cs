@@ -22,9 +22,12 @@ namespace LoipvRemote.App
     [SupportedOSPlatform("windows")]
     public static class Shutdown
     {
-        public static void Quit()
+        public static void Quit(FrmMain? mainWindow = null)
         {
-            FrmMain.Default.Close();
+            if (mainWindow is { IsDisposed: false })
+                mainWindow.RequestExit();
+            else
+                Application.Exit();
             ProgramRoot.CloseSingletonInstanceMutex();
         }
 
@@ -38,9 +41,16 @@ namespace LoipvRemote.App
         {
             try
             {
+                desktopShellRuntime.ConnectionLoadingService.CancelPendingLoads();
+                desktopShellRuntime.ConnectionInitiator.CancelPendingConnections();
                 StopPuttySessionWatcher(desktopShellRuntime.PuttySessionsManager);
                 DisposeNotificationAreaIcon(desktopShellRuntime.RuntimeState);
-                await SaveConnectionsAsync(desktopShellRuntime.ConnectionWorkspaceRuntime, cancellationToken).ConfigureAwait(true);
+                using CancellationTokenSource sessionShutdown = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                sessionShutdown.CancelAfter(TimeSpan.FromSeconds(5));
+                await desktopShellRuntime.SessionLifecycleCoordinator
+                    .StopAllAsync(sessionShutdown.Token)
+                    .ConfigureAwait(true);
+                await SaveConnectionsAsync(desktopShellRuntime.ConnectionTreeWorkspace, cancellationToken).ConfigureAwait(true);
                 SaveSettings(quickConnectToolStrip, externalToolsToolStrip, multiSshToolStrip, frmMain, desktopShellRuntime);
             }
             catch (Exception ex)

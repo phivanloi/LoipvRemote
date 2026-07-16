@@ -30,8 +30,11 @@ namespace LoipvRemote.UI.Forms.OptionsPages
 
         #region Public Methods
 
-        public override void AttachRuntime(DesktopShellRuntime desktopShellRuntime) =>
-            _desktopShellRuntime = desktopShellRuntime ?? throw new ArgumentNullException(nameof(desktopShellRuntime));
+        public override void AttachRuntime(DesktopShellRuntime desktopShellRuntime)
+        {
+            base.AttachRuntime(desktopShellRuntime);
+            _desktopShellRuntime = desktopShellRuntime;
+        }
 
         public override string PageName
         {

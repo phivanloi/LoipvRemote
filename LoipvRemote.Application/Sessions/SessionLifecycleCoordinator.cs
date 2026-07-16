@@ -23,20 +23,37 @@ public sealed class SessionLifecycleCoordinator
     {
         ArgumentNullException.ThrowIfNull(session);
 
-        if (!await session.InitializeAsync(cancellationToken).ConfigureAwait(false))
+        bool connecting = false;
+        try
         {
-            await session.CloseAsync(cancellationToken).ConfigureAwait(false);
-            return SessionStartResult.InitializationFailed;
-        }
+            if (!await session.InitializeAsync(cancellationToken).ConfigureAwait(false))
+            {
+                await CloseAfterFailedStartAsync(session).ConfigureAwait(false);
+                return SessionStartResult.InitializationFailed;
+            }
 
-        if (!await session.ConnectAsync(cancellationToken).ConfigureAwait(false))
+            connecting = true;
+            if (!await session.ConnectAsync(cancellationToken).ConfigureAwait(false))
+            {
+                await CloseAfterFailedStartAsync(session).ConfigureAwait(false);
+                return SessionStartResult.ConnectionFailed;
+            }
+
+            _activeSessions.TryAdd(session, 0);
+            return SessionStartResult.Started;
+        }
+        catch (OperationCanceledException)
         {
-            await session.CloseAsync(cancellationToken).ConfigureAwait(false);
-            return SessionStartResult.ConnectionFailed;
+            await CloseAfterFailedStartAsync(session).ConfigureAwait(false);
+            throw;
         }
-
-        _activeSessions.TryAdd(session, 0);
-        return SessionStartResult.Started;
+        catch
+        {
+            await CloseAfterFailedStartAsync(session).ConfigureAwait(false);
+            return connecting
+                ? SessionStartResult.ConnectionFailed
+                : SessionStartResult.InitializationFailed;
+        }
     }
 
     public async ValueTask StopAsync(IProtocolSession session, CancellationToken cancellationToken = default)
@@ -48,28 +65,58 @@ public sealed class SessionLifecycleCoordinator
 
     public async Task StopAllAsync(CancellationToken cancellationToken)
     {
+        List<Exception> failures = [];
         foreach (IProtocolSession session in _activeSessions.Keys)
         {
-            cancellationToken.ThrowIfCancellationRequested();
             if (!_activeSessions.TryRemove(session, out _))
                 continue;
 
             try
             {
-                    await session.DisconnectAsync(cancellationToken).ConfigureAwait(false);
+                await session.DisconnectAsync(cancellationToken).ConfigureAwait(false);
             }
-            finally
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                try
-                {
-                    await session.CloseAsync(cancellationToken).ConfigureAwait(false);
-                }
-                finally
-                {
-                    await session.DisposeAsync().ConfigureAwait(false);
-                }
+                // Continue best-effort shutdown with an uncancelled close/dispose.
+            }
+            catch (Exception exception)
+            {
+                failures.Add(exception);
+            }
+
+            try
+            {
+                await session.CloseAsync(CancellationToken.None).ConfigureAwait(false);
+            }
+            catch (Exception exception)
+            {
+                failures.Add(exception);
+            }
+
+            try
+            {
+                await session.DisposeAsync().ConfigureAwait(false);
+            }
+            catch (Exception exception)
+            {
+                failures.Add(exception);
             }
         }
 
+        if (failures.Count > 0)
+            throw new AggregateException("One or more protocol sessions failed during shutdown.", failures);
+    }
+
+    private static async ValueTask CloseAfterFailedStartAsync(IProtocolSession session)
+    {
+        try
+        {
+            await session.CloseAsync(CancellationToken.None).ConfigureAwait(false);
+        }
+        catch
+        {
+            // Preserve the lifecycle result/original cancellation while still
+            // allowing the caller to dispose the failed session.
+        }
     }
 }

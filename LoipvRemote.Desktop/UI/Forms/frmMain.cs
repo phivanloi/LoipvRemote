@@ -27,7 +27,6 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
 using System.Globalization;
-using System.Threading;
 using System.Threading.Tasks;
 using System.IO;
 using System.Text;
@@ -51,37 +50,11 @@ namespace LoipvRemote.UI.Forms
     [SupportedOSPlatform("windows")]
     public partial class FrmMain
     {
-        // CHANGED: lazy, thread-safe, STA-enforced initialization
-        private static readonly Lazy<FrmMain> s_default =
-            new(InitializeOnSta, LazyThreadSafetyMode.ExecutionAndPublication);
-
-        public static FrmMain Default => s_default.Value;
-
-        public static bool IsCreated => s_default.IsValueCreated;
-
-        private static FrmMain InitializeOnSta()
-        {
-            // Enforce STA to avoid OLE/WinForms threading violations
-            if (Thread.CurrentThread.GetApartmentState() != ApartmentState.STA)
-            {
-                // If we're already on a WinForms UI thread with a sync context, marshal to it
-                if (SynchronizationContext.Current is WindowsFormsSynchronizationContext ctx)
-                {
-                    FrmMain? created = null;
-                    ctx.Send(_ => created = new FrmMain(), null);
-                    return created ?? throw new InvalidOperationException("The main window could not be created on the UI thread.");
-                }
-
-                throw new ThreadStateException("FrmMain must be created on an STA thread.");
-            }
-
-            return new FrmMain();
-        }
-
         private static ClipboardChangedHandler? _clipboardChangedEvent;
         private bool _inSizeMove;
         private bool _shutdownCleanupStarted;
         private bool _shutdownCleanupCompleted;
+        private bool _exitRequested;
         private bool _inMouseActivate;
         private bool _activeConnectionFocusScheduled;
         private IntPtr _fpChainedWindowHandle;
@@ -97,8 +70,6 @@ namespace LoipvRemote.UI.Forms
         private DesktopShellRuntime? _desktopShellRuntime;
         private System.Windows.Forms.Timer? _startupMaximizeTimer;
         private bool _startupSidebarLayoutScheduled;
-        public static FrmOptions OptionsForm { get; private set; } = null!;
-
         internal void AttachRuntime(DesktopShellRuntime desktopShellRuntime)
         {
             ArgumentNullException.ThrowIfNull(desktopShellRuntime);
@@ -106,6 +77,7 @@ namespace LoipvRemote.UI.Forms
                 throw new InvalidOperationException("The desktop shell runtime is already attached.");
 
             _desktopShellRuntime = desktopShellRuntime;
+            desktopShellRuntime.MainWindowContext.Attach(this);
             ExternalToolsTypeConverter.Configure(() => desktopShellRuntime.ExternalToolsService.ExternalTools);
             SshTunnelTypeConverter.Configure(() => desktopShellRuntime.ConnectionTreeWorkspace.ConnectionTreeModel.RootNodes);
             CredentialRecordTypeConverter.Configure(() => desktopShellRuntime.CredentialRepositoryList.GetCredentialRecords());
@@ -148,26 +120,10 @@ namespace LoipvRemote.UI.Forms
         internal string ProtectUserSecret(string plaintext, string purpose) =>
             _desktopShellRuntime?.UserSecretStore.Protect(plaintext, purpose) ?? plaintext;
 
-        /// <summary>
-        /// Recreates the OptionsForm if it has been disposed.
-        /// This method should be called when OptionsForm is in an invalid state.
-        /// </summary>
-        public static void RecreateOptionsForm(DesktopShellRuntime? desktopShellRuntime = null)
+        internal void RequestExit()
         {
-            Logger.Instance.Log?.Debug("[FrmMain.RecreateOptionsForm] Recreating OptionsForm");
-
-            // Dispose the old form if it exists
-            if (OptionsForm != null && !OptionsForm.IsDisposed)
-            {
-                Logger.Instance.Log?.Debug("[FrmMain.RecreateOptionsForm] Disposing old OptionsForm");
-                OptionsForm.Dispose();
-            }
-
-            // Create a new instance
-            OptionsForm = new FrmOptions();
-            if (desktopShellRuntime is not null)
-                OptionsForm.AttachRuntime(desktopShellRuntime);
-            Logger.Instance.Log?.Debug("[FrmMain.RecreateOptionsForm] New OptionsForm created");
+            _exitRequested = true;
+            Close();
         }
 
         internal FullscreenHandler Fullscreen { get; set; } = null!;
@@ -175,7 +131,7 @@ namespace LoipvRemote.UI.Forms
         //Added theming support
         private readonly ToolStripRenderer _toolStripProfessionalRenderer = new ToolStripProfessionalRenderer();
 
-        private FrmMain()
+        internal FrmMain()
         {
             _showFullPathInTitle = Properties.OptionsAppearancePage.Default.ShowCompleteConsPathInTitle;
             InitializeComponent();
@@ -344,7 +300,8 @@ namespace LoipvRemote.UI.Forms
             DesktopShellRuntime.Windows.TreeForm.AttachRuntime(DesktopShellRuntime);
             CredsAndConsSetup credsAndConsSetup = new(
                 DesktopShellRuntime.ConnectionTreeWorkspace,
-                DesktopShellRuntime.ConnectionLoadingService);
+                DesktopShellRuntime.ConnectionLoadingService,
+                () => IsClosing);
             credsAndConsSetup.LoadCredsAndCons();
 
             // Initialize panel binding for Connections and Config panels
@@ -383,9 +340,6 @@ namespace LoipvRemote.UI.Forms
             {
                 Fullscreen.Value = true;
             }
-
-            OptionsForm = new FrmOptions();
-            OptionsForm.AttachRuntime(DesktopShellRuntime);
 
             if (!Properties.OptionsTabsPanelsPage.Default.CreateEmptyPanelOnStartUp)
             {
@@ -564,6 +518,9 @@ namespace LoipvRemote.UI.Forms
                 return;
             }
 
+            DesktopShellRuntime.ConnectionLoadingService.CancelPendingLoads();
+            DesktopShellRuntime.ConnectionInitiator.CancelPendingConnections();
+
             if (DesktopShellRuntime.RuntimeState.WindowList != null)
             {
                 foreach (BaseWindow window in DesktopShellRuntime.RuntimeState.WindowList)
@@ -572,7 +529,7 @@ namespace LoipvRemote.UI.Forms
                 }
             }
 
-            if (Properties.OptionsAppearancePage.Default.CloseToTray)
+            if (Properties.OptionsAppearancePage.Default.CloseToTray && !_exitRequested)
             {
                 EnsureNotificationAreaIcon();
 
@@ -639,6 +596,12 @@ namespace LoipvRemote.UI.Forms
             _shutdownCleanupCompleted = true;
             Debug.Print("[END] - " + Convert.ToString(DateTime.Now, CultureInfo.InvariantCulture));
             Close();
+        }
+
+        protected override void OnFormClosed(FormClosedEventArgs e)
+        {
+            _desktopShellRuntime?.MainWindowContext.Detach(this);
+            base.OnFormClosed(e);
         }
 
         #endregion
@@ -775,7 +738,7 @@ namespace LoipvRemote.UI.Forms
                         Screen? screen = _advancedWindowMenu.GetScreenById(m.WParam.ToInt32());
                         if (screen is not null)
                         {
-                            Screens.SendFormToScreen(screen);
+                            Screens.SendFormToScreen(this, screen);
                             Console.WriteLine(screen.ToString());
                         }
                         break;

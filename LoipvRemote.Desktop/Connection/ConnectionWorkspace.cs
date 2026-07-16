@@ -452,14 +452,6 @@ namespace LoipvRemote.Connection
 
         public string GetStartupConnectionFileName()
         {
-            /*
-            if (Properties.OptionsBackupPage.Default.LoadConsFromCustomLocation == true && Properties.OptionsBackupPage.Default.BackupLocation != "")
-            {
-                return Properties.OptionsBackupPage.Default.BackupLocation;
-            } else {
-                return GetDefaultStartupConnectionFileName();
-            }
-            */
             if (Properties.OptionsConnectionsPage.Default.ConnectionFilePath != "")
             {
                 return Properties.OptionsConnectionsPage.Default.ConnectionFilePath;

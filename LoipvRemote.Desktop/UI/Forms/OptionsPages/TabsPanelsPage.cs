@@ -34,11 +34,6 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             base.ApplyLanguage();
 
             chkAlwaysShowPanelTabs.Text = Language.AlwaysShowPanelTabs;
-            /*
-             * Comments added: June 16, 2024
-             * UI control (chkAlwaysShowConnectionTabs) is not visible and poperty never used
-            */
-            //chkAlwaysShowConnectionTabs.Text = Language.AlwaysShowConnectionTabs;
             chkOpenNewTabRightOfSelected.Text = Language.OpenNewTabRight;
             chkShowLogonInfoOnTabs.Text = Language.ShowLogonInfoOnTabs;
             chkShowProtocolOnTabs.Text = Language.ShowProtocolOnTabs;
@@ -57,19 +52,6 @@ namespace LoipvRemote.UI.Forms.OptionsPages
         {
             chkAlwaysShowPanelTabs.Checked = Properties.OptionsTabsPanelsPage.Default.AlwaysShowPanelTabs;
 
-            /*
-             * Comment added: June 16, 2024
-             * Properties.OptionsTabsPanelsPage.Default.AlwaysShowConnectionTabs nerver used
-             *  UI control (chkAlwaysShowConnectionTabs) is not visible
-            */
-            //chkAlwaysShowConnectionTabs.Checked = Properties.OptionsTabsPanelsPage.Default.AlwaysShowConnectionTabs;
-
-            /*
-             * Comment added: June 16, 2024
-             * Properties.OptionsTabsPanelsPage.Default.OpenTabsRightOfSelected nerver used
-             *  Set Visible = false
-            */
-            //chkOpenNewTabRightOfSelected.Checked = Properties.OptionsTabsPanelsPage.Default.OpenTabsRightOfSelected;
             chkOpenNewTabRightOfSelected.Visible = false;
 
             chkShowLogonInfoOnTabs.Checked = Properties.OptionsTabsPanelsPage.Default.ShowLogonInfoOnTabs;
@@ -89,21 +71,12 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             base.SaveSettings();
 
             Properties.OptionsTabsPanelsPage.Default.AlwaysShowPanelTabs = chkAlwaysShowPanelTabs.Checked;
-            /*
-             * Comment added: June 16, 2024
-             * Properties.OptionsTabsPanelsPage.Default.AlwaysShowConnectionTabs nerver used
-             */
-            //Properties.OptionsTabsPanelsPage.Default.AlwaysShowConnectionTabs = chkAlwaysShowConnectionTabs.Checked;
-
             // Defer the ShowHidePanelTabs call to avoid corrupting the Options window
             // This ensures the call happens after the Options window is closed
-            FrmMain.Default.BeginInvoke(new System.Windows.Forms.MethodInvoker(() => FrmMain.Default.ShowHidePanelTabs()));
-
-            /*
-             * Comment added: June 16, 2024
-             * Properties.OptionsTabsPanelsPage.Default.OpenTabsRightOfSelected nerver used
-            */
-            //Properties.OptionsTabsPanelsPage.Default.OpenTabsRightOfSelected = chkOpenNewTabRightOfSelected.Checked;
+            if (MainWindow is { } mainWindow && !mainWindow.IsDisposed && mainWindow.IsHandleCreated)
+            {
+                mainWindow.BeginInvoke(new System.Windows.Forms.MethodInvoker(() => mainWindow.ShowHidePanelTabs()));
+            }
 
             Properties.OptionsTabsPanelsPage.Default.ShowLogonInfoOnTabs = chkShowLogonInfoOnTabs.Checked;
             Properties.OptionsTabsPanelsPage.Default.ShowProtocolOnTabs = chkShowProtocolOnTabs.Checked;

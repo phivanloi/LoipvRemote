@@ -7,6 +7,7 @@ using LoipvRemote.UI.Tabs;
 using LoipvRemote.UI.Controls;
 using LoipvRemote.UI.Window;
 using LoipvRemote.Desktop.Sessions;
+using LoipvRemote.Connection.Monitoring;
 using WeifenLuo.WinFormsUI.Docking;
 using System.Runtime.Versioning;
 
@@ -18,6 +19,7 @@ namespace LoipvRemote.Connection
         private bool _protocolFocusScheduled;
         private System.Windows.Forms.Timer? _protocolFocusRetryTimer;
         private int _protocolFocusRetryAttempt;
+        private readonly PuttyResourceMonitorFactory? _monitorFactory;
 
         public ProtocolSessionBridge Protocol { get; set; } = null!;
         public ConnectionInfo Info { get; set; } = null!;
@@ -40,12 +42,13 @@ namespace LoipvRemote.Connection
         }
 
 
-        public InterfaceControl(Control parent, ProtocolSessionBridge protocol, ConnectionInfo info)
+        public InterfaceControl(Control parent, ProtocolSessionBridge protocol, ConnectionInfo info, PuttyResourceMonitorFactory? monitorFactory = null)
         {
             try
             {
                 Protocol = protocol;
                 Info = info;
+                _monitorFactory = monitorFactory;
                 Parent = parent;
                 Location = new Point(0, 0);
                 Size = parent.Size;
@@ -61,9 +64,12 @@ namespace LoipvRemote.Connection
 
                 if (Info.Protocol == ProtocolKind.Ssh2)
                 {
-                    RemoteResourceBar = new RemoteResourceBar(Info);
-                    Controls.Add(RemoteResourceBar);
-                    RemoteResourceBar.BringToFront();
+                    if (_monitorFactory is not null)
+                    {
+                        RemoteResourceBar = new RemoteResourceBar(Info, _monitorFactory);
+                        Controls.Add(RemoteResourceBar);
+                        RemoteResourceBar.BringToFront();
+                    }
                 }
 
                 // Enable custom painting for border
@@ -236,33 +242,67 @@ namespace LoipvRemote.Connection
 
         public static InterfaceControl? FindInterfaceControl(DockPanel DockPnl)
         {
+            if (DockPnl is null || DockPnl.IsDisposed)
+                return null;
+
             // The root shell normally contains ConnectionWindow documents. Each
             // ConnectionWindow owns a nested DockPanel whose active document is
             // the actual ConnectionTab. Resolve both levels so WndProc never
             // forwards keyboard input to a stale/unknown session.
-            if (DockPnl.ActiveDocument is ConnectionTab ct)
-                return FindInterfaceControl(ct);
+            try
+            {
+                if (DockPnl.ActiveDocument is ConnectionTab ct)
+                    return FindInterfaceControl(ct);
 
-            if (DockPnl.ActiveDocument is ConnectionWindow connectionWindow)
-                return connectionWindow.TryGetInterfaceControl();
+                if (DockPnl.ActiveDocument is ConnectionWindow connectionWindow)
+                    return connectionWindow.TryGetInterfaceControl();
 
-            return null;
+                return null;
+            }
+            catch (ObjectDisposedException)
+            {
+                return null;
+            }
+            catch (InvalidOperationException)
+            {
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Trace.TraceWarning($"Could not resolve an active interface control from DockPanel: {ex}");
+                return null;
+            }
         }
 
         public static InterfaceControl? FindInterfaceControl(ConnectionTab tab)
         {
-            if (tab.Controls.Count < 1) return null;
-            // if the tab has more than one controls and the second is an InterfaceControl than it must be a connection through SSH tunnel
-            // and the first Control is the SSH tunnel connection and thus the second control must be returned.
-            if (tab.Controls.Count > 1)
-            {
-                if (tab.Controls[1] is InterfaceControl ic1)
-                    return ic1;
-            }
-            if (tab.Controls[0] is InterfaceControl ic0)
-                return ic0;
+            if (tab is null || tab.IsDisposed)
+                return null;
 
-            return null;
+            try
+            {
+                if (tab.Controls.Count < 1) return null;
+                // If the tab has more than one control, the second control is
+                // the protocol surface for an SSH tunnel connection.
+                if (tab.Controls.Count > 1 && tab.Controls[1] is InterfaceControl ic1)
+                    return ic1;
+
+                return tab.Controls[0] as InterfaceControl;
+            }
+            catch (ObjectDisposedException)
+            {
+                return null;
+            }
+            catch (InvalidOperationException)
+            {
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Trace.TraceWarning($"Could not resolve an interface control from ConnectionTab: {ex}");
+                return null;
+            }
+
         }
     }
 }

@@ -4,6 +4,7 @@ using System.Windows.Forms;
 using LoipvRemote.App;
 using LoipvRemote.App.Composition;
 using LoipvRemote.UI.Adapters;
+using LoipvRemote.Connection.Monitoring;
 using LoipvRemote.UseCases.Sessions;
 using LoipvRemote.Container;
 using LoipvRemote.Messages;
@@ -24,8 +25,9 @@ using System.Runtime.Versioning;
 namespace LoipvRemote.Connection
 {
     [SupportedOSPlatform("windows")]
-    public class ConnectionInitiator : IConnectionInitiator
+    public class ConnectionInitiator : IConnectionInitiator, IDisposable
     {
+        private readonly CancellationTokenSource _shutdownCancellation = new();
         private readonly PanelAdder _panelAdder;
         private readonly List<string> _activeConnections = [];
         private readonly SessionLifecycleCoordinator _sessionLifecycleCoordinator;
@@ -42,6 +44,7 @@ namespace LoipvRemote.Connection
         private readonly Func<ConnectionInfo, bool, CancellationToken, Task<ExternalCredential?>>? _externalCredentialResolver;
         private readonly IExternalCredentialPrompt? _externalCredentialPrompt;
         private readonly IExternalCredentialSettingsStore? _externalCredentialSettings;
+        private readonly PuttyResourceMonitorFactory? _monitorFactory;
 
         public ConnectionInitiator(
             IProtocolFactory protocolFactory,
@@ -54,6 +57,7 @@ namespace LoipvRemote.Connection
             PanelAdder panelAdder,
             ConnectionSessionOrchestrator sessionOrchestrator,
             SessionLifecycleCoordinator sessionLifecycleCoordinator,
+            PuttyResourceMonitorFactory? monitorFactory = null,
             Func<ConnectionInfo, ExternalApplicationDefinition?>? externalApplicationResolver = null,
             Func<string, string, string, string>? protectSecret = null,
             Func<ConnectionInfo, bool, CancellationToken, Task<ExternalCredential?>>? externalCredentialResolver = null,
@@ -70,6 +74,7 @@ namespace LoipvRemote.Connection
             _panelAdder = panelAdder ?? throw new ArgumentNullException(nameof(panelAdder));
             _sessionLifecycleCoordinator = sessionLifecycleCoordinator ?? throw new ArgumentNullException(nameof(sessionLifecycleCoordinator));
             _sessionOrchestrator = sessionOrchestrator ?? throw new ArgumentNullException(nameof(sessionOrchestrator));
+            _monitorFactory = monitorFactory;
             _externalApplicationResolver = externalApplicationResolver;
             _protectSecret = protectSecret;
             _externalCredentialResolver = externalCredentialResolver;
@@ -81,6 +86,20 @@ namespace LoipvRemote.Connection
             ?? throw new InvalidOperationException("A desktop window catalog is required to open a connection panel.");
 
         public IEnumerable<string> ActiveConnections => _activeConnections;
+
+        /// <summary>
+        /// Stops new or in-flight startup reconnects from creating a session
+        /// while the desktop shell is closing. Startup reconnects are launched
+        /// intentionally fire-and-forget by the WinForms tree, so shutdown
+        /// needs an explicit gate instead of relying on a caller-owned task.
+        /// </summary>
+        public void CancelPendingConnections() => _shutdownCancellation.Cancel();
+
+        public void Dispose()
+        {
+            _shutdownCancellation.Dispose();
+            GC.SuppressFinalize(this);
+        }
 
         public bool SwitchToOpenConnection(ConnectionInfo connectionInfo)
         {
@@ -98,6 +117,9 @@ namespace LoipvRemote.Connection
             ConnectionInfo.Force force = ConnectionInfo.Force.None,
             ConnectionWindow? conForm = null)
         {
+            if (_shutdownCancellation.IsCancellationRequested)
+                return;
+
             if (containerInfo == null || containerInfo.Children.Count == 0)
                 return;
 
@@ -116,6 +138,9 @@ namespace LoipvRemote.Connection
             ConnectionInfo.Force force = ConnectionInfo.Force.None,
             ConnectionWindow? conForm = null)
         {
+            if (_shutdownCancellation.IsCancellationRequested)
+                return;
+
             if (connectionInfo == null)
                 return;
 
@@ -213,7 +238,8 @@ namespace LoipvRemote.Connection
                     connectionInfo.Port = localSshTunnelPort;
 
                     // connect the SSH connection to setup the tunnel
-                    ConnectionInfo tunnelRuntimeInfo = await EnrichRuntimeCredentialsAsync(connectionInfoSshTunnel).ConfigureAwait(true);
+                ConnectionInfo tunnelRuntimeInfo = await EnrichRuntimeCredentialsAsync(connectionInfoSshTunnel, _shutdownCancellation.Token).ConfigureAwait(true);
+                _shutdownCancellation.Token.ThrowIfCancellationRequested();
                     ConnectionDefinition tunnelDefinition = ConnectionDefinitionMapper.ToDomain(
                         tunnelRuntimeInfo,
                         _protectSecret,
@@ -238,7 +264,7 @@ namespace LoipvRemote.Connection
                     tunnelControl.OriginalInfo = connectionInfoSshTunnel;
 
                     SessionStartResult tunnelStartResult = await _sessionLifecycleCoordinator
-                        .StartAsync(protocolSshTunnel)
+                        .StartAsync(protocolSshTunnel, _shutdownCancellation.Token)
                         .ConfigureAwait(true);
                     if (tunnelStartResult == SessionStartResult.InitializationFailed)
                     {
@@ -262,6 +288,7 @@ namespace LoipvRemote.Connection
                     System.Diagnostics.Stopwatch stopwatch = System.Diagnostics.Stopwatch.StartNew();
                     while (stopwatch.ElapsedMilliseconds < 60000)
                     {
+                        _shutdownCancellation.Token.ThrowIfCancellationRequested();
                         // confirm that SSH connection is still active
                         // works only if putty is connfigured to always close window on exit
                         // else, if connection attempt fails, window remains open and putty process remains running, and we cannot know that connection is already doomed
@@ -283,7 +310,7 @@ namespace LoipvRemote.Connection
                         }
                         catch
                         {
-                            await System.Threading.Tasks.Task.Delay(1000);
+                            await System.Threading.Tasks.Task.Delay(1000, _shutdownCancellation.Token);
                         }
                     }
 
@@ -303,7 +330,8 @@ namespace LoipvRemote.Connection
                     protocolSshTunnel.InterfaceControl.Hide();
                 }
 
-                ConnectionInfo runtimeInfo = await EnrichRuntimeCredentialsAsync(connectionInfo).ConfigureAwait(true);
+                ConnectionInfo runtimeInfo = await EnrichRuntimeCredentialsAsync(connectionInfo, _shutdownCancellation.Token).ConfigureAwait(true);
+                _shutdownCancellation.Token.ThrowIfCancellationRequested();
                 ConnectionDefinition definition = ConnectionDefinitionMapper.ToDomain(
                     runtimeInfo,
                     _protectSecret,
@@ -325,17 +353,22 @@ namespace LoipvRemote.Connection
 
                 newProtocol.Force = force;
 
-                ConnectionInfo originalRuntimeInfo = await EnrichRuntimeCredentialsAsync(connectionInfoOriginal).ConfigureAwait(true);
+                ConnectionInfo originalRuntimeInfo = await EnrichRuntimeCredentialsAsync(connectionInfoOriginal, _shutdownCancellation.Token).ConfigureAwait(true);
                 definition = ConnectionDefinitionMapper.ToDomain(
                     originalRuntimeInfo,
                     _protectSecret,
                     externalApplicationResolver: _externalApplicationResolver);
-                if (!(await _sessionOrchestrator.StartAsync(definition, newProtocol).ConfigureAwait(true)).IsStarted)
+                if (!(await _sessionOrchestrator.StartAsync(definition, newProtocol, _shutdownCancellation.Token).ConfigureAwait(true)).IsStarted)
                     return;
 
                 connectionInfoOriginal.OpenConnections.Add(newProtocol);
                 _activeConnections.Add(connectionInfo.ConstantID);
                 _connectionWorkspace.Select(connectionInfo);
+            }
+            catch (OperationCanceledException) when (_shutdownCancellation.IsCancellationRequested)
+            {
+                // A startup reconnect was still in flight while the shell was
+                // closing. It must not reopen a tab after shutdown began.
             }
             catch (Exception ex)
             {
@@ -487,11 +520,11 @@ namespace LoipvRemote.Connection
             newProtocol.ErrorOccured += Prot_Event_ErrorOccured;
         }
 
-        private static void BuildConnectionInterfaceController(ConnectionInfo connectionInfo,
-                                                               ProtocolSessionBridge newProtocol,
-                                                               Control connectionContainer)
+        private void BuildConnectionInterfaceController(ConnectionInfo connectionInfo,
+                                                        ProtocolSessionBridge newProtocol,
+                                                        Control connectionContainer)
         {
-            newProtocol.InterfaceControl = new InterfaceControl(connectionContainer, newProtocol, connectionInfo);
+            newProtocol.InterfaceControl = new InterfaceControl(connectionContainer, newProtocol, connectionInfo, _monitorFactory);
         }
 
         #endregion

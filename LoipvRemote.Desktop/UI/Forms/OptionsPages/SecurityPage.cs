@@ -137,7 +137,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
 
         private void BtnTestSettings_Click(object? sender, EventArgs e)
         {
-            Tree.ConnectionTreeModel? connectionTree = FrmMain.Default.TryGetConnectionTreeModel();
+            Tree.ConnectionTreeModel? connectionTree = ShellRuntime?.ConnectionTreeWorkspace.ConnectionTreeModel;
             if (connectionTree is null || connectionTree.RootNodes.Count == 0)
                 return;
 
@@ -192,7 +192,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             }
             catch (System.Runtime.InteropServices.COMException)
             {
-                FrmMain.Default.ReportUiError(Messages.MessageClass.ErrorMsg, "Failed to set clipboard content. Please try again.");
+                ShellRuntime?.MessageCollector.AddMessage(Messages.MessageClass.ErrorMsg, "Failed to set clipboard content. Please try again.");
                 return;
             }
 
@@ -258,7 +258,7 @@ namespace LoipvRemote.UI.Forms.OptionsPages
             }
             catch (System.Runtime.InteropServices.COMException)
             {
-                FrmMain.Default.ReportUiError(Messages.MessageClass.ErrorMsg, "Failed to clear clipboard.");
+                ShellRuntime?.MessageCollector.AddMessage(Messages.MessageClass.ErrorMsg, "Failed to clear clipboard.");
             }
         }
 

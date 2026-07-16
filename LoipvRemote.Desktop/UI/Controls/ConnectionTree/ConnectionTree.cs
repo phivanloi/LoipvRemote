@@ -435,14 +435,14 @@ namespace LoipvRemote.UI.Controls.ConnectionTree
         {
             sortTarget ??= GetRootConnectionNode();
 
-            ShellRuntime.ConnectionWorkspaceRuntime.BeginBatchingSaves();
+            ShellRuntime.ConnectionTreeWorkspace.BeginBatchingSaves();
 
             if (sortTarget is ContainerInfo sortTargetAsContainer)
                 sortTargetAsContainer.SortRecursive(sortDirection);
             else
                 SelectedNode.Parent.SortRecursive(sortDirection);
 
-            ShellRuntime.ConnectionWorkspaceRuntime.EndBatchingSaves();
+            ShellRuntime.ConnectionTreeWorkspace.EndBatchingSaves();
         }
 
         /// <summary>

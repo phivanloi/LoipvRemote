@@ -593,7 +593,7 @@ namespace LoipvRemote.UI.Controls.ConnectionInfoPropertyGrid
 
             if (rootInfo.Password)
             {
-                string passwordName = Properties.OptionsDBsPage.Default.UseSQLServer ? Language.SQLServer.TrimEnd(':') : Path.GetFileName(DesktopShellRuntime.ConnectionWorkspaceRuntime.GetStartupConnectionFileName());
+                    string passwordName = Properties.OptionsDBsPage.Default.UseSQLServer ? Language.SQLServer.TrimEnd(':') : Path.GetFileName(DesktopShellRuntime.ConnectionTreeWorkspace.GetStartupConnectionFileName());
                 OptionalValue<System.Security.SecureString> password = MiscTools.PasswordDialog(passwordName);
 
                 // operation cancelled, dont set a password

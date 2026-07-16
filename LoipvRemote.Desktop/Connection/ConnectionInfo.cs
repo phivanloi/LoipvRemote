@@ -7,6 +7,7 @@ using System.Reflection;
 using LoipvRemote.App;
 using LoipvRemote.Desktop.Sessions;
 using LoipvRemote.Container;
+using LoipvRemote.Domain.Connections;
 using LoipvRemote.Properties;
 using LoipvRemote.Tree;
 using LoipvRemote.Resources.Language;
@@ -119,7 +120,7 @@ namespace LoipvRemote.Connection
 
         public int GetDefaultPort()
         {
-            return GetDefaultPort(Protocol);
+            return ProtocolDefaults.GetDefaultPort(Protocol);
         }
 
         public void SetDefaultPort()
@@ -248,51 +249,6 @@ namespace LoipvRemote.Connection
                 Trace.TraceError($"Error retrieving inherited property '{propertyName}'.{Environment.NewLine}{e}");
                 inheritedValue = default!;
                 return false;
-            }
-        }
-
-        private static int GetDefaultPort(ProtocolKind protocol)
-        {
-            try
-            {
-                // ReSharper disable once SwitchStatementMissingSomeCases
-                switch (protocol)
-                {
-                    case ProtocolKind.Rdp:
-                        return 3389;
-                    case ProtocolKind.Vnc:
-                        return 5900;
-                    case ProtocolKind.Ard:
-                        return 5900;
-                    case ProtocolKind.Ssh1:
-                    case ProtocolKind.Ssh2:
-                        return 22;
-                    case ProtocolKind.Telnet:
-                        return 23;
-                    case ProtocolKind.Rlogin:
-                        return 513;
-                    case ProtocolKind.Raw:
-                        return 23;
-                    case ProtocolKind.Http:
-                        return 80;
-                    case ProtocolKind.Https:
-                        return 443;
-                    case ProtocolKind.PowerShell:
-                        return 5985;
-                    case ProtocolKind.Wsl:
-                    case ProtocolKind.Terminal:
-                        return 0;
-                    case ProtocolKind.ExternalApplication:
-                    case ProtocolKind.AnyDesk:
-                        return 0;
-                }
-
-                return 0;
-            }
-            catch (Exception ex)
-            {
-                Trace.TraceError($"{Language.ConnectionSetDefaultPortFailed}{Environment.NewLine}{ex}");
-                return 0;
             }
         }
 

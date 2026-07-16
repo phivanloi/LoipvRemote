@@ -32,16 +32,17 @@ namespace LoipvRemote.Config.Settings
             _messageCollector = messageCollector;
         }
 
-        public void Save()
+        public void Save(FrmMain mainForm)
         {
             try
             {
+                ArgumentNullException.ThrowIfNull(mainForm);
                 if (Directory.Exists(SettingsFileInfo.SettingsPath) == false)
                 {
                     Directory.CreateDirectory(SettingsFileInfo.SettingsPath);
                 }
 
-                string serializedLayout = _dockPanelSerializer.Serialize(FrmMain.Default.pnlDock);
+                string serializedLayout = _dockPanelSerializer.Serialize(mainForm.pnlDock);
                 _dataProvider.Save(serializedLayout);
             }
             catch (Exception ex)

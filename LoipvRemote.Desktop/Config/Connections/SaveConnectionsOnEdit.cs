@@ -3,7 +3,6 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using LoipvRemote.Container;
 using LoipvRemote.Connection;
-using LoipvRemote.UI.Forms;
 using LoipvRemote.Properties;
 using System.Runtime.Versioning;
 
@@ -13,12 +12,14 @@ namespace LoipvRemote.Config.Connections
     public class SaveConnectionsOnEdit
     {
         private readonly IConnectionTreeWorkspace _workspace;
+        private readonly Func<bool> _isClosing;
 
-        public SaveConnectionsOnEdit(IConnectionTreeWorkspace workspace)
+        public SaveConnectionsOnEdit(IConnectionTreeWorkspace workspace, Func<bool>? isClosing = null)
         {
             ArgumentNullException.ThrowIfNull(workspace);
 
             _workspace = workspace;
+            _isClosing = isClosing ?? (() => false);
             workspace.ConnectionsLoaded += WorkspaceOnConnectionsLoaded;
         }
 
@@ -49,7 +50,7 @@ namespace LoipvRemote.Config.Connections
             if (ShouldPersistImmediately(propertyName) ||
                 Properties.OptionsBackupPage.Default.SaveConnectionsFrequency == (int)ConnectionsBackupFrequency.OnEdit)
             {
-                if (FrmMain.Default.IsClosing)
+                if (_isClosing())
                     return;
 
                 _workspace.RequestSave(propertyName);

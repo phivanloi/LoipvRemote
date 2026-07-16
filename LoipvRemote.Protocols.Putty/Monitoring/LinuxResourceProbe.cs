@@ -1,10 +1,10 @@
-namespace LoipvRemote.Connection.Monitoring
+namespace LoipvRemote.Protocols.Putty.Monitoring;
+
+public static class LinuxResourceProbe
 {
-    internal static class LinuxResourceProbe
-    {
-        // The command is fixed application code. No connection field is interpolated into it.
-        // It emits invariant key/value pairs so parsing is independent of the remote locale.
-        internal const string Command = @"LC_ALL=C sh -c '
+    // The command is fixed application code. No connection field is interpolated into it.
+    // It emits invariant key/value pairs so parsing is independent of the remote locale.
+    public const string Command = @"LC_ALL=C sh -c '
 cpu=""$(awk ""NR==1 {idle=\$5+\$6; total=0; for(i=2;i<=NF;i++) total+=\$i; print total, idle}"" /proc/stat)""
 set -- $cpu
 cpu_total=$1
@@ -30,5 +30,4 @@ printf ""net_rx=%s\n"" ""$net_rx""
 printf ""net_tx=%s\n"" ""$net_tx""
 printf ""uptime_seconds=%s\n"" ""$uptime_seconds""
 '";
-    }
 }

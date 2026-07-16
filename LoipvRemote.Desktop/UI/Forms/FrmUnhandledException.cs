@@ -15,15 +15,17 @@ namespace LoipvRemote.UI.Forms
     public partial class UnhandledExceptionForm : Form
     {
         private readonly bool _isFatal;
+        private readonly FrmMain? _mainWindow;
 
         public UnhandledExceptionForm()
-            : this(null, false)
+            : this(null, false, null)
         {
         }
 
-        public UnhandledExceptionForm(Exception? exception, bool isFatal)
+        public UnhandledExceptionForm(Exception? exception, bool isFatal, FrmMain? mainWindow = null)
         {
             _isFatal = isFatal;
+            _mainWindow = mainWindow;
             InitializeComponent();
             SetLanguage();
 
@@ -85,7 +87,7 @@ namespace LoipvRemote.UI.Forms
         private void buttonClose_Click(object? sender, EventArgs e)
         {
             if (_isFatal)
-                Shutdown.Quit();
+                Shutdown.Quit(_mainWindow);
 
             Close();
         }

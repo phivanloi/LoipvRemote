@@ -1,6 +1,6 @@
 using LoipvRemote.Domain.Connections;
 
-namespace LoipvRemote.UseCases.Configuration;
+namespace LoipvRemote.Application.Configuration;
 
 /// <summary>Persistence port for secret-free, ordered connection trees.</summary>
 public interface IConnectionDefinitionStore

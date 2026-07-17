@@ -50,13 +50,15 @@ function Invoke-MsiExec {
 try {
     Invoke-MsiExec "/i `"$msi`" INSTALLFOLDER=`"$installDirectory`" /qn /norestart /l*vx `"$installLog`""
     if (-not (Test-Path -LiteralPath $applicationPath -PathType Leaf)) {
+        if (Select-String -LiteralPath $installLog -Pattern 'Windows Installer reconfigured the product' -Quiet) {
+            throw 'Installer smoke test requires a clean Windows Installer product state; the same LoipvRemote MSI is already installed.'
+        }
         throw "Installer did not create $applicationPath"
     }
 
-    # Verify the installed payload is runnable and responsive before uninstalling.
-    # This catches framework/runtime and startup regressions that file-existence
-    # checks alone cannot detect.
-    $applicationProcess = Start-Process -FilePath $applicationPath -WorkingDirectory $installDirectory -PassThru
+    # Verify the installed payload creates a top-level UI window. A responsive
+    # process without a window is not a valid desktop-app startup.
+    $applicationProcess = Start-Process -FilePath $applicationPath -WorkingDirectory $installDirectory -WindowStyle Hidden -PassThru
     Start-Sleep -Seconds 5
     $applicationProcess.Refresh()
     if ($applicationProcess.HasExited) {
@@ -64,6 +66,9 @@ try {
     }
     if (-not $applicationProcess.Responding) {
         throw 'Installed application is not responding after startup.'
+    }
+    if ($applicationProcess.MainWindowHandle -eq [IntPtr]::Zero) {
+        throw 'Installed application did not create a main window after startup.'
     }
     Stop-Process -Id $applicationProcess.Id -Force -ErrorAction SilentlyContinue
     $applicationProcess = $null

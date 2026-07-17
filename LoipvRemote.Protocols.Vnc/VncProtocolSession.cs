@@ -4,7 +4,7 @@ using LoipvRemote.Protocols.Abstractions;
 namespace LoipvRemote.Protocols.Vnc;
 
 /// <summary>Common VNC session adapter around the module lifecycle.</summary>
-public sealed class VncProtocolSession : IProtocolSession, IEmbeddedWindow, IRemoteScreenController, IRemoteSpecialKeysController
+public sealed class VncProtocolSession : IProtocolSession, IManagedEmbeddedWindow, IRemoteScreenController, IRemoteSpecialKeysController
 {
     private readonly IVncClient _client;
     private readonly VncSession _lifecycle;
@@ -18,8 +18,8 @@ public sealed class VncProtocolSession : IProtocolSession, IEmbeddedWindow, IRem
     {
         _client = client ?? throw new ArgumentNullException(nameof(client));
         Options = options ?? throw new ArgumentNullException(nameof(options));
-        if (_client is VncDesktopClient desktopClient && options.Password is not null)
-            desktopClient.PasswordProvider = () => options.Password;
+        if (options.Password is not null)
+            _client.SetPasswordProvider(() => options.Password);
         _lifecycle = new VncSession(_client, endpointProbe ?? throw new ArgumentNullException(nameof(endpointProbe)));
         _windowOperations = windowOperations;
     }
@@ -30,7 +30,7 @@ public sealed class VncProtocolSession : IProtocolSession, IEmbeddedWindow, IRem
     public ProtocolSessionState State => _lifecycle.State;
     public ProtocolCapabilities Capabilities => ProtocolCapabilities.EmbeddedWindow | ProtocolCapabilities.Resize;
     public bool IsAvailable => State == ProtocolSessionState.Connected;
-    public IntPtr WindowHandle => _client is IEmbeddedWindow embedded ? embedded.WindowHandle : IntPtr.Zero;
+    public IntPtr WindowHandle => _client.WindowHandle;
 
     private bool InitializeCore() => _lifecycle.Initialize(Options);
 
@@ -40,13 +40,7 @@ public sealed class VncProtocolSession : IProtocolSession, IEmbeddedWindow, IRem
         return ValueTask.FromResult(InitializeCore());
     }
 
-    private bool ConnectCore() => _lifecycle.Connect();
-
-    public ValueTask<bool> ConnectAsync(CancellationToken cancellationToken = default)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        return ValueTask.FromResult(ConnectCore());
-    }
+    public ValueTask<bool> ConnectAsync(CancellationToken cancellationToken = default) => _lifecycle.ConnectAsync(cancellationToken);
 
     public ValueTask DisconnectAsync(CancellationToken cancellationToken = default)
     {
@@ -57,13 +51,18 @@ public sealed class VncProtocolSession : IProtocolSession, IEmbeddedWindow, IRem
 
     public void Focus()
     {
-        if (_client is VncDesktopClient desktopClient && !desktopClient.Control.IsDisposed)
-            desktopClient.Control.Focus();
+        _client.Focus();
     }
 
     public bool AttachTo(IntPtr parentWindowHandle, TimeSpan timeout)
     {
-        if (!IsAvailable || parentWindowHandle == IntPtr.Zero || WindowHandle == IntPtr.Zero || _windowOperations is null)
+        if (parentWindowHandle == IntPtr.Zero)
+            return false;
+
+        if (_client is IManagedEmbeddedWindow managedWindow)
+            return managedWindow.AttachTo(parentWindowHandle, timeout);
+
+        if (!IsAvailable || WindowHandle == IntPtr.Zero || _windowOperations is null)
             return false;
 
         _windowOperations.SetParent(WindowHandle, parentWindowHandle);
@@ -72,22 +71,25 @@ public sealed class VncProtocolSession : IProtocolSession, IEmbeddedWindow, IRem
 
     public void Resize(EmbeddedWindowBounds bounds)
     {
+        if (_client is IManagedEmbeddedWindow managedWindow)
+        {
+            if (bounds.IsValid)
+                managedWindow.Resize(bounds);
+            return;
+        }
+
         if (IsAvailable && bounds.IsValid && WindowHandle != IntPtr.Zero && _windowOperations is not null)
             _windowOperations.Move(WindowHandle, bounds.X, bounds.Y, bounds.Width, bounds.Height);
     }
 
     public void RefreshScreen()
     {
-        if (_client is VncDesktopClient desktopClient)
-            desktopClient.RefreshScreen();
+        _client.RefreshScreen();
     }
 
     public void SendSpecialKeys(RemoteSpecialKey key)
     {
-        if (_client is not VncDesktopClient desktopClient)
-            return;
-
-        desktopClient.SendSpecialKeys(key switch
+        _client.SendSpecialKeys(key switch
         {
             RemoteSpecialKey.CtrlAltDel => VncSpecialKeys.CtrlAltDel,
             RemoteSpecialKey.CtrlEsc => VncSpecialKeys.CtrlEsc,

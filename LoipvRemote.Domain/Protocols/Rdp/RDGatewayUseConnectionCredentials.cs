@@ -13,9 +13,6 @@ public enum RDGatewayUseConnectionCredentials
     [ProtocolDisplayKey("UseSmartCard")]
     SmartCard = 2,
 
-    [ProtocolDisplayKey("UseExternalCredentialProvider")]
-    ExternalCredentialProvider = 3,
-
     [ProtocolDisplayKey("UseAccessToken")]
     AccessToken = 4
 }

@@ -77,7 +77,7 @@ public sealed class RdpSession
         {
             // The ActiveX control can already be disconnected when its host
             // window is being destroyed. Closing must remain idempotent and
-            // must not surface a COM failure through the WinForms close path.
+            // must not surface a COM failure through the WinUI close path.
         }
         finally
         {

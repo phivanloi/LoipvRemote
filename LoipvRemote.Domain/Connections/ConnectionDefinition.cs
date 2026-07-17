@@ -10,7 +10,6 @@ public sealed record ConnectionDefinition(
     int Port,
     ProtocolKind Protocol,
     CredentialReference Credential,
-    ExternalApplicationDefinition? ExternalApplication = null,
     Guid? ParentFolderId = null,
     int SortOrder = 0,
     ConnectionNodeOptions? Options = null,

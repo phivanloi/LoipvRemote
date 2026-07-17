@@ -18,7 +18,7 @@ public sealed class VncProtocolFactory(
     public IProtocolSession Create(ConnectionDefinition definition)
     {
         ArgumentNullException.ThrowIfNull(definition);
-        if (definition.Protocol is not (ProtocolKind.Vnc or ProtocolKind.Ard))
+        if (definition.Protocol != ProtocolKind.Vnc)
             throw new NotSupportedException($"Protocol '{definition.Protocol}' is not handled by {nameof(VncProtocolFactory)}.");
 
         bool viewOnly = ReadBoolean(definition.Options, "ViewOnly");

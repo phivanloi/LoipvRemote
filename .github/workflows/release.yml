@@ -44,7 +44,7 @@ jobs:
 
       - name: Run tests
         run: >
-          dotnet test LoipvRemoteTests/LoipvRemoteTests.csproj
+          dotnet test LoipvRemote.WinUI.Tests/LoipvRemote.WinUI.Tests.csproj
           -c Release
           -p:Platform=x64
           --no-build
@@ -55,7 +55,15 @@ jobs:
         shell: pwsh
         run: |
           git diff --check
-          [xml]$project = Get-Content 'LoipvRemote.Desktop/LoipvRemote.Desktop.csproj'
+          $removedLegacyPaths = @('LoipvRemote.Desktop', 'ObjectListView', 'LoipvRemoteTests')
+          foreach ($legacyPath in $removedLegacyPaths) {
+            $legacyFiles = @(Get-ChildItem -LiteralPath $legacyPath -Recurse -Force -File -ErrorAction SilentlyContinue |
+              Where-Object { $_.FullName -notmatch '[\\/](bin|obj)[\\/]' })
+            if ($legacyFiles.Count -gt 0) {
+              throw "Removed WinForms legacy path was restored: $legacyPath"
+            }
+          }
+          [xml]$project = Get-Content 'LoipvRemote.WinUI/LoipvRemote.WinUI.csproj'
           $version = @($project.Project.PropertyGroup | ForEach-Object Version | Where-Object { $_ })[0]
           if ([string]::IsNullOrWhiteSpace($version) -or $version -notmatch '^\d+\.\d+\.\d+\.\d+$') {
             throw "Version must be numeric four-part SemVer-compatible value; got '$version'."
@@ -63,35 +71,36 @@ jobs:
           if ($version -match '[+ ]') {
             throw "Version must not contain source/build metadata: '$version'."
           }
-          $legacy = rg -n --glob '*.cs' '\b(ProtocolVNC|PuttyBase|HTTPBase|XmlConnectionsLoader|SqlConnectionsLoader)\b' LoipvRemote.Application LoipvRemote.Connectors LoipvRemote.Desktop LoipvRemote.Domain LoipvRemote.Infrastructure.Persistence LoipvRemote.Infrastructure.Windows LoipvRemote.Protocols.Abstractions LoipvRemote.Protocols.Browser LoipvRemote.Protocols.ExternalApps LoipvRemote.Protocols.Putty LoipvRemote.Protocols.Rdp LoipvRemote.Protocols.Vnc
+          $includeSourceRevision = @($project.Project.PropertyGroup | ForEach-Object IncludeSourceRevisionInInformationalVersion | Where-Object { $_ })[0]
+          if ($includeSourceRevision -ne 'false') {
+            throw 'InformationalVersion must not append a source revision.'
+          }
+          $application = Get-Item 'LoipvRemote.WinUI/bin/x64/Release/net10.0-windows10.0.26100.0/LoipvRemote.exe'
+          if ($application.VersionInfo.ProductVersion -ne $version) {
+            throw "Built executable ProductVersion must equal '$version'; got '$($application.VersionInfo.ProductVersion)'."
+          }
+          $legacy = rg -n --glob '*.cs' '\b(ProtocolVNC|PuttyBase|HTTPBase|XmlConnectionsLoader|SqlConnectionsLoader)\b' LoipvRemote.Application LoipvRemote.Domain LoipvRemote.Infrastructure.Persistence LoipvRemote.Infrastructure.Windows LoipvRemote.Protocols.Abstractions LoipvRemote.Protocols.Putty LoipvRemote.Protocols.Rdp LoipvRemote.Protocols.Vnc LoipvRemote.WinUI
           if ($LASTEXITCODE -eq 0 -and $legacy) {
             $legacy | Write-Host
             throw 'Legacy protocol/persistence implementation marker detected.'
           }
-          $runtimeLeaks = @(rg -n --pcre2 '(?<!System\.)\bRuntime\.' LoipvRemote.Desktop/Tools/ExternalTool.cs LoipvRemote.Desktop/UI/DialogFactory.cs)
-          if ($runtimeLeaks.Count -gt 0) {
-            $runtimeLeaks | Write-Host
-            throw 'Desktop adapters must not resolve Runtime static services.'
-          }
-          if (Test-Path 'LoipvRemote.Desktop/App/Runtime.cs') {
-            throw 'The Runtime service locator must remain removed.'
-          }
-          if (Test-Path 'LoipvRemote.Desktop/Connection/Protocol/ProtocolBase.cs') {
-            throw 'Protocol lifecycle host must live in LoipvRemote.Desktop.'
-          }
-          if (Test-Path 'LoipvRemote.Desktop/Connection/Protocol/ProtocolList.cs') {
-            throw 'Protocol session collection must live in LoipvRemote.Desktop.'
-          }
-          if (Test-Path 'LoipvRemote.Desktop/Config/DatabaseConnectors') {
-            throw 'Database connector implementations must live in LoipvRemote.Infrastructure.Persistence.'
-          }
           if (Test-Path '.github/workflows/Build_mR-NB.yml') {
             throw 'Obsolete NB/mRemote release workflow must remain removed.'
           }
-          $todo = @(rg -n --glob '*.cs' --glob '*.resx' --glob '!**/bin/**' --glob '!**/obj/**' --glob '!DSS/SecretServerRestClient.cs' '\bTODO\b|NotImplementedException|#if false' LoipvRemote.Application LoipvRemote.Connectors LoipvRemote.Desktop LoipvRemote.Domain LoipvRemote.Infrastructure.Persistence LoipvRemote.Infrastructure.Windows LoipvRemote.Protocols.Abstractions LoipvRemote.Protocols.Browser LoipvRemote.Protocols.ExternalApps LoipvRemote.Protocols.Putty LoipvRemote.Protocols.Rdp LoipvRemote.Protocols.Vnc)
+          $todo = @(rg -n --glob '*.cs' --glob '*.xaml' --glob '*.resx' --glob '!**/bin/**' --glob '!**/obj/**' '\bTODO\b|NotImplementedException|#if false' LoipvRemote.Application LoipvRemote.Domain LoipvRemote.Infrastructure.Persistence LoipvRemote.Infrastructure.Windows LoipvRemote.Protocols.Abstractions LoipvRemote.Protocols.Putty LoipvRemote.Protocols.Rdp LoipvRemote.Protocols.Vnc LoipvRemote.WinUI)
           if ($todo.Count -gt 0) {
             $todo | Write-Host
             throw 'Dead-code marker detected.'
+          }
+          $removedModules = @(rg -n 'LoipvRemote\.(Connectors|Protocols\.Browser|Protocols\.ExternalApps)|ConnectionDefinitionStoreKind\.(Sqlite|MySql|Odbc)' LoipvRemote.slnx Directory.Build.props LoipvRemote.WinUI LoipvRemote.Application LoipvRemote.Domain LoipvRemote.Infrastructure.Persistence LoipvRemote.Infrastructure.Windows LoipvRemote.Protocols.Abstractions LoipvRemote.Protocols.Putty LoipvRemote.Protocols.Rdp LoipvRemote.Protocols.Vnc --glob '!**/bin/**' --glob '!**/obj/**')
+          if ($removedModules.Count -gt 0) {
+            $removedModules | Write-Host
+            throw 'Removed module or persistence backend was referenced.'
+          }
+          $removedProductScope = @(rg -n -i --glob '*.cs' --glob '*.xaml' --glob '*.csproj' '\b(Browser|ExternalApplication|AnyDesk|PortScan|Connector|Favorites|SystemTray|ActiveDirectory|PowerShell|WSL)\b' LoipvRemote.Application LoipvRemote.Domain LoipvRemote.Infrastructure.Persistence LoipvRemote.Infrastructure.Windows LoipvRemote.Protocols.Abstractions LoipvRemote.Protocols.Putty LoipvRemote.Protocols.Rdp LoipvRemote.Protocols.Vnc LoipvRemote.WinUI)
+          if ($removedProductScope.Count -gt 0) {
+            $removedProductScope | Write-Host
+            throw 'A removed product feature was reintroduced.'
           }
           $repoDocs = @(git ls-files | Where-Object { $_ -match '\.(md|docx|pdf)$' })
           if ($repoDocs.Count -gt 0) {

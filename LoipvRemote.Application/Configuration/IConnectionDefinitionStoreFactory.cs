@@ -1,4 +1,4 @@
-namespace LoipvRemote.UseCases.Configuration;
+namespace LoipvRemote.Application.Configuration;
 
 /// <summary>Creates an explicitly configured connection definition store.</summary>
 public interface IConnectionDefinitionStoreFactory
@@ -9,10 +9,7 @@ public interface IConnectionDefinitionStoreFactory
 public enum ConnectionDefinitionStoreKind
 {
     Xml,
-    Sqlite,
-    SqlServer,
-    MySql,
-    Odbc
+    SqlServer
 }
 
 /// <summary>Non-secret store selection and location supplied by application configuration.</summary>

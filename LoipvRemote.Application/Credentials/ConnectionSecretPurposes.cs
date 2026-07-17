@@ -1,4 +1,4 @@
-namespace LoipvRemote.UseCases.Credentials;
+namespace LoipvRemote.Application.Credentials;
 
 public static class ConnectionSecretPurposes
 {

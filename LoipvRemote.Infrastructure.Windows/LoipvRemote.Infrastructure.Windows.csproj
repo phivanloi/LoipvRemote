@@ -2,24 +2,20 @@
   <PropertyGroup>
     <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
     <SupportedOSPlatformVersion>10.0.26100.0</SupportedOSPlatformVersion>
-    <UseWindowsForms>true</UseWindowsForms>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\LoipvRemote.Application\LoipvRemote.Application.csproj" />
     <ProjectReference Include="..\LoipvRemote.Domain\LoipvRemote.Domain.csproj" />
     <ProjectReference Include="..\LoipvRemote.Protocols.Abstractions\LoipvRemote.Protocols.Abstractions.csproj" />
+    <ProjectReference Include="..\LoipvRemote.Protocols.Rdp\LoipvRemote.Protocols.Rdp.csproj" />
     <ProjectReference Include="..\LoipvRemote.Protocols.Putty\LoipvRemote.Protocols.Putty.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="System.Management" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="Interop.MSTSCLib" Condition="'$(Platform)' != 'arm64'">
       <HintPath>Interop\Interop.MSTSCLib.dll</HintPath>
-      <EmbedInteropTypes>false</EmbedInteropTypes>
-    </Reference>
-    <Reference Include="AxInterop.MSTSCLib" Condition="'$(Platform)' != 'arm64'">
-      <HintPath>Interop\AxInterop.MSTSCLib.dll</HintPath>
       <EmbedInteropTypes>false</EmbedInteropTypes>
     </Reference>
     <Compile Remove="Com\RdpActiveXRuntime.cs" Condition="'$(Platform)' == 'arm64'" />

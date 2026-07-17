@@ -29,6 +29,45 @@
         <Exclude Files="$(var.ApplicationPublishDir)LoipvRemote.exe" />
         <Exclude Files="$(var.ApplicationPublishDir)**\*.pdb" />
       </Files>
+      <Component Id="LegacyPayloadCleanupComponent" Guid="B25B6DD2-3D3C-43EE-9F67-7613E8E638AB">
+        <!-- Never remove user-owned connection data.  These names are former
+             runtime dependencies and modules removed from the current product. -->
+        <RemoveFile Id="RemoveLegacyComerr" Name="comerr64.dll" On="install" />
+        <RemoveFile Id="RemoveLegacySqliteNative" Name="e_sqlite3.dll" On="install" />
+        <RemoveFile Id="RemoveLegacyProtobuf" Name="Google.Protobuf.dll" On="install" />
+        <RemoveFile Id="RemoveLegacyGssapi" Name="gssapi64.dll" On="install" />
+        <RemoveFile Id="RemoveLegacyLz4" Name="K4os.Compression.LZ4.dll" On="install" />
+        <RemoveFile Id="RemoveLegacyLz4Streams" Name="K4os.Compression.LZ4.Streams.dll" On="install" />
+        <RemoveFile Id="RemoveLegacyHash" Name="K4os.Hash.xxHash.dll" On="install" />
+        <RemoveFile Id="RemoveLegacyK5" Name="k5sprt64.dll" On="install" />
+        <RemoveFile Id="RemoveLegacyKrb5" Name="krb5_64.dll" On="install" />
+        <RemoveFile Id="RemoveLegacyKrbCc" Name="krbcc64.dll" On="install" />
+        <RemoveFile Id="RemoveLegacyConnectorsPdb" Name="LoipvRemote.Connectors.pdb" On="install" />
+        <RemoveFile Id="RemoveLegacyDesktopPdb" Name="LoipvRemote.Desktop.pdb" On="install" />
+        <RemoveFile Id="RemoveLegacyBrowser" Name="LoipvRemote.Protocols.Browser.dll" On="install" />
+        <RemoveFile Id="RemoveLegacyBrowserPdb" Name="LoipvRemote.Protocols.Browser.pdb" On="install" />
+        <RemoveFile Id="RemoveLegacyExternalApps" Name="LoipvRemote.Protocols.ExternalApps.dll" On="install" />
+        <RemoveFile Id="RemoveLegacyExternalAppsPdb" Name="LoipvRemote.Protocols.ExternalApps.pdb" On="install" />
+        <RemoveFile Id="RemoveLegacySqlite" Name="Microsoft.Data.Sqlite.dll" On="install" />
+        <RemoveFile Id="RemoveLegacyMySql" Name="MySql.Data.dll" On="install" />
+        <RemoveFile Id="RemoveLegacyObjectListView" Name="ObjectListView.pdb" On="install" />
+        <RemoveFile Id="RemoveLegacySshNet" Name="Renci.SshNet.dll" On="install" />
+        <RemoveFile Id="RemoveLegacySqliteBatteries" Name="SQLitePCLRaw.batteries_v2.dll" On="install" />
+        <RemoveFile Id="RemoveLegacySqliteCore" Name="SQLitePCLRaw.core.dll" On="install" />
+        <RemoveFile Id="RemoveLegacySqliteProvider" Name="SQLitePCLRaw.provider.e_sqlite3.dll" On="install" />
+        <RemoveFile Id="RemoveLegacyCodeDom" Name="System.CodeDom.dll" On="install" />
+        <RemoveFile Id="RemoveLegacyOdbc" Name="System.Data.Odbc.dll" On="install" />
+        <RemoveFile Id="RemoveLegacyManagement" Name="System.Management.dll" On="install" />
+        <RemoveFile Id="RemoveLegacyPermissions" Name="System.Security.Permissions.dll" On="install" />
+        <RemoveFile Id="RemoveLegacyWindowsExtensions" Name="System.Windows.Extensions.dll" On="install" />
+        <RemoveFile Id="RemoveLegacyZstd" Name="ZstdSharp.dll" On="install" />
+        <RegistryValue Root="HKCU"
+                       Key="Software\LoipvRemote"
+                       Name="LegacyPayloadCleanup"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes" />
+      </Component>
     </ComponentGroup>
 
     <ComponentGroup Id="ShortcutComponents">

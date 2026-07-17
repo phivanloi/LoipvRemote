@@ -1,6 +1,6 @@
 using LoipvRemote.Domain.Connections;
 
-namespace LoipvRemote.UseCases.Configuration;
+namespace LoipvRemote.Application.Configuration;
 
 /// <summary>Configuration use case for explicitly selected connection definition stores.</summary>
 public sealed class ConnectionStoreConfigurationService(IConnectionDefinitionStoreFactory storeFactory)

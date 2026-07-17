@@ -1,4 +1,4 @@
-namespace LoipvRemote.UseCases.Credentials;
+namespace LoipvRemote.Application.Credentials;
 
 /// <summary>Application port for protecting local secret bytes without exposing storage or platform details.</summary>
 public interface IUserSecretProtector

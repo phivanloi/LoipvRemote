@@ -11,13 +11,19 @@
     <DefaultCompressionLevel>high</DefaultCompressionLevel>
     <DebugType Condition="'$(Configuration)' == 'Release'">none</DebugType>
     <!-- These ICE checks describe intentional WiX payload choices: per-user
-         LocalAppData scope, generated .NET resource files, and shortcuts in
-         a separate component targeting the shared application executable. -->
-    <SuppressIces>ICE38;ICE60;ICE64;ICE69;ICE91</SuppressIces>
+         LocalAppData scope, generated .NET resource files, shortcuts in a
+         separate component, and Windows App SDK PRI resource language metadata
+         which does not fit the MSI File.Language column. -->
+    <SuppressIces>ICE03;ICE38;ICE60;ICE64;ICE69;ICE91</SuppressIces>
     <UpgradeCode Condition="'$(Platform)' == 'arm64'">A9A04950-7B0D-4C55-93C9-2290A1CBBE3D</UpgradeCode>
     <UpgradeCode Condition="'$(Platform)' != 'arm64'">6ACDB9DC-74CC-42C4-85F7-0D0288F894DD</UpgradeCode>
-    <ApplicationProject>$(MSBuildThisFileDirectory)..\..\LoipvRemote.Desktop\LoipvRemote.Desktop.csproj</ApplicationProject>
+    <ApplicationProject>$(MSBuildThisFileDirectory)..\..\LoipvRemote.WinUI\LoipvRemote.WinUI.csproj</ApplicationProject>
     <ApplicationPublishDir>$(MSBuildProjectDirectory)\obj\$(Platform)\$(Configuration)\payload\</ApplicationPublishDir>
+    <ApplicationTargetFramework>net10.0-windows10.0.26100.0</ApplicationTargetFramework>
+    <!-- WinUI builds the application PRI next to the RID output, but the
+         unpackaged Publish target does not include it. The PRI is required
+         before App.InitializeComponent can load any XAML. -->
+    <ApplicationPriSource>$(MSBuildThisFileDirectory)..\..\LoipvRemote.WinUI\bin\$(Platform)\$(Configuration)\$(ApplicationTargetFramework)\win-$(Platform)\LoipvRemote.pri</ApplicationPriSource>
     <DefineConstants>UpgradeCode=$(UpgradeCode);ApplicationPublishDir=$(ApplicationPublishDir)</DefineConstants>
   </PropertyGroup>
 
@@ -31,5 +37,12 @@
     <MSBuild Projects="$(ApplicationProject)"
              Targets="Publish"
              Properties="Configuration=Release;Platform=$(Platform);RuntimeIdentifier=win-$(Platform);SelfContained=true;PublishReadyToRun=false;PublishSingleFile=false;PublishTrimmed=false;PublishDir=$(ApplicationPublishDir)" />
+    <Error Condition="!Exists('$(ApplicationPriSource)')"
+           Text="The WinUI application PRI was not generated: $(ApplicationPriSource)" />
+    <Copy SourceFiles="$(ApplicationPriSource)"
+          DestinationFolder="$(ApplicationPublishDir)"
+          SkipUnchangedFiles="true" />
+    <Error Condition="!Exists('$(ApplicationPublishDir)LoipvRemote.pri')"
+           Text="The WinUI application PRI was not added to the installer payload." />
   </Target>
 </Project>

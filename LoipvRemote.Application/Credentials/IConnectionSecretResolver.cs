@@ -1,6 +1,6 @@
 using LoipvRemote.Domain.Connections;
 
-namespace LoipvRemote.UseCases.Credentials;
+namespace LoipvRemote.Application.Credentials;
 
 /// <summary>Resolves a connection option secret at runtime without storing plaintext in Domain.</summary>
 public interface IConnectionSecretResolver

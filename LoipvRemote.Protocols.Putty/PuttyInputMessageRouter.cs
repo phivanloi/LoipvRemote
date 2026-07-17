@@ -2,7 +2,7 @@ namespace LoipvRemote.Protocols.Putty;
 
 /// <summary>
 /// Identifies keyboard and input-language messages that must reach an
-/// embedded PuTTY window when WinForms temporarily owns the focus during a
+/// embedded PuTTY window when the desktop shell temporarily owns the focus during a
 /// tab switch.
 /// </summary>
 public static class PuttyInputMessageRouter

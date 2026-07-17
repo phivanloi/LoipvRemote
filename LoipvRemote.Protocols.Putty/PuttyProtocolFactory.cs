@@ -20,15 +20,8 @@ public sealed class PuttyProtocolFactory(
     public IProtocolSession Create(ConnectionDefinition definition)
     {
         ArgumentNullException.ThrowIfNull(definition);
-        PuttyProtocolKind protocol = definition.Protocol switch
-        {
-            ProtocolKind.Ssh1 => PuttyProtocolKind.Ssh,
-            ProtocolKind.Ssh2 => PuttyProtocolKind.Ssh,
-            ProtocolKind.Telnet => PuttyProtocolKind.Telnet,
-            ProtocolKind.Rlogin => PuttyProtocolKind.Rlogin,
-            ProtocolKind.Raw => PuttyProtocolKind.Raw,
-            _ => throw new NotSupportedException($"Protocol '{definition.Protocol}' is not handled by {nameof(PuttyProtocolFactory)}.")
-        };
+        if (definition.Protocol != ProtocolKind.Ssh2)
+            throw new NotSupportedException($"Protocol '{definition.Protocol}' is not handled by {nameof(PuttyProtocolFactory)}.");
 
         string? password = _passwordResolver?.Invoke(definition);
         string passwordPipeName = string.IsNullOrEmpty(password)
@@ -42,8 +35,8 @@ public sealed class PuttyProtocolFactory(
             {
                 Hostname = definition.Host,
                 Port = definition.Port,
-                Protocol = protocol,
-                SshVersion = definition.Protocol == ProtocolKind.Ssh1 ? PuttySshVersion.Ssh1 : PuttySshVersion.Ssh2,
+                Protocol = PuttyProtocolKind.Ssh,
+                SshVersion = PuttySshVersion.Ssh2,
                 SavedSession = Option(definition.Options, "PuttySession"),
                 OpeningCommandPath = Option(definition.Options, "OpeningCommandPath"),
                 PrivateKeyPath = Option(definition.Options, "PrivateKeyPath"),

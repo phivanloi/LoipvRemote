@@ -1,6 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
-using LoipvRemote.UseCases.Credentials;
+using LoipvRemote.Application.Credentials;
 
 namespace LoipvRemote.Infrastructure.Windows.Dpapi;
 

@@ -42,15 +42,12 @@ public sealed class RdpProtocolFactory(
 
     private static RdpDisplayConfiguration BuildDisplayConfiguration(ConnectionNodeOptions? options)
     {
-        RDPResolutions resolution = ParseEnum(Option(options, "Resolution"), RDPResolutions.SmartSize);
+        _ = options;
 
-        // Keep the ActiveX desktop inside the embedded surface.  SmartSizing
-        // scales the negotiated desktop to the current tab bounds, while the
-        // fixed virtual desktop gives the server a predictable size instead
-        // of allowing it to select a desktop larger than the host surface.
-        return resolution == RDPResolutions.Fullscreen
-            ? new RdpDisplayConfiguration(1920, 1080, true, false, 100, 100)
-            : new RdpDisplayConfiguration(1920, 1080, false, true, 100, 100);
+        // This client is always embedded in a session tab. Negotiate a stable
+        // desktop, keep full screen off, and let SmartSizing fit it to the
+        // native session host rather than covering the shell/taskbar.
+        return new RdpDisplayConfiguration(1920, 1080, false, true, 100, 100);
     }
 
     private static RdpRuntimeConfiguration BuildRuntimeConfiguration(ConnectionDefinition definition)

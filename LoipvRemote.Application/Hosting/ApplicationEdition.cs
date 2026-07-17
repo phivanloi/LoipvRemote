@@ -1,4 +1,4 @@
-namespace LoipvRemote.UseCases.Hosting;
+namespace LoipvRemote.Application.Hosting;
 
 public static class ApplicationEdition
 {

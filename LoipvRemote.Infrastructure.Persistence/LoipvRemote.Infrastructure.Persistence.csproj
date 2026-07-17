@@ -7,9 +7,6 @@
     <ProjectReference Include="..\LoipvRemote.Domain\LoipvRemote.Domain.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.Data.Sqlite" />
     <PackageReference Include="Microsoft.Data.SqlClient" />
-    <PackageReference Include="MySql.Data" />
-    <PackageReference Include="System.Data.Odbc" />
   </ItemGroup>
 </Project>

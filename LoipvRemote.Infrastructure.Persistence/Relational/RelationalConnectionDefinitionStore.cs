@@ -4,14 +4,14 @@ using LoipvRemote.Domain.Connections;
 using LoipvRemote.Domain.Credentials;
 using LoipvRemote.Domain.Validation;
 using LoipvRemote.Infrastructure.Persistence;
-using LoipvRemote.UseCases.Configuration;
+using LoipvRemote.Application.Configuration;
 
 namespace LoipvRemote.Infrastructure.Persistence.Relational;
 
 /// <summary>Provider-neutral transactional store for secret-free connection definitions.</summary>
 public abstract class RelationalConnectionDefinitionStore : IConnectionDefinitionStore
 {
-    private const int SchemaVersion = 3;
+    private const int SchemaVersion = 4;
     private readonly string _connectionString;
 
     protected RelationalConnectionDefinitionStore(string connectionString)
@@ -34,7 +34,7 @@ public abstract class RelationalConnectionDefinitionStore : IConnectionDefinitio
         await EnsureSchemaAsync(connection, cancellationToken);
 
         await using DbCommand command = connection.CreateCommand();
-        command.CommandText = "SELECT id, name, host, port, protocol, credential_provider, credential_identifier, external_display_name, external_executable_path, external_arguments, external_working_directory, external_run_elevated, external_embed_window, external_wait_for_exit, parent_folder_id, sort_order, options_json, gateway_credential_provider, gateway_credential_identifier FROM connection_definitions ORDER BY sort_order, id";
+        command.CommandText = "SELECT id, name, host, port, protocol, credential_provider, credential_identifier, parent_folder_id, sort_order, options_json, gateway_credential_provider, gateway_credential_identifier FROM connection_definitions ORDER BY sort_order, id";
         var definitions = new List<ConnectionDefinition>();
         await using DbDataReader reader = await command.ExecuteReaderAsync(cancellationToken);
         while (await reader.ReadAsync(cancellationToken))
@@ -43,10 +43,11 @@ public abstract class RelationalConnectionDefinitionStore : IConnectionDefinitio
                 throw new InvalidDataException("The relational connection definition contains an invalid id or protocol.");
 
             var definition = new ConnectionDefinition(id, reader.GetString(1), reader.GetString(2), reader.GetInt32(3), protocol,
-                new CredentialReference(reader.GetString(5), reader.GetString(6)), ReadExternalApplication(reader, protocol),
-                reader.IsDBNull(14) ? null : Guid.Parse(reader.GetString(14)), Convert.ToInt32(reader.GetValue(15), CultureInfo.InvariantCulture),
-                reader.IsDBNull(16) ? null : ConnectionNodeOptionsJson.Deserialize(reader.GetString(16)),
-                ReadGatewayCredential(reader));
+                new CredentialReference(reader.GetString(5), reader.GetString(6)),
+                ParentFolderId: reader.IsDBNull(7) ? null : Guid.Parse(reader.GetString(7)),
+                SortOrder: Convert.ToInt32(reader.GetValue(8), CultureInfo.InvariantCulture),
+                Options: reader.IsDBNull(9) ? null : ConnectionNodeOptionsJson.Deserialize(reader.GetString(9)),
+                GatewayCredential: ReadGatewayCredential(reader));
             ConnectionDefinitionValidator.Validate(definition);
             definitions.Add(definition);
         }
@@ -103,7 +104,7 @@ public abstract class RelationalConnectionDefinitionStore : IConnectionDefinitio
             {
                 await using DbCommand insert = connection.CreateCommand();
                 insert.Transaction = transaction;
-                insert.CommandText = "INSERT INTO connection_definitions (id, name, host, port, protocol, credential_provider, credential_identifier, external_display_name, external_executable_path, external_arguments, external_working_directory, external_run_elevated, external_embed_window, external_wait_for_exit, parent_folder_id, sort_order, options_json, gateway_credential_provider, gateway_credential_identifier) VALUES (@id, @name, @host, @port, @protocol, @provider, @identifier, @externalDisplayName, @externalExecutablePath, @externalArguments, @externalWorkingDirectory, @externalRunElevated, @externalEmbedWindow, @externalWaitForExit, @parentFolderId, @sortOrder, @options, @gatewayProvider, @gatewayIdentifier)";
+                insert.CommandText = "INSERT INTO connection_definitions (id, name, host, port, protocol, credential_provider, credential_identifier, parent_folder_id, sort_order, options_json, gateway_credential_provider, gateway_credential_identifier) VALUES (@id, @name, @host, @port, @protocol, @provider, @identifier, @parentFolderId, @sortOrder, @options, @gatewayProvider, @gatewayIdentifier)";
                 AddParameter(insert, "@id", definition.Id.ToString("D"));
                 AddParameter(insert, "@name", definition.Name);
                 AddParameter(insert, "@host", definition.Host);
@@ -111,13 +112,6 @@ public abstract class RelationalConnectionDefinitionStore : IConnectionDefinitio
                 AddParameter(insert, "@protocol", definition.Protocol.ToString());
                 AddParameter(insert, "@provider", definition.Credential.Provider);
                 AddParameter(insert, "@identifier", definition.Credential.Identifier);
-                AddParameter(insert, "@externalDisplayName", (object?)definition.ExternalApplication?.DisplayName ?? DBNull.Value);
-                AddParameter(insert, "@externalExecutablePath", (object?)definition.ExternalApplication?.ExecutablePath ?? DBNull.Value);
-                AddParameter(insert, "@externalArguments", (object?)definition.ExternalApplication?.Arguments ?? DBNull.Value);
-                AddParameter(insert, "@externalWorkingDirectory", (object?)definition.ExternalApplication?.WorkingDirectory ?? DBNull.Value);
-                AddParameter(insert, "@externalRunElevated", definition.ExternalApplication is null ? DBNull.Value : definition.ExternalApplication.RunElevated ? 1 : 0);
-                AddParameter(insert, "@externalEmbedWindow", definition.ExternalApplication is null ? DBNull.Value : definition.ExternalApplication.EmbedWindow ? 1 : 0);
-                AddParameter(insert, "@externalWaitForExit", definition.ExternalApplication is null ? DBNull.Value : definition.ExternalApplication.WaitForExit ? 1 : 0);
                 AddParameter(insert, "@parentFolderId", (object?)definition.ParentFolderId?.ToString("D") ?? DBNull.Value);
                 AddParameter(insert, "@sortOrder", definition.SortOrder);
                 AddParameter(insert, "@options", (object?)ConnectionNodeOptionsJson.Serialize(definition.Options) ?? DBNull.Value);
@@ -147,7 +141,7 @@ public abstract class RelationalConnectionDefinitionStore : IConnectionDefinitio
             }
             catch (DbException) when (IgnoreExistingTableError)
             {
-                // ODBC has no portable CREATE TABLE IF NOT EXISTS syntax.
+                // Provider-specific stores may not support idempotent CREATE TABLE syntax.
             }
         }
 
@@ -155,7 +149,7 @@ public abstract class RelationalConnectionDefinitionStore : IConnectionDefinitio
         // Validate the complete current column shape before registering a new version
         // marker, otherwise an older database could be mistaken for the current model.
         command.Parameters.Clear();
-        command.CommandText = "SELECT id, name, host, port, protocol, credential_provider, credential_identifier, external_display_name, external_executable_path, external_arguments, external_working_directory, external_run_elevated, external_embed_window, external_wait_for_exit, parent_folder_id, sort_order, options_json, gateway_credential_provider, gateway_credential_identifier FROM connection_definitions WHERE 1 = 0";
+        command.CommandText = "SELECT id, name, host, port, protocol, credential_provider, credential_identifier, parent_folder_id, sort_order, options_json, gateway_credential_provider, gateway_credential_identifier FROM connection_definitions WHERE 1 = 0";
         try
         {
             await using DbDataReader shapeReader = await command.ExecuteReaderAsync(cancellationToken);
@@ -177,8 +171,17 @@ public abstract class RelationalConnectionDefinitionStore : IConnectionDefinitio
         }
 
         int version = Convert.ToInt32(versionValue, System.Globalization.CultureInfo.InvariantCulture);
-        if (version != SchemaVersion)
+        if (version == SchemaVersion)
+            return;
+        if (version != 3)
             throw new InvalidDataException($"Relational connection database uses schema version {version}; expected {SchemaVersion}.");
+
+        // Version 4 removes the unused external-application contract. Existing
+        // SQL Server rows retain their generic columns, but the runtime reads
+        // only SSH/RDP/VNC fields and marks the schema as the current model.
+        command.CommandText = "UPDATE connection_schema_version SET version = @version WHERE id = 1";
+        AddParameter(command, "@version", SchemaVersion);
+        await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
     private static void AddParameter(DbCommand command, string name, object value)
@@ -189,34 +192,15 @@ public abstract class RelationalConnectionDefinitionStore : IConnectionDefinitio
         command.Parameters.Add(parameter);
     }
 
-    private static ExternalApplicationDefinition? ReadExternalApplication(DbDataReader reader, ProtocolKind protocol)
-    {
-        bool hasExternalValues = Enumerable.Range(7, 7).Any(index => !reader.IsDBNull(index));
-        if (protocol != ProtocolKind.ExternalApplication)
-        {
-            if (hasExternalValues)
-                throw new InvalidDataException("Only external application connections may contain external application settings.");
-            return null;
-        }
-
-        if (Enumerable.Range(7, 7).Any(reader.IsDBNull))
-            throw new InvalidDataException("External application connection is missing application settings.");
-
-        return new ExternalApplicationDefinition(reader.GetString(7), reader.GetString(8), reader.GetString(9), reader.GetString(10),
-            Convert.ToInt32(reader.GetValue(11), CultureInfo.InvariantCulture) != 0,
-            Convert.ToInt32(reader.GetValue(12), CultureInfo.InvariantCulture) != 0,
-            Convert.ToInt32(reader.GetValue(13), CultureInfo.InvariantCulture) != 0);
-    }
-
     private static CredentialReference? ReadGatewayCredential(DbDataReader reader)
     {
-        bool hasProvider = !reader.IsDBNull(17);
-        bool hasIdentifier = !reader.IsDBNull(18);
+        bool hasProvider = !reader.IsDBNull(10);
+        bool hasIdentifier = !reader.IsDBNull(11);
         if (!hasProvider && !hasIdentifier)
             return null;
         if (!hasProvider || !hasIdentifier)
             throw new InvalidDataException("The relational connection definition has an incomplete gateway credential reference.");
 
-        return new CredentialReference(reader.GetString(17), reader.GetString(18));
+        return new CredentialReference(reader.GetString(10), reader.GetString(11));
     }
 }

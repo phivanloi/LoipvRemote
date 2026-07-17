@@ -4,8 +4,9 @@ using LoipvRemote.Domain.Protocols;
 namespace LoipvRemote.Protocols.Putty;
 
 /// <summary>Owns the child PuTTY process lifecycle independently of the desktop host.</summary>
-public sealed class PuttyProcessSession : IPuttyProcessHost
+public sealed class PuttyProcessSession(Action<Process>? processStarted = null) : IPuttyProcessHost
 {
+    private readonly Action<Process>? _processStarted = processStarted;
     private Process? Process { get; set; }
 
     public ProtocolSessionState State { get; private set; } = ProtocolSessionState.Created;
@@ -55,6 +56,7 @@ public sealed class PuttyProcessSession : IPuttyProcessHost
         }
 
         Process = process;
+        _processStarted?.Invoke(process);
         try
         {
             // PuTTY creates its top-level window asynchronously. Waiting for the
@@ -80,17 +82,34 @@ public sealed class PuttyProcessSession : IPuttyProcessHost
             return;
         }
 
+        bool exited = true;
         try
         {
             if (!Process.HasExited)
-                Process.Kill();
+            {
+                // PuTTY can create a helper child process while opening a
+                // session. Killing only the top-level window leaves that
+                // helper orphaned after LoipvRemote exits. Terminate the
+                // complete process tree and wait briefly so shutdown can
+                // verify that no protocol child remains alive.
+                Process.Kill(entireProcessTree: true);
+                exited = Process.WaitForExit(5000);
+            }
         }
-        finally
+        catch (InvalidOperationException)
         {
-            Process.Dispose();
-            Process = null;
-            State = ProtocolSessionState.Closed;
+            // The process exited between the state check and Kill/WaitForExit.
         }
+
+        if (!exited)
+        {
+            State = ProtocolSessionState.Closing;
+            throw new TimeoutException("PuTTY and its child processes did not exit within 5 seconds.");
+        }
+
+        Process.Dispose();
+        Process = null;
+        State = ProtocolSessionState.Closed;
     }
 
     public void StopProcess() => Stop();

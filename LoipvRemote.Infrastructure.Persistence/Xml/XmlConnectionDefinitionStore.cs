@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using System.Xml.Linq;
-using LoipvRemote.UseCases.Configuration;
+using LoipvRemote.Application.Configuration;
 using LoipvRemote.Domain.Connections;
 using LoipvRemote.Domain.Credentials;
 using LoipvRemote.Domain.Validation;
@@ -12,18 +12,12 @@ namespace LoipvRemote.Infrastructure.Persistence.Xml;
 /// <summary>XML persistence for Domain connection definitions; secret values are not representable.</summary>
 public sealed class XmlConnectionDefinitionStore : IConnectionDefinitionStore
 {
+    private const int BackupRetentionCount = 10;
     private const string RootName = "connections";
     private const string FolderName = "folder";
     private const string ConnectionName = "connection";
     private const string ParentFolderIdAttribute = "parentFolderId";
     private const string SortOrderAttribute = "sortOrder";
-    private const string ExternalDisplayNameAttribute = "externalDisplayName";
-    private const string ExternalExecutablePathAttribute = "externalExecutablePath";
-    private const string ExternalArgumentsAttribute = "externalArguments";
-    private const string ExternalWorkingDirectoryAttribute = "externalWorkingDirectory";
-    private const string ExternalRunElevatedAttribute = "externalRunElevated";
-    private const string ExternalEmbedWindowAttribute = "externalEmbedWindow";
-    private const string ExternalWaitForExitAttribute = "externalWaitForExit";
     private const string OptionsAttribute = "options";
     private const string IsRootAttribute = "isRoot";
     private const string GatewayCredentialProviderAttribute = "gatewayCredentialProvider";
@@ -72,6 +66,7 @@ public sealed class XmlConnectionDefinitionStore : IConnectionDefinitionStore
         string temporaryPath = $"{_filePath}.{Guid.NewGuid():N}.tmp";
         try
         {
+            await BackupExistingFileAsync(cancellationToken).ConfigureAwait(false);
             await using (FileStream destination = new(
                 temporaryPath,
                 FileMode.CreateNew,
@@ -95,6 +90,48 @@ public sealed class XmlConnectionDefinitionStore : IConnectionDefinitionStore
         {
             if (File.Exists(temporaryPath))
                 File.Delete(temporaryPath);
+        }
+    }
+
+    private async Task BackupExistingFileAsync(CancellationToken cancellationToken)
+    {
+        if (!File.Exists(_filePath))
+            return;
+
+        string directory = Path.GetDirectoryName(_filePath) ?? throw new InvalidOperationException("The XML connection file has no directory.");
+        string backupDirectory = Path.Combine(directory, "backups");
+        Directory.CreateDirectory(backupDirectory);
+        string name = Path.GetFileNameWithoutExtension(_filePath);
+        string extension = Path.GetExtension(_filePath);
+        string backupPath = Path.Combine(
+            backupDirectory,
+            $"{name}.{DateTimeOffset.UtcNow:yyyyMMddHHmmssfff}.{Guid.NewGuid():N}{extension}");
+
+        await using (FileStream source = new(
+            _filePath,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.Read,
+            bufferSize: 4096,
+            FileOptions.Asynchronous | FileOptions.SequentialScan))
+        await using (FileStream destination = new(
+            backupPath,
+            FileMode.CreateNew,
+            FileAccess.Write,
+            FileShare.None,
+            bufferSize: 4096,
+            FileOptions.Asynchronous | FileOptions.WriteThrough))
+        {
+            await source.CopyToAsync(destination, cancellationToken).ConfigureAwait(false);
+            await destination.FlushAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        foreach (FileInfo expired in new DirectoryInfo(backupDirectory)
+                     .EnumerateFiles($"{name}.*{extension}")
+                     .OrderByDescending(file => file.CreationTimeUtc)
+                     .Skip(BackupRetentionCount))
+        {
+            expired.Delete();
         }
     }
 
@@ -135,18 +172,6 @@ public sealed class XmlConnectionDefinitionStore : IConnectionDefinitionStore
                 ? new XAttribute(ParentFolderIdAttribute, parentFolderId)
                 : null);
 
-        if (definition.ExternalApplication is { } externalApplication)
-        {
-            connection.Add(
-                new XAttribute(ExternalDisplayNameAttribute, externalApplication.DisplayName),
-                new XAttribute(ExternalExecutablePathAttribute, externalApplication.ExecutablePath),
-                new XAttribute(ExternalArgumentsAttribute, externalApplication.Arguments),
-                new XAttribute(ExternalWorkingDirectoryAttribute, externalApplication.WorkingDirectory),
-                new XAttribute(ExternalRunElevatedAttribute, externalApplication.RunElevated),
-                new XAttribute(ExternalEmbedWindowAttribute, externalApplication.EmbedWindow),
-                new XAttribute(ExternalWaitForExitAttribute, externalApplication.WaitForExit));
-        }
-
         return connection;
     }
 
@@ -182,11 +207,10 @@ public sealed class XmlConnectionDefinitionStore : IConnectionDefinitionStore
             port,
             protocol,
             new CredentialReference(provider, identifier),
-            ParseExternalApplication(element, protocol),
-            ParseOptionalGuid(element, ParentFolderIdAttribute),
-            ParseSortOrder(element),
-            ParseOptions(element),
-            ParseGatewayCredential(element));
+            ParentFolderId: ParseOptionalGuid(element, ParentFolderIdAttribute),
+            SortOrder: ParseSortOrder(element),
+            Options: ParseOptions(element),
+            GatewayCredential: ParseGatewayCredential(element));
 
         ConnectionDefinitionValidator.Validate(definition);
         return definition;
@@ -212,47 +236,6 @@ public sealed class XmlConnectionDefinitionStore : IConnectionDefinitionStore
             return sortOrder;
 
         throw new InvalidDataException("Connection XML has an invalid sort order.");
-    }
-
-    private static ExternalApplicationDefinition? ParseExternalApplication(XElement element, ProtocolKind protocol)
-    {
-        string[] attributes =
-        [
-            ExternalDisplayNameAttribute,
-            ExternalExecutablePathAttribute,
-            ExternalArgumentsAttribute,
-            ExternalWorkingDirectoryAttribute,
-            ExternalRunElevatedAttribute,
-            ExternalEmbedWindowAttribute,
-            ExternalWaitForExitAttribute
-        ];
-
-        bool hasExternalApplicationAttributes = attributes.Any(attribute => element.Attribute(attribute) is not null);
-        if (protocol != ProtocolKind.ExternalApplication)
-        {
-            if (hasExternalApplicationAttributes)
-                throw new InvalidDataException("Only external application connections may contain external application settings.");
-
-            return null;
-        }
-
-        if (!hasExternalApplicationAttributes)
-            throw new InvalidDataException("External application connections require application settings.");
-
-        foreach (string attribute in attributes)
-        {
-            if (element.Attribute(attribute) is null)
-                throw new InvalidDataException($"External application XML is missing '{attribute}'.");
-        }
-
-        return new ExternalApplicationDefinition(
-            (string)element.Attribute(ExternalDisplayNameAttribute)!,
-            (string)element.Attribute(ExternalExecutablePathAttribute)!,
-            (string)element.Attribute(ExternalArgumentsAttribute)!,
-            (string)element.Attribute(ExternalWorkingDirectoryAttribute)!,
-            ParseBooleanAttribute(element, ExternalRunElevatedAttribute),
-            ParseBooleanAttribute(element, ExternalEmbedWindowAttribute),
-            ParseBooleanAttribute(element, ExternalWaitForExitAttribute));
     }
 
     private static bool ParseBooleanAttribute(XElement element, string attribute)

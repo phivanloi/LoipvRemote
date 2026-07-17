@@ -3,7 +3,10 @@ namespace LoipvRemote.Domain.Credentials;
 /// <summary>Identifies a credential without carrying a secret value.</summary>
 public sealed record CredentialReference(string Provider, string Identifier)
 {
+    public const string LocalDpapiProvider = "local-dpapi";
     public static CredentialReference None { get; } = new("none", "");
+
+    public static CredentialReference LocalDpapi(Guid credentialId) => new(LocalDpapiProvider, credentialId.ToString("D"));
 
     public void Validate()
     {

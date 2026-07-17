@@ -1,7 +1,7 @@
 using LoipvRemote.Protocols.Abstractions;
 using System.Collections.Concurrent;
 
-namespace LoipvRemote.UseCases.Sessions;
+namespace LoipvRemote.Application.Sessions;
 
 public enum SessionStartResult
 {
@@ -68,8 +68,10 @@ public sealed class SessionLifecycleCoordinator
         List<Exception> failures = [];
         foreach (IProtocolSession session in _activeSessions.Keys)
         {
-            if (!_activeSessions.TryRemove(session, out _))
+            if (!_activeSessions.ContainsKey(session))
                 continue;
+
+            List<Exception> sessionFailures = [];
 
             try
             {
@@ -81,7 +83,7 @@ public sealed class SessionLifecycleCoordinator
             }
             catch (Exception exception)
             {
-                failures.Add(exception);
+                sessionFailures.Add(exception);
             }
 
             try
@@ -90,7 +92,7 @@ public sealed class SessionLifecycleCoordinator
             }
             catch (Exception exception)
             {
-                failures.Add(exception);
+                sessionFailures.Add(exception);
             }
 
             try
@@ -99,8 +101,17 @@ public sealed class SessionLifecycleCoordinator
             }
             catch (Exception exception)
             {
-                failures.Add(exception);
+                sessionFailures.Add(exception);
             }
+
+            // Keep failed sessions tracked so the shutdown gate can refuse
+            // to exit and a subsequent close attempt can retry the protocol
+            // cleanup. Removing a session before Close/Dispose completes can
+            // otherwise report an empty registry while a child process lives.
+            if (sessionFailures.Count == 0)
+                _activeSessions.TryRemove(session, out _);
+            else
+                failures.Add(new AggregateException("A protocol session did not close cleanly.", sessionFailures));
         }
 
         if (failures.Count > 0)

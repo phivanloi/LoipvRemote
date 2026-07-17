@@ -1,0 +1,118 @@
+<Window
+    x:Class="LoipvRemote.WinUI.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:LoipvRemote.WinUI"
+    Title="LoipvRemote">
+
+    <Grid x:Name="RootGrid" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="340" MinWidth="340" />
+            <ColumnDefinition Width="*" MinWidth="340" />
+        </Grid.ColumnDefinitions>
+
+        <Grid Grid.Column="0" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,1,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <StackPanel Spacing="8" Padding="16,16,16,12">
+                <TextBlock Text="LoipvRemote" Style="{ThemeResource TitleTextBlockStyle}" />
+                <CommandBar DefaultLabelPosition="Right">
+                    <AppBarButton Icon="Add" Label="New connection" Click="NewConnectionButton_Click" />
+                    <AppBarButton Icon="Link" Label="Quick connect" Click="QuickConnectButton_Click" />
+                    <AppBarButton Icon="Folder" Label="New folder" Click="NewFolderButton_Click" />
+                    <AppBarButton Icon="Edit" Label="Edit selected" Click="EditSelectedNodeButton_Click" />
+                    <AppBarButton Icon="Copy" Label="Duplicate" Click="DuplicateSelectedNodeButton_Click" />
+                    <AppBarButton Icon="MoveToFolder" Label="Move" Click="MoveSelectedNodeButton_Click" />
+                    <AppBarButton Label="Move up" Click="MoveConnectionUpButton_Click" />
+                    <AppBarButton Label="Move down" Click="MoveConnectionDownButton_Click" />
+                    <AppBarButton Icon="Delete" Label="Delete" Click="DeleteSelectedNodeButton_Click" />
+                    <AppBarButton Icon="Import" Label="Import XML" Click="ImportConnectionsButton_Click" />
+                    <AppBarButton Icon="Save" Label="Export XML" Click="ExportConnectionsButton_Click" />
+                    <AppBarButton Icon="Cancel" Label="Close all sessions" Click="CloseAllSessionsButton_Click" />
+                </CommandBar>
+            </StackPanel>
+
+            <TreeView x:Name="ConnectionTree"
+                      Grid.Row="1"
+                      Margin="12,0"
+                      SelectionMode="Single"
+                      Expanding="ConnectionTree_Expanding"
+                      Collapsed="ConnectionTree_Collapsed"
+                      SelectionChanged="ConnectionTree_SelectionChanged" />
+
+            <Grid Grid.Row="2" Padding="12" ColumnSpacing="8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Button x:Name="ConnectionsNavigationButton"
+                        Grid.Column="0"
+                        Content="Connections"
+                        Click="ConnectionsNavigationButton_Click" />
+                <Button x:Name="ConfigNavigationButton"
+                        Grid.Column="1"
+                        Content="Config"
+                        Click="ConfigNavigationButton_Click" />
+            </Grid>
+        </Grid>
+
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <TabView x:Name="Sessions"
+                     Grid.Row="0"
+                     CanReorderTabs="True"
+                     CanDragTabs="True"
+                     SelectionChanged="Sessions_SelectionChanged"
+                     TabCloseRequested="Sessions_TabCloseRequested">
+                <TabViewItem x:Name="WelcomeTab" Header="Welcome" IsClosable="True" />
+            </TabView>
+
+            <Grid x:Name="SessionSurface" Grid.Row="1" Padding="32">
+                <ContentControl x:Name="ManagedSessionContent" Visibility="Collapsed" />
+                <StackPanel x:Name="WelcomeContent" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
+                    <TextBlock Text="Remote Connection Manager" Style="{ThemeResource TitleTextBlockStyle}" HorizontalAlignment="Center" />
+                    <TextBlock Text="Select a connection to start a remote session." HorizontalAlignment="Center" />
+                    <TextBlock x:Name="ConnectionStatus" HorizontalAlignment="Center" Opacity="0.7" />
+                </StackPanel>
+                <ScrollViewer x:Name="ConfigContent" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="640">
+                    <StackPanel Spacing="12" Padding="32">
+                        <TextBlock Text="Configuration" Style="{ThemeResource TitleTextBlockStyle}" />
+                        <ComboBox x:Name="ThemeBox" Header="Theme" SelectionChanged="ThemeBox_SelectionChanged" />
+                        <TextBlock Text="Connection storage" Style="{ThemeResource SubtitleTextBlockStyle}" />
+                        <TextBlock Text="The selected storage location is protected for the current Windows user. Changing storage only opens the selected store; migrate only when you intend to overwrite it." TextWrapping="Wrap" />
+                        <ComboBox x:Name="StoreKindBox" Header="Storage backend" />
+                        <TextBox x:Name="StoreLocationBox" Header="File path or connection string" TextWrapping="Wrap" AcceptsReturn="True" MinHeight="72" />
+                        <ToggleSwitch x:Name="StoreReadOnlyToggle" Header="Read-only store" />
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button Content="Open selected store" Click="OpenStoreButton_Click" />
+                            <Button Content="Migrate current connections" Click="MigrateStoreButton_Click" />
+                        </StackPanel>
+                        <TextBlock x:Name="StoreConfigurationStatus" TextWrapping="Wrap" Opacity="0.8" />
+                        <TextBlock Text="Shared credentials" Style="{ThemeResource SubtitleTextBlockStyle}" Margin="0,16,0,0" />
+                        <TextBlock Text="Credential passwords are protected for the current Windows user with DPAPI and are not written to XML or SQL Server." TextWrapping="Wrap" />
+                        <ListView x:Name="SharedCredentialList" MinHeight="96" SelectionMode="Single" DisplayMemberPath="DisplayName" />
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button Content="Add shared credential" Click="AddSharedCredentialButton_Click" />
+                            <Button Content="Edit selected" Click="EditSharedCredentialButton_Click" />
+                            <Button Content="Delete selected" Click="DeleteSharedCredentialButton_Click" />
+                        </StackPanel>
+                        <TextBlock x:Name="CredentialConfigurationStatus" TextWrapping="Wrap" Opacity="0.8" />
+                    </StackPanel>
+                </ScrollViewer>
+                <StackPanel x:Name="SessionContent" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
+                    <TextBlock x:Name="SessionTitle" Style="{ThemeResource TitleTextBlockStyle}" HorizontalAlignment="Center" />
+                    <TextBlock x:Name="SessionStatus" HorizontalAlignment="Center" />
+                    <Button x:Name="ConnectSessionButton" Content="Connect" Click="ConnectSessionButton_Click" />
+                </StackPanel>
+            </Grid>
+        </Grid>
+    </Grid>
+</Window>

@@ -4,7 +4,7 @@ using LoipvRemote.Domain.Protocols;
 using LoipvRemote.Domain.Validation;
 using LoipvRemote.Protocols.Abstractions;
 
-namespace LoipvRemote.UseCases.Sessions;
+namespace LoipvRemote.Application.Sessions;
 
 public enum ConnectionSessionStartStatus
 {

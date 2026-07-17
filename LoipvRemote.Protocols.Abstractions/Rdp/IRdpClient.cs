@@ -1,3 +1,5 @@
+using LoipvRemote.Domain.Protocols.Rdp;
+
 namespace LoipvRemote.Protocols.Abstractions;
 
 /// <summary>Minimal RDP transport surface required by the protocol lifecycle.</summary>
@@ -7,6 +9,12 @@ public interface IRdpClient
     void ConfigureEndpoint(string host, int port);
     void Connect();
     void Disconnect();
+}
+
+/// <summary>Creates a platform-specific RDP client for a requested protocol generation.</summary>
+public interface IRdpClientFactory
+{
+    IRdpClient Create(RdpVersion requestedVersion);
 }
 
 /// <summary>Optional RDP client capability for applying runtime credentials and gateway settings.</summary>

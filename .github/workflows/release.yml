@@ -111,6 +111,9 @@ jobs:
             $removedProductScope | Write-Host
             throw 'A removed product feature was reintroduced.'
           }
+          # git grep returns 1 when no match is found. At this point that means
+          # every boundary scan passed; end the PowerShell step successfully.
+          exit 0
 
   build-installer:
     needs: validate-source

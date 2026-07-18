@@ -12,6 +12,7 @@ public sealed class RdpActiveXRuntime(RdpVersion version) :
     IRdpClient,
     IRdpCredentialClient,
     IRdpRuntimeClient,
+    IRdpDynamicDisplayClient,
     IRdpDisplayClient,
     IRdpEventClient,
     IManagedEmbeddedWindow,
@@ -66,6 +67,12 @@ public sealed class RdpActiveXRuntime(RdpVersion version) :
     {
         _ = display;
         ThrowNotSupported();
+    }
+
+    public bool TryUpdateDisplay(RdpDisplayConfiguration display)
+    {
+        _ = display;
+        return false;
     }
 
     public string GetErrorDescription(int disconnectReason)

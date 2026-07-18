@@ -1,4 +1,5 @@
 using LoipvRemote.Infrastructure.Windows.WindowEmbedding;
+using LoipvRemote.Domain.Protocols;
 using LoipvRemote.Protocols.Abstractions;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
@@ -22,6 +23,11 @@ public sealed class Win32EmbeddedSessionSurface : IEmbeddedSessionSurface, IDisp
     private EmbeddedWindowBounds? _lastReportedBounds;
     private IEmbeddedWindow? _lastResizedSession;
     private CancellationTokenSource? _focusRestoreCancellation;
+    private CancellationTokenSource? _dynamicDisplayCancellation;
+    private CancellationTokenSource? _windowTransitionCancellation;
+    private IEmbeddedWindow? _adaptiveDisplaySession;
+    private RdpDisplayConfiguration? _lastAdaptiveDisplay;
+    private bool _dynamicResolutionUnavailable;
     private bool _isVisible;
     private bool _disposed;
 
@@ -58,6 +64,9 @@ public sealed class Win32EmbeddedSessionSurface : IEmbeddedSessionSurface, IDisp
             _isVisible = visible;
             EmbeddingDiagnostics.Write($"host-visibility visible={visible} {DescribeWindow(_nativeHost.Handle)}");
         }
+
+        if (visible)
+            UpdateBounds();
     }
 
     public bool Attach(IEmbeddedWindow session, TimeSpan timeout)
@@ -94,6 +103,13 @@ public sealed class Win32EmbeddedSessionSurface : IEmbeddedSessionSurface, IDisp
         }
 
         _session = session;
+        if (!ReferenceEquals(_adaptiveDisplaySession, session))
+        {
+            CancelDynamicDisplayUpdate();
+            _adaptiveDisplaySession = session;
+            _lastAdaptiveDisplay = null;
+            _dynamicResolutionUnavailable = false;
+        }
         _nativeHost?.SetChildVisible(session.WindowHandle, visible: true);
         _lastResizedSession = null;
         UpdateBounds();
@@ -120,6 +136,7 @@ public sealed class Win32EmbeddedSessionSurface : IEmbeddedSessionSurface, IDisp
     {
         UpdateBounds();
         QueueFocusRestore();
+        QueueWindowTransitionRefresh();
     }
 
     /// <summary>Reclaims terminal focus after a tab or window activation transition.</summary>
@@ -135,6 +152,9 @@ public sealed class Win32EmbeddedSessionSurface : IEmbeddedSessionSurface, IDisp
         _placementTarget.LayoutUpdated -= PlacementTargetOnLayoutUpdated;
         _focusRestoreCancellation?.Cancel();
         _focusRestoreCancellation?.Dispose();
+        CancelDynamicDisplayUpdate();
+        _windowTransitionCancellation?.Cancel();
+        _windowTransitionCancellation?.Dispose();
         _nativeHost?.Dispose();
         _nativeHost = null;
         EmbeddingDiagnostics.Write("surface-disposed");
@@ -183,7 +203,7 @@ public sealed class Win32EmbeddedSessionSurface : IEmbeddedSessionSurface, IDisp
         }
     }
 
-    private void UpdateBounds()
+    private void UpdateBounds(bool forceDynamicDisplayUpdate = false)
     {
         if (_disposed || _nativeHost is null || _placementTarget.XamlRoot is null || _placementTarget.ActualWidth <= 0 || _placementTarget.ActualHeight <= 0)
             return;
@@ -220,6 +240,131 @@ public sealed class Win32EmbeddedSessionSurface : IEmbeddedSessionSurface, IDisp
         {
             _session.Resize(EmbeddedSessionSurfaceLayout.ToProtocolBounds(hostBounds));
             _lastResizedSession = _session;
+        }
+
+        UpdateAdaptiveRdpDisplay(hostBounds, scale, forceDynamicDisplayUpdate);
+    }
+
+    private void UpdateAdaptiveRdpDisplay(
+        EmbeddedWindowBounds hostBounds,
+        double rasterizationScale,
+        bool forceDynamicDisplayUpdate = false)
+    {
+        if (_session is not IAdaptiveRdpDisplaySession adaptive ||
+            _session is not IProtocolSession protocolSession)
+        {
+            return;
+        }
+
+        RdpDisplayConfiguration display = RdpDisplaySizing.CreateAuto(
+            hostBounds.Width,
+            hostBounds.Height,
+            rasterizationScale);
+
+        if (protocolSession.State == ProtocolSessionState.Initialized)
+        {
+            if (!Equals(_lastAdaptiveDisplay, display))
+            {
+                adaptive.PrepareDisplay(display);
+                _lastAdaptiveDisplay = display;
+                EmbeddingDiagnostics.Write($"rdp-display-prepared size={display.Width}x{display.Height} scale={display.DesktopScaleFactor}");
+            }
+            return;
+        }
+
+        if (protocolSession.State != ProtocolSessionState.Connected ||
+            _dynamicResolutionUnavailable ||
+            (!forceDynamicDisplayUpdate && !NeedsDynamicDisplayUpdate(display)))
+        {
+            return;
+        }
+
+        QueueDynamicDisplayUpdate(adaptive, display, forceDynamicDisplayUpdate);
+    }
+
+    private bool NeedsDynamicDisplayUpdate(RdpDisplayConfiguration display) =>
+        !Equals(_lastAdaptiveDisplay, display);
+
+    private void QueueDynamicDisplayUpdate(
+        IAdaptiveRdpDisplaySession adaptive,
+        RdpDisplayConfiguration display,
+        bool force)
+    {
+        CancelDynamicDisplayUpdate();
+        CancellationTokenSource cancellation = _dynamicDisplayCancellation = new();
+        _ = ApplyDynamicDisplayAfterResizeAsync(adaptive, display, force, cancellation.Token);
+    }
+
+    private async Task ApplyDynamicDisplayAfterResizeAsync(
+        IAdaptiveRdpDisplaySession adaptive,
+        RdpDisplayConfiguration display,
+        bool force,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(500), cancellationToken).ConfigureAwait(false);
+            if (cancellationToken.IsCancellationRequested || _disposed)
+                return;
+
+            _placementTarget.DispatcherQueue.TryEnqueue(() =>
+            {
+                if (cancellationToken.IsCancellationRequested ||
+                    _disposed ||
+                    !ReferenceEquals(_session, _adaptiveDisplaySession) ||
+                    (!force && !NeedsDynamicDisplayUpdate(display)))
+                {
+                    return;
+                }
+
+                if (adaptive.TryUpdateDisplay(display))
+                {
+                    _lastAdaptiveDisplay = display;
+                    EmbeddingDiagnostics.Write($"rdp-display-updated size={display.Width}x{display.Height} scale={display.DesktopScaleFactor}");
+                }
+                else
+                {
+                    _dynamicResolutionUnavailable = true;
+                    EmbeddingDiagnostics.Write("rdp-display-dynamic-update-unavailable; keeping SmartSizing fallback");
+                }
+            });
+        }
+        catch (OperationCanceledException)
+        {
+            // The user is still resizing or a different session became active.
+        }
+    }
+
+    private void CancelDynamicDisplayUpdate()
+    {
+        _dynamicDisplayCancellation?.Cancel();
+        _dynamicDisplayCancellation?.Dispose();
+        _dynamicDisplayCancellation = null;
+    }
+
+    private void QueueWindowTransitionRefresh()
+    {
+        _windowTransitionCancellation?.Cancel();
+        _windowTransitionCancellation?.Dispose();
+        CancellationTokenSource cancellation = _windowTransitionCancellation = new();
+        _ = RefreshAfterWindowTransitionAsync(cancellation.Token);
+    }
+
+    private async Task RefreshAfterWindowTransitionAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            // AppWindow.Changed is raised before the final XAML measure pass
+            // for maximize/restore. Sample the settled client region once more
+            // so a remote desktop never keeps the previous, taller viewport
+            // and clips its taskbar at the bottom.
+            await Task.Delay(TimeSpan.FromMilliseconds(700), cancellationToken).ConfigureAwait(false);
+            if (!cancellationToken.IsCancellationRequested && !_disposed)
+                _placementTarget.DispatcherQueue.TryEnqueue(() => UpdateBounds(forceDynamicDisplayUpdate: true));
+        }
+        catch (OperationCanceledException)
+        {
+            // A later window transition superseded this refresh.
         }
     }
 

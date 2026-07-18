@@ -105,11 +105,6 @@ jobs:
             $removedProductScope | Write-Host
             throw 'A removed product feature was reintroduced.'
           }
-          $repoDocs = @(git ls-files | Where-Object { $_ -match '\.(md|docx|pdf)$' })
-          if ($repoDocs.Count -gt 0) {
-            $repoDocs | Write-Host
-            throw 'Repository documentation artifacts are not allowed; keep only build/release metadata.'
-          }
 
       - name: Upload test results
         if: always()

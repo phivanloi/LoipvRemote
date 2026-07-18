@@ -32,6 +32,16 @@ public interface IRdpRuntimeClient
     void ApplyDisplay(RdpDisplayConfiguration display);
 }
 
+/// <summary>
+/// Optional capability for changing the remote desktop size without
+/// reconnecting an already established RDP session.
+/// </summary>
+public interface IRdpDynamicDisplayClient
+{
+    /// <returns><see langword="true"/> when the ActiveX control accepted the update.</returns>
+    bool TryUpdateDisplay(RdpDisplayConfiguration display);
+}
+
 /// <summary>Asynchronous events emitted by the Windows RDP ActiveX control.</summary>
 public interface IRdpEventClient
 {

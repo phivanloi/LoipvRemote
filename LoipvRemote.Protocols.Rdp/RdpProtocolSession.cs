@@ -4,7 +4,7 @@ using LoipvRemote.Protocols.Abstractions;
 namespace LoipvRemote.Protocols.Rdp;
 
 /// <summary>Common RDP session adapter around the module lifecycle.</summary>
-public sealed class RdpProtocolSession : IProtocolSession, IProtocolSessionEvents, IManagedEmbeddedWindow, IViewOnlySession, ISmartSizingSession, IFullscreenSession
+public sealed class RdpProtocolSession : IProtocolSession, IProtocolSessionEvents, IManagedEmbeddedWindow, IViewOnlySession, ISmartSizingSession, IFullscreenSession, IAdaptiveRdpDisplaySession
 {
     private readonly IRdpClient _client;
     private readonly RdpSession _lifecycle;
@@ -108,6 +108,24 @@ public sealed class RdpProtocolSession : IProtocolSession, IProtocolSessionEvent
     {
         if (IsAvailable && bounds.IsValid && WindowHandle != IntPtr.Zero && _windowOperations is not null)
             _windowOperations.Move(WindowHandle, bounds.X, bounds.Y, bounds.Width, bounds.Height);
+    }
+
+    public void PrepareDisplay(RdpDisplayConfiguration display)
+    {
+        ArgumentNullException.ThrowIfNull(display);
+        // DesktopWidth/DesktopHeight are valid only before Connect(). The shell
+        // invokes this as soon as the real ActiveX child is attached, which is
+        // after initialization and before the asynchronous handshake begins.
+        if (State == ProtocolSessionState.Initialized && _client is IRdpRuntimeClient runtime)
+            runtime.ApplyDisplay(display);
+    }
+
+    public bool TryUpdateDisplay(RdpDisplayConfiguration display)
+    {
+        ArgumentNullException.ThrowIfNull(display);
+        return State == ProtocolSessionState.Connected &&
+               _client is IRdpDynamicDisplayClient dynamicDisplay &&
+               dynamicDisplay.TryUpdateDisplay(display);
     }
 
     public bool ViewOnly

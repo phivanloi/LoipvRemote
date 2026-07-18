@@ -172,6 +172,50 @@ public sealed class ProtocolFactoryTests
         Assert.That(client.Display, Is.EqualTo(new RdpDisplayConfiguration(1920, 1080, false, true, 100, 100)));
     }
 
+    [TestCase(800, 600, 1.5, 1024, 768, 150)]
+    [TestCase(1919, 1079, 1.0, 1920, 1080, 100)]
+    [TestCase(1928, 1088, 1.0, 1928, 1088, 100)]
+    [TestCase(5000, 3000, 2.1, 3840, 2160, 200)]
+    public void RdpAutoDisplayUsesDpiAwareProductBounds(
+        int width,
+        int height,
+        double rasterizationScale,
+        int expectedWidth,
+        int expectedHeight,
+        int expectedDesktopScale)
+    {
+        RdpDisplayConfiguration display = RdpDisplaySizing.CreateAuto(width, height, rasterizationScale);
+
+        Assert.That(display, Is.EqualTo(new RdpDisplayConfiguration(
+            expectedWidth,
+            expectedHeight,
+            false,
+            true,
+            (uint)expectedDesktopScale,
+            100)));
+    }
+
+    [Test]
+    public async Task RdpSessionPreparesInitialDisplayAndUpdatesConnectedDisplayWithoutReconnect()
+    {
+        var client = new DynamicDisplayRdpClient();
+        using var session = new RdpProtocolSession(client, new RdpConnectionOptions("server.example", 3389));
+        var initial = new RdpDisplayConfiguration(2560, 1440, false, true, 150, 100);
+        var resized = new RdpDisplayConfiguration(1920, 1080, false, true, 100, 100);
+
+        Assert.That(await session.InitializeAsync(), Is.True);
+        ((IAdaptiveRdpDisplaySession)session).PrepareDisplay(initial);
+        Assert.That(client.Display, Is.EqualTo(initial));
+
+        Assert.That(await session.ConnectAsync(), Is.True);
+        Assert.That(((IAdaptiveRdpDisplaySession)session).TryUpdateDisplay(resized), Is.True);
+        Assert.Multiple(() =>
+        {
+            Assert.That(client.DynamicDisplay, Is.EqualTo(resized));
+            Assert.That(client.ConnectCalls, Is.EqualTo(1));
+        });
+    }
+
     [Test]
     [Platform("Win")]
     public void NativeRdpHostCanCreateTheWindowsActiveXControlInTheNativeSessionHost()
@@ -337,6 +381,25 @@ public sealed class ProtocolFactoryTests
         public void Disconnect() { }
         public void ApplyConfiguration(RdpRuntimeConfiguration configuration) { }
         public void ApplyDisplay(RdpDisplayConfiguration display) => Display = display;
+    }
+
+    private sealed class DynamicDisplayRdpClient : IRdpClient, IRdpRuntimeClient, IRdpDynamicDisplayClient
+    {
+        public int ConnectCalls { get; private set; }
+        public RdpDisplayConfiguration? Display { get; private set; }
+        public RdpDisplayConfiguration? DynamicDisplay { get; private set; }
+
+        public void Initialize() { }
+        public void ConfigureEndpoint(string host, int port) { }
+        public void Connect() => ConnectCalls++;
+        public void Disconnect() { }
+        public void ApplyConfiguration(RdpRuntimeConfiguration configuration) { }
+        public void ApplyDisplay(RdpDisplayConfiguration display) => Display = display;
+        public bool TryUpdateDisplay(RdpDisplayConfiguration display)
+        {
+            DynamicDisplay = display;
+            return true;
+        }
     }
 
 #pragma warning disable CS0067 // Required IRdpEventClient events are unused by this focused fake.

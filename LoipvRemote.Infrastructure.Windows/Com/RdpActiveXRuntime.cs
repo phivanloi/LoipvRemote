@@ -10,7 +10,7 @@ namespace LoipvRemote.Infrastructure.Windows.Com;
 /// The control is supplied by Windows while this host owns the native child
 /// window and message integration directly.
 /// </summary>
-public sealed class RdpActiveXRuntime : IRdpClient, IRdpCredentialClient, IRdpRuntimeClient, IRdpDisplayClient, IRdpEventClient, IManagedEmbeddedWindow, IDisposable
+public sealed class RdpActiveXRuntime : IRdpClient, IRdpCredentialClient, IRdpRuntimeClient, IRdpDynamicDisplayClient, IRdpDisplayClient, IRdpEventClient, IManagedEmbeddedWindow, IDisposable
 {
     private const int WsChild = unchecked((int)0x40000000);
     private const int WsVisible = unchecked((int)0x10000000);
@@ -266,9 +266,27 @@ public sealed class RdpActiveXRuntime : IRdpClient, IRdpCredentialClient, IRdpRu
         }
     }
 
-    public void ResizeSession(uint width, uint height, uint orientation, uint desktopScale, uint deviceScale)
+    public bool TryUpdateDisplay(RdpDisplayConfiguration display)
     {
-        Client.UpdateSessionDisplaySettings(width, height, width, height, orientation, desktopScale, deviceScale);
+        ArgumentNullException.ThrowIfNull(display);
+        try
+        {
+            Client.UpdateSessionDisplaySettings(
+                (uint)display.Width,
+                (uint)display.Height,
+                (uint)display.Width,
+                (uint)display.Height,
+                0,
+                display.DesktopScaleFactor,
+                display.DeviceScaleFactor);
+            return true;
+        }
+        catch (COMException)
+        {
+            // Older RDP clients and session hosts can reject dynamic display
+            // updates. SmartSizing remains enabled as the stable fallback.
+            return false;
+        }
     }
 
     private void ApplyDriveRedirection(RdpDriveRedirection mode, string customDrives)

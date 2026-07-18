@@ -137,6 +137,9 @@ jobs:
         with:
           global-json-file: global.json
 
+      - name: Restore solution dependencies
+        run: dotnet restore LoipvRemote.slnx
+
       - name: Restore installer dependencies
         run: dotnet restore LoipvRemoteInstaller/Installer/Installer.wixproj
 

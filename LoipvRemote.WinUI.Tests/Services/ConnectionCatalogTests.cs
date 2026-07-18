@@ -72,6 +72,45 @@ public sealed class ConnectionCatalogTests
     }
 
     [Test]
+    public async Task SaveAsyncRoundTripsMovedFolderAndConnection()
+    {
+        string directory = Path.Combine(Path.GetTempPath(), "LoipvRemote.WinUI.Tests", Guid.NewGuid().ToString("N"));
+        string file = Path.Combine(directory, "confCons.xml");
+        Directory.CreateDirectory(directory);
+        try
+        {
+            Guid sourceFolderId = Guid.NewGuid();
+            Guid destinationFolderId = Guid.NewGuid();
+            Guid connectionId = Guid.NewGuid();
+            ConnectionTreeDefinition initial = new(
+                [
+                    new ConnectionFolderDefinition(sourceFolderId, "Source"),
+                    new ConnectionFolderDefinition(destinationFolderId, "Destination")
+                ],
+                [new ConnectionDefinition(connectionId, "SSH", "ssh.example", 22, ProtocolKind.Ssh2, CredentialReference.None, ParentFolderId: sourceFolderId)]);
+            await new XmlConnectionDefinitionStore(file).SaveAsync(initial);
+            ConnectionCatalog catalog = CreateCatalog(Path.Combine(directory, "settings.json"), file);
+            await catalog.LoadAsync();
+
+            ConnectionTreeDefinition movedConnection = ConnectionTreeEditor.MoveConnection(catalog.Tree, connectionId, destinationFolderId);
+            ConnectionTreeDefinition movedTree = ConnectionTreeEditor.MoveFolder(movedConnection, sourceFolderId, destinationFolderId);
+            await catalog.SaveAsync(movedTree);
+
+            ConnectionTreeDefinition reloaded = (await CreateCatalog(Path.Combine(directory, "settings-reload.json"), file).LoadAsync()).Tree;
+            Assert.Multiple(() =>
+            {
+                Assert.That(reloaded.Connections.Single(connection => connection.Id == connectionId).ParentFolderId, Is.EqualTo(destinationFolderId));
+                Assert.That(reloaded.Folders.Single(folder => folder.Id == sourceFolderId).ParentFolderId, Is.EqualTo(destinationFolderId));
+            });
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+                Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Test]
     public async Task ChangeStoreAsyncMigratesTheCurrentTreeOnlyWhenExplicitlyRequested()
     {
         string directory = Path.Combine(Path.GetTempPath(), "LoipvRemote.WinUI.Tests", Guid.NewGuid().ToString("N"));

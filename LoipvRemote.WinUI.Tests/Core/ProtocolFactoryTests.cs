@@ -140,6 +140,23 @@ public sealed class ProtocolFactoryTests
     }
 
     [Test]
+    public async Task RdpSessionWaitsForTheNativeConnectedEventBeforeCompleting()
+    {
+        var client = new EventDrivenRdpClient();
+        using var session = new RdpProtocolSession(
+            client,
+            new RdpConnectionOptions("server.example", 3389));
+
+        Assert.That(await session.InitializeAsync(), Is.True);
+
+        ValueTask<bool> connecting = session.ConnectAsync();
+
+        Assert.That(connecting.IsCompleted, Is.False);
+        client.RaiseConnected();
+        Assert.That(await connecting, Is.True);
+    }
+
+    [Test]
     public async Task RdpFactoryKeepsLegacyFullscreenDefinitionsInsideTheEmbeddedSurface()
     {
         var client = new RecordingRdpClient();
@@ -321,6 +338,28 @@ public sealed class ProtocolFactoryTests
         public void ApplyConfiguration(RdpRuntimeConfiguration configuration) { }
         public void ApplyDisplay(RdpDisplayConfiguration display) => Display = display;
     }
+
+#pragma warning disable CS0067 // Required IRdpEventClient events are unused by this focused fake.
+    private sealed class EventDrivenRdpClient : IRdpClient, IRdpEventClient
+    {
+        public event EventHandler? Connecting;
+        public event EventHandler? Connected;
+        public event EventHandler? LoginComplete;
+        public event EventHandler<int>? FatalError;
+        public event EventHandler<int>? Disconnected;
+        public event EventHandler? IdleTimeout;
+        public event EventHandler? LeaveFullScreen;
+
+        public void Initialize() { }
+        public void ConfigureEndpoint(string host, int port) { }
+        public void Connect() => Connecting?.Invoke(this, EventArgs.Empty);
+        public void Disconnect() { }
+        public string GetErrorDescription(int disconnectReason) => $"Disconnect {disconnectReason}";
+        public void SubscribeEvents() { }
+        public void UnsubscribeEvents() { }
+        public void RaiseConnected() => Connected?.Invoke(this, EventArgs.Empty);
+    }
+#pragma warning restore CS0067
 
     private sealed class RecordingVncClient : IVncClient
     {

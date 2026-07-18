@@ -8,6 +8,7 @@ public sealed class RdpProtocolSession : IProtocolSession, IProtocolSessionEvent
 {
     private readonly IRdpClient _client;
     private readonly RdpSession _lifecycle;
+    private TaskCompletionSource<bool>? _connectionCompletion;
     private bool _disposed;
 
     public RdpProtocolSession(
@@ -50,10 +51,29 @@ public sealed class RdpProtocolSession : IProtocolSession, IProtocolSessionEvent
 
     private bool ConnectCore() => _lifecycle.Connect();
 
-    public ValueTask<bool> ConnectAsync(CancellationToken cancellationToken = default)
+    public async ValueTask<bool> ConnectAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return ValueTask.FromResult(ConnectCore());
+        // The ActiveX client begins asynchronously: Connect() only starts the
+        // handshake.  Do not let the WinUI tab reveal an empty native host
+        // until the control has raised Connected and has pixels to paint.
+        if (_client is not IRdpEventClient)
+            return ConnectCore();
+
+        var completion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _connectionCompletion = completion;
+        try
+        {
+            if (!ConnectCore())
+                return false;
+
+            return await completion.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            if (ReferenceEquals(_connectionCompletion, completion))
+                _connectionCompletion = null;
+        }
     }
 
     public ValueTask DisconnectAsync(CancellationToken cancellationToken = default)
@@ -181,12 +201,14 @@ public sealed class RdpProtocolSession : IProtocolSession, IProtocolSessionEvent
     private void OnConnected(object? sender, EventArgs args)
     {
         _lifecycle.MarkConnected();
+        _connectionCompletion?.TrySetResult(true);
         Connected?.Invoke(this, EventArgs.Empty);
     }
 
     private void OnFatalError(object? sender, int code)
     {
         _lifecycle.MarkFaulted();
+        _connectionCompletion?.TrySetException(new InvalidOperationException($"RDP fatal error {code}."));
         ErrorOccurred?.Invoke(this, new ProtocolSessionErrorEventArgs($"RDP fatal error {code}.", code));
     }
 
@@ -195,6 +217,7 @@ public sealed class RdpProtocolSession : IProtocolSession, IProtocolSessionEvent
         _lifecycle.MarkClosed();
         string message = (_client as IRdpEventClient)?.GetErrorDescription(reason)
             ?? $"RDP disconnected ({reason}).";
+        _connectionCompletion?.TrySetException(new InvalidOperationException(message));
         Disconnected?.Invoke(this, new ProtocolSessionDisconnectedEventArgs(message, reason));
     }
 }

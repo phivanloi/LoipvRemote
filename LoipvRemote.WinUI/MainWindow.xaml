@@ -61,7 +61,7 @@
                         <SymbolIcon Symbol="More" />
                     </Button.Content>
                     <Button.Flyout>
-                        <MenuFlyout Placement="Bottom">
+                        <MenuFlyout Placement="Bottom" Opening="XamlPopup_Opening" Closed="XamlPopup_Closed">
                             <MenuFlyoutItem Text="Quick connect" Click="QuickConnectButton_Click">
                                 <MenuFlyoutItem.Icon><SymbolIcon Symbol="Link" /></MenuFlyoutItem.Icon>
                             </MenuFlyoutItem>
@@ -87,13 +87,19 @@
 
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="340" MinWidth="340" />
+                <ColumnDefinition Width="275" MinWidth="275" />
                 <ColumnDefinition Width="*" MinWidth="340" />
             </Grid.ColumnDefinitions>
 
             <Grid Grid.Column="0" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,1,0">
                 <TreeView x:Name="ConnectionTree"
                           SelectionMode="Single"
+                          CanDragItems="True"
+                          CanReorderItems="True"
+                          AllowDrop="True"
+                          DragItemsStarting="ConnectionTree_DragItemsStarting"
+                          DragItemsCompleted="ConnectionTree_DragItemsCompleted"
+                          DragOver="ConnectionTree_DragOver"
                           Expanding="ConnectionTree_Expanding"
                           Collapsed="ConnectionTree_Collapsed"
                           SelectionChanged="ConnectionTree_SelectionChanged"
@@ -141,7 +147,7 @@
             <Grid x:Name="SessionSurface" Grid.Row="1" Padding="32">
                 <ContentControl x:Name="ManagedSessionContent" Visibility="Collapsed" />
                 <StackPanel x:Name="WelcomeContent" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
-                    <TextBlock Text="Remote Connection Manager" Style="{ThemeResource TitleTextBlockStyle}" HorizontalAlignment="Center" />
+                    <TextBlock Text="Loipv Remote" Style="{ThemeResource TitleTextBlockStyle}" HorizontalAlignment="Center" />
                     <TextBlock Text="Select a connection to start a remote session." HorizontalAlignment="Center" />
                     <TextBlock x:Name="ConnectionStatus" HorizontalAlignment="Center" Opacity="0.7" />
                 </StackPanel>

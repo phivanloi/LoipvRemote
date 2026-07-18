@@ -17,7 +17,9 @@ using LoipvRemote.Infrastructure.Windows.WindowEmbedding;
 using LoipvRemote.Application.Configuration;
 using LoipvRemote.Application.Credentials;
 using LoipvRemote.Application.Sessions;
+using LoipvRemote.Protocols.Abstractions;
 using WinRT.Interop;
+using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage.Pickers;
 
 namespace LoipvRemote.WinUI;
@@ -35,12 +37,15 @@ public sealed partial class MainWindow : Window, IDisposable
     private readonly Dictionary<TabViewItem, RemoteSessionTab> _sessionTabs = [];
     private readonly HashSet<Guid> _connectedConnectionIds = [];
     private readonly HashSet<Guid> _expandedFolderIds = [];
+    private ConnectionTreeItem? _draggedTreeItem;
     private ConnectionTreeItem? _selectedTreeItem;
     private ConnectionFolderDefinition? _selectedFolder;
     private ConnectionDefinition? _selectedConnection;
     private bool _suppressSessionOpenForContextMenu;
     private bool _shutdownInProgress;
     private bool _sessionShutdownCompleted;
+    private RemoteSessionTab? _nativeSessionHiddenForPopup;
+    private int _xamlPopupDepth;
     private bool _disposed;
 
     public MainWindow(
@@ -174,6 +179,55 @@ public sealed partial class MainWindow : Window, IDisposable
         }
     }
 
+    private async Task<ContentDialogResult> ShowDialogAsync(ContentDialog dialog)
+    {
+        BeginXamlPopup();
+        try
+        {
+            return await dialog.ShowAsync();
+        }
+        finally
+        {
+            EndXamlPopup();
+        }
+    }
+
+    private void XamlPopup_Opening(object? sender, object args) => BeginXamlPopup();
+
+    private void XamlPopup_Closed(object? sender, object args) => EndXamlPopup();
+
+    private void BeginXamlPopup()
+    {
+        if (_xamlPopupDepth++ != 0 || _embeddedSessionSurface is null)
+            return;
+
+        if (Sessions.SelectedItem is TabViewItem selectedTab &&
+            _sessionTabs.TryGetValue(selectedTab, out RemoteSessionTab? sessionTab) &&
+            sessionTab.State == RemoteSessionTabState.Connected &&
+            sessionTab.Session is IEmbeddedWindow)
+        {
+            _nativeSessionHiddenForPopup = sessionTab;
+            RemoteSessionWorkspace.Deactivate(_embeddedSessionSurface);
+        }
+    }
+
+    private void EndXamlPopup()
+    {
+        if (_xamlPopupDepth == 0 || --_xamlPopupDepth != 0)
+            return;
+
+        RemoteSessionTab? sessionTab = _nativeSessionHiddenForPopup;
+        _nativeSessionHiddenForPopup = null;
+        if (sessionTab is not null &&
+            sessionTab.State == RemoteSessionTabState.Connected &&
+            Sessions.SelectedItem is TabViewItem selectedTab &&
+            _sessionTabs.TryGetValue(selectedTab, out RemoteSessionTab? selectedSession) &&
+            ReferenceEquals(selectedSession, sessionTab))
+        {
+            ShowSession(sessionTab);
+        }
+    }
+
     private async void NewConnectionButton_Click(object sender, RoutedEventArgs args)
     {
         var nameBox = new TextBox { Header = "Name", PlaceholderText = "Production server" };
@@ -205,7 +259,7 @@ public sealed partial class MainWindow : Window, IDisposable
             }
         };
 
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        if (await ShowDialogAsync(dialog) != ContentDialogResult.Primary)
             return;
 
         if (protocolBox.SelectedItem is not ProtocolKind protocol ||
@@ -261,7 +315,7 @@ public sealed partial class MainWindow : Window, IDisposable
             DefaultButton = ContentDialogButton.Primary,
             Content = new StackPanel { Spacing = 12, Children = { hostBox, portBox, protocolBox, usernameBox, passwordBox } }
         };
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        if (await ShowDialogAsync(dialog) != ContentDialogResult.Primary)
             return;
         if (protocolBox.SelectedItem is not ProtocolKind protocol ||
             string.IsNullOrWhiteSpace(hostBox.Text) ||
@@ -329,7 +383,7 @@ public sealed partial class MainWindow : Window, IDisposable
             Content = nameBox
         };
 
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        if (await ShowDialogAsync(dialog) != ContentDialogResult.Primary)
             return;
 
         try
@@ -427,7 +481,7 @@ public sealed partial class MainWindow : Window, IDisposable
             Content = new StackPanel { Spacing = 12, Children = { nameBox, hostBox, portBox, protocolBox, credentialBox, optionsBox, passwordBox, clearPasswordBox } }
         };
 
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        if (await ShowDialogAsync(dialog) != ContentDialogResult.Primary)
             return;
         if (protocolBox.SelectedItem is not ProtocolKind protocol || double.IsNaN(portBox.Value) || portBox.Value is < 1 or > 65535)
         {
@@ -486,7 +540,7 @@ public sealed partial class MainWindow : Window, IDisposable
             DefaultButton = ContentDialogButton.Primary,
             Content = new StackPanel { Spacing = 12, Children = { nameBox, optionsBox } }
         };
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        if (await ShowDialogAsync(dialog) != ContentDialogResult.Primary)
             return;
 
         try
@@ -639,7 +693,7 @@ public sealed partial class MainWindow : Window, IDisposable
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Close
         };
-        if (await confirmation.ShowAsync() == ContentDialogResult.Primary)
+        if (await ShowDialogAsync(confirmation) == ContentDialogResult.Primary)
             await ChangeStoreAsync(migrateCurrentTree: true);
     }
 
@@ -719,7 +773,7 @@ public sealed partial class MainWindow : Window, IDisposable
             DefaultButton = ContentDialogButton.Primary,
             Content = new StackPanel { Spacing = 12, Children = { nameBox, userNameBox, passwordBox } }
         };
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        if (await ShowDialogAsync(dialog) != ContentDialogResult.Primary)
             return;
 
         try
@@ -756,7 +810,7 @@ public sealed partial class MainWindow : Window, IDisposable
             DefaultButton = ContentDialogButton.Primary,
             Content = new StackPanel { Spacing = 12, Children = { nameBox, userNameBox, passwordBox } }
         };
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        if (await ShowDialogAsync(dialog) != ContentDialogResult.Primary)
             return;
 
         try
@@ -800,7 +854,7 @@ public sealed partial class MainWindow : Window, IDisposable
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Close
         };
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        if (await ShowDialogAsync(dialog) != ContentDialogResult.Primary)
             return;
 
         try
@@ -945,9 +999,89 @@ public sealed partial class MainWindow : Window, IDisposable
         args.Handled = true;
     }
 
+    private void ConnectionTree_DragItemsStarting(TreeView sender, TreeViewDragItemsStartingEventArgs args)
+    {
+        _draggedTreeItem = args.Items.OfType<ConnectionTreeItem>().SingleOrDefault();
+    }
+
+    private void ConnectionTree_DragOver(object sender, DragEventArgs args)
+    {
+        if (_draggedTreeItem is null)
+            return;
+
+        args.AcceptedOperation = DataPackageOperation.Move;
+        // Keep the source row stable and use the drop target highlight as the
+        // move affordance instead of the TreeView drag proxy.
+        args.DragUIOverride.IsCaptionVisible = false;
+        args.DragUIOverride.IsContentVisible = false;
+        args.DragUIOverride.IsGlyphVisible = false;
+    }
+
+    private async void ConnectionTree_DragItemsCompleted(TreeView sender, TreeViewDragItemsCompletedEventArgs args)
+    {
+        _draggedTreeItem = null;
+        if (args.DropResult != DataPackageOperation.Move)
+            return;
+
+        try
+        {
+            ConnectionTreeDefinition updated = SynchronizeTreeFromView();
+            await _connectionCatalog.SaveAsync(updated);
+            await LoadConnectionTreeAsync();
+            ConnectionStatus.Text = "Selection moved and saved.";
+        }
+        catch (Exception exception) when (exception is ArgumentException or InvalidDataException or IOException)
+        {
+            ConnectionStatus.Text = $"Selection was not moved: {exception.Message}";
+        }
+    }
+
+    private ConnectionTreeDefinition SynchronizeTreeFromView()
+    {
+        ConnectionTreeDefinition current = _connectionCatalog.Tree;
+        Guid? rootParentId = current.Folders.SingleOrDefault(folder => folder.IsRoot)?.Id;
+        var folderPositions = new Dictionary<Guid, (Guid? ParentFolderId, int SortOrder)>();
+        var connectionPositions = new Dictionary<Guid, (Guid? ParentFolderId, int SortOrder)>();
+        CollectPositions(ConnectionTree.RootNodes, rootParentId);
+
+        var updated = current with
+        {
+            Folders = current.Folders.Select(folder => folderPositions.TryGetValue(folder.Id, out var position)
+                ? folder with { ParentFolderId = position.ParentFolderId, SortOrder = position.SortOrder }
+                : folder).ToArray(),
+            Connections = current.Connections.Select(connection => connectionPositions.TryGetValue(connection.Id, out var position)
+                ? connection with { ParentFolderId = position.ParentFolderId, SortOrder = position.SortOrder }
+                : connection).ToArray()
+        };
+        updated.Validate();
+        return updated;
+
+        void CollectPositions(IList<TreeViewNode> nodes, Guid? parentFolderId)
+        {
+            for (int index = 0; index < nodes.Count; index++)
+            {
+                TreeViewNode node = nodes[index];
+                if (!_connectionNodes.TryGetValue(node, out ConnectionTreeItem? item))
+                    continue;
+
+                if (item.IsFolder)
+                {
+                    folderPositions[item.Id] = (parentFolderId, index);
+                    CollectPositions(node.Children, item.Id);
+                }
+                else
+                {
+                    connectionPositions[item.Id] = (parentFolderId, index);
+                }
+            }
+        }
+    }
+
     private MenuFlyout CreateConnectionContextMenu()
     {
         var menu = new MenuFlyout();
+        menu.Opening += XamlPopup_Opening;
+        menu.Closed += XamlPopup_Closed;
         menu.Items.Add(CreateConnectionMenuItem("Edit connection", Symbol.Edit, EditSelectedNodeButton_Click));
         menu.Items.Add(CreateConnectionMenuItem("Duplicate", Symbol.Copy, DuplicateSelectedNodeButton_Click));
         menu.Items.Add(CreateConnectionMenuItem("Move", Symbol.MoveToFolder, MoveSelectedNodeButton_Click));
@@ -1066,7 +1200,7 @@ public sealed partial class MainWindow : Window, IDisposable
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Close
         };
-        if (await confirmation.ShowAsync() != ContentDialogResult.Primary)
+        if (await ShowDialogAsync(confirmation) != ContentDialogResult.Primary)
             return;
 
         try
@@ -1118,7 +1252,7 @@ public sealed partial class MainWindow : Window, IDisposable
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary
         };
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary || destinationBox.SelectedItem is not FolderDestination destination)
+        if (await ShowDialogAsync(dialog) != ContentDialogResult.Primary || destinationBox.SelectedItem is not FolderDestination destination)
             return;
 
         try

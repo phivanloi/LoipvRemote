@@ -8,7 +8,11 @@ namespace LoipvRemote.Infrastructure.Windows.Dpapi;
 public sealed class DpapiLocalCredentialStore : ILocalCredentialStore
 {
     private const string PasswordPurposePrefix = "LoipvRemote.LocalCredential.Password:";
-    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        WriteIndented = true,
+        PropertyNameCaseInsensitive = true
+    };
     private readonly IStringSecretStore _secretStore;
     private readonly string _filePath;
     private readonly object _gate = new();

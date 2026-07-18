@@ -95,12 +95,59 @@ public static class ConnectionTreeProjection
             .ThenBy(connection => connection.Name, StringComparer.CurrentCultureIgnoreCase)
             .Select(connection => new ConnectionTreeItem(
                 connection.Id,
-                $"{connection.Name}: {connection.Host}",
+                CreateConnectionDisplayName(connection),
                 false,
                 [],
                 connectedConnectionIds.Contains(connection.Id),
                 connection.Protocol)));
 
         return children;
+    }
+
+    internal static string CreateConnectionDisplayName(ConnectionDefinition connection)
+    {
+        ArgumentNullException.ThrowIfNull(connection);
+
+        string host = connection.Host.Trim();
+        if (string.Equals(connection.Name.Trim(), host, StringComparison.OrdinalIgnoreCase))
+            return host;
+
+        string name = RemoveRepeatedHost(connection.Name.Trim(), host);
+        return string.IsNullOrWhiteSpace(name) ? host : $"{name}: {host}";
+    }
+
+    private static string RemoveRepeatedHost(string name, string host)
+    {
+        if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(host))
+            return name;
+
+        string result = name;
+        bool changed;
+        do
+        {
+            changed = false;
+            if (result.StartsWith(host, StringComparison.OrdinalIgnoreCase))
+            {
+                string suffix = result[host.Length..].TrimStart();
+                if (suffix.Length > 0 && (suffix[0] == ':' || suffix[0] == '-'))
+                {
+                    result = suffix[1..].TrimStart();
+                    changed = true;
+                }
+            }
+
+            if (result.EndsWith(host, StringComparison.OrdinalIgnoreCase))
+            {
+                string prefix = result[..^host.Length].TrimEnd();
+                if (prefix.Length > 0 && (prefix[^1] == ':' || prefix[^1] == '-'))
+                {
+                    result = prefix[..^1].TrimEnd();
+                    changed = true;
+                }
+            }
+        }
+        while (changed && !string.IsNullOrWhiteSpace(result));
+
+        return result;
     }
 }

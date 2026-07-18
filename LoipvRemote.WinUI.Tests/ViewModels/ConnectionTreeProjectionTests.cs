@@ -49,6 +49,16 @@ public sealed class ConnectionTreeProjectionTests
         Assert.That(result.Select(node => node.DisplayName), Is.EqualTo(["Gateway: gateway.example"]));
     }
 
+    [TestCase("10.11.12.135 - infras", "10.11.12.135", "infras: 10.11.12.135")]
+    [TestCase("Mega: 157.66.80.18", "157.66.80.18", "Mega: 157.66.80.18")]
+    [TestCase("server.example", "server.example", "server.example")]
+    public void CreateConnectionDisplayNameRemovesHostRepeatedInConnectionName(string name, string host, string expected)
+    {
+        ConnectionDefinition connection = new(Guid.NewGuid(), name, host, 22, ProtocolKind.Ssh2, CredentialReference.None);
+
+        Assert.That(ConnectionTreeProjection.CreateConnectionDisplayName(connection), Is.EqualTo(expected));
+    }
+
     [Test]
     public void CreateFlattensTheLegacyRootFolder()
     {

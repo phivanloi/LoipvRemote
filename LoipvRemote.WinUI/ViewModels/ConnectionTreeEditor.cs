@@ -10,6 +10,16 @@ public static class ConnectionTreeEditor
         ConnectionTreeDefinition destination,
         ConnectionTreeDefinition imported,
         string importFolderName)
+        => MergeImportedTreeWithIdMap(destination, imported, importFolderName).Tree;
+
+    /// <summary>
+    /// Merges an imported tree and returns the generated connection IDs so a
+    /// caller can re-protect portable credentials for their new identities.
+    /// </summary>
+    public static ConnectionTreeImportResult MergeImportedTreeWithIdMap(
+        ConnectionTreeDefinition destination,
+        ConnectionTreeDefinition imported,
+        string importFolderName)
     {
         ArgumentNullException.ThrowIfNull(destination);
         ArgumentNullException.ThrowIfNull(imported);
@@ -22,6 +32,7 @@ public static class ConnectionTreeEditor
             importFolderName.Trim(),
             SortOrder: NextSortOrder(destination.Folders));
         Dictionary<Guid, Guid> folderIds = imported.Folders.ToDictionary(folder => folder.Id, _ => Guid.NewGuid());
+        Dictionary<Guid, Guid> connectionIds = imported.Connections.ToDictionary(connection => connection.Id, _ => Guid.NewGuid());
 
         ConnectionFolderDefinition[] importedFolders = imported.Folders
             .Select(folder => folder with
@@ -36,7 +47,7 @@ public static class ConnectionTreeEditor
         ConnectionDefinition[] importedConnections = imported.Connections
             .Select(connection => connection with
             {
-                Id = Guid.NewGuid(),
+                Id = connectionIds[connection.Id],
                 ParentFolderId = connection.ParentFolderId is { } parent && folderIds.TryGetValue(parent, out Guid mappedParent)
                     ? mappedParent
                     : importRoot.Id
@@ -48,7 +59,7 @@ public static class ConnectionTreeEditor
             Connections = destination.Connections.Concat(importedConnections).ToArray()
         };
         updated.Validate();
-        return updated;
+        return new ConnectionTreeImportResult(updated, connectionIds);
     }
 
     public static ConnectionTreeDefinition AddRootFolder(ConnectionTreeDefinition tree, string name)
@@ -438,3 +449,8 @@ public static class ConnectionTreeEditor
             };
     }
 }
+
+/// <summary>Result of importing a tree whose identifiers were regenerated.</summary>
+public sealed record ConnectionTreeImportResult(
+    ConnectionTreeDefinition Tree,
+    IReadOnlyDictionary<Guid, Guid> ConnectionIds);

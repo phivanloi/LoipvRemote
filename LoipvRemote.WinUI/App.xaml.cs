@@ -35,6 +35,7 @@ public partial class App : Microsoft.UI.Xaml.Application
                 services.AddSingleton<IStringSecretStore>(provider => provider.GetRequiredService<DpapiStringSecretStore>());
                 services.AddSingleton<ILocalCredentialStore, DpapiLocalCredentialStore>();
                 services.AddSingleton<ConnectionOptionsEditor>();
+                services.AddSingleton<PortableConnectionCredentialImporter>();
                 services.AddSingleton<IConnectionSecretResolver, DpapiConnectionSecretResolver>();
                 services.AddSingleton<IVncClientFactory, NativeVncClientFactory>();
                 services.AddSingleton<IRdpClientFactory, WindowsRdpClientFactory>();

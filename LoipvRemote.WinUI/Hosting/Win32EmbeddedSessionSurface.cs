@@ -68,9 +68,11 @@ public sealed class Win32EmbeddedSessionSurface : IEmbeddedSessionSurface, IDisp
         IEmbeddedWindow? previousSession = _session;
         if (ReferenceEquals(previousSession, session))
         {
-            // The session was already attached during ConnectAsync. Reusing it
-            // avoids a second hide/reparent/show cycle, which was visible as a
-            // flash whenever a newly connected tab became selected.
+            // RDP is attached before its ActiveX control exists. Once
+            // InitializeAsync creates that control, force one local resize so
+            // it does not remain at the native 1x1 creation size until a tab
+            // selection causes a later layout pass.
+            _lastResizedSession = null;
             UpdateBounds();
             return true;
         }
@@ -162,9 +164,18 @@ public sealed class Win32EmbeddedSessionSurface : IEmbeddedSessionSurface, IDisp
     {
         try
         {
-            await Task.Delay(150, cancellationToken);
-            if (!cancellationToken.IsCancellationRequested)
+            // A newly created PuTTY terminal can accept focus only after it
+            // has processed its initial show/layout messages. A single early
+            // SetFocus is unreliable, while a short, cancellable retry window
+            // makes first-open behavior match a later tab activation.
+            foreach (int delayMilliseconds in new[] { 150, 300, 600 })
+            {
+                await Task.Delay(delayMilliseconds, cancellationToken);
+                if (cancellationToken.IsCancellationRequested)
+                    return;
+
                 _placementTarget.DispatcherQueue.TryEnqueue(Focus);
+            }
         }
         catch (OperationCanceledException)
         {

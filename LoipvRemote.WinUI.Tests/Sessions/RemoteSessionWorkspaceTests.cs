@@ -21,7 +21,7 @@ public sealed class RemoteSessionWorkspaceTests
 
         await workspace.ConnectAsync(tab, surface);
 
-        Assert.That(events, Is.EqualTo(["EnsureHost", "Visible", "Attach", "Initialize", "Connect", "Visible", "Focus"]));
+        Assert.That(events, Is.EqualTo(["EnsureHost", "Visible", "Attach", "Initialize", "Attach", "Connect", "Visible", "Focus", "RestoreFocusAfterTransition"]));
         Assert.That(tab.State, Is.EqualTo(RemoteSessionTabState.Connected));
         Assert.That(tab.Session, Is.SameAs(session));
     }
@@ -37,7 +37,7 @@ public sealed class RemoteSessionWorkspaceTests
 
         await workspace.ConnectAsync(tab, surface);
 
-        Assert.That(events, Is.EqualTo(["EnsureHost", "Visible", "SetHost", "Initialize", "Connect", "Attach", "Visible", "Focus"]));
+        Assert.That(events, Is.EqualTo(["EnsureHost", "Visible", "SetHost", "Initialize", "Connect", "Attach", "Visible", "Focus", "RestoreFocusAfterTransition"]));
         Assert.That(session.HostHandle, Is.EqualTo(surface.Handle));
         Assert.That(tab.State, Is.EqualTo(RemoteSessionTabState.Connected));
     }
@@ -66,7 +66,7 @@ public sealed class RemoteSessionWorkspaceTests
 
         Assert.ThrowsAsync<InvalidOperationException>(async () => await workspace.ConnectAsync(tab, new TestSurface(events)));
 
-        Assert.That(events, Is.EqualTo(["EnsureHost", "Visible", "Attach", "Initialize", "Connect", "Close", "DisposeAsync"]));
+        Assert.That(events, Is.EqualTo(["EnsureHost", "Visible", "Attach", "Initialize", "Attach", "Connect", "Close", "DisposeAsync"]));
         Assert.That(tab.State, Is.EqualTo(RemoteSessionTabState.Faulted));
         Assert.That(tab.Session, Is.Null);
     }
@@ -205,6 +205,8 @@ public sealed class RemoteSessionWorkspaceTests
         }
 
         public void Focus() => events.Add("Focus");
+
+        public void RestoreFocusAfterTransition() => events.Add("RestoreFocusAfterTransition");
     }
 
     private class EmbeddedTestSession(List<string> events) : IProtocolSession, IEmbeddedWindow

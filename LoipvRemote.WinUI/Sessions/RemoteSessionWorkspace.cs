@@ -52,6 +52,18 @@ public sealed class RemoteSessionWorkspace(IWinUIProtocolSessionFactory protocol
 
             if (!await session.InitializeAsync(connectionCancellationToken))
                 throw new InvalidOperationException("The protocol session could not be initialized.");
+
+            // RDP ActiveX must be attached before initialization so ATL can
+            // create the control.  Its HWND is only available after that
+            // initialization, however, so attach once more to force the first
+            // real resize instead of leaving the control at its 1x1 creation
+            // size until a tab switch happens to relayout it.
+            if (session is IEmbeddedWindow initializedEmbedded && session is not IEmbeddedWindowHost &&
+                !surface.Attach(initializedEmbedded, TimeSpan.FromSeconds(10)))
+            {
+                throw new InvalidOperationException("The initialized protocol surface could not be attached to the WinUI session host.");
+            }
+
             if (!await session.ConnectAsync(connectionCancellationToken))
                 throw new InvalidOperationException("The protocol session could not connect.");
 
@@ -66,6 +78,11 @@ public sealed class RemoteSessionWorkspace(IWinUIProtocolSessionFactory protocol
             {
                 surface.SetVisible(true);
                 surface.Focus();
+                // PuTTY can create its terminal input queue after its HWND is
+                // attached. Reclaim focus after the first WinUI layout pass so
+                // a newly connected SSH tab accepts typing without requiring a
+                // manual tab switch.
+                surface.RestoreFocusAfterTransition();
             }
             else
             {

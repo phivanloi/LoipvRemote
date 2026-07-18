@@ -10,4 +10,5 @@ public interface IEmbeddedSessionSurface
     void SetVisible(bool visible);
     bool Attach(IEmbeddedWindow session, TimeSpan timeout);
     void Focus();
+    void RestoreFocusAfterTransition();
 }

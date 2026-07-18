@@ -9,7 +9,10 @@ using LoipvRemote.Domain.Validation;
 
 namespace LoipvRemote.Infrastructure.Persistence.Xml;
 
-/// <summary>XML persistence for Domain connection definitions; secret values are not representable.</summary>
+/// <summary>
+/// XML persistence for Domain connection definitions. Normal saves exclude
+/// secrets; portable exports explicitly opt into plaintext credentials.
+/// </summary>
 public sealed class XmlConnectionDefinitionStore : IConnectionDefinitionStore
 {
     private const int BackupRetentionCount = 10;
@@ -22,6 +25,9 @@ public sealed class XmlConnectionDefinitionStore : IConnectionDefinitionStore
     private const string IsRootAttribute = "isRoot";
     private const string GatewayCredentialProviderAttribute = "gatewayCredentialProvider";
     private const string GatewayCredentialIdentifierAttribute = "gatewayCredentialIdentifier";
+    private const string ExportUserNameAttribute = "exportUsername";
+    private const string ExportPasswordAttribute = "exportPassword";
+    private const string ExportGatewayPasswordAttribute = "exportGatewayPassword";
     private readonly string _filePath;
 
     public XmlConnectionDefinitionStore(string filePath)
@@ -31,6 +37,14 @@ public sealed class XmlConnectionDefinitionStore : IConnectionDefinitionStore
     }
 
     public async Task<ConnectionTreeDefinition> LoadAsync(
+        CancellationToken cancellationToken = default)
+    {
+        ConnectionExportPackage package = await LoadPortableAsync(cancellationToken).ConfigureAwait(false);
+        return package.Tree;
+    }
+
+    /// <summary>Loads an optional plaintext credential payload from an export file.</summary>
+    public async Task<ConnectionExportPackage> LoadPortableAsync(
         CancellationToken cancellationToken = default)
     {
         await using FileStream source = new(
@@ -45,16 +59,35 @@ public sealed class XmlConnectionDefinitionStore : IConnectionDefinitionStore
         if (document.Root?.Name != RootName)
             throw new InvalidDataException($"Expected '{RootName}' as the XML root element.");
 
-        var tree = new ConnectionTreeDefinition(
-            document.Root.Elements(FolderName).Select(ParseFolder).ToArray(),
-            document.Root.Elements(ConnectionName).Select(ParseConnection).ToArray());
-        tree.Validate();
-        return tree;
+        return ParseExportPackage(document.Root);
     }
 
     public async Task SaveAsync(
         ConnectionTreeDefinition tree,
         CancellationToken cancellationToken = default)
+        => await SaveCoreAsync(tree, credentials: null, cancellationToken).ConfigureAwait(false);
+
+    /// <summary>
+    /// Saves a portable XML file with plaintext credentials so another machine
+    /// can import and immediately protect them with its own DPAPI context.
+    /// </summary>
+    public async Task SavePortableAsync(
+        ConnectionTreeDefinition tree,
+        IReadOnlyDictionary<Guid, PortableConnectionCredential> credentials,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(tree);
+        ArgumentNullException.ThrowIfNull(credentials);
+        if (credentials.Keys.Any(id => !tree.Connections.Any(connection => connection.Id == id)))
+            throw new ArgumentException("Portable credentials must reference a connection in the exported tree.", nameof(credentials));
+
+        await SaveCoreAsync(tree, credentials, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task SaveCoreAsync(
+        ConnectionTreeDefinition tree,
+        IReadOnlyDictionary<Guid, PortableConnectionCredential>? credentials,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(tree);
         tree.Validate();
@@ -79,7 +112,12 @@ public sealed class XmlConnectionDefinitionStore : IConnectionDefinitionStore
                     new XElement(
                         RootName,
                         tree.Folders.OrderBy(folder => folder.SortOrder).Select(SerializeFolder),
-                        tree.Connections.OrderBy(connection => connection.SortOrder).Select(SerializeConnection)));
+                        tree.Connections.OrderBy(connection => connection.SortOrder).Select(connection =>
+                            SerializeConnection(
+                                connection,
+                                credentials is not null && credentials.TryGetValue(connection.Id, out PortableConnectionCredential? credential)
+                                    ? credential
+                                    : null))));
                 await document.SaveAsync(destination, SaveOptions.None, cancellationToken).ConfigureAwait(false);
                 await destination.FlushAsync(cancellationToken).ConfigureAwait(false);
             }
@@ -147,7 +185,9 @@ public sealed class XmlConnectionDefinitionStore : IConnectionDefinitionStore
                 ? new XAttribute(ParentFolderIdAttribute, parentFolderId)
                 : null);
 
-    private static XElement SerializeConnection(ConnectionDefinition definition)
+    private static XElement SerializeConnection(
+        ConnectionDefinition definition,
+        PortableConnectionCredential? portableCredential = null)
     {
         ConnectionDefinitionValidator.Validate(definition);
 
@@ -167,6 +207,15 @@ public sealed class XmlConnectionDefinitionStore : IConnectionDefinitionStore
                 : null,
             definition.GatewayCredential is { } gatewayIdentifier
                 ? new XAttribute(GatewayCredentialIdentifierAttribute, gatewayIdentifier.Identifier)
+                : null,
+            portableCredential is { UserName.Length: > 0 }
+                ? new XAttribute(ExportUserNameAttribute, portableCredential.UserName)
+                : null,
+            portableCredential is { Password.Length: > 0 }
+                ? new XAttribute(ExportPasswordAttribute, portableCredential.Password)
+                : null,
+            portableCredential is { GatewayPassword.Length: > 0 }
+                ? new XAttribute(ExportGatewayPasswordAttribute, portableCredential.GatewayPassword)
                 : null,
             definition.ParentFolderId is { } parentFolderId
                 ? new XAttribute(ParentFolderIdAttribute, parentFolderId)
@@ -214,6 +263,33 @@ public sealed class XmlConnectionDefinitionStore : IConnectionDefinitionStore
 
         ConnectionDefinitionValidator.Validate(definition);
         return definition;
+    }
+
+    private static ConnectionExportPackage ParseExportPackage(XElement root)
+    {
+        ParsedConnection[] parsedConnections = root.Elements(ConnectionName)
+            .Select(element => new ParsedConnection(ParseConnection(element), ParsePortableCredential(element)))
+            .ToArray();
+        var tree = new ConnectionTreeDefinition(
+            root.Elements(FolderName).Select(ParseFolder).ToArray(),
+            parsedConnections.Select(item => item.Definition).ToArray());
+        tree.Validate();
+
+        return new ConnectionExportPackage(
+            tree,
+            parsedConnections
+                .Where(item => item.Credential is not null)
+                .ToDictionary(item => item.Definition.Id, item => item.Credential!));
+    }
+
+    private static PortableConnectionCredential? ParsePortableCredential(XElement element)
+    {
+        string? userName = (string?)element.Attribute(ExportUserNameAttribute);
+        string? password = (string?)element.Attribute(ExportPasswordAttribute);
+        string? gatewayPassword = (string?)element.Attribute(ExportGatewayPasswordAttribute);
+        return userName is null && password is null && gatewayPassword is null
+            ? null
+            : new PortableConnectionCredential(userName ?? string.Empty, password ?? string.Empty, gatewayPassword ?? string.Empty);
     }
 
     private static Guid? ParseOptionalGuid(XElement element, string attribute)
@@ -299,4 +375,8 @@ public sealed class XmlConnectionDefinitionStore : IConnectionDefinitionStore
 
         return credential;
     }
+
+    private sealed record ParsedConnection(
+        ConnectionDefinition Definition,
+        PortableConnectionCredential? Credential);
 }

@@ -30,6 +30,8 @@ public sealed partial class MainWindow : Window, IDisposable
     private readonly ConnectionTreeViewStateRepository _treeViewStateRepository;
     private readonly ConnectionOptionsEditor _connectionOptionsEditor;
     private readonly ILocalCredentialStore _localCredentialStore;
+    private readonly IConnectionSecretResolver _connectionSecretResolver;
+    private readonly PortableConnectionCredentialImporter _portableCredentialImporter;
     private readonly RemoteSessionWorkspace _sessionWorkspace;
     private WindowMinimumSizeController? _minimumSizeController;
     private Win32EmbeddedSessionSurface? _embeddedSessionSurface;
@@ -53,12 +55,16 @@ public sealed partial class MainWindow : Window, IDisposable
         ConnectionTreeViewStateRepository treeViewStateRepository,
         ConnectionOptionsEditor connectionOptionsEditor,
         ILocalCredentialStore localCredentialStore,
+        IConnectionSecretResolver connectionSecretResolver,
+        PortableConnectionCredentialImporter portableCredentialImporter,
         RemoteSessionWorkspace sessionWorkspace)
     {
         _connectionCatalog = connectionCatalog ?? throw new ArgumentNullException(nameof(connectionCatalog));
         _treeViewStateRepository = treeViewStateRepository ?? throw new ArgumentNullException(nameof(treeViewStateRepository));
         _connectionOptionsEditor = connectionOptionsEditor ?? throw new ArgumentNullException(nameof(connectionOptionsEditor));
         _localCredentialStore = localCredentialStore ?? throw new ArgumentNullException(nameof(localCredentialStore));
+        _connectionSecretResolver = connectionSecretResolver ?? throw new ArgumentNullException(nameof(connectionSecretResolver));
+        _portableCredentialImporter = portableCredentialImporter ?? throw new ArgumentNullException(nameof(portableCredentialImporter));
         _sessionWorkspace = sessionWorkspace ?? throw new ArgumentNullException(nameof(sessionWorkspace));
         InitializeComponent();
 
@@ -370,6 +376,29 @@ public sealed partial class MainWindow : Window, IDisposable
         return new ConnectionNodeOptions(values, options?.InheritedProperties.ToArray() ?? []);
     }
 
+    private async Task<Dictionary<Guid, PortableConnectionCredential>> CreatePortableCredentialsAsync()
+    {
+        // ResolvePassword is synchronous, so prime the local credential cache
+        // before collecting passwords for a portable export.
+        _ = await _localCredentialStore.ListAsync();
+        var credentials = new Dictionary<Guid, PortableConnectionCredential>();
+        foreach (ConnectionDefinition connection in _connectionCatalog.Tree.Connections)
+        {
+            ConnectionDefinition effective = _connectionCatalog.FindResolvedConnection(connection.Id) ?? connection;
+            string userName = effective.Options?.Values.TryGetValue("Username", out string? configuredUserName) == true
+                ? configuredUserName
+                : string.Empty;
+            credentials.Add(
+                connection.Id,
+                new PortableConnectionCredential(
+                    userName,
+                    _connectionSecretResolver.Resolve(effective, "Password") ?? string.Empty,
+                    _connectionSecretResolver.Resolve(effective, "RDGatewayPassword") ?? string.Empty));
+        }
+
+        return credentials;
+    }
+
     private async void NewFolderButton_Click(object sender, RoutedEventArgs args)
     {
         var nameBox = new TextBox { Header = "Folder name", PlaceholderText = "Production" };
@@ -409,14 +438,21 @@ public sealed partial class MainWindow : Window, IDisposable
 
         try
         {
-            ConnectionTreeDefinition imported = await new XmlConnectionDefinitionStore(source.Path).LoadAsync();
+            ConnectionExportPackage package = await new XmlConnectionDefinitionStore(source.Path).LoadPortableAsync();
             string importName = Path.GetFileNameWithoutExtension(source.Name);
-            ConnectionTreeDefinition updated = ConnectionTreeEditor.MergeImportedTree(_connectionCatalog.Tree, imported, importName);
+            ConnectionTreeImportResult mergeResult = ConnectionTreeEditor.MergeImportedTreeWithIdMap(
+                _connectionCatalog.Tree,
+                package.Tree,
+                importName);
+            ConnectionTreeDefinition updated = _portableCredentialImporter.Apply(
+                mergeResult.Tree,
+                mergeResult.ConnectionIds,
+                package.Credentials);
             await _connectionCatalog.SaveAsync(updated);
             await LoadConnectionTreeAsync();
-            ConnectionStatus.Text = $"Imported {imported.Connections.Count} connections.";
+            ConnectionStatus.Text = $"Imported {package.Tree.Connections.Count} connections with their credentials.";
         }
-        catch (Exception exception) when (exception is IOException or InvalidDataException or ArgumentException or System.Xml.XmlException)
+        catch (Exception exception) when (exception is IOException or InvalidDataException or ArgumentException or System.Xml.XmlException or CryptographicException)
         {
             ConnectionStatus.Text = $"Import failed: {exception.Message}";
         }
@@ -433,10 +469,12 @@ public sealed partial class MainWindow : Window, IDisposable
 
         try
         {
-            await new XmlConnectionDefinitionStore(destination.Path).SaveAsync(_connectionCatalog.Tree);
-            ConnectionStatus.Text = $"Exported {_connectionCatalog.Tree.Connections.Count} connections.";
+            await new XmlConnectionDefinitionStore(destination.Path).SavePortableAsync(
+                _connectionCatalog.Tree,
+                await CreatePortableCredentialsAsync());
+            ConnectionStatus.Text = $"Exported {_connectionCatalog.Tree.Connections.Count} connections with plaintext credentials.";
         }
-        catch (Exception exception) when (exception is IOException or InvalidDataException or ArgumentException)
+        catch (Exception exception) when (exception is IOException or InvalidDataException or ArgumentException or CryptographicException)
         {
             ConnectionStatus.Text = $"Export failed: {exception.Message}";
         }

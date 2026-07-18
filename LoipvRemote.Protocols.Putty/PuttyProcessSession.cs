@@ -12,6 +12,7 @@ public sealed class PuttyProcessSession(Action<Process>? processStarted = null) 
     public ProtocolSessionState State { get; private set; } = ProtocolSessionState.Created;
 
     public bool IsRunning => Process?.HasExited == false;
+    public int ProcessId => Process is { HasExited: false } process ? process.Id : 0;
     public bool HasExited => Process?.HasExited != false;
     public nint ProcessHandle => Process is { HasExited: false } process ? process.Handle : 0;
     public nint MainWindowHandle
@@ -43,7 +44,11 @@ public sealed class PuttyProcessSession(Action<Process>? processStarted = null) 
         {
             Arguments = options.Arguments,
             UseShellExecute = false,
-            WindowStyle = options.StartMinimized ? ProcessWindowStyle.Minimized : ProcessWindowStyle.Normal
+            WindowStyle = options.StartHidden
+                ? ProcessWindowStyle.Hidden
+                : options.StartMinimized
+                    ? ProcessWindowStyle.Minimized
+                    : ProcessWindowStyle.Normal
         };
         Process process = new() { StartInfo = startInfo, EnableRaisingEvents = true };
         process.Exited += exited;

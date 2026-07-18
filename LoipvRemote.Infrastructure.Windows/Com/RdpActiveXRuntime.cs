@@ -23,6 +23,7 @@ public sealed class RdpActiveXRuntime : IRdpClient, IRdpCredentialClient, IRdpRu
     private IntPtr _windowHandle;
     private IntPtr _nativeParentWindowHandle;
     private bool _eventsSubscribed;
+    private bool _disposed;
 
     public RdpActiveXRuntime(RdpVersion version) => Version = version;
 
@@ -345,7 +346,18 @@ public sealed class RdpActiveXRuntime : IRdpClient, IRdpCredentialClient, IRdpRu
 
     public void Dispose()
     {
+        if (_disposed)
+            return;
+
+        _disposed = true;
         UnsubscribeEvents();
+        // The ATL host owns the ActiveX instance. Destroy its HWND before
+        // releasing the COM wrappers so native window teardown cannot send
+        // messages back to a control whose RCW is already gone.
+        if (_windowHandle != IntPtr.Zero)
+            _ = DestroyWindow(_windowHandle);
+        _windowHandle = IntPtr.Zero;
+        _nativeParentWindowHandle = IntPtr.Zero;
         _client = null;
         _events = null;
         if (_comControl is not null && Marshal.IsComObject(_comControl))
@@ -354,10 +366,6 @@ public sealed class RdpActiveXRuntime : IRdpClient, IRdpCredentialClient, IRdpRu
         if (_atlHost is not null && Marshal.IsComObject(_atlHost))
             _ = Marshal.FinalReleaseComObject(_atlHost);
         _atlHost = null;
-        if (_windowHandle != IntPtr.Zero)
-            _ = DestroyWindow(_windowHandle);
-        _windowHandle = IntPtr.Zero;
-        _nativeParentWindowHandle = IntPtr.Zero;
         GC.SuppressFinalize(this);
     }
 

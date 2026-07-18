@@ -35,8 +35,12 @@ public sealed class RemoteSessionWorkspace(IWinUIProtocolSessionFactory protocol
 
             IProtocolSession session = _protocolFactory.Create(tab.Connection);
             CancellationToken connectionCancellationToken = tab.BeginConnecting(session, cancellationToken);
-            surface.EnsureHostWindow();
-            surface.SetVisible(true);
+            bool hasEmbeddedSurface = session is IEmbeddedWindow;
+            if (hasEmbeddedSurface)
+            {
+                surface.EnsureHostWindow();
+                surface.SetVisible(false);
+            }
             if (session is IEmbeddedWindowHost host)
                 host.SetHostWindowHandle(surface.Handle);
 
@@ -58,7 +62,16 @@ public sealed class RemoteSessionWorkspace(IWinUIProtocolSessionFactory protocol
             }
 
             tab.MarkConnected(session);
-            surface.Focus();
+            if (hasEmbeddedSurface)
+            {
+                surface.SetVisible(true);
+                surface.Focus();
+            }
+            else
+            {
+                surface.SetVisible(false);
+                session.Focus();
+            }
         }
         catch
         {
@@ -79,14 +92,21 @@ public sealed class RemoteSessionWorkspace(IWinUIProtocolSessionFactory protocol
     {
         ArgumentNullException.ThrowIfNull(tab);
         ArgumentNullException.ThrowIfNull(surface);
-        if (tab.Session is not IEmbeddedWindow embedded || tab.State != RemoteSessionTabState.Connected)
+        if (tab.State != RemoteSessionTabState.Connected || tab.Session is null)
             return;
 
+        if (tab.Session is not IEmbeddedWindow embedded)
+        {
+            surface.SetVisible(false);
+            tab.Session.Focus();
+            return;
+        }
+
         surface.EnsureHostWindow();
-        surface.SetVisible(true);
         if (!surface.Attach(embedded, TimeSpan.FromSeconds(10)))
             throw new InvalidOperationException("The connected protocol window could not be activated in the WinUI session host.");
 
+        surface.SetVisible(true);
         surface.Focus();
     }
 

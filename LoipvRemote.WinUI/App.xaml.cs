@@ -44,7 +44,6 @@ public partial class App : Microsoft.UI.Xaml.Application
             })
             .Build();
 
-        EnsureMainWindow();
     }
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)

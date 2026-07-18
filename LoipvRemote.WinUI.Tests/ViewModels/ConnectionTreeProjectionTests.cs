@@ -50,6 +50,23 @@ public sealed class ConnectionTreeProjectionTests
     }
 
     [Test]
+    public void CreateFlattensTheLegacyRootFolder()
+    {
+        Guid legacyRootId = Guid.NewGuid();
+        Guid childFolderId = Guid.NewGuid();
+        ConnectionTreeDefinition tree = new(
+            [
+                new ConnectionFolderDefinition(legacyRootId, "Connections", IsRoot: true),
+                new ConnectionFolderDefinition(childFolderId, "Servers", legacyRootId)
+            ],
+            [new ConnectionDefinition(Guid.NewGuid(), "Gateway", "gateway.example", 22, ProtocolKind.Ssh2, CredentialReference.None, ParentFolderId: legacyRootId)]);
+
+        IReadOnlyList<ConnectionTreeItem> result = ConnectionTreeProjection.Create(tree);
+
+        Assert.That(result.Select(node => node.DisplayName), Is.EqualTo(["Servers", "Gateway: gateway.example"]));
+    }
+
+    [Test]
     public void CreateMarksOnlyTheRequestedConnectionAsConnected()
     {
         Guid connectedId = Guid.NewGuid();
@@ -68,6 +85,34 @@ public sealed class ConnectionTreeProjectionTests
             Assert.That(result.Single(item => item.Id == connectedId).IsConnected, Is.True);
             Assert.That(result.Single(item => item.Id == idleId).IsConnected, Is.False);
             Assert.That(result.Single(item => item.Id == connectedId).Protocol, Is.EqualTo(ProtocolKind.Ssh2));
+        });
+    }
+
+    [TestCase(ProtocolKind.Rdp, ConnectionTreeIconKind.RemoteDesktop)]
+    [TestCase(ProtocolKind.Ssh2, ConnectionTreeIconKind.SshTerminal)]
+    [TestCase(ProtocolKind.Vnc, ConnectionTreeIconKind.VncDesktop)]
+    public void ConnectionTreeItemUsesADistinctIconForEachProtocol(ProtocolKind protocol, ConnectionTreeIconKind expectedIcon)
+    {
+        ConnectionTreeItem item = new(Guid.NewGuid(), "Server", false, [], Protocol: protocol);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(item.IconKind, Is.EqualTo(expectedIcon));
+            Assert.That(item.IconSize, Is.EqualTo(16));
+            Assert.That(item.IconPathData, Is.Not.Empty);
+        });
+    }
+
+    [Test]
+    public void FolderTreeItemUsesACompactFolderIcon()
+    {
+        ConnectionTreeItem item = new(Guid.NewGuid(), "Folder", true, []);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(item.IconKind, Is.EqualTo(ConnectionTreeIconKind.Folder));
+            Assert.That(item.IconSize, Is.EqualTo(14));
+            Assert.That(item.IconPathData, Is.Not.Empty);
         });
     }
 }

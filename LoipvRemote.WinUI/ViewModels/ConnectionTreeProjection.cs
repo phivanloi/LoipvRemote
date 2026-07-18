@@ -28,39 +28,78 @@ public static class ConnectionTreeProjection
                     .ThenBy(connection => connection.Name, StringComparer.CurrentCultureIgnoreCase)
                     .ToList());
 
-        return CreateChildren(RootId, foldersByParent, connectionsByParent, connectedConnectionIds ?? new HashSet<Guid>());
+        return CreateRootChildren(foldersByParent, connectionsByParent, connectedConnectionIds ?? new HashSet<Guid>());
+    }
+
+    private static List<ConnectionTreeItem> CreateRootChildren(
+        Dictionary<Guid, List<ConnectionFolderDefinition>> foldersByParent,
+        Dictionary<Guid, List<ConnectionDefinition>> connectionsByParent,
+        IReadOnlySet<Guid> connectedConnectionIds)
+    {
+        List<ConnectionFolderDefinition> rootFolders = foldersByParent.TryGetValue(RootId, out List<ConnectionFolderDefinition>? folders)
+            ? [.. folders]
+            : [];
+        List<ConnectionDefinition> rootConnections = connectionsByParent.TryGetValue(RootId, out List<ConnectionDefinition>? connections)
+            ? [.. connections]
+            : [];
+
+        foreach (ConnectionFolderDefinition rootFolder in rootFolders.Where(folder => folder.IsRoot).ToArray())
+        {
+            rootFolders.Remove(rootFolder);
+            if (foldersByParent.TryGetValue(rootFolder.Id, out List<ConnectionFolderDefinition>? childFolders))
+                rootFolders.AddRange(childFolders);
+            if (connectionsByParent.TryGetValue(rootFolder.Id, out List<ConnectionDefinition>? childConnections))
+                rootConnections.AddRange(childConnections);
+        }
+
+        return CreateItems(rootFolders, rootConnections, foldersByParent, connectionsByParent, connectedConnectionIds);
     }
 
     private static List<ConnectionTreeItem> CreateChildren(
         Guid parentFolderId,
-        IReadOnlyDictionary<Guid, List<ConnectionFolderDefinition>> foldersByParent,
-        IReadOnlyDictionary<Guid, List<ConnectionDefinition>> connectionsByParent,
+        Dictionary<Guid, List<ConnectionFolderDefinition>> foldersByParent,
+        Dictionary<Guid, List<ConnectionDefinition>> connectionsByParent,
+        IReadOnlySet<Guid> connectedConnectionIds)
+    {
+        IReadOnlyList<ConnectionFolderDefinition> folders = foldersByParent.TryGetValue(parentFolderId, out List<ConnectionFolderDefinition>? folderItems)
+            ? folderItems
+            : [];
+        IReadOnlyList<ConnectionDefinition> connections = connectionsByParent.TryGetValue(parentFolderId, out List<ConnectionDefinition>? connectionItems)
+            ? connectionItems
+            : [];
+
+        return CreateItems(folders, connections, foldersByParent, connectionsByParent, connectedConnectionIds);
+    }
+
+    private static List<ConnectionTreeItem> CreateItems(
+        IEnumerable<ConnectionFolderDefinition> folders,
+        IEnumerable<ConnectionDefinition> connections,
+        Dictionary<Guid, List<ConnectionFolderDefinition>> foldersByParent,
+        Dictionary<Guid, List<ConnectionDefinition>> connectionsByParent,
         IReadOnlySet<Guid> connectedConnectionIds)
     {
         List<ConnectionTreeItem> children = [];
-
-        if (foldersByParent.TryGetValue(parentFolderId, out List<ConnectionFolderDefinition>? folders))
+        foreach (ConnectionFolderDefinition folder in folders
+                     .OrderBy(folder => folder.SortOrder)
+                     .ThenBy(folder => folder.Name, StringComparer.CurrentCultureIgnoreCase))
         {
-            foreach (ConnectionFolderDefinition folder in folders)
-            {
-                children.Add(new ConnectionTreeItem(
-                    folder.Id,
-                    folder.Name,
-                    true,
-                    CreateChildren(folder.Id, foldersByParent, connectionsByParent, connectedConnectionIds)));
-            }
+            children.Add(new ConnectionTreeItem(
+                folder.Id,
+                folder.Name,
+                true,
+                CreateChildren(folder.Id, foldersByParent, connectionsByParent, connectedConnectionIds)));
         }
 
-        if (connectionsByParent.TryGetValue(parentFolderId, out List<ConnectionDefinition>? connections))
-        {
-            children.AddRange(connections.Select(connection => new ConnectionTreeItem(
+        children.AddRange(connections
+            .OrderBy(connection => connection.SortOrder)
+            .ThenBy(connection => connection.Name, StringComparer.CurrentCultureIgnoreCase)
+            .Select(connection => new ConnectionTreeItem(
                 connection.Id,
                 $"{connection.Name}: {connection.Host}",
                 false,
                 [],
                 connectedConnectionIds.Contains(connection.Id),
                 connection.Protocol)));
-        }
 
         return children;
     }

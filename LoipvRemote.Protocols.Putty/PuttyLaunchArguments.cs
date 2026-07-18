@@ -32,14 +32,12 @@ public static class PuttyLaunchArguments
                     Add(arguments, "-m", options.OpeningCommandPath);
                 if (!string.IsNullOrEmpty(options.AuthenticationPluginCommand))
                     Add(arguments, "-auth-plugin", options.AuthenticationPluginCommand);
+
             }
 
             Add(arguments, "-P", options.Port.ToString(System.Globalization.CultureInfo.InvariantCulture));
             Add(arguments, options.Hostname);
         }
-
-        if (options.ParentWindowHandle != 0)
-            Add(arguments, "-hwndparent", options.ParentWindowHandle.ToString(System.Globalization.CultureInfo.InvariantCulture));
 
         string result = string.Join(' ', arguments);
         if (!string.IsNullOrWhiteSpace(options.AdditionalOptions))

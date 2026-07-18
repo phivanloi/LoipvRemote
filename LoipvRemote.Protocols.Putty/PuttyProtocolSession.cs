@@ -1,5 +1,6 @@
 using LoipvRemote.Domain.Protocols;
 using LoipvRemote.Protocols.Abstractions;
+using System.Diagnostics;
 
 namespace LoipvRemote.Protocols.Putty;
 
@@ -16,6 +17,7 @@ public sealed class PuttyProtocolSession : IProtocolSession, IEmbeddedWindow, IE
     private nint _hostWindowHandle;
     private nint _attachedParentWindowHandle;
     private nint _attachedWindowHandle;
+    private PuttyDpiSettingsSession? _dpiSettingsSession;
     private bool _disposed;
 
     public PuttyProtocolSession(
@@ -88,10 +90,24 @@ public sealed class PuttyProtocolSession : IProtocolSession, IEmbeddedWindow, IE
         if (State != ProtocolSessionState.Initialized)
             return false;
 
-        PuttyLaunchOptions launchOptions = _options.LaunchOptions with { ParentWindowHandle = _hostWindowHandle };
+        PuttyLaunchOptions launchOptions = _options.LaunchOptions;
+        if (OperatingSystem.IsWindows())
+            _dpiSettingsSession = PuttyDpiSettingsSession.TryCreate(launchOptions.SavedSession, _hostWindowHandle);
+        if (_dpiSettingsSession is not null)
+            launchOptions = launchOptions with { SavedSession = _dpiSettingsSession.SessionName };
+
         bool started = _process.Start(
-            new PuttyProcessStartOptions(_options.ExecutablePath, PuttyLaunchArguments.Build(launchOptions), _options.StartMinimized),
+            new PuttyProcessStartOptions(
+                _options.ExecutablePath,
+                PuttyLaunchArguments.Build(launchOptions),
+                _options.StartMinimized,
+                StartHidden: false),
             ProcessExited);
+        if (!started)
+        {
+            _dpiSettingsSession?.Dispose();
+            _dpiSettingsSession = null;
+        }
         State = started ? ProtocolSessionState.Connected : ProtocolSessionState.Faulted;
         return started;
     }
@@ -119,8 +135,8 @@ public sealed class PuttyProtocolSession : IProtocolSession, IEmbeddedWindow, IE
             return;
 
         EnsureAttachedWindow(windowHandle);
-        EnsureBorderlessChildStyle(windowHandle);
         _windowOperations.Show(windowHandle);
+        EnsureBorderlessChildStyle(windowHandle);
         _windowOperations.Activate(windowHandle);
         if (ownerWindowHandle != IntPtr.Zero &&
             _windowOperations.TryFocus(ownerWindowHandle, windowHandle))
@@ -131,19 +147,33 @@ public sealed class PuttyProtocolSession : IProtocolSession, IEmbeddedWindow, IE
 
     public bool AttachTo(IntPtr parentWindowHandle, TimeSpan timeout)
     {
-        nint windowHandle = WindowHandle;
-        if (!IsAvailable || parentWindowHandle == IntPtr.Zero || windowHandle == IntPtr.Zero)
+        if (!IsAvailable || parentWindowHandle == IntPtr.Zero)
+            return false;
+
+        // PuTTY versions installed in the field do not consistently support
+        // the undocumented -hwndparent argument. Start it normally, then wait
+        // briefly for its real top-level HWND before applying SetParent.
+        Stopwatch stopwatch = Stopwatch.StartNew();
+        nint windowHandle;
+        do
+        {
+            windowHandle = WindowHandle;
+            if (windowHandle != IntPtr.Zero)
+                break;
+
+            Thread.Sleep(50);
+        }
+        while (stopwatch.Elapsed < timeout && IsAvailable);
+
+        if (!IsAvailable || windowHandle == IntPtr.Zero)
             return false;
 
         // PuTTY is a normal top-level window.  SetParent alone leaves its
         // caption, system menu and resize buttons visible and the window keeps
         // its old screen position.  Convert it to a real child before parenting
         // it, then force Windows to recalculate the non-client frame.
-        // The launch-time -hwndparent argument is only a hint to PuTTY.  PuTTY
-        // can still create a top-level window with its original chrome, so the
-        // desktop host must perform an explicit SetParent exactly once for
-        // each target surface.  Comparing with _hostWindowHandle incorrectly
-        // skipped this step whenever the launch hint and target were equal.
+        // PuTTY starts as a normal top-level window. The desktop host converts
+        // it to a borderless child exactly once for each target surface.
         if (_attachedParentWindowHandle != parentWindowHandle ||
             _attachedWindowHandle != windowHandle)
         {
@@ -154,14 +184,17 @@ public sealed class PuttyProtocolSession : IProtocolSession, IEmbeddedWindow, IE
         // PuTTY may restore its top-level style after SetParent. Reapply the
         // child style immediately, and also from Focus/Resize so a later
         // asynchronous style change cannot expose a caption or system buttons.
-        SetBorderlessChildStyle(windowHandle, refreshFrame: true);
         _windowOperations.Show(windowHandle);
+        // PuTTY can restore its top-level non-client style while handling the
+        // asynchronous show request. Apply the borderless child style only
+        // after showing it so the caption and resize frame cannot return.
+        SetBorderlessChildStyle(windowHandle, refreshFrame: true);
         return true;
     }
 
     private nint FindHostedWindow()
     {
-        if (_hostWindowHandle == IntPtr.Zero || !_process.IsRunning)
+        if (_hostWindowHandle == IntPtr.Zero || !_process.IsRunning || _process.ProcessId <= 0)
             return IntPtr.Zero;
 
         IntPtr afterHandle = IntPtr.Zero;
@@ -170,7 +203,8 @@ public sealed class PuttyProtocolSession : IProtocolSession, IEmbeddedWindow, IE
             IntPtr candidate = _windowOperations.FindChildWindow(_hostWindowHandle, afterHandle);
             if (candidate == IntPtr.Zero)
                 return IntPtr.Zero;
-            if (_windowOperations.HasClassName(candidate, "PuTTY"))
+            if (_windowOperations.HasClassName(candidate, "PuTTY") &&
+                _windowOperations.GetWindowProcessId(candidate) == (uint)_process.ProcessId)
                 return candidate;
             afterHandle = candidate;
         }
@@ -184,14 +218,17 @@ public sealed class PuttyProtocolSession : IProtocolSession, IEmbeddedWindow, IE
         if (IsAvailable && windowHandle != IntPtr.Zero && bounds.IsValid)
         {
             EnsureAttachedWindow(windowHandle);
-            EnsureBorderlessChildStyle(windowHandle);
             _windowOperations.Show(windowHandle);
+            EmbeddedWindowBounds viewportBounds = PuttyEmbeddedWindowLayout.CreateViewportBounds(bounds);
             _windowOperations.Move(
                 windowHandle,
-                bounds.X,
-                bounds.Y,
-                bounds.Width,
-                bounds.Height);
+                viewportBounds.X,
+                viewportBounds.Y,
+                viewportBounds.Width,
+                viewportBounds.Height);
+            // SetWindowPos with SWP_SHOWWINDOW can cause PuTTY to restore its
+            // top-level caption. Remove chrome after that final show/move.
+            EnsureBorderlessChildStyle(windowHandle);
         }
     }
 
@@ -200,6 +237,9 @@ public sealed class PuttyProtocolSession : IProtocolSession, IEmbeddedWindow, IE
         int borderlessChildStyle = PuttyEmbeddedWindowLayout.CreateBorderlessChildStyle(
             _windowOperations.GetWindowStyle(windowHandle));
         _windowOperations.TrySetWindowStyle(windowHandle, borderlessChildStyle);
+        int borderlessExtendedStyle = PuttyEmbeddedWindowLayout.CreateBorderlessChildExtendedStyle(
+            _windowOperations.GetWindowExtendedStyle(windowHandle));
+        _windowOperations.TrySetWindowExtendedStyle(windowHandle, borderlessExtendedStyle);
         if (refreshFrame)
             _windowOperations.RefreshFrame(windowHandle);
     }
@@ -230,6 +270,10 @@ public sealed class PuttyProtocolSession : IProtocolSession, IEmbeddedWindow, IE
             return;
 
         _windowOperations.TrySetWindowStyle(windowHandle, borderlessChildStyle);
+        int currentExtendedStyle = _windowOperations.GetWindowExtendedStyle(windowHandle);
+        int borderlessExtendedStyle = PuttyEmbeddedWindowLayout.CreateBorderlessChildExtendedStyle(currentExtendedStyle);
+        if (currentExtendedStyle != borderlessExtendedStyle)
+            _windowOperations.TrySetWindowExtendedStyle(windowHandle, borderlessExtendedStyle);
         _windowOperations.RefreshFrame(windowHandle);
     }
 
@@ -261,6 +305,8 @@ public sealed class PuttyProtocolSession : IProtocolSession, IEmbeddedWindow, IE
         _embeddedWindowHandle = IntPtr.Zero;
         _attachedParentWindowHandle = IntPtr.Zero;
         _attachedWindowHandle = IntPtr.Zero;
+        _dpiSettingsSession?.Dispose();
+        _dpiSettingsSession = null;
         State = ProtocolSessionState.Closed;
     }
 
@@ -291,6 +337,8 @@ public sealed class PuttyProtocolSession : IProtocolSession, IEmbeddedWindow, IE
     private void ProcessExited(object? sender, EventArgs e)
     {
         _embeddedWindowHandle = IntPtr.Zero;
+        _dpiSettingsSession?.Dispose();
+        _dpiSettingsSession = null;
         if (State is not ProtocolSessionState.Closing and not ProtocolSessionState.Closed)
             State = ProtocolSessionState.Closed;
     }

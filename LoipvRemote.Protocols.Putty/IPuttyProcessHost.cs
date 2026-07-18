@@ -4,6 +4,7 @@ namespace LoipvRemote.Protocols.Putty;
 public interface IPuttyProcessHost : IDisposable
 {
     bool IsRunning { get; }
+    int ProcessId { get; }
     nint MainWindowHandle { get; }
     string MainWindowTitle { get; }
     bool Start(PuttyProcessStartOptions options, EventHandler exited);

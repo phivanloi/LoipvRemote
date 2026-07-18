@@ -21,7 +21,7 @@ public sealed class RemoteSessionWorkspaceTests
 
         await workspace.ConnectAsync(tab, surface);
 
-        Assert.That(events, Is.EqualTo(["EnsureHost", "Visible", "Attach", "Initialize", "Connect", "Focus"]));
+        Assert.That(events, Is.EqualTo(["EnsureHost", "Visible", "Attach", "Initialize", "Connect", "Visible", "Focus"]));
         Assert.That(tab.State, Is.EqualTo(RemoteSessionTabState.Connected));
         Assert.That(tab.Session, Is.SameAs(session));
     }
@@ -37,8 +37,22 @@ public sealed class RemoteSessionWorkspaceTests
 
         await workspace.ConnectAsync(tab, surface);
 
-        Assert.That(events, Is.EqualTo(["EnsureHost", "Visible", "SetHost", "Initialize", "Connect", "Attach", "Focus"]));
+        Assert.That(events, Is.EqualTo(["EnsureHost", "Visible", "SetHost", "Initialize", "Connect", "Attach", "Visible", "Focus"]));
         Assert.That(session.HostHandle, Is.EqualTo(surface.Handle));
+        Assert.That(tab.State, Is.EqualTo(RemoteSessionTabState.Connected));
+    }
+
+    [Test]
+    public async Task ConnectAsyncLeavesTheNativeSurfaceHiddenForAnExternalSession()
+    {
+        var events = new List<string>();
+        var session = new ExternalTestSession(events);
+        var workspace = new RemoteSessionWorkspace(new TestFactory(session));
+        RemoteSessionTab tab = workspace.Open(CreateConnection(ProtocolKind.Rdp));
+
+        await workspace.ConnectAsync(tab, new TestSurface(events));
+
+        Assert.That(events, Is.EqualTo(["Initialize", "Connect", "Visible", "Focus"]));
         Assert.That(tab.State, Is.EqualTo(RemoteSessionTabState.Connected));
     }
 
@@ -120,7 +134,7 @@ public sealed class RemoteSessionWorkspaceTests
         events.Clear();
         RemoteSessionWorkspace.Activate(tab, surface);
 
-        Assert.That(events, Is.EqualTo(["EnsureHost", "Visible", "Attach", "Focus"]));
+        Assert.That(events, Is.EqualTo(["EnsureHost", "Attach", "Visible", "Focus"]));
         Assert.That(tab.State, Is.EqualTo(RemoteSessionTabState.Connected));
     }
 
@@ -258,6 +272,33 @@ public sealed class RemoteSessionWorkspaceTests
             HostHandle = parentWindowHandle;
             _events.Add("SetHost");
         }
+    }
+
+    private sealed class ExternalTestSession(List<string> events) : IProtocolSession
+    {
+        public ProtocolSessionState State { get; private set; } = ProtocolSessionState.Created;
+        public ProtocolCapabilities Capabilities => ProtocolCapabilities.Reconnect;
+
+        public void Focus() => events.Add("Focus");
+
+        public ValueTask<bool> InitializeAsync(CancellationToken cancellationToken = default)
+        {
+            events.Add("Initialize");
+            State = ProtocolSessionState.Initialized;
+            return ValueTask.FromResult(true);
+        }
+
+        public ValueTask<bool> ConnectAsync(CancellationToken cancellationToken = default)
+        {
+            events.Add("Connect");
+            State = ProtocolSessionState.Connected;
+            return ValueTask.FromResult(true);
+        }
+
+        public ValueTask DisconnectAsync(CancellationToken cancellationToken = default) => ValueTask.CompletedTask;
+        public ValueTask CloseAsync(CancellationToken cancellationToken = default) => ValueTask.CompletedTask;
+        public void Dispose() { }
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 
     private sealed class BlockingEmbeddedTestSession : IProtocolSession, IEmbeddedWindow

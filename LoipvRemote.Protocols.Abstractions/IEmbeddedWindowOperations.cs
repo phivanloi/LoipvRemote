@@ -5,6 +5,7 @@ public interface IEmbeddedWindowOperations
 {
     bool IsForegroundWindow(IntPtr windowHandle);
     IntPtr FindChildWindow(IntPtr parentHandle, IntPtr afterHandle = default);
+    uint GetWindowProcessId(IntPtr windowHandle);
     bool HasClassName(IntPtr windowHandle, string className);
     void Hide(IntPtr windowHandle);
     void Show(IntPtr windowHandle);
@@ -12,6 +13,8 @@ public interface IEmbeddedWindowOperations
     void SetParent(IntPtr childHandle, IntPtr parentHandle);
     int GetWindowStyle(IntPtr windowHandle);
     bool TrySetWindowStyle(IntPtr windowHandle, int style);
+    int GetWindowExtendedStyle(IntPtr windowHandle);
+    bool TrySetWindowExtendedStyle(IntPtr windowHandle, int style);
     void RefreshFrame(IntPtr windowHandle);
     void ForwardInputLanguageChange(IntPtr windowHandle);
     void SendMessage(IntPtr windowHandle, uint message, IntPtr wParam, IntPtr lParam);

@@ -1,8 +1,11 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Windowing;
 using System.Security.Cryptography;
-using Windows.Graphics;
 using LoipvRemote.WinUI.Services;
 using LoipvRemote.WinUI.ViewModels;
 using LoipvRemote.WinUI.Hosting;
@@ -35,6 +38,7 @@ public sealed partial class MainWindow : Window, IDisposable
     private ConnectionTreeItem? _selectedTreeItem;
     private ConnectionFolderDefinition? _selectedFolder;
     private ConnectionDefinition? _selectedConnection;
+    private bool _suppressSessionOpenForContextMenu;
     private bool _shutdownInProgress;
     private bool _sessionShutdownCompleted;
     private bool _disposed;
@@ -53,10 +57,16 @@ public sealed partial class MainWindow : Window, IDisposable
         _sessionWorkspace = sessionWorkspace ?? throw new ArgumentNullException(nameof(sessionWorkspace));
         InitializeComponent();
 
-        AppWindow.Resize(new SizeInt32(1280, 800));
+        ExtendsContentIntoTitleBar = true;
+        SetTitleBar(AppTitleBarDragRegion);
+        AppWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Standard;
+        if (AppWindow.Presenter is OverlappedPresenter presenter)
+            presenter.Maximize();
         AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "LoipvRemote.ico"));
         TryInstallMinimumSizeController();
         AppWindow.Closing += AppWindowOnClosing;
+        AppWindow.Changed += AppWindowOnChanged;
+        Activated += MainWindowOnActivated;
         SessionSurface.Loaded += SessionSurfaceOnLoaded;
         Closed += MainWindowOnClosed;
         RootGrid.Loaded += RootGridOnLoaded;
@@ -66,6 +76,47 @@ public sealed partial class MainWindow : Window, IDisposable
     {
         RootGrid.Loaded -= RootGridOnLoaded;
         await LoadConnectionTreeAsync();
+        AlignTabStripToMainContent();
+    }
+
+    private void AlignTabStripToMainContent()
+    {
+        // WinUI's stock TabView inserts a two-pixel scroll-button column plus
+        // one pixel of ScrollContentPresenter padding before the first tab.
+        // Keep the stock visual style, but remove that otherwise visible gap
+        // so the first tab starts exactly at the main-content edge.
+        ScrollContentPresenter? presenter = FindDescendant<ScrollContentPresenter>(Sessions);
+        if (presenter is null)
+            return;
+
+        presenter.Padding = new Thickness(0);
+        // The presenter itself begins after the two-pixel scroll column and
+        // the built-in four-pixel ItemsPresenter header. Offset both so the
+        // first real tab, not merely the underline, touches the content edge.
+        presenter.Margin = new Thickness(-6, 0, 0, 0);
+
+        // The platform template animates add/delete/reorder transitions. A
+        // native session connection changes host visibility asynchronously, so
+        // suppressing those decorative transitions keeps the tab strip steady.
+        TabViewListView? tabList = FindDescendant<TabViewListView>(Sessions);
+        if (tabList is not null)
+            tabList.ItemContainerTransitions = new TransitionCollection();
+    }
+
+    private static T? FindDescendant<T>(DependencyObject root) where T : DependencyObject
+    {
+        for (int index = 0; index < VisualTreeHelper.GetChildrenCount(root); index++)
+        {
+            DependencyObject child = VisualTreeHelper.GetChild(root, index);
+            if (child is T match)
+                return match;
+
+            T? nestedMatch = FindDescendant<T>(child);
+            if (nestedMatch is not null)
+                return nestedMatch;
+        }
+
+        return null;
     }
 
     private void TryInstallMinimumSizeController()
@@ -98,6 +149,28 @@ public sealed partial class MainWindow : Window, IDisposable
         catch (Exception exception)
         {
             ConnectionStatus.Text = $"Connections could not be loaded: {exception.Message}";
+        }
+    }
+
+    private void TitleBarActionButton_PointerEntered(object sender, PointerRoutedEventArgs args) =>
+        SetTitleBarActionButtonBackground(sender, "TitleBarActionButtonPointerOverBrush");
+
+    private void TitleBarActionButton_PointerExited(object sender, PointerRoutedEventArgs args) =>
+        SetTitleBarActionButtonBackground(sender, "TitleBarActionButtonNormalBrush");
+
+    private void TitleBarActionButton_PointerPressed(object sender, PointerRoutedEventArgs args) =>
+        SetTitleBarActionButtonBackground(sender, "TitleBarActionButtonPressedBrush");
+
+    private void TitleBarActionButton_PointerReleased(object sender, PointerRoutedEventArgs args) =>
+        SetTitleBarActionButtonBackground(sender, "TitleBarActionButtonPointerOverBrush");
+
+    private void SetTitleBarActionButtonBackground(object sender, string brushKey)
+    {
+        if (sender is Button button &&
+            TitleBarActions.Resources.TryGetValue(brushKey, out object? resource) &&
+            resource is Brush brush)
+        {
+            button.Background = brush;
         }
     }
 
@@ -207,7 +280,7 @@ public sealed partial class MainWindow : Window, IDisposable
             protocol,
             options);
         RemoteSessionTab tab = _sessionWorkspace.Open(definition);
-        var tabItem = new TabViewItem { Header = definition.Name, IsClosable = true };
+        var tabItem = new TabViewItem { Header = CreateSessionTabHeader(definition), IsClosable = true };
         _sessionTabs.Add(tabItem, tab);
         Sessions.TabItems.Add(tabItem);
         Sessions.SelectedItem = tabItem;
@@ -444,10 +517,7 @@ public sealed partial class MainWindow : Window, IDisposable
     {
         TreeViewNode node = new()
         {
-            // Plain text keeps TreeView's selectable/accessibility name intact.
-            // The color emoji is rendered by the system font, so connection
-            // status remains visible without replacing the native node content.
-            Content = $"{StatusGlyph(item)}{ProtocolGlyph(item)}{item.DisplayName}",
+            Content = item,
             IsExpanded = item.IsFolder && _expandedFolderIds.Contains(item.Id)
         };
 
@@ -458,23 +528,21 @@ public sealed partial class MainWindow : Window, IDisposable
         return node;
     }
 
-    private static string ProtocolGlyph(ConnectionTreeItem item) => item.IsFolder
-        ? "📁 "
-        : item.Protocol switch
-        {
-            ProtocolKind.Ssh2 => "⌨ ",
-            ProtocolKind.Rdp => "▣ ",
-            ProtocolKind.Vnc => "◉ ",
-            _ => string.Empty
-        };
-
-    private static string StatusGlyph(ConnectionTreeItem item) => item.IsFolder
-        ? string.Empty
-        : item.IsConnected ? "🟢 " : "⚪ ";
-
     private void SessionSurfaceOnLoaded(object sender, RoutedEventArgs args)
     {
         _embeddedSessionSurface ??= new Win32EmbeddedSessionSurface(this, SessionSurface);
+    }
+
+    private void AppWindowOnChanged(AppWindow sender, AppWindowChangedEventArgs args)
+    {
+        if (args.DidPositionChange || args.DidSizeChange || args.DidPresenterChange)
+            _embeddedSessionSurface?.RefreshLayoutAndRestoreFocus();
+    }
+
+    private void MainWindowOnActivated(object sender, WindowActivatedEventArgs args)
+    {
+        if (args.WindowActivationState != WindowActivationState.Deactivated)
+            _embeddedSessionSurface?.RestoreFocusAfterTransition();
     }
 
     private void MainWindowOnClosed(object sender, WindowEventArgs args)
@@ -530,6 +598,8 @@ public sealed partial class MainWindow : Window, IDisposable
         _disposed = true;
         _embeddedSessionSurface?.Dispose();
         _embeddedSessionSurface = null;
+        AppWindow.Changed -= AppWindowOnChanged;
+        Activated -= MainWindowOnActivated;
         _minimumSizeController?.Dispose();
         GC.SuppressFinalize(this);
     }
@@ -765,12 +835,51 @@ public sealed partial class MainWindow : Window, IDisposable
         ConnectionTree.RootNodes.Clear();
         foreach (ConnectionTreeItem item in ConnectionTreeProjection.Create(tree, _connectedConnectionIds))
             ConnectionTree.RootNodes.Add(CreateTreeNode(item));
+
+        RootGrid.DispatcherQueue.TryEnqueue(CompactTreeViewChevronSpacing);
     }
 
     private void ConnectionTree_SelectionChanged(TreeView sender, TreeViewSelectionChangedEventArgs args)
     {
         TreeViewNode? node = args.AddedItems.OfType<TreeViewNode>().FirstOrDefault();
-        if (node is null || !_connectionNodes.TryGetValue(node, out ConnectionTreeItem? item))
+        if (node is null)
+            return;
+
+        SelectTreeItem(node, openSession: !_suppressSessionOpenForContextMenu);
+    }
+
+    private async void ConnectionTree_Tapped(object sender, TappedRoutedEventArgs args)
+    {
+        if (args.OriginalSource is not DependencyObject source ||
+            FindAncestor<ToggleButton>(source) is not null ||
+            FindAncestorByName(source, "ExpandCollapseChevron") is not null)
+        {
+            return;
+        }
+
+        TreeViewItem? container = FindAncestor<TreeViewItem>(source);
+        TreeViewNode? node = container is null ? null : ConnectionTree.NodeFromContainer(container);
+        if (node is null || !_connectionNodes.TryGetValue(node, out ConnectionTreeItem? item) ||
+            !item.IsFolder || !node.HasChildren)
+        {
+            return;
+        }
+
+        node.IsExpanded = !node.IsExpanded;
+        if (node.IsExpanded)
+            _expandedFolderIds.Add(item.Id);
+        else
+            _expandedFolderIds.Remove(item.Id);
+
+        await _treeViewStateRepository.SaveExpandedFolderIdsAsync(_expandedFolderIds);
+        ConnectionStatus.Text = node.IsExpanded
+            ? $"Folder expanded: {item.DisplayName}"
+            : $"Folder collapsed: {item.DisplayName}";
+    }
+
+    private void SelectTreeItem(TreeViewNode node, bool openSession)
+    {
+        if (!_connectionNodes.TryGetValue(node, out ConnectionTreeItem? item))
             return;
 
         _selectedTreeItem = item;
@@ -793,18 +902,107 @@ public sealed partial class MainWindow : Window, IDisposable
             return;
 
         _selectedConnection = persistedDefinition;
+        if (!openSession)
+            return;
 
         RemoteSessionTab tab = _sessionWorkspace.Open(effectiveDefinition);
         TabViewItem? existingTab = _sessionTabs.FirstOrDefault(pair => ReferenceEquals(pair.Value, tab)).Key;
         if (existingTab is null)
         {
-            existingTab = new TabViewItem { Header = effectiveDefinition.Name, IsClosable = true };
+            existingTab = new TabViewItem { Header = CreateSessionTabHeader(effectiveDefinition), IsClosable = true };
             _sessionTabs.Add(existingTab, tab);
             Sessions.TabItems.Add(existingTab);
         }
 
+        bool isAlreadySelected = ReferenceEquals(Sessions.SelectedItem, existingTab);
         Sessions.SelectedItem = existingTab;
-        ShowSession(tab);
+        if (isAlreadySelected)
+            ShowSession(tab);
+        if (tab.State is RemoteSessionTabState.Created or RemoteSessionTabState.Faulted)
+            _ = ConnectSessionAsync(tab);
+    }
+
+    private void ConnectionTree_RightTapped(object sender, RightTappedRoutedEventArgs args)
+    {
+        if (args.OriginalSource is not DependencyObject source)
+            return;
+
+        TreeViewItem? container = FindAncestor<TreeViewItem>(source);
+        TreeViewNode? node = container is null ? null : ConnectionTree.NodeFromContainer(container);
+        if (container is null || node is null ||
+            !_connectionNodes.TryGetValue(node, out ConnectionTreeItem? item) ||
+            item.IsFolder)
+        {
+            return;
+        }
+
+        _suppressSessionOpenForContextMenu = true;
+        ConnectionTree.SelectedNode = node;
+        _suppressSessionOpenForContextMenu = false;
+        SelectTreeItem(node, openSession: false);
+
+        CreateConnectionContextMenu().ShowAt(container);
+        args.Handled = true;
+    }
+
+    private MenuFlyout CreateConnectionContextMenu()
+    {
+        var menu = new MenuFlyout();
+        menu.Items.Add(CreateConnectionMenuItem("Edit connection", Symbol.Edit, EditSelectedNodeButton_Click));
+        menu.Items.Add(CreateConnectionMenuItem("Duplicate", Symbol.Copy, DuplicateSelectedNodeButton_Click));
+        menu.Items.Add(CreateConnectionMenuItem("Move", Symbol.MoveToFolder, MoveSelectedNodeButton_Click));
+        menu.Items.Add(new MenuFlyoutSeparator());
+        menu.Items.Add(CreateConnectionMenuItem("Delete", Symbol.Delete, DeleteSelectedNodeButton_Click));
+        return menu;
+    }
+
+    private static MenuFlyoutItem CreateConnectionMenuItem(string text, Symbol symbol, RoutedEventHandler click)
+    {
+        var item = new MenuFlyoutItem
+        {
+            Text = text,
+            Icon = new SymbolIcon(symbol)
+        };
+        item.Click += click;
+        return item;
+    }
+
+    private static T? FindAncestor<T>(DependencyObject source) where T : DependencyObject
+    {
+        for (DependencyObject? current = source; current is not null; current = VisualTreeHelper.GetParent(current))
+        {
+            if (current is T ancestor)
+                return ancestor;
+        }
+
+        return null;
+    }
+
+    private static FrameworkElement? FindAncestorByName(DependencyObject source, string name)
+    {
+        for (DependencyObject? current = source; current is not null; current = VisualTreeHelper.GetParent(current))
+        {
+            if (current is FrameworkElement { Name: var currentName } element && currentName == name)
+                return element;
+        }
+
+        return null;
+    }
+
+    private void CompactTreeViewChevronSpacing()
+    {
+        ConnectionTree.UpdateLayout();
+        ApplyCompactChevronPadding(ConnectionTree);
+    }
+
+    private static void ApplyCompactChevronPadding(DependencyObject current)
+    {
+        if (current is Grid { Name: "ExpandCollapseChevron" } chevron)
+            chevron.Padding = new Thickness(4, 0, 6, 0);
+
+        int childCount = VisualTreeHelper.GetChildrenCount(current);
+        for (int index = 0; index < childCount; index++)
+            ApplyCompactChevronPadding(VisualTreeHelper.GetChild(current, index));
     }
 
     private async void ConnectionTree_Expanding(TreeView sender, TreeViewExpandingEventArgs args)
@@ -813,6 +1011,7 @@ public sealed partial class MainWindow : Window, IDisposable
         {
             _expandedFolderIds.Add(item.Id);
             await _treeViewStateRepository.SaveExpandedFolderIdsAsync(_expandedFolderIds);
+            RootGrid.DispatcherQueue.TryEnqueue(CompactTreeViewChevronSpacing);
         }
     }
 
@@ -845,35 +1044,6 @@ public sealed partial class MainWindow : Window, IDisposable
         catch (Exception exception) when (exception is ArgumentException or InvalidDataException or IOException)
         {
             ConnectionStatus.Text = $"Selection was not duplicated: {exception.Message}";
-        }
-    }
-
-    private async void MoveConnectionUpButton_Click(object sender, RoutedEventArgs args) =>
-        await ReorderSelectedNodeAsync(-1);
-
-    private async void MoveConnectionDownButton_Click(object sender, RoutedEventArgs args) =>
-        await ReorderSelectedNodeAsync(1);
-
-    private async Task ReorderSelectedNodeAsync(int offset)
-    {
-        if (_selectedConnection is null && _selectedFolder is null)
-        {
-            ConnectionStatus.Text = "Select a folder or connection before changing its order.";
-            return;
-        }
-
-        try
-        {
-            ConnectionTreeDefinition updated = _selectedConnection is { } connection
-                ? ConnectionTreeEditor.ReorderConnection(_connectionCatalog.Tree, connection.Id, offset)
-                : ConnectionTreeEditor.ReorderFolder(_connectionCatalog.Tree, _selectedFolder!.Id, offset);
-            await _connectionCatalog.SaveAsync(updated);
-            await LoadConnectionTreeAsync();
-            ConnectionStatus.Text = _selectedConnection is not null ? "Connection order updated." : "Folder order updated.";
-        }
-        catch (Exception exception) when (exception is ArgumentException or InvalidDataException or IOException)
-        {
-            ConnectionStatus.Text = $"Selection order was not updated: {exception.Message}";
         }
     }
 
@@ -975,16 +1145,30 @@ public sealed partial class MainWindow : Window, IDisposable
             return;
         }
 
-        if (args.Tab is TabViewItem tab && _sessionTabs.Remove(tab, out RemoteSessionTab? sessionTab))
+        if (args.Tab is not TabViewItem tab || !_sessionTabs.Remove(tab, out RemoteSessionTab? sessionTab))
+            return;
+
+        // Remove the tab before closing the native protocol process. PuTTY and
+        // the RDP ActiveX control can take a moment to stop; keeping the tab
+        // visible until then makes the first close click look ignored.
+        RemoteSessionWorkspace.Deactivate(_embeddedSessionSurface);
+        sender.TabItems.Remove(tab);
+        await Task.Yield();
+
+        try
         {
             await _sessionWorkspace.CloseAsync(sessionTab);
             _connectedConnectionIds.Remove(sessionTab.Connection.Id);
             if (_connectionCatalog.IsLoaded)
                 RebuildConnectionTree(_connectionCatalog.Tree);
         }
+        catch (Exception exception)
+        {
+            ConnectionStatus.Text = $"Session closed with an error: {exception.Message}";
+        }
 
-        sender.TabItems.Remove(args.Tab);
-        ConnectionsNavigationButton_Click(this, new RoutedEventArgs());
+        if (sender.SelectedItem is not TabViewItem selected || !_sessionTabs.ContainsKey(selected))
+            ConnectionsNavigationButton_Click(this, new RoutedEventArgs());
     }
 
     private async void CloseAllSessionsButton_Click(object sender, RoutedEventArgs args)
@@ -1016,14 +1200,27 @@ public sealed partial class MainWindow : Window, IDisposable
     private async void ConnectSessionButton_Click(object sender, RoutedEventArgs args)
     {
         if (Sessions.SelectedItem is not TabViewItem tab ||
-            !_sessionTabs.TryGetValue(tab, out RemoteSessionTab? sessionTab) ||
-            _embeddedSessionSurface is null)
+            !_sessionTabs.TryGetValue(tab, out RemoteSessionTab? sessionTab))
+        {
+            return;
+        }
+
+        await ConnectSessionAsync(sessionTab);
+    }
+
+    private async Task ConnectSessionAsync(RemoteSessionTab sessionTab)
+    {
+        if (_embeddedSessionSurface is null ||
+            sessionTab.State is RemoteSessionTabState.Connecting or RemoteSessionTabState.Connected)
         {
             return;
         }
 
         ConnectSessionButton.IsEnabled = false;
         SessionStatus.Text = "Connecting...";
+        RemoteSessionWorkspace.Deactivate(_embeddedSessionSurface);
+        SessionContent.Visibility = Visibility.Collapsed;
+        SessionLoadingContent.Visibility = Visibility.Visible;
         try
         {
             await _sessionWorkspace.ConnectAsync(sessionTab, _embeddedSessionSurface);
@@ -1038,14 +1235,18 @@ public sealed partial class MainWindow : Window, IDisposable
         }
         finally
         {
+            if (sessionTab.State is not RemoteSessionTabState.Connecting)
+                SessionLoadingContent.Visibility = Visibility.Collapsed;
             ConnectSessionButton.IsEnabled = sessionTab.State is not RemoteSessionTabState.Connected;
         }
     }
 
     private void ShowSession(RemoteSessionTab tab)
     {
+        Sessions.TabItems.Remove(WelcomeTab);
         WelcomeContent.Visibility = Visibility.Collapsed;
         ConfigContent.Visibility = Visibility.Collapsed;
+        SessionLoadingContent.Visibility = Visibility.Collapsed;
         SessionTitle.Text = tab.Connection.Name;
         SessionStatus.Text = tab.State switch
         {
@@ -1056,6 +1257,12 @@ public sealed partial class MainWindow : Window, IDisposable
             RemoteSessionTabState.Closed => "Closed",
             _ => string.Empty
         };
+        if (tab.State == RemoteSessionTabState.Connecting)
+        {
+            SessionContent.Visibility = Visibility.Collapsed;
+            SessionLoadingContent.Visibility = Visibility.Visible;
+            return;
+        }
         if (tab.Session is IWinUIContentSession managedSession && tab.State == RemoteSessionTabState.Connected)
         {
             RemoteSessionWorkspace.Deactivate(_embeddedSessionSurface);
@@ -1067,19 +1274,24 @@ public sealed partial class MainWindow : Window, IDisposable
         }
 
         HideManagedSession();
-        SessionContent.Visibility = Visibility.Visible;
-        ConnectSessionButton.IsEnabled = tab.State is RemoteSessionTabState.Created or RemoteSessionTabState.Faulted;
         if (_embeddedSessionSurface is not null && tab.State == RemoteSessionTabState.Connected)
         {
+            SessionContent.Visibility = Visibility.Collapsed;
+            ConnectSessionButton.IsEnabled = false;
             try
             {
                 RemoteSessionWorkspace.Activate(tab, _embeddedSessionSurface);
+                _embeddedSessionSurface.RestoreFocusAfterTransition();
             }
             catch (Exception exception)
             {
                 SessionStatus.Text = $"Could not activate session: {exception.Message}";
             }
+            return;
         }
+
+        SessionContent.Visibility = Visibility.Visible;
+        ConnectSessionButton.IsEnabled = tab.State is RemoteSessionTabState.Created or RemoteSessionTabState.Faulted;
     }
 
     private void HideManagedSession()
@@ -1087,6 +1299,29 @@ public sealed partial class MainWindow : Window, IDisposable
         ManagedSessionContent.Content = null;
         ManagedSessionContent.Visibility = Visibility.Collapsed;
     }
+
+    private static StackPanel CreateSessionTabHeader(ConnectionDefinition definition) =>
+        new()
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 6,
+            VerticalAlignment = VerticalAlignment.Center,
+            Children =
+            {
+                new PathIcon
+                {
+                    Data = ConnectionTreeItem.CreateProtocolIconGeometry(definition.Protocol),
+                    Width = 14,
+                    Height = 14,
+                    VerticalAlignment = VerticalAlignment.Center
+                },
+                new TextBlock
+                {
+                    Text = definition.Name,
+                    VerticalAlignment = VerticalAlignment.Center
+                }
+            }
+        };
 
     private async Task CloseSessionTabsForConnectionAsync(Guid connectionId)
     {

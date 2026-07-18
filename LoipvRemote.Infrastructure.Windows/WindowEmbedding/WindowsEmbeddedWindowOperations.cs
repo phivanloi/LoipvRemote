@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using System.Text;
 using LoipvRemote.Infrastructure.Windows.Interop;
 using LoipvRemote.Protocols.Abstractions;
@@ -16,6 +17,12 @@ public sealed class WindowsEmbeddedWindowOperations : IEmbeddedWindowOperations
     public IntPtr FindChildWindow(IntPtr parentHandle, IntPtr afterHandle = default) =>
         NativeMethods.FindWindowEx(parentHandle, afterHandle, null, null);
 
+    public uint GetWindowProcessId(IntPtr windowHandle)
+    {
+        _ = NativeMethods.GetWindowThreadProcessId(windowHandle, out uint processId);
+        return processId;
+    }
+
     public bool HasClassName(IntPtr windowHandle, string className)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(className);
@@ -29,12 +36,29 @@ public sealed class WindowsEmbeddedWindowOperations : IEmbeddedWindowOperations
 
     public void Hide(IntPtr windowHandle) => _ = NativeMethods.ShowWindow(windowHandle, unchecked((int)NativeMethods.SW_HIDE));
 
-    public void Show(IntPtr windowHandle) => NativeMethods.ShowWindowAsync(windowHandle, unchecked((int)NativeMethods.SW_SHOW));
+    public void Show(IntPtr windowHandle) => _ = NativeMethods.ShowWindow(windowHandle, unchecked((int)NativeMethods.SW_SHOW));
 
     public void Restore(IntPtr windowHandle) => _ = NativeMethods.ShowWindow(windowHandle, unchecked((int)NativeMethods.SW_RESTORE));
 
-    public void SetParent(IntPtr childHandle, IntPtr parentHandle) =>
-        NativeMethods.SetParent(childHandle, parentHandle);
+    public void SetParent(IntPtr childHandle, IntPtr parentHandle)
+    {
+        if (childHandle == IntPtr.Zero)
+            throw new ArgumentException("A non-zero child window handle is required.", nameof(childHandle));
+        if (parentHandle == IntPtr.Zero)
+            throw new ArgumentException("A non-zero parent window handle is required.", nameof(parentHandle));
+
+        // SetParent returns zero both when the old parent was the desktop and
+        // when the operation failed. Clear/read the last error and then verify
+        // the resulting parent so callers cannot report a connected session
+        // while the protocol HWND remains detached.
+        Marshal.SetLastPInvokeError(0);
+        _ = NativeMethods.SetParent(childHandle, parentHandle);
+        int error = Marshal.GetLastPInvokeError();
+        if (error != 0)
+            throw new InvalidOperationException($"Could not attach the protocol window to its host (Win32 error {error}).");
+        if (NativeMethods.GetParent(childHandle) != parentHandle)
+            throw new InvalidOperationException("Windows did not attach the protocol window to its requested host.");
+    }
 
     public int GetWindowStyle(IntPtr windowHandle) =>
         NativeMethods.GetWindowLong(windowHandle, NativeMethods.GWL_STYLE);
@@ -48,11 +72,23 @@ public sealed class WindowsEmbeddedWindowOperations : IEmbeddedWindowOperations
         return previousStyle != IntPtr.Zero;
     }
 
+    public int GetWindowExtendedStyle(IntPtr windowHandle) =>
+        NativeMethods.GetWindowLong(windowHandle, NativeMethods.GWL_EXSTYLE);
+
+    public bool TrySetWindowExtendedStyle(IntPtr windowHandle, int style)
+    {
+        IntPtr previousStyle = NativeMethods.SetWindowLongPtr(
+            windowHandle,
+            NativeMethods.GWL_EXSTYLE,
+            new IntPtr(style));
+        return previousStyle != IntPtr.Zero;
+    }
+
     public void RefreshFrame(IntPtr windowHandle) =>
         NativeMethods.SetWindowPos(windowHandle, IntPtr.Zero, 0, 0, 0, 0,
             NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE |
             NativeMethods.SWP_NOZORDER | NativeMethods.SWP_NOACTIVATE |
-            NativeMethods.SWP_ASYNCWINDOWPOS | NativeMethods.SWP_FRAMECHANGED |
+            NativeMethods.SWP_FRAMECHANGED |
             NativeMethods.SWP_SHOWWINDOW);
 
     public void ForwardInputLanguageChange(IntPtr windowHandle) =>

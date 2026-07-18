@@ -17,6 +17,15 @@ namespace LoipvRemote.WinUI.Tests.Core;
 
 public sealed class ProtocolFactoryTests
 {
+    [TestCase(12, 96, 10)]
+    [TestCase(12, 144, 7)]
+    [TestCase(12, 192, 5)]
+    [TestCase(12, 288, 5)]
+    public void PuttyFontScalingKeepsPhysicalTextSizeStableAcrossDpi(int savedHeight, int dpi, int expectedHeight)
+    {
+        Assert.That(PuttyFontScaling.GetFontHeight(savedHeight, (uint)dpi), Is.EqualTo(expectedHeight));
+    }
+
     [Test]
     public async Task PuttyFactoryBuildsSshArgumentsWithoutAddingPasswordToTheCommandLine()
     {
@@ -64,7 +73,10 @@ public sealed class ProtocolFactoryTests
                 }));
 
         Assert.That(await session.InitializeAsync(), Is.True);
+        session.SetHostWindowHandle((IntPtr)99);
         Assert.That(await session.ConnectAsync(), Is.True);
+        Assert.That(process.StartOptions?.Arguments, Does.Not.Contain("-hwndparent"));
+        Assert.That(process.StartOptions?.StartHidden, Is.False);
         Assert.That(session.AttachTo((IntPtr)99, TimeSpan.Zero), Is.True);
         session.Resize(new EmbeddedWindowBounds(0, 0, 1280, 720));
         session.Focus((IntPtr)7);
@@ -79,10 +91,34 @@ public sealed class ProtocolFactoryTests
             (IntPtr)42,
             PuttyEmbeddedWindowLayout.CreateBorderlessChildStyle(topLevelStyle));
         windows.Received().RefreshFrame((IntPtr)42);
-        windows.Received().Move((IntPtr)42, 0, 0, 1280, 720);
+        windows.Received().Move((IntPtr)42, 0, -32, 1280, 752);
         windows.Received().TryFocus((IntPtr)7, (IntPtr)42);
         windows.Received().SetFocus((IntPtr)42);
         windows.Received().SendMessage((IntPtr)42, 0x0102, (IntPtr)'x', IntPtr.Zero);
+    }
+
+    [Test]
+    public async Task PuttySessionSelectsItsOwnWindowWhenSeveralSessionsShareTheNativeHost()
+    {
+        var process = new RecordingPuttyProcessHost(windowHandle: (IntPtr)10, processId: 200);
+        IEmbeddedWindowOperations windows = Substitute.For<IEmbeddedWindowOperations>();
+        windows.FindChildWindow((IntPtr)99, IntPtr.Zero).Returns((IntPtr)41);
+        windows.FindChildWindow((IntPtr)99, (IntPtr)41).Returns((IntPtr)42);
+        windows.HasClassName(Arg.Any<IntPtr>(), "PuTTY").Returns(true);
+        windows.GetWindowProcessId((IntPtr)41).Returns(100u);
+        windows.GetWindowProcessId((IntPtr)42).Returns(200u);
+
+        using var session = new PuttyProtocolSession(
+            process,
+            windows,
+            new PuttyConnectionOptions("putty.exe", new PuttyLaunchOptions { Hostname = "server.example", Port = 22 }));
+
+        Assert.That(await session.InitializeAsync(), Is.True);
+        session.SetHostWindowHandle((IntPtr)99);
+        Assert.That(await session.ConnectAsync(), Is.True);
+        Assert.That(session.AttachTo((IntPtr)99, TimeSpan.Zero), Is.True);
+
+        windows.Received().SetParent((IntPtr)42, (IntPtr)99);
     }
 
     [Test]
@@ -146,6 +182,7 @@ public sealed class ProtocolFactoryTests
             Assert.That(firstChild, Is.Not.EqualTo(IntPtr.Zero));
             Assert.That(secondChild, Is.Not.EqualTo(IntPtr.Zero));
 
+            host.SetVisible(visible: true);
             host.SetChildVisible(firstChild, visible: false);
             host.SetChildVisible(secondChild, visible: true);
 
@@ -253,9 +290,10 @@ public sealed class ProtocolFactoryTests
     }
 
 
-    private sealed class RecordingPuttyProcessHost(nint windowHandle = default) : IPuttyProcessHost
+    private sealed class RecordingPuttyProcessHost(nint windowHandle = default, int processId = 1) : IPuttyProcessHost
     {
         public bool IsRunning { get; private set; }
+        public int ProcessId => processId;
         public nint MainWindowHandle => windowHandle;
         public string MainWindowTitle => "PuTTY";
         public PuttyProcessStartOptions? StartOptions { get; private set; }

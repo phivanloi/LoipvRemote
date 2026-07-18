@@ -122,6 +122,9 @@ namespace LoipvRemote.Infrastructure.Windows.Interop
         [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
         public static extern IntPtr SetParent(IntPtr hWndChild, IntPtr hWndNewParent);
 
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern IntPtr GetParent(IntPtr hWnd);
+
         [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
         public static extern int GetWindowLong(IntPtr hWnd, int nIndex);
 
@@ -265,6 +268,7 @@ namespace LoipvRemote.Infrastructure.Windows.Interop
         #region GetWindowLong
 
         public const int GWL_STYLE = (-16);
+        public const int GWL_EXSTYLE = (-20);
 
         #endregion
 

@@ -183,6 +183,9 @@ jobs:
     needs: build-installer
     runs-on: windows-latest
     steps:
+      - name: Checkout tag
+        uses: actions/checkout@v7
+
       - name: Download installer artifacts
         uses: actions/download-artifact@v7
         with:

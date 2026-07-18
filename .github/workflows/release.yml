@@ -27,7 +27,12 @@ jobs:
       - name: Audit NuGet vulnerabilities
         shell: pwsh
         run: |
-          $report = dotnet list LoipvRemote.slnx package --vulnerable --include-transitive --format json | ConvertFrom-Json
+          $rawReport = @(& dotnet list LoipvRemote.slnx package --vulnerable --include-transitive --format json 2>&1)
+          if ($LASTEXITCODE -ne 0) {
+            $rawReport | ForEach-Object { Write-Host $_ }
+            throw "Unable to complete the NuGet vulnerability audit (exit code $LASTEXITCODE)."
+          }
+          $report = ($rawReport -join [Environment]::NewLine) | ConvertFrom-Json
           $vulnerable = @($report.projects | ForEach-Object {
             $_.frameworks | ForEach-Object {
               $_.topLevelPackages
@@ -35,6 +40,7 @@ jobs:
             }
           } | Where-Object { $_.vulnerabilities -and $_.vulnerabilities.Count -gt 0 })
           if ($vulnerable.Count -gt 0) {
+            Write-Host "Detected $($vulnerable.Count) vulnerable NuGet package(s):"
             $vulnerable | ConvertTo-Json -Depth 8 | Write-Host
             throw 'NuGet vulnerability detected.'
           }

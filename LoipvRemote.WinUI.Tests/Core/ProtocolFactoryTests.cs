@@ -91,7 +91,7 @@ public sealed class ProtocolFactoryTests
             (IntPtr)42,
             PuttyEmbeddedWindowLayout.CreateBorderlessChildStyle(topLevelStyle));
         windows.Received().RefreshFrame((IntPtr)42);
-        windows.Received().Move((IntPtr)42, 0, -32, 1280, 752);
+        windows.Received().Move((IntPtr)42, -7, -40, 1295, 768);
         windows.Received().TryFocus((IntPtr)7, (IntPtr)42);
         windows.Received().SetFocus((IntPtr)42);
         windows.Received().SendMessage((IntPtr)42, 0x0102, (IntPtr)'x', IntPtr.Zero);
@@ -119,6 +119,33 @@ public sealed class ProtocolFactoryTests
         Assert.That(session.AttachTo((IntPtr)99, TimeSpan.Zero), Is.True);
 
         windows.Received().SetParent((IntPtr)42, (IntPtr)99);
+    }
+
+    [Test]
+    public async Task PuttySessionDoesNotReshowOrReactivateAnAlreadyAttachedWindow()
+    {
+        var process = new RecordingPuttyProcessHost(windowHandle: (IntPtr)42);
+        IEmbeddedWindowOperations windows = Substitute.For<IEmbeddedWindowOperations>();
+        const int topLevelStyle = unchecked((int)0x80CF0000);
+        windows.GetWindowStyle((IntPtr)42).Returns(topLevelStyle);
+
+        using var session = new PuttyProtocolSession(
+            process,
+            windows,
+            new PuttyConnectionOptions("putty.exe", new PuttyLaunchOptions { Hostname = "server.example", Port = 22 }));
+
+        Assert.That(await session.InitializeAsync(), Is.True);
+        session.SetHostWindowHandle((IntPtr)99);
+        Assert.That(await session.ConnectAsync(), Is.True);
+        Assert.That(session.AttachTo((IntPtr)99, TimeSpan.Zero), Is.True);
+
+        session.Focus((IntPtr)7);
+        session.Focus((IntPtr)7);
+        session.Resize(new EmbeddedWindowBounds(0, 0, 1280, 720));
+        session.Resize(new EmbeddedWindowBounds(0, 0, 1280, 720));
+
+        windows.Received(1).Show((IntPtr)42);
+        windows.Received(1).Activate((IntPtr)42);
     }
 
     [Test]

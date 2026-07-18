@@ -17,6 +17,8 @@ public sealed class PuttyProtocolSession : IProtocolSession, IEmbeddedWindow, IE
     private nint _hostWindowHandle;
     private nint _attachedParentWindowHandle;
     private nint _attachedWindowHandle;
+    private bool _windowShown;
+    private bool _focusActivated;
     private PuttyDpiSettingsSession? _dpiSettingsSession;
     private bool _disposed;
 
@@ -135,12 +137,17 @@ public sealed class PuttyProtocolSession : IProtocolSession, IEmbeddedWindow, IE
             return;
 
         EnsureAttachedWindow(windowHandle);
-        _windowOperations.Show(windowHandle);
+        EnsureWindowShown(windowHandle);
         EnsureBorderlessChildStyle(windowHandle);
-        _windowOperations.Activate(windowHandle);
         if (ownerWindowHandle != IntPtr.Zero &&
             _windowOperations.TryFocus(ownerWindowHandle, windowHandle))
             return;
+
+        if (!_focusActivated)
+        {
+            _windowOperations.Activate(windowHandle);
+            _focusActivated = true;
+        }
 
         _windowOperations.SetFocus(windowHandle);
     }
@@ -181,10 +188,9 @@ public sealed class PuttyProtocolSession : IProtocolSession, IEmbeddedWindow, IE
         }
         _embeddedWindowHandle = windowHandle;
         _attachedWindowHandle = windowHandle;
-        // PuTTY may restore its top-level style after SetParent. Reapply the
-        // child style immediately, and also from Focus/Resize so a later
-        // asynchronous style change cannot expose a caption or system buttons.
-        _windowOperations.Show(windowHandle);
+        // Show only when attaching a new PuTTY HWND. Re-showing it during
+        // every tab focus or bounds refresh causes a visible flash.
+        EnsureWindowShown(windowHandle);
         // PuTTY can restore its top-level non-client style while handling the
         // asynchronous show request. Apply the borderless child style only
         // after showing it so the caption and resize frame cannot return.
@@ -218,7 +224,6 @@ public sealed class PuttyProtocolSession : IProtocolSession, IEmbeddedWindow, IE
         if (IsAvailable && windowHandle != IntPtr.Zero && bounds.IsValid)
         {
             EnsureAttachedWindow(windowHandle);
-            _windowOperations.Show(windowHandle);
             EmbeddedWindowBounds viewportBounds = PuttyEmbeddedWindowLayout.CreateViewportBounds(bounds);
             _windowOperations.Move(
                 windowHandle,
@@ -255,11 +260,22 @@ public sealed class PuttyProtocolSession : IProtocolSession, IEmbeddedWindow, IE
         _attachedWindowHandle = windowHandle;
     }
 
+    private void EnsureWindowShown(nint windowHandle)
+    {
+        if (_windowShown)
+            return;
+
+        _windowOperations.Show(windowHandle);
+        _windowShown = true;
+    }
+
     private void AttachWindow(nint windowHandle, nint parentWindowHandle)
     {
         SetBorderlessChildStyle(windowHandle, refreshFrame: false);
         _windowOperations.SetParent(windowHandle, parentWindowHandle);
         _attachedParentWindowHandle = parentWindowHandle;
+        _windowShown = false;
+        _focusActivated = false;
     }
 
     private void EnsureBorderlessChildStyle(nint windowHandle)
@@ -305,6 +321,8 @@ public sealed class PuttyProtocolSession : IProtocolSession, IEmbeddedWindow, IE
         _embeddedWindowHandle = IntPtr.Zero;
         _attachedParentWindowHandle = IntPtr.Zero;
         _attachedWindowHandle = IntPtr.Zero;
+        _windowShown = false;
+        _focusActivated = false;
         _dpiSettingsSession?.Dispose();
         _dpiSettingsSession = null;
         State = ProtocolSessionState.Closed;

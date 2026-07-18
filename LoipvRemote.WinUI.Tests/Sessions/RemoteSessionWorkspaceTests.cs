@@ -2,6 +2,7 @@ using LoipvRemote.Domain.Connections;
 using LoipvRemote.Domain.Credentials;
 using LoipvRemote.Domain.Protocols;
 using LoipvRemote.Protocols.Abstractions;
+using LoipvRemote.Protocols.Putty;
 using LoipvRemote.WinUI.Hosting;
 using LoipvRemote.WinUI.Sessions;
 using NUnit.Framework;
@@ -40,6 +41,27 @@ public sealed class RemoteSessionWorkspaceTests
         Assert.That(events, Is.EqualTo(["EnsureHost", "Visible", "SetHost", "Initialize", "Connect", "Attach", "Visible", "Focus", "RestoreFocusAfterTransition"]));
         Assert.That(session.HostHandle, Is.EqualTo(surface.Handle));
         Assert.That(tab.State, Is.EqualTo(RemoteSessionTabState.Connected));
+    }
+
+    [Test]
+    public async Task ConnectAsyncStartsSshResourceMonitorAndCloseAsyncDisposesIt()
+    {
+        var session = new HostEmbeddedTestSession([]);
+        var monitor = new RecordingSshResourceMonitor();
+        var workspace = new RemoteSessionWorkspace(new TestFactory(session, monitor));
+        RemoteSessionTab tab = workspace.Open(CreateConnection(ProtocolKind.Ssh2));
+
+        await workspace.ConnectAsync(tab, new TestSurface([]));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(monitor.Started, Is.True);
+            Assert.That(tab.ResourceMonitor, Is.SameAs(monitor));
+        });
+
+        await workspace.CloseAsync(tab);
+
+        Assert.That(monitor.Disposed, Is.True);
     }
 
     [Test]
@@ -134,8 +156,27 @@ public sealed class RemoteSessionWorkspaceTests
         events.Clear();
         RemoteSessionWorkspace.Activate(tab, surface);
 
-        Assert.That(events, Is.EqualTo(["EnsureHost", "Attach", "Visible", "Focus"]));
+        Assert.That(events, Is.EqualTo(["EnsureHost", "Attach", "Visible", "Focus", "RestoreFocusAfterTransition"]));
         Assert.That(tab.State, Is.EqualTo(RemoteSessionTabState.Connected));
+    }
+
+    [Test]
+    public async Task ActivateReassertsVisibilityAndFocusAfterRepeatedTabSwitches()
+    {
+        var events = new List<string>();
+        var session = new EmbeddedTestSession(events);
+        var surface = new TestSurface(events);
+        var workspace = new RemoteSessionWorkspace(new TestFactory(session));
+        RemoteSessionTab tab = workspace.Open(CreateConnection(ProtocolKind.Ssh2));
+        await workspace.ConnectAsync(tab, surface);
+
+        events.Clear();
+        RemoteSessionWorkspace.Activate(tab, surface);
+        RemoteSessionWorkspace.Activate(tab, surface);
+
+        Assert.That(events, Is.EqualTo([
+            "EnsureHost", "Attach", "Visible", "Focus", "RestoreFocusAfterTransition",
+            "EnsureHost", "Attach", "Visible", "Focus", "RestoreFocusAfterTransition"]));
     }
 
     [Test]
@@ -178,9 +219,10 @@ public sealed class RemoteSessionWorkspaceTests
         protocol,
         CredentialReference.None);
 
-    private sealed class TestFactory(IProtocolSession session) : IWinUIProtocolSessionFactory
+    private sealed class TestFactory(IProtocolSession session, ISshResourceMonitor? resourceMonitor = null) : IWinUIProtocolSessionFactory
     {
         public IProtocolSession Create(ConnectionDefinition definition) => session;
+        public ISshResourceMonitor? CreateSshResourceMonitor(ConnectionDefinition definition) => resourceMonitor;
     }
 
     private sealed class SequenceFactory(params IProtocolSession[] sessions) : IWinUIProtocolSessionFactory
@@ -188,6 +230,7 @@ public sealed class RemoteSessionWorkspaceTests
         private readonly Queue<IProtocolSession> _sessions = new(sessions);
 
         public IProtocolSession Create(ConnectionDefinition definition) => _sessions.Dequeue();
+        public ISshResourceMonitor? CreateSshResourceMonitor(ConnectionDefinition definition) => null;
     }
 
     private sealed class TestSurface(List<string> events) : IEmbeddedSessionSurface
@@ -345,4 +388,21 @@ public sealed class RemoteSessionWorkspaceTests
             return ValueTask.CompletedTask;
         }
     }
+
+#pragma warning disable CS0067 // Events are required by the monitor contract; this fake does not raise them.
+    private sealed class RecordingSshResourceMonitor : ISshResourceMonitor
+    {
+        public event Action<RemoteResourceSnapshot>? SnapshotUpdated;
+        public event Action<SshResourceMonitorStatus>? StatusChanged;
+        public RemoteResourceSnapshot? LastSnapshot => null;
+        public SshResourceMonitorStatus LastStatus { get; } = new(SshResourceMonitorState.WaitingForActiveTab, string.Empty);
+        public bool Started { get; private set; }
+        public bool Disposed { get; private set; }
+
+        public void Start() => Started = true;
+        public void SetIsActive(bool isActive) { }
+        public void StopMonitoring() { }
+        public void Dispose() => Disposed = true;
+    }
+#pragma warning restore CS0067
 }

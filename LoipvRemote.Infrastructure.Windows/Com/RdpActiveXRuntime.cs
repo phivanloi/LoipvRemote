@@ -231,8 +231,12 @@ public sealed class RdpActiveXRuntime : IRdpClient, IRdpCredentialClient, IRdpRu
     public void ApplyDisplay(RdpDisplayConfiguration display)
     {
         ArgumentNullException.ThrowIfNull(display);
-        SetExtendedProperty("DesktopScaleFactor", display.DesktopScaleFactor);
-        SetExtendedProperty("DeviceScaleFactor", display.DeviceScaleFactor);
+        // These are optional capabilities. Older Windows RDP ActiveX builds
+        // can reject either property with E_FAIL during their first native
+        // layout, even though normal desktop sizing still works. Do not let an
+        // unsupported DPI hint abort the first RDP connection.
+        TrySetDisplayExtendedProperty("DesktopScaleFactor", display.DesktopScaleFactor);
+        TrySetDisplayExtendedProperty("DeviceScaleFactor", display.DeviceScaleFactor);
         Client.FullScreen = display.FullScreen;
         Client.DesktopWidth = display.Width;
         Client.DesktopHeight = display.Height;
@@ -241,6 +245,19 @@ public sealed class RdpActiveXRuntime : IRdpClient, IRdpCredentialClient, IRdpRu
 
     public object? GetExtendedProperty(string property) => ((IMsRdpExtendedSettings)Client).get_Property(property);
     public void SetExtendedProperty(string property, object value) => ((IMsRdpExtendedSettings)Client).set_Property(property, ref value);
+
+    private void TrySetDisplayExtendedProperty(string property, object value)
+    {
+        try
+        {
+            SetExtendedProperty(property, value);
+        }
+        catch (COMException)
+        {
+            // The desktop dimensions and SmartSizing fallback below remain
+            // supported when the optional per-monitor DPI property is not.
+        }
+    }
 
     public void ConfigureVersion7(uint audioQualityMode, bool redirectAudioCapture, uint networkConnectionType, bool useRedirectionServerName, string authenticationServiceClass, string pcb, string? encryptedGatewayToken)
     {

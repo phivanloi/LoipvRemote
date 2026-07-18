@@ -1,4 +1,5 @@
 using LoipvRemote.Protocols.Abstractions;
+using LoipvRemote.Protocols.Putty;
 using LoipvRemote.WinUI.Hosting;
 
 namespace LoipvRemote.WinUI.Sessions;
@@ -74,6 +75,12 @@ public sealed class RemoteSessionWorkspace(IWinUIProtocolSessionFactory protocol
             }
 
             tab.MarkConnected(session);
+            if (tab.Connection.Protocol == Domain.Connections.ProtocolKind.Ssh2)
+            {
+                ISshResourceMonitor? monitor = _protocolFactory.CreateSshResourceMonitor(tab.Connection);
+                tab.SetResourceMonitor(monitor);
+                monitor?.Start();
+            }
             if (hasEmbeddedSurface)
             {
                 surface.SetVisible(true);
@@ -112,6 +119,8 @@ public sealed class RemoteSessionWorkspace(IWinUIProtocolSessionFactory protocol
         if (tab.State != RemoteSessionTabState.Connected || tab.Session is null)
             return;
 
+        tab.SetResourceMonitoringActive(true);
+
         if (tab.Session is not IEmbeddedWindow embedded)
         {
             surface.SetVisible(false);
@@ -125,6 +134,10 @@ public sealed class RemoteSessionWorkspace(IWinUIProtocolSessionFactory protocol
 
         surface.SetVisible(true);
         surface.Focus();
+        // Tab selection may finish after Focus returns. Queue a short retry
+        // window for every activation, not only for the initial connection,
+        // so Ctrl+Tab always returns keyboard focus to the selected terminal.
+        surface.RestoreFocusAfterTransition();
     }
 
     public static void Deactivate(IEmbeddedSessionSurface? surface) => surface?.SetVisible(false);

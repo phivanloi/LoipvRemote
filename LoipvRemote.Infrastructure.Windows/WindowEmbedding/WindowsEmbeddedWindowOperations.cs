@@ -103,7 +103,7 @@ public sealed class WindowsEmbeddedWindowOperations : IEmbeddedWindowOperations
     public void Move(IntPtr windowHandle, int x, int y, int width, int height) =>
         NativeMethods.SetWindowPos(windowHandle, IntPtr.Zero, x, y, width, height,
             NativeMethods.SWP_NOZORDER | NativeMethods.SWP_NOACTIVATE |
-            NativeMethods.SWP_ASYNCWINDOWPOS | NativeMethods.SWP_SHOWWINDOW);
+            NativeMethods.SWP_ASYNCWINDOWPOS);
 
     public void ShowSettingsDialog(IntPtr windowHandle, int commandId)
     {

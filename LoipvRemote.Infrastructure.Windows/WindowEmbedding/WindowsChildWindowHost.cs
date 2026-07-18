@@ -98,7 +98,7 @@ public sealed class WindowsChildWindowHost : IDisposable
     }
 
     /// <summary>Keeps the native host above the WinUI composition surface.</summary>
-    public void BringToFront()
+    public void BringToFront(bool ensureVisible = true)
     {
         ObjectDisposedException.ThrowIf(Handle == IntPtr.Zero, this);
         if (!SetWindowPos(
@@ -108,7 +108,8 @@ public sealed class WindowsChildWindowHost : IDisposable
                 0,
                 0,
                 0,
-                SwpNoMove | SwpNoSize | SwpNoActivate | SwpNoOwnerZOrder | SwpShowWindow | SwpNoSendChanging))
+                SwpNoMove | SwpNoSize | SwpNoActivate | SwpNoOwnerZOrder |
+                (ensureVisible ? SwpShowWindow : 0) | SwpNoSendChanging))
         {
             throw new InvalidOperationException($"Could not bring the embedded session host to the front (Win32 error {Marshal.GetLastWin32Error()}).");
         }

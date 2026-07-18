@@ -199,6 +199,32 @@ public sealed class ConnectionTreeEditorTests
     }
 
     [Test]
+    public void DeleteFolderRemovesConnectionsFromEveryNestedFolder()
+    {
+        Guid parentId = Guid.NewGuid();
+        Guid childId = Guid.NewGuid();
+        Guid directConnectionId = Guid.NewGuid();
+        Guid nestedConnectionId = Guid.NewGuid();
+        ConnectionTreeDefinition source = new(
+            [
+                new ConnectionFolderDefinition(parentId, "Production"),
+                new ConnectionFolderDefinition(childId, "Linux", parentId)
+            ],
+            [
+                new ConnectionDefinition(directConnectionId, "Gateway", "gateway.example", 22, ProtocolKind.Ssh2, Domain.Credentials.CredentialReference.None, ParentFolderId: parentId),
+                new ConnectionDefinition(nestedConnectionId, "Worker", "worker.example", 22, ProtocolKind.Ssh2, Domain.Credentials.CredentialReference.None, ParentFolderId: childId)
+            ]);
+
+        ConnectionTreeDefinition result = ConnectionTreeEditor.DeleteFolder(source, parentId);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Folders, Is.Empty);
+            Assert.That(result.Connections, Is.Empty);
+        });
+    }
+
+    [Test]
     public void MoveFolderRejectsItsOwnDescendant()
     {
         Guid parentId = Guid.NewGuid();

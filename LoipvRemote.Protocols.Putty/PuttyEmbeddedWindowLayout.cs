@@ -6,9 +6,15 @@ namespace LoipvRemote.Protocols.Putty;
 public static class PuttyEmbeddedWindowLayout
 {
     // PuTTY may restore a non-client caption after being reparented. The
-    // native host clips its children, so crop this strip above the viewport
-    // while preserving the bottom edge of the terminal.
+    // native host clips its children, so crop this strip above the viewport.
     private const int CroppedTitleBarHeight = 32;
+    // PuTTYNG can also keep a thin non-client edge after the title bar has
+    // been removed. The current PuTTYNG build needs 8px of vertical clipping.
+    // Horizontally it needs 7px on the left and 8px on the right, producing
+    // the requested 15px total width overscan.
+    private const int CroppedVerticalWindowEdge = 8;
+    private const int CroppedLeftWindowEdge = 7;
+    private const int CroppedRightWindowEdge = 8;
     private const int WsCaption = 0x00C00000;
     private const int WsThickFrame = 0x00040000;
     private const int WsSystemMenu = 0x00080000;
@@ -38,9 +44,9 @@ public static class PuttyEmbeddedWindowLayout
 
     public static EmbeddedWindowBounds CreateViewportBounds(EmbeddedWindowBounds hostBounds) =>
         new(
-            hostBounds.X,
-            hostBounds.Y - CroppedTitleBarHeight,
-            hostBounds.Width,
-            hostBounds.Height + CroppedTitleBarHeight);
+            hostBounds.X - CroppedLeftWindowEdge,
+            hostBounds.Y - CroppedTitleBarHeight - CroppedVerticalWindowEdge,
+            hostBounds.Width + CroppedLeftWindowEdge + CroppedRightWindowEdge,
+            hostBounds.Height + CroppedTitleBarHeight + (CroppedVerticalWindowEdge * 2));
 
 }

@@ -11,8 +11,15 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <Grid x:Name="AppTitleBarDragRegion" Grid.Row="0" />
-        <StackPanel x:Name="TitleBarActions" Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
+        <Grid x:Name="AppTitleBar" Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="275" MinWidth="275" />
+                <ColumnDefinition Width="*" MinWidth="340" />
+                <ColumnDefinition x:Name="RightTitleBarInsetColumn" Width="0" />
+            </Grid.ColumnDefinitions>
+
+            <Grid x:Name="AppTitleBarDragRegion" Grid.ColumnSpan="3" />
+            <StackPanel x:Name="TitleBarActions" Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
             <StackPanel.Resources>
                 <SolidColorBrush x:Key="TitleBarActionButtonNormalBrush" Color="Transparent" />
                 <SolidColorBrush x:Key="TitleBarActionButtonPointerOverBrush" Color="#14000000" />
@@ -83,7 +90,19 @@
                         </MenuFlyout>
                     </Button.Flyout>
                 </Button>
-        </StackPanel>
+            </StackPanel>
+
+            <Grid x:Name="SessionTabsHost" Grid.Column="1" VerticalAlignment="Stretch">
+                <TabView x:Name="Sessions"
+                         Margin="0"
+                         Padding="0"
+                         CanReorderTabs="True"
+                         CanDragTabs="True"
+                         IsAddTabButtonVisible="False"
+                         SelectionChanged="Sessions_SelectionChanged"
+                         TabCloseRequested="Sessions_TabCloseRequested" />
+            </Grid>
+        </Grid>
 
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
@@ -127,31 +146,39 @@
             </Grid>
 
             <Grid Grid.Column="1">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="*" />
-            </Grid.RowDefinitions>
+            <Grid x:Name="SessionSurface">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
 
-            <TabView x:Name="Sessions"
-                     Grid.Row="0"
-                     Margin="0"
-                     Padding="0"
-                     CanReorderTabs="True"
-                     CanDragTabs="True"
-                     IsAddTabButtonVisible="False"
-                     SelectionChanged="Sessions_SelectionChanged"
-                     TabCloseRequested="Sessions_TabCloseRequested">
-                <TabViewItem x:Name="WelcomeTab" Header="Welcome" IsClosable="True" />
-            </TabView>
+                <Grid x:Name="NativeSessionViewport" Grid.Row="0" />
+                <Border x:Name="SshResourceMonitorBar"
+                        Grid.Row="1"
+                        Visibility="Collapsed"
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="0,1,0,0"
+                        Padding="8,5">
+                    <ScrollViewer HorizontalScrollMode="Enabled" HorizontalScrollBarVisibility="Auto" VerticalScrollMode="Disabled" VerticalScrollBarVisibility="Hidden">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Border BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="3" Padding="8,3" MinWidth="76"><StackPanel Orientation="Horizontal" Spacing="5"><TextBlock Text="CPU" /><TextBlock x:Name="SshMonitorCpu" FontWeight="SemiBold" Text="--" /></StackPanel></Border>
+                            <Border BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="3" Padding="8,3" MinWidth="132"><StackPanel Orientation="Horizontal" Spacing="5"><TextBlock Text="RAM" /><TextBlock x:Name="SshMonitorMemory" FontWeight="SemiBold" Text="--" /></StackPanel></Border>
+                            <Border BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="3" Padding="8,3" MinWidth="174"><StackPanel Orientation="Horizontal" Spacing="5"><TextBlock Text="Disk /" /><TextBlock x:Name="SshMonitorDisk" FontWeight="SemiBold" Text="--" /></StackPanel></Border>
+                            <Border BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="3" Padding="8,3" MinWidth="100"><StackPanel Orientation="Horizontal" Spacing="5"><TextBlock Text="In" /><TextBlock x:Name="SshMonitorReceive" FontWeight="SemiBold" Text="--" /></StackPanel></Border>
+                            <Border BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="3" Padding="8,3" MinWidth="100"><StackPanel Orientation="Horizontal" Spacing="5"><TextBlock Text="Out" /><TextBlock x:Name="SshMonitorTransmit" FontWeight="SemiBold" Text="--" /></StackPanel></Border>
+                            <Border BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="3" Padding="8,3" MinWidth="106"><StackPanel Orientation="Horizontal" Spacing="5"><TextBlock Text="Uptime" /><TextBlock x:Name="SshMonitorUptime" FontWeight="SemiBold" Text="--" /></StackPanel></Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Border>
 
-            <Grid x:Name="SessionSurface" Grid.Row="1" Padding="32">
-                <ContentControl x:Name="ManagedSessionContent" Visibility="Collapsed" />
-                <StackPanel x:Name="WelcomeContent" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
+                <ContentControl x:Name="ManagedSessionContent" Grid.Row="0" Visibility="Collapsed" />
+                <StackPanel x:Name="WelcomeContent" Grid.Row="0" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
                     <TextBlock Text="Loipv Remote" Style="{ThemeResource TitleTextBlockStyle}" HorizontalAlignment="Center" />
                     <TextBlock Text="Select a connection to start a remote session." HorizontalAlignment="Center" />
                     <TextBlock x:Name="ConnectionStatus" HorizontalAlignment="Center" Opacity="0.7" />
                 </StackPanel>
-                <ScrollViewer x:Name="ConfigContent" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="640">
+                <ScrollViewer x:Name="ConfigContent" Grid.Row="0" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="640">
                     <StackPanel Spacing="12" Padding="32">
                         <TextBlock Text="Configuration" Style="{ThemeResource TitleTextBlockStyle}" />
                         <ComboBox x:Name="ThemeBox" Header="Theme" SelectionChanged="ThemeBox_SelectionChanged" />
@@ -176,12 +203,12 @@
                         <TextBlock x:Name="CredentialConfigurationStatus" TextWrapping="Wrap" Opacity="0.8" />
                     </StackPanel>
                 </ScrollViewer>
-                <StackPanel x:Name="SessionContent" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
+                <StackPanel x:Name="SessionContent" Grid.Row="0" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
                     <TextBlock x:Name="SessionTitle" Style="{ThemeResource TitleTextBlockStyle}" HorizontalAlignment="Center" />
                     <TextBlock x:Name="SessionStatus" HorizontalAlignment="Center" />
                     <Button x:Name="ConnectSessionButton" Content="Connect" Click="ConnectSessionButton_Click" />
                 </StackPanel>
-                <StackPanel x:Name="SessionLoadingContent" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
+                <StackPanel x:Name="SessionLoadingContent" Grid.Row="0" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
                     <ProgressRing IsActive="True" Width="32" Height="32" />
                     <TextBlock Text="Connecting..." HorizontalAlignment="Center" />
                 </StackPanel>

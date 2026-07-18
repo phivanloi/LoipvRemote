@@ -15,6 +15,7 @@ public sealed class WinUIProtocolSessionFactory : IWinUIProtocolSessionFactory
     private readonly RdpProtocolFactory _rdpFactory;
     private readonly PuttyProtocolFactory _puttyFactory;
     private readonly VncProtocolFactory _vncFactory;
+    private readonly SshResourceMonitorFactory _sshResourceMonitorFactory;
     private readonly ProtocolFactoryRouter _router;
 
     public WinUIProtocolSessionFactory(
@@ -35,6 +36,8 @@ public sealed class WinUIProtocolSessionFactory : IWinUIProtocolSessionFactory
             () => new WindowsEmbeddedWindowOperations(),
             passwordResolver: definition => secretResolver.Resolve(definition, "Password"),
             passwordPipeFactory: WindowsSecretPipeServer.StartPassword);
+        _sshResourceMonitorFactory = new SshResourceMonitorFactory(
+            definition => secretResolver.Resolve(definition, "Password"));
         _vncFactory = new VncProtocolFactory(
             vncClientFactory.Create,
             () => new VncEndpointProbe(),
@@ -51,5 +54,11 @@ public sealed class WinUIProtocolSessionFactory : IWinUIProtocolSessionFactory
         ArgumentNullException.ThrowIfNull(definition);
 
         return _router.Create(definition);
+    }
+
+    public ISshResourceMonitor? CreateSshResourceMonitor(ConnectionDefinition definition)
+    {
+        ArgumentNullException.ThrowIfNull(definition);
+        return _sshResourceMonitorFactory.Create(definition);
     }
 }

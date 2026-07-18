@@ -39,7 +39,7 @@ public sealed class Win32EmbeddedSessionSurface : IEmbeddedSessionSurface, IDisp
         _placementTarget.SizeChanged += PlacementTargetOnSizeChanged;
         _placementTarget.LayoutUpdated += PlacementTargetOnLayoutUpdated;
         EmbeddingDiagnostics.Write($"surface-created owner={FormatHandle(_ownerWindowHandle)}");
-        UpdateBounds();
+        UpdateBoundsSafely();
     }
 
     public IntPtr Handle => _nativeHost?.Handle ?? IntPtr.Zero;
@@ -52,21 +52,25 @@ public sealed class Win32EmbeddedSessionSurface : IEmbeddedSessionSurface, IDisp
             _nativeHost = new WindowsChildWindowHost(_ownerWindowHandle);
             EmbeddingDiagnostics.Write($"host-created {DescribeWindow(_nativeHost.Handle)}");
         }
-        UpdateBounds();
+        UpdateBoundsSafely();
     }
 
     public void SetVisible(bool visible)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        if (_nativeHost is not null && _isVisible != visible)
+        if (_nativeHost is not null)
         {
-            _nativeHost.SetVisible(visible);
-            _isVisible = visible;
-            EmbeddingDiagnostics.Write($"host-visibility visible={visible} {DescribeWindow(_nativeHost.Handle)}");
+            bool visibilityChanged = _isVisible != visible;
+            if (visibilityChanged)
+            {
+                _nativeHost.SetVisible(visible);
+                _isVisible = visible;
+                EmbeddingDiagnostics.Write($"host-visibility visible={visible} {DescribeWindow(_nativeHost.Handle)}");
+            }
         }
 
         if (visible)
-            UpdateBounds();
+            UpdateBoundsSafely();
     }
 
     public bool Attach(IEmbeddedWindow session, TimeSpan timeout)
@@ -82,7 +86,7 @@ public sealed class Win32EmbeddedSessionSurface : IEmbeddedSessionSurface, IDisp
             // it does not remain at the native 1x1 creation size until a tab
             // selection causes a later layout pass.
             _lastResizedSession = null;
-            UpdateBounds();
+            UpdateBoundsSafely();
             return true;
         }
 
@@ -112,7 +116,7 @@ public sealed class Win32EmbeddedSessionSurface : IEmbeddedSessionSurface, IDisp
         }
         _nativeHost?.SetChildVisible(session.WindowHandle, visible: true);
         _lastResizedSession = null;
-        UpdateBounds();
+        UpdateBoundsSafely();
         // WinUI is composed above normal child windows. Reassert the host's
         // Z-order after the protocol has attached so the remote pixels are not
         // left behind the XAML content layer.
@@ -125,16 +129,16 @@ public sealed class Win32EmbeddedSessionSurface : IEmbeddedSessionSurface, IDisp
         if (!_isVisible)
             return;
 
-        _nativeHost?.Activate();
-        // The application HWND owns the WinUI input queue. Passing the popup
-        // host works initially but loses keyboard focus after restore or a
-        // TabView selection transition.
+        // The owning WinUI window is already active when this method is
+        // reached. Changing foreground/Z-order from here raises a second
+        // activation cycle, which can continuously repaint the native SSH
+        // child. Transfer keyboard focus only.
         _session?.Focus(_ownerWindowHandle);
     }
 
     public void RefreshLayoutAndRestoreFocus()
     {
-        UpdateBounds();
+        UpdateBoundsSafely();
         QueueFocusRestore();
         QueueWindowTransitionRefresh();
     }
@@ -163,11 +167,18 @@ public sealed class Win32EmbeddedSessionSurface : IEmbeddedSessionSurface, IDisp
 
     private void PlacementTargetOnSizeChanged(object sender, SizeChangedEventArgs args)
     {
-        UpdateBounds();
-        QueueFocusRestore();
+        UpdateBoundsSafely();
     }
 
-    private void PlacementTargetOnLayoutUpdated(object? sender, object args) => UpdateBounds();
+    private void PlacementTargetOnLayoutUpdated(object? sender, object args) => UpdateBoundsSafely();
+
+    private void UpdateBoundsSafely(bool forceDynamicDisplayUpdate = false)
+    {
+        _ = NativeUiExceptionGuard.TryRun(
+            () => UpdateBounds(forceDynamicDisplayUpdate),
+            exception => EmbeddingDiagnostics.Write(
+                $"bounds-update-recovered type={exception.GetType().Name} hresult=0x{exception.HResult:X8}"));
+    }
 
     private void QueueFocusRestore()
     {
@@ -184,18 +195,12 @@ public sealed class Win32EmbeddedSessionSurface : IEmbeddedSessionSurface, IDisp
     {
         try
         {
-            // A newly created PuTTY terminal can accept focus only after it
-            // has processed its initial show/layout messages. A single early
-            // SetFocus is unreliable, while a short, cancellable retry window
-            // makes first-open behavior match a later tab activation.
-            foreach (int delayMilliseconds in new[] { 150, 300, 600 })
-            {
-                await Task.Delay(delayMilliseconds, cancellationToken);
-                if (cancellationToken.IsCancellationRequested)
-                    return;
-
+            // A new PuTTY terminal needs one pass after its first layout to
+            // accept input. Do not repeat focus requests: reactivating a
+            // foreign child window repeatedly makes the terminal flicker.
+            await Task.Delay(150, cancellationToken);
+            if (!cancellationToken.IsCancellationRequested)
                 _placementTarget.DispatcherQueue.TryEnqueue(Focus);
-            }
         }
         catch (OperationCanceledException)
         {
@@ -360,7 +365,7 @@ public sealed class Win32EmbeddedSessionSurface : IEmbeddedSessionSurface, IDisp
             // and clips its taskbar at the bottom.
             await Task.Delay(TimeSpan.FromMilliseconds(700), cancellationToken).ConfigureAwait(false);
             if (!cancellationToken.IsCancellationRequested && !_disposed)
-                _placementTarget.DispatcherQueue.TryEnqueue(() => UpdateBounds(forceDynamicDisplayUpdate: true));
+                _placementTarget.DispatcherQueue.TryEnqueue(() => UpdateBoundsSafely(forceDynamicDisplayUpdate: true));
         }
         catch (OperationCanceledException)
         {
@@ -402,6 +407,9 @@ public sealed class Win32EmbeddedSessionSurface : IEmbeddedSessionSurface, IDisp
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern bool ClientToScreen(IntPtr windowHandle, ref NativePoint point);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool SetForegroundWindow(IntPtr windowHandle);
 
     [StructLayout(LayoutKind.Sequential)]
     private struct NativePoint

@@ -5,6 +5,7 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Windowing;
+using Microsoft.UI.Text;
 using System.Security.Cryptography;
 using LoipvRemote.WinUI.Services;
 using LoipvRemote.WinUI.ViewModels;
@@ -18,6 +19,7 @@ using LoipvRemote.Application.Configuration;
 using LoipvRemote.Application.Credentials;
 using LoipvRemote.Application.Sessions;
 using LoipvRemote.Protocols.Abstractions;
+using LoipvRemote.Protocols.Putty;
 using WinRT.Interop;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage.Pickers;
@@ -37,8 +39,10 @@ public sealed partial class MainWindow : Window, IDisposable
     private Win32EmbeddedSessionSurface? _embeddedSessionSurface;
     private readonly Dictionary<TreeViewNode, ConnectionTreeItem> _connectionNodes = [];
     private readonly Dictionary<TabViewItem, RemoteSessionTab> _sessionTabs = [];
+    private readonly HashSet<RemoteSessionTab> _subscribedResourceMonitorTabs = [];
     private readonly HashSet<Guid> _connectedConnectionIds = [];
     private readonly HashSet<Guid> _expandedFolderIds = [];
+    private readonly SessionTabCloseGate _sessionTabCloseGate = new();
     private ConnectionTreeItem? _draggedTreeItem;
     private ConnectionTreeItem? _selectedTreeItem;
     private ConnectionFolderDefinition? _selectedFolder;
@@ -48,6 +52,8 @@ public sealed partial class MainWindow : Window, IDisposable
     private bool _sessionShutdownCompleted;
     private RemoteSessionTab? _nativeSessionHiddenForPopup;
     private int _xamlPopupDepth;
+    private bool _titleBarRegionUpdateQueued;
+    private bool _windowWasDeactivated;
     private bool _disposed;
 
     public MainWindow(
@@ -81,6 +87,10 @@ public sealed partial class MainWindow : Window, IDisposable
         SessionSurface.Loaded += SessionSurfaceOnLoaded;
         Closed += MainWindowOnClosed;
         RootGrid.Loaded += RootGridOnLoaded;
+        AppTitleBar.Loaded += AppTitleBarOnLoaded;
+        AppTitleBar.SizeChanged += AppTitleBarOnSizeChanged;
+        Sessions.Loaded += SessionsOnLoaded;
+        Sessions.LayoutUpdated += SessionsOnLayoutUpdated;
     }
 
     private async void RootGridOnLoaded(object sender, RoutedEventArgs args)
@@ -88,6 +98,42 @@ public sealed partial class MainWindow : Window, IDisposable
         RootGrid.Loaded -= RootGridOnLoaded;
         await LoadConnectionTreeAsync();
         AlignTabStripToMainContent();
+        QueueTitleBarInteractiveRegionUpdate();
+    }
+
+    private void AppTitleBarOnLoaded(object sender, RoutedEventArgs args) => QueueTitleBarInteractiveRegionUpdate();
+
+    private void AppTitleBarOnSizeChanged(object sender, SizeChangedEventArgs args) => QueueTitleBarInteractiveRegionUpdate();
+
+    private void SessionsOnLoaded(object sender, RoutedEventArgs args) => QueueTitleBarInteractiveRegionUpdate();
+
+    private void SessionsOnLayoutUpdated(object? sender, object args) => QueueTitleBarInteractiveRegionUpdate();
+
+    private void QueueTitleBarInteractiveRegionUpdate()
+    {
+        if (_titleBarRegionUpdateQueued)
+            return;
+
+        _titleBarRegionUpdateQueued = true;
+        _ = DispatcherQueue.TryEnqueue(() =>
+        {
+            _titleBarRegionUpdateQueued = false;
+            UpdateTitleBarLayout();
+        });
+    }
+
+    private void UpdateTitleBarLayout()
+    {
+        if (!ExtendsContentIntoTitleBar ||
+            AppTitleBar.XamlRoot is null ||
+            AppTitleBar.XamlRoot.RasterizationScale <= 0)
+        {
+            return;
+        }
+
+        double scale = AppTitleBar.XamlRoot.RasterizationScale;
+        RightTitleBarInsetColumn.Width = new GridLength(
+            TitleBarLayoutMetrics.ToLogicalPixels(AppWindow.TitleBar.RightInset, scale));
     }
 
     private void AlignTabStripToMainContent()
@@ -345,6 +391,7 @@ public sealed partial class MainWindow : Window, IDisposable
         Sessions.TabItems.Add(tabItem);
         Sessions.SelectedItem = tabItem;
         ShowSession(tab);
+        QueueTitleBarInteractiveRegionUpdate();
     }
 
     private async Task<ComboBox> CreateCredentialBoxAsync(LoipvRemote.Domain.Credentials.CredentialReference selected)
@@ -622,19 +669,34 @@ public sealed partial class MainWindow : Window, IDisposable
 
     private void SessionSurfaceOnLoaded(object sender, RoutedEventArgs args)
     {
-        _embeddedSessionSurface ??= new Win32EmbeddedSessionSurface(this, SessionSurface);
+        _embeddedSessionSurface ??= new Win32EmbeddedSessionSurface(this, NativeSessionViewport);
     }
 
     private void AppWindowOnChanged(AppWindow sender, AppWindowChangedEventArgs args)
     {
         if (args.DidPositionChange || args.DidSizeChange || args.DidPresenterChange)
             _embeddedSessionSurface?.RefreshLayoutAndRestoreFocus();
+
+        if (args.DidSizeChange || args.DidPresenterChange)
+            QueueTitleBarInteractiveRegionUpdate();
     }
 
     private void MainWindowOnActivated(object sender, WindowActivatedEventArgs args)
     {
-        if (args.WindowActivationState != WindowActivationState.Deactivated)
-            _embeddedSessionSurface?.RestoreFocusAfterTransition();
+        if (args.WindowActivationState == WindowActivationState.Deactivated)
+        {
+            _windowWasDeactivated = true;
+            return;
+        }
+
+        // Window.Activated can be raised more than once while the native
+        // child processes a focus message. Restore focus only for a real
+        // return from another application, never for an already-active app.
+        if (!_windowWasDeactivated)
+            return;
+
+        _windowWasDeactivated = false;
+        _embeddedSessionSurface?.RestoreFocusAfterTransition();
     }
 
     private void MainWindowOnClosed(object sender, WindowEventArgs args)
@@ -692,6 +754,10 @@ public sealed partial class MainWindow : Window, IDisposable
         _embeddedSessionSurface = null;
         AppWindow.Changed -= AppWindowOnChanged;
         Activated -= MainWindowOnActivated;
+        AppTitleBar.Loaded -= AppTitleBarOnLoaded;
+        AppTitleBar.SizeChanged -= AppTitleBarOnSizeChanged;
+        Sessions.Loaded -= SessionsOnLoaded;
+        Sessions.LayoutUpdated -= SessionsOnLayoutUpdated;
         _minimumSizeController?.Dispose();
         GC.SuppressFinalize(this);
     }
@@ -699,6 +765,8 @@ public sealed partial class MainWindow : Window, IDisposable
     private void ConnectionsNavigationButton_Click(object sender, RoutedEventArgs args)
     {
         RemoteSessionWorkspace.Deactivate(_embeddedSessionSurface);
+        SetResourceMonitoringActive(null);
+        SshResourceMonitorBar.Visibility = Visibility.Collapsed;
         HideManagedSession();
         WelcomeContent.Visibility = Visibility.Visible;
         ConfigContent.Visibility = Visibility.Collapsed;
@@ -708,6 +776,8 @@ public sealed partial class MainWindow : Window, IDisposable
     private void ConfigNavigationButton_Click(object sender, RoutedEventArgs args)
     {
         RemoteSessionWorkspace.Deactivate(_embeddedSessionSurface);
+        SetResourceMonitoringActive(null);
+        SshResourceMonitorBar.Visibility = Visibility.Collapsed;
         HideManagedSession();
         WelcomeContent.Visibility = Visibility.Collapsed;
         ConfigContent.Visibility = Visibility.Visible;
@@ -1008,6 +1078,7 @@ public sealed partial class MainWindow : Window, IDisposable
 
         bool isAlreadySelected = ReferenceEquals(Sessions.SelectedItem, existingTab);
         Sessions.SelectedItem = existingTab;
+        QueueTitleBarInteractiveRegionUpdate();
         if (isAlreadySelected)
             ShowSession(tab);
         if (tab.State is RemoteSessionTabState.Created or RemoteSessionTabState.Faulted)
@@ -1022,8 +1093,7 @@ public sealed partial class MainWindow : Window, IDisposable
         TreeViewItem? container = FindAncestor<TreeViewItem>(source);
         TreeViewNode? node = container is null ? null : ConnectionTree.NodeFromContainer(container);
         if (container is null || node is null ||
-            !_connectionNodes.TryGetValue(node, out ConnectionTreeItem? item) ||
-            item.IsFolder)
+            !_connectionNodes.TryGetValue(node, out ConnectionTreeItem? item))
         {
             return;
         }
@@ -1033,7 +1103,7 @@ public sealed partial class MainWindow : Window, IDisposable
         _suppressSessionOpenForContextMenu = false;
         SelectTreeItem(node, openSession: false);
 
-        CreateConnectionContextMenu().ShowAt(container);
+        (item.IsFolder ? CreateFolderContextMenu() : CreateConnectionContextMenu()).ShowAt(container);
         args.Handled = true;
     }
 
@@ -1120,15 +1190,26 @@ public sealed partial class MainWindow : Window, IDisposable
         var menu = new MenuFlyout();
         menu.Opening += XamlPopup_Opening;
         menu.Closed += XamlPopup_Closed;
-        menu.Items.Add(CreateConnectionMenuItem("Edit connection", Symbol.Edit, EditSelectedNodeButton_Click));
-        menu.Items.Add(CreateConnectionMenuItem("Duplicate", Symbol.Copy, DuplicateSelectedNodeButton_Click));
-        menu.Items.Add(CreateConnectionMenuItem("Move", Symbol.MoveToFolder, MoveSelectedNodeButton_Click));
+        menu.Items.Add(CreateContextMenuItem("Edit connection", Symbol.Edit, EditSelectedNodeButton_Click));
+        menu.Items.Add(CreateContextMenuItem("Duplicate", Symbol.Copy, DuplicateSelectedNodeButton_Click));
+        menu.Items.Add(CreateContextMenuItem("Move", Symbol.MoveToFolder, MoveSelectedNodeButton_Click));
         menu.Items.Add(new MenuFlyoutSeparator());
-        menu.Items.Add(CreateConnectionMenuItem("Delete", Symbol.Delete, DeleteSelectedNodeButton_Click));
+        menu.Items.Add(CreateContextMenuItem("Delete", Symbol.Delete, DeleteSelectedNodeButton_Click));
         return menu;
     }
 
-    private static MenuFlyoutItem CreateConnectionMenuItem(string text, Symbol symbol, RoutedEventHandler click)
+    private MenuFlyout CreateFolderContextMenu()
+    {
+        var menu = new MenuFlyout();
+        menu.Opening += XamlPopup_Opening;
+        menu.Closed += XamlPopup_Closed;
+        menu.Items.Add(CreateContextMenuItem("Rename", Symbol.Edit, RenameSelectedFolderButton_Click));
+        menu.Items.Add(new MenuFlyoutSeparator());
+        menu.Items.Add(CreateContextMenuItem("Delete", Symbol.Delete, DeleteSelectedNodeButton_Click));
+        return menu;
+    }
+
+    private static MenuFlyoutItem CreateContextMenuItem(string text, Symbol symbol, RoutedEventHandler click)
     {
         var item = new MenuFlyoutItem
         {
@@ -1243,12 +1324,18 @@ public sealed partial class MainWindow : Window, IDisposable
 
         try
         {
+            ConnectionTreeDefinition current = _connectionCatalog.Tree;
             ConnectionTreeDefinition updated = _selectedTreeItem.IsFolder
-                ? ConnectionTreeEditor.DeleteFolder(_connectionCatalog.Tree, _selectedTreeItem.Id)
-                : ConnectionTreeEditor.DeleteConnection(_connectionCatalog.Tree, _selectedTreeItem.Id);
-            if (_selectedConnection is { } connection)
-                await CloseSessionTabsForConnectionAsync(connection.Id);
+                ? ConnectionTreeEditor.DeleteFolder(current, _selectedTreeItem.Id)
+                : ConnectionTreeEditor.DeleteConnection(current, _selectedTreeItem.Id);
             await _connectionCatalog.SaveAsync(updated);
+            var retainedConnectionIds = updated.Connections.Select(connection => connection.Id).ToHashSet();
+            foreach (Guid connectionId in current.Connections
+                         .Where(connection => !retainedConnectionIds.Contains(connection.Id))
+                         .Select(connection => connection.Id))
+            {
+                await CloseSessionTabsForConnectionAsync(connectionId);
+            }
             _selectedTreeItem = null;
             _selectedConnection = null;
             _selectedFolder = null;
@@ -1258,6 +1345,49 @@ public sealed partial class MainWindow : Window, IDisposable
         catch (Exception exception) when (exception is ArgumentException or InvalidDataException or IOException)
         {
             ConnectionStatus.Text = $"Selection was not deleted: {exception.Message}";
+        }
+    }
+
+    private async void RenameSelectedFolderButton_Click(object sender, RoutedEventArgs args)
+    {
+        if (_selectedFolder is null)
+        {
+            ConnectionStatus.Text = "Select a folder before renaming it.";
+            return;
+        }
+
+        ConnectionFolderDefinition folder = _selectedFolder;
+        var nameBox = new TextBox { Header = "Folder name", Text = folder.Name };
+        nameBox.Loaded += (_, _) =>
+        {
+            nameBox.Focus(FocusState.Programmatic);
+            nameBox.SelectAll();
+        };
+        var dialog = new ContentDialog
+        {
+            XamlRoot = RootGrid.XamlRoot,
+            Title = "Rename folder",
+            PrimaryButtonText = "Rename",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            Content = nameBox
+        };
+        if (await ShowDialogAsync(dialog) != ContentDialogResult.Primary)
+            return;
+
+        try
+        {
+            await _connectionCatalog.SaveAsync(ConnectionTreeEditor.RenameFolder(
+                _connectionCatalog.Tree,
+                folder.Id,
+                nameBox.Text));
+            _selectedFolder = null;
+            await LoadConnectionTreeAsync();
+            ConnectionStatus.Text = "Folder renamed.";
+        }
+        catch (Exception exception) when (exception is ArgumentException or InvalidDataException or IOException)
+        {
+            ConnectionStatus.Text = $"Folder was not renamed: {exception.Message}";
         }
     }
 
@@ -1310,37 +1440,50 @@ public sealed partial class MainWindow : Window, IDisposable
 
     private async void Sessions_TabCloseRequested(TabView sender, TabViewTabCloseRequestedEventArgs args)
     {
-        if (ReferenceEquals(args.Tab, WelcomeTab))
-        {
-            sender.TabItems.Remove(args.Tab);
-            WelcomeContent.Visibility = Visibility.Collapsed;
+        if (args.Tab is not TabViewItem tab || !_sessionTabCloseGate.TryEnter())
             return;
-        }
-
-        if (args.Tab is not TabViewItem tab || !_sessionTabs.Remove(tab, out RemoteSessionTab? sessionTab))
-            return;
-
-        // Remove the tab before closing the native protocol process. PuTTY and
-        // the RDP ActiveX control can take a moment to stop; keeping the tab
-        // visible until then makes the first close click look ignored.
-        RemoteSessionWorkspace.Deactivate(_embeddedSessionSurface);
-        sender.TabItems.Remove(tab);
-        await Task.Yield();
 
         try
         {
+            if (!_sessionTabs.Remove(tab, out RemoteSessionTab? sessionTab))
+                return;
+
+            bool closingSelectedTab = ReferenceEquals(sender.SelectedItem, tab);
+            TabViewItem[] sessionTabsBeforeClose = sender.TabItems
+                .OfType<TabViewItem>()
+                .Where(candidate => _sessionTabs.ContainsKey(candidate) || ReferenceEquals(candidate, tab))
+                .ToArray();
+            TabViewItem? tabToActivate = closingSelectedTab
+                ? SessionTabSelection.SelectAfterClose(sessionTabsBeforeClose, tab)
+                : null;
+
+            // Remove the tab before closing the native protocol process. PuTTY and
+            // the RDP ActiveX control can take a moment to stop; keeping the tab
+            // visible until then makes the first close click look ignored.
+            if (closingSelectedTab)
+                RemoteSessionWorkspace.Deactivate(_embeddedSessionSurface);
+            sender.TabItems.Remove(tab);
+            if (tabToActivate is not null)
+                sender.SelectedItem = tabToActivate;
+            QueueTitleBarInteractiveRegionUpdate();
+            await Task.Yield();
+
             await _sessionWorkspace.CloseAsync(sessionTab);
             _connectedConnectionIds.Remove(sessionTab.Connection.Id);
             if (_connectionCatalog.IsLoaded)
                 RebuildConnectionTree(_connectionCatalog.Tree);
+
+            if (sender.SelectedItem is not TabViewItem selected || !_sessionTabs.ContainsKey(selected))
+                ConnectionsNavigationButton_Click(this, new RoutedEventArgs());
         }
         catch (Exception exception)
         {
             ConnectionStatus.Text = $"Session closed with an error: {exception.Message}";
         }
-
-        if (sender.SelectedItem is not TabViewItem selected || !_sessionTabs.ContainsKey(selected))
-            ConnectionsNavigationButton_Click(this, new RoutedEventArgs());
+        finally
+        {
+            _sessionTabCloseGate.Exit();
+        }
     }
 
     private async void CloseAllSessionsButton_Click(object sender, RoutedEventArgs args)
@@ -1351,6 +1494,7 @@ public sealed partial class MainWindow : Window, IDisposable
             foreach (TabViewItem tab in _sessionTabs.Keys.ToArray())
                 Sessions.TabItems.Remove(tab);
             _sessionTabs.Clear();
+            QueueTitleBarInteractiveRegionUpdate();
             _connectedConnectionIds.Clear();
             if (_connectionCatalog.IsLoaded)
                 RebuildConnectionTree(_connectionCatalog.Tree);
@@ -1366,7 +1510,13 @@ public sealed partial class MainWindow : Window, IDisposable
     private void Sessions_SelectionChanged(object sender, SelectionChangedEventArgs args)
     {
         if (Sessions.SelectedItem is TabViewItem tab && _sessionTabs.TryGetValue(tab, out RemoteSessionTab? sessionTab))
-            ShowSession(sessionTab);
+            // ConnectAsync already made this native session visible and gave
+            // it focus. Updating the surrounding WinUI state must not invoke
+            // the tab activation path a second time, or PuTTY flashes while
+            // several ShowWindow/focus calls race its initial paint.
+            ShowSession(sessionTab, activateNativeSession: false);
+
+        QueueTitleBarInteractiveRegionUpdate();
     }
 
     private async void ConnectSessionButton_Click(object sender, RoutedEventArgs args)
@@ -1396,6 +1546,7 @@ public sealed partial class MainWindow : Window, IDisposable
         try
         {
             await _sessionWorkspace.ConnectAsync(sessionTab, _embeddedSessionSurface);
+            SubscribeSshResourceMonitor(sessionTab);
             _connectedConnectionIds.Add(sessionTab.Connection.Id);
             if (_connectionCatalog.IsLoaded)
                 RebuildConnectionTree(_connectionCatalog.Tree);
@@ -1413,9 +1564,9 @@ public sealed partial class MainWindow : Window, IDisposable
         }
     }
 
-    private void ShowSession(RemoteSessionTab tab)
+    private void ShowSession(RemoteSessionTab tab, bool activateNativeSession = true)
     {
-        Sessions.TabItems.Remove(WelcomeTab);
+        SetResourceMonitoringActive(tab);
         WelcomeContent.Visibility = Visibility.Collapsed;
         ConfigContent.Visibility = Visibility.Collapsed;
         SessionLoadingContent.Visibility = Visibility.Collapsed;
@@ -1431,6 +1582,7 @@ public sealed partial class MainWindow : Window, IDisposable
         };
         if (tab.State == RemoteSessionTabState.Connecting)
         {
+            UpdateSshResourceMonitor(tab);
             SessionContent.Visibility = Visibility.Collapsed;
             SessionLoadingContent.Visibility = Visibility.Visible;
             return;
@@ -1442,6 +1594,7 @@ public sealed partial class MainWindow : Window, IDisposable
             ManagedSessionContent.Visibility = Visibility.Visible;
             SessionContent.Visibility = Visibility.Collapsed;
             managedSession.Activate();
+            UpdateSshResourceMonitor(tab);
             return;
         }
 
@@ -1450,10 +1603,16 @@ public sealed partial class MainWindow : Window, IDisposable
         {
             SessionContent.Visibility = Visibility.Collapsed;
             ConnectSessionButton.IsEnabled = false;
+            if (!activateNativeSession)
+            {
+                UpdateSshResourceMonitor(tab);
+                return;
+            }
+
             try
             {
                 RemoteSessionWorkspace.Activate(tab, _embeddedSessionSurface);
-                _embeddedSessionSurface.RestoreFocusAfterTransition();
+                UpdateSshResourceMonitor(tab);
             }
             catch (Exception exception)
             {
@@ -1464,7 +1623,77 @@ public sealed partial class MainWindow : Window, IDisposable
 
         SessionContent.Visibility = Visibility.Visible;
         ConnectSessionButton.IsEnabled = tab.State is RemoteSessionTabState.Created or RemoteSessionTabState.Faulted;
+        UpdateSshResourceMonitor(tab);
     }
+
+    private void SubscribeSshResourceMonitor(RemoteSessionTab tab)
+    {
+        ISshResourceMonitor? monitor = tab.ResourceMonitor;
+        if (monitor is null || !_subscribedResourceMonitorTabs.Add(tab))
+            return;
+
+        monitor.SnapshotUpdated += _ => QueueSshResourceMonitorUpdate(tab);
+        monitor.StatusChanged += _ => QueueSshResourceMonitorUpdate(tab);
+    }
+
+    private void QueueSshResourceMonitorUpdate(RemoteSessionTab tab)
+    {
+        _ = DispatcherQueue.TryEnqueue(() =>
+        {
+            if (IsSelectedSession(tab))
+                UpdateSshResourceMonitor(tab);
+        });
+    }
+
+    private bool IsSelectedSession(RemoteSessionTab tab) =>
+        Sessions.SelectedItem is TabViewItem selectedTab &&
+        _sessionTabs.TryGetValue(selectedTab, out RemoteSessionTab? selectedSession) &&
+        ReferenceEquals(selectedSession, tab);
+
+    private void SetResourceMonitoringActive(RemoteSessionTab? activeTab)
+    {
+        foreach (RemoteSessionTab candidate in _sessionTabs.Values)
+            candidate.SetResourceMonitoringActive(ReferenceEquals(candidate, activeTab));
+    }
+
+    private void UpdateSshResourceMonitor(RemoteSessionTab tab)
+    {
+        ISshResourceMonitor? monitor = tab.ResourceMonitor;
+        if (tab.Connection.Protocol != ProtocolKind.Ssh2 ||
+            tab.State != RemoteSessionTabState.Connected ||
+            monitor is null)
+        {
+            SshResourceMonitorBar.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        SshResourceMonitorBar.Visibility = Visibility.Visible;
+        RemoteResourceSnapshot? snapshot = monitor.LastSnapshot;
+        SshMonitorCpu.Text = snapshot?.CpuPercent is double cpu ? $"{cpu:0} %" : "--";
+        SshMonitorMemory.Text = snapshot is null ? "--" : $"{FormatBytes(snapshot.MemoryUsedBytes)} / {FormatBytes(snapshot.MemoryTotalBytes)}";
+        SshMonitorDisk.Text = snapshot is null ? "--" : $"{FormatBytes(snapshot.DiskUsedBytes)} / {FormatBytes(snapshot.DiskTotalBytes)} ({snapshot.DiskPercent:0} %)";
+        SshMonitorReceive.Text = snapshot?.ReceiveBytesPerSecond is long receive ? $"{FormatBytes(receive)}/s" : "--";
+        SshMonitorTransmit.Text = snapshot?.TransmitBytesPerSecond is long transmit ? $"{FormatBytes(transmit)}/s" : "--";
+        SshMonitorUptime.Text = snapshot is null ? "--" : FormatUptime(snapshot.Uptime);
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        string[] units = ["B", "KB", "MB", "GB", "TB"];
+        double value = Math.Max(bytes, 0);
+        int unit = 0;
+        while (value >= 1024 && unit < units.Length - 1)
+        {
+            value /= 1024;
+            unit++;
+        }
+
+        return unit == 0 ? $"{value:0} {units[unit]}" : $"{value:0.0} {units[unit]}";
+    }
+
+    private static string FormatUptime(TimeSpan uptime) => uptime.TotalDays >= 1
+        ? $"{uptime.Days}d {uptime.Hours}h"
+        : $"{uptime.Hours}h {uptime.Minutes}m";
 
     private void HideManagedSession()
     {
@@ -1490,7 +1719,16 @@ public sealed partial class MainWindow : Window, IDisposable
                 new TextBlock
                 {
                     Text = definition.Name,
+                    FontWeight = FontWeights.SemiBold,
                     VerticalAlignment = VerticalAlignment.Center
+                },
+                new TextBlock
+                {
+                    Text = definition.Host,
+                    Opacity = 0.72,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    TextTrimming = TextTrimming.CharacterEllipsis,
+                    MaxWidth = 180
                 }
             }
         };
@@ -1505,6 +1743,7 @@ public sealed partial class MainWindow : Window, IDisposable
             await _sessionWorkspace.CloseAsync(session);
             _sessionTabs.Remove(tab);
             Sessions.TabItems.Remove(tab);
+            QueueTitleBarInteractiveRegionUpdate();
         }
     }
 }

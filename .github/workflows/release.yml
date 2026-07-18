@@ -88,7 +88,7 @@ jobs:
           if ($application.VersionInfo.ProductVersion -ne $version) {
             throw "Built executable ProductVersion must equal '$version'; got '$($application.VersionInfo.ProductVersion)'."
           }
-          $legacy = rg -n --glob '*.cs' '\b(ProtocolVNC|PuttyBase|HTTPBase|XmlConnectionsLoader|SqlConnectionsLoader)\b' LoipvRemote.Application LoipvRemote.Domain LoipvRemote.Infrastructure.Persistence LoipvRemote.Infrastructure.Windows LoipvRemote.Protocols.Abstractions LoipvRemote.Protocols.Putty LoipvRemote.Protocols.Rdp LoipvRemote.Protocols.Vnc LoipvRemote.WinUI
+          $legacy = @(git grep -n -E '\b(ProtocolVNC|PuttyBase|HTTPBase|XmlConnectionsLoader|SqlConnectionsLoader)\b' -- LoipvRemote.Application LoipvRemote.Domain LoipvRemote.Infrastructure.Persistence LoipvRemote.Infrastructure.Windows LoipvRemote.Protocols.Abstractions LoipvRemote.Protocols.Putty LoipvRemote.Protocols.Rdp LoipvRemote.Protocols.Vnc LoipvRemote.WinUI)
           if ($LASTEXITCODE -eq 0 -and $legacy) {
             $legacy | Write-Host
             throw 'Legacy protocol/persistence implementation marker detected.'
@@ -96,17 +96,17 @@ jobs:
           if (Test-Path '.github/workflows/Build_mR-NB.yml') {
             throw 'Obsolete NB/mRemote release workflow must remain removed.'
           }
-          $todo = @(rg -n --glob '*.cs' --glob '*.xaml' --glob '*.resx' --glob '!**/bin/**' --glob '!**/obj/**' '\bTODO\b|NotImplementedException|#if false' LoipvRemote.Application LoipvRemote.Domain LoipvRemote.Infrastructure.Persistence LoipvRemote.Infrastructure.Windows LoipvRemote.Protocols.Abstractions LoipvRemote.Protocols.Putty LoipvRemote.Protocols.Rdp LoipvRemote.Protocols.Vnc LoipvRemote.WinUI)
+          $todo = @(git grep -n -I -E '\bTODO\b|NotImplementedException|#if false' -- LoipvRemote.Application LoipvRemote.Domain LoipvRemote.Infrastructure.Persistence LoipvRemote.Infrastructure.Windows LoipvRemote.Protocols.Abstractions LoipvRemote.Protocols.Putty LoipvRemote.Protocols.Rdp LoipvRemote.Protocols.Vnc LoipvRemote.WinUI)
           if ($todo.Count -gt 0) {
             $todo | Write-Host
             throw 'Dead-code marker detected.'
           }
-          $removedModules = @(rg -n 'LoipvRemote\.(Connectors|Protocols\.Browser|Protocols\.ExternalApps)|ConnectionDefinitionStoreKind\.(Sqlite|MySql|Odbc)' LoipvRemote.slnx Directory.Build.props LoipvRemote.WinUI LoipvRemote.Application LoipvRemote.Domain LoipvRemote.Infrastructure.Persistence LoipvRemote.Infrastructure.Windows LoipvRemote.Protocols.Abstractions LoipvRemote.Protocols.Putty LoipvRemote.Protocols.Rdp LoipvRemote.Protocols.Vnc --glob '!**/bin/**' --glob '!**/obj/**')
+          $removedModules = @(git grep -n -E 'LoipvRemote\.(Connectors|Protocols\.Browser|Protocols\.ExternalApps)|ConnectionDefinitionStoreKind\.(Sqlite|MySql|Odbc)' -- LoipvRemote.slnx Directory.Build.props LoipvRemote.WinUI LoipvRemote.Application LoipvRemote.Domain LoipvRemote.Infrastructure.Persistence LoipvRemote.Infrastructure.Windows LoipvRemote.Protocols.Abstractions LoipvRemote.Protocols.Putty LoipvRemote.Protocols.Rdp LoipvRemote.Protocols.Vnc)
           if ($removedModules.Count -gt 0) {
             $removedModules | Write-Host
             throw 'Removed module or persistence backend was referenced.'
           }
-          $removedProductScope = @(rg -n -i --glob '*.cs' --glob '*.xaml' --glob '*.csproj' '\b(Browser|ExternalApplication|AnyDesk|PortScan|Connector|Favorites|SystemTray|ActiveDirectory|PowerShell|WSL)\b' LoipvRemote.Application LoipvRemote.Domain LoipvRemote.Infrastructure.Persistence LoipvRemote.Infrastructure.Windows LoipvRemote.Protocols.Abstractions LoipvRemote.Protocols.Putty LoipvRemote.Protocols.Rdp LoipvRemote.Protocols.Vnc LoipvRemote.WinUI)
+          $removedProductScope = @(git grep -n -I -i -E '\b(Browser|ExternalApplication|AnyDesk|PortScan|Connector|Favorites|SystemTray|ActiveDirectory|PowerShell|WSL)\b' -- LoipvRemote.Application LoipvRemote.Domain LoipvRemote.Infrastructure.Persistence LoipvRemote.Infrastructure.Windows LoipvRemote.Protocols.Abstractions LoipvRemote.Protocols.Putty LoipvRemote.Protocols.Rdp LoipvRemote.Protocols.Vnc LoipvRemote.WinUI)
           if ($removedProductScope.Count -gt 0) {
             $removedProductScope | Write-Host
             throw 'A removed product feature was reintroduced.'

@@ -1,69 +1,115 @@
 # Loipv Remote
 
-**Loipv Remote** is a focused Windows remote-connection manager for teams that need a fast, tidy place to open and organize SSH and RDP sessions.
+**Loipv Remote** là ứng dụng Windows để quản lý và mở nhiều phiên SSH/RDP trong cùng một cửa sổ. Ứng dụng phù hợp khi cần sắp xếp danh sách máy chủ theo thư mục, mở nhanh từng máy trong tab riêng và không phải ghi nhớ lại thông tin kết nối mỗi lần sử dụng.
 
-![Loipv Remote overview](docs/images/loipv-remote-overview.png)
+## Tính năng chính
 
-> The connection list in this screenshot is intentionally blurred. Do not include production hosts, usernames, passwords, or other credentials in issues, screenshots, or exported documentation.
+- Quản lý kết nối theo cây thư mục; có thể tạo, sửa, nhân bản, di chuyển và xóa thư mục hoặc connection.
+- Hỗ trợ **RDP** và **SSH** trong từng tab riêng, giúp chuyển đổi giữa nhiều máy chủ mà không mất phiên đang mở.
+- **Quick connect** để kết nối nhanh mà không cần lưu cấu hình trước.
+- Menu chuột phải cho connection và thư mục để thao tác gọn hơn.
+- RDP tự điều chỉnh độ phân giải theo vùng hiển thị và DPI của cửa sổ; SmartSizing được dùng làm phương án dự phòng khi máy chủ không hỗ trợ dynamic resolution.
+- SSH nhúng trong ứng dụng, có xử lý focus/bàn phím khi đổi tab hoặc thay đổi kích thước cửa sổ.
+- Thanh theo dõi SSH hiển thị CPU, RAM, dung lượng ổ đĩa, lưu lượng vào/ra và uptime khi phiên từ xa cung cấp được số liệu.
+- Import/Export cây connection bằng XML để chuyển cấu hình sang máy khác.
 
-## Why Loipv Remote
+## Yêu cầu hệ thống
 
-- Keep RDP and SSH connections in one folder tree.
-- Open each remote session in its own tab without losing the rest of your workspace.
-- Use native Windows RDP and PuTTY-backed SSH sessions embedded in the application.
-- Create, edit, duplicate, move, import, and export connections from the UI.
-- Store local saved secrets protected for the current Windows user.
-- Export a portable XML package with usernames and passwords when you deliberately need to move connections to another machine.
+- Windows 10 2004 trở lên hoặc Windows 11.
+- Chọn đúng gói theo kiến trúc máy:
+  - **x64**: đa số máy Windows dùng CPU Intel hoặc AMD.
+  - **ARM64**: máy Windows on ARM.
 
-## RDP that fits the workspace
+## Cài đặt
 
-RDP sessions start at the size of their tab rather than a fixed desktop resolution. The client uses DPI-aware sizing, keeps the remote session within a practical range of **1024×768 to 3840×2160**, and updates the desktop after the window resize has settled. If dynamic resolution is unavailable on a server, SmartSizing remains enabled as the fallback.
+1. Mở trang [GitHub Releases](../../releases).
+2. Tải một trong hai file cài đặt:
+   - `LoipvRemote-Installer-x64.msi` cho máy Intel/AMD.
+   - `LoipvRemote-Installer-arm64.msi` cho máy Windows on ARM.
+3. Chạy file `.msi` vừa tải và làm theo trình cài đặt.
+4. Mở **Loipv Remote** từ Start Menu.
 
-## Installation
+Mỗi release cũng có gói chạy trực tiếp:
 
-Download the matching installer from the [GitHub Releases](../../releases) page:
+- `LoipvRemote-Portable-x64.zip`
+- `LoipvRemote-Portable-arm64.zip`
 
-- `LoipvRemote-Installer-x64.msi` for most Intel/AMD Windows PCs.
-- `LoipvRemote-Installer-arm64.msi` for Windows on ARM.
+Giải nén đúng gói theo kiến trúc máy, sau đó chạy `LoipvRemote.exe`. Bản portable không cần cài đặt.
 
-The installer is self-contained and includes the required Windows App SDK runtime.
-Portable self-contained packages are also available as `LoipvRemote-Portable-x64.zip`
-and `LoipvRemote-Portable-arm64.zip`; extract the matching archive before running
-`LoipvRemote.exe`.
+## Hướng dẫn sử dụng
 
-## Using the app
+### Tạo và lưu connection
 
-1. Choose **New connection** and select SSH or RDP.
-2. Enter the host, port, and credentials, then save it in a folder.
-3. Select a connection to open its tab and start the remote session.
-4. Right-click a connection or folder for edit, duplicate, move, delete, and import/export actions.
+1. Chọn **New connection** trên title bar.
+2. Chọn giao thức **RDP** hoặc **SSH**.
+3. Nhập tên hiển thị, địa chỉ máy chủ, cổng, tài khoản và mật khẩu hoặc cấu hình xác thực cần thiết.
+4. Chọn thư mục đích rồi lưu.
+5. Nhấn vào connection trong sidebar để mở tab và kết nối.
 
-### Import and export
+Nhấn chuột trái vào tên thư mục để mở hoặc thu gọn. Nhấn chuột phải vào connection/thư mục để mở menu thao tác như sửa, nhân bản, di chuyển hoặc xóa.
 
-The **Export XML** action creates a portable file that includes connection settings, usernames, and passwords so another Loipv Remote installation can import it and connect immediately.
+### Kết nối nhanh
 
-Treat exported XML as a secret: store it securely, share it only through an approved channel, and delete it when it is no longer needed. Normal local storage remains protected for the current Windows user.
+Chọn **Quick connect** trong menu dấu ba chấm khi chỉ cần kết nối một lần. Connection này không cần phải được lưu vào cây thư mục.
 
-## Build from source
+### Làm việc với tab
 
-Requirements:
+- Mỗi connection mở trong một tab có icon giao thức và tên connection.
+- Chọn tab để chuyển phiên đang làm việc.
+- Nhấn nút `×` trên tab để đóng riêng phiên đó.
+- Nội dung Welcome tự ẩn khi đang hiển thị một phiên connection.
 
-- Windows 10 version 2004 or later, or Windows 11
-- .NET SDK version specified in [global.json](global.json)
-- WiX tooling restored by the installer project
+### RDP
+
+Loipv Remote yêu cầu vùng desktop RDP phù hợp với tab hiện tại. Khi kéo thay đổi kích thước hoặc maximize/restore cửa sổ, ứng dụng sẽ cập nhật kích thước desktop từ xa sau khi giao diện ổn định để tránh nhấp nháy. Kích thước được giới hạn trong khoảng thực tế từ **1024 × 768** đến **3840 × 2160**.
+
+Nếu máy chủ RDP không hỗ trợ thay đổi độ phân giải động, phiên vẫn được hiển thị bằng SmartSizing để không làm mất vùng desktop đang làm việc.
+
+### SSH và thanh theo dõi tài nguyên
+
+Với tab SSH đang được chọn, thanh cuối cửa sổ có thể hiển thị CPU, RAM, ổ đĩa, băng thông và uptime. Các chỉ số không khả dụng sẽ hiển thị `--`; điều này phụ thuộc vào quyền và môi trường của máy chủ từ xa.
+
+## Import và Export connection
+
+### Import XML
+
+1. Mở menu dấu ba chấm trên title bar.
+2. Chọn **Import XML**.
+3. Chọn file XML đã export.
+
+Danh sách import được đưa vào một thư mục riêng để tránh ghi đè cấu trúc connection hiện có. Thông tin xác thực trong file portable được bảo vệ lại theo tài khoản Windows đang dùng sau khi import.
+
+### Export XML
+
+1. Mở menu dấu ba chấm trên title bar.
+2. Chọn **Export XML**.
+3. Xác nhận cảnh báo rồi chọn nơi lưu file.
+
+> **Cảnh báo bảo mật:** File XML export portable có đầy đủ cấu hình, tên đăng nhập và mật khẩu ở dạng có thể đọc được để máy khác import xong dùng ngay. Xem file này như một secret: chỉ lưu ở nơi an toàn, chỉ chia sẻ qua kênh được phê duyệt và xóa khi không còn cần thiết.
+
+Dữ liệu connection lưu cục bộ trong ứng dụng được bảo vệ theo tài khoản Windows hiện tại. Cơ chế này không áp dụng cho XML portable đã export.
+
+## Build từ mã nguồn
+
+Cần cài .NET SDK theo phiên bản ghi trong [global.json](global.json). WiX sẽ được khôi phục tự động qua project installer.
 
 ```powershell
 dotnet restore LoipvRemote.slnx
-dotnet test LoipvRemote.WinUI.Tests/LoipvRemote.WinUI.Tests.csproj -c Release -p:Platform=x64
-dotnet build LoipvRemoteInstaller/Installer/Installer.wixproj -c Release -p:Platform=x64
+dotnet restore LoipvRemoteInstaller/Installer/Installer.wixproj
+
+dotnet test LoipvRemote.WinUI.Tests/LoipvRemote.WinUI.Tests.csproj `
+  -c Release -p:Platform=x64
+
+dotnet build LoipvRemoteInstaller/Installer/Installer.wixproj `
+  -c Release -p:Platform=x64
 ```
 
-The x64 installer is written to `LoipvRemoteInstaller/Installer/bin/x64/Release/`.
+MSI x64 được tạo tại `LoipvRemoteInstaller/Installer/bin/x64/Release/`. Thay `x64` bằng `arm64` khi build trên môi trường phù hợp cho Windows on ARM.
 
-## Project status
+## Báo lỗi và đóng góp
 
-Loipv Remote is a Windows desktop application. Contributions are welcome through issues and pull requests, provided that no production connection details or credentials are included.
+Vui lòng tạo issue hoặc pull request nếu gặp lỗi. Không đính kèm hostname thật, IP nội bộ, tài khoản, mật khẩu, file XML export hoặc ảnh chụp có thông tin connection trong issue, log hay tài liệu công khai.
 
-## License
+## Giấy phép
 
-Licensed under the [GNU GPL v2](COPYING.txt).
+Dự án được phát hành theo [GNU GPL v2](COPYING.txt).

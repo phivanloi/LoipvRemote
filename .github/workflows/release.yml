@@ -106,7 +106,7 @@ jobs:
             $removedModules | Write-Host
             throw 'Removed module or persistence backend was referenced.'
           }
-          $removedProductScope = @(git grep -n -I -i -E '\b(Browser|ExternalApplication|AnyDesk|PortScan|Connector|Favorites|SystemTray|ActiveDirectory|PowerShell|WSL)\b' -- LoipvRemote.Application LoipvRemote.Domain LoipvRemote.Infrastructure.Persistence LoipvRemote.Infrastructure.Windows LoipvRemote.Protocols.Abstractions LoipvRemote.Protocols.Putty LoipvRemote.Protocols.Rdp LoipvRemote.Protocols.Vnc LoipvRemote.WinUI)
+          $removedProductScope = @(git grep -n -I -i -E '\b(ExternalApplication|AnyDesk|PortScan|Connector|Favorites|SystemTray|ActiveDirectory|WSL)\b|ProtocolKind\.(Browser|PowerShell)|\b(Browser|PowerShell)Connection\b' -- LoipvRemote.Application LoipvRemote.Domain LoipvRemote.Infrastructure.Persistence LoipvRemote.Infrastructure.Windows LoipvRemote.Protocols.Abstractions LoipvRemote.Protocols.Putty LoipvRemote.Protocols.Rdp LoipvRemote.Protocols.Vnc LoipvRemote.WinUI)
           if ($removedProductScope.Count -gt 0) {
             $removedProductScope | Write-Host
             throw 'A removed product feature was reintroduced.'

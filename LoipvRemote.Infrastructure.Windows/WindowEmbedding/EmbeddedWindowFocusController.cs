@@ -41,13 +41,6 @@ public sealed class EmbeddedWindowFocusController
 
         lock (_syncRoot)
         {
-            if (_getForegroundWindow() != ownerWindowHandle &&
-                !_setForegroundWindow(ownerWindowHandle) &&
-                _getForegroundWindow() != ownerWindowHandle)
-            {
-                return false;
-            }
-
             uint ownerThreadId = _getWindowThreadProcessId(ownerWindowHandle, out _);
             uint embeddedThreadId = _getWindowThreadProcessId(embeddedWindowHandle, out _);
             if (ownerThreadId == 0 || embeddedThreadId == 0)
@@ -55,6 +48,11 @@ public sealed class EmbeddedWindowFocusController
 
             if (ownerThreadId == embeddedThreadId)
             {
+                if (_getFocus() == embeddedWindowHandle)
+                    return true;
+                if (!BringOwnerToForeground(ownerWindowHandle))
+                    return false;
+
                 _setFocus(embeddedWindowHandle);
                 return _getFocus() == embeddedWindowHandle;
             }
@@ -64,6 +62,17 @@ public sealed class EmbeddedWindowFocusController
 
             try
             {
+                // The delayed focus retry runs after PuTTY has normally
+                // accepted focus. Re-activating the WinUI owner in that state
+                // makes Windows repaint the cross-process child and produces
+                // a visible terminal flash. Once the input queues are joined,
+                // GetFocus can verify the foreign HWND directly and the retry
+                // can become a no-op.
+                if (_getFocus() == embeddedWindowHandle)
+                    return true;
+                if (!BringOwnerToForeground(ownerWindowHandle))
+                    return false;
+
                 _setFocus(embeddedWindowHandle);
                 return _getFocus() == embeddedWindowHandle;
             }
@@ -73,5 +82,10 @@ public sealed class EmbeddedWindowFocusController
             }
         }
     }
+
+    private bool BringOwnerToForeground(IntPtr ownerWindowHandle) =>
+        _getForegroundWindow() == ownerWindowHandle ||
+        _setForegroundWindow(ownerWindowHandle) ||
+        _getForegroundWindow() == ownerWindowHandle;
 
 }

@@ -62,6 +62,23 @@ public sealed class EmbeddedWindowFocusControllerTests
             Is.EqualTo(expected));
     }
 
+    [Test]
+    public void TabNavigationCompletesFocusRecoveryBeforeTheNextKeyIsDispatched()
+    {
+        var events = new List<string>();
+
+        bool recovered = WindowSessionHotKeyController.DispatchNavigationAndRecoverFocus(
+            1,
+            direction => events.Add($"navigate:{direction}"),
+            () => events.Add("recover-focus"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(recovered, Is.True);
+            Assert.That(events, Is.EqualTo(["navigate:1", "recover-focus"]));
+        });
+    }
+
     [TestCase(true, true, true, true)]
     [TestCase(true, false, true, false)]
     [TestCase(false, true, true, false)]
@@ -144,6 +161,52 @@ public sealed class EmbeddedWindowFocusControllerTests
             Assert.That(result, Is.True);
             Assert.That(foreground, Is.EqualTo(owner));
             Assert.That(focused, Is.EqualTo(embedded));
+            Assert.That(attachments, Is.EqualTo([true, false]));
+        });
+    }
+
+    [Test]
+    public void TryFocusDoesNotReactivateWindowsWhenEmbeddedWindowAlreadyHasFocus()
+    {
+        var owner = (IntPtr)10;
+        var embedded = (IntPtr)20;
+        IntPtr focused = embedded;
+        int foregroundAttempts = 0;
+        int focusAttempts = 0;
+        var attachments = new List<bool>();
+        var controller = new EmbeddedWindowFocusController(
+            (IntPtr handle, out uint processId) =>
+            {
+                processId = handle == owner ? 1u : 2u;
+                return handle == owner ? 100u : 200u;
+            },
+            (_, _, attach) =>
+            {
+                attachments.Add(attach);
+                return true;
+            },
+            handle =>
+            {
+                focusAttempts++;
+                IntPtr previous = focused;
+                focused = handle;
+                return previous;
+            },
+            () => focused,
+            () => embedded,
+            _ =>
+            {
+                foregroundAttempts++;
+                return true;
+            });
+
+        bool result = controller.TryFocus(owner, embedded);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.True);
+            Assert.That(foregroundAttempts, Is.Zero);
+            Assert.That(focusAttempts, Is.Zero);
             Assert.That(attachments, Is.EqualTo([true, false]));
         });
     }

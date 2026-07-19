@@ -1,32 +1,8 @@
 using LoipvRemote.Domain.Connections;
+using LoipvRemote.Protocols.Abstractions;
 using Renci.SshNet;
 
 namespace LoipvRemote.Protocols.Putty;
-
-public enum SshResourceMonitorState
-{
-    WaitingForActiveTab,
-    Connecting,
-    Monitoring,
-    AuthenticationUnavailable,
-    Unavailable
-}
-
-public sealed record SshResourceMonitorStatus(SshResourceMonitorState State, string Message);
-
-/// <summary>Lifecycle contract for a non-interactive SSH metrics channel.</summary>
-public interface ISshResourceMonitor : IDisposable
-{
-    event Action<RemoteResourceSnapshot>? SnapshotUpdated;
-    event Action<SshResourceMonitorStatus>? StatusChanged;
-
-    RemoteResourceSnapshot? LastSnapshot { get; }
-    SshResourceMonitorStatus LastStatus { get; }
-
-    void Start();
-    void SetIsActive(bool isActive);
-    void StopMonitoring();
-}
 
 /// <summary>Collects a Linux sample without exposing transport details to the UI.</summary>
 public interface ILinuxResourceCollector : IDisposable
@@ -34,7 +10,7 @@ public interface ILinuxResourceCollector : IDisposable
     Task<LinuxResourceSample> CollectAsync(CancellationToken cancellationToken);
 }
 
-public sealed class SshResourceMonitor : ISshResourceMonitor
+public sealed class SshResourceMonitor : IRemoteResourceMonitor
 {
     private static readonly TimeSpan DefaultPollInterval = TimeSpan.FromSeconds(5);
     private readonly ILinuxResourceCollector _collector;
@@ -46,7 +22,7 @@ public sealed class SshResourceMonitor : ISshResourceMonitor
     private bool _isActive;
     private bool _disposed;
     private RemoteResourceSnapshot? _lastSnapshot;
-    private SshResourceMonitorStatus _lastStatus = new(SshResourceMonitorState.WaitingForActiveTab, "SSH resource monitoring paused");
+    private RemoteResourceMonitorStatus _lastStatus = new(RemoteResourceMonitorState.WaitingForActiveTab, "SSH resource monitoring paused");
 
     public SshResourceMonitor(ILinuxResourceCollector collector, TimeSpan? pollInterval = null)
     {
@@ -57,7 +33,7 @@ public sealed class SshResourceMonitor : ISshResourceMonitor
     }
 
     public event Action<RemoteResourceSnapshot>? SnapshotUpdated;
-    public event Action<SshResourceMonitorStatus>? StatusChanged;
+    public event Action<RemoteResourceMonitorStatus>? StatusChanged;
 
     public RemoteResourceSnapshot? LastSnapshot
     {
@@ -68,7 +44,7 @@ public sealed class SshResourceMonitor : ISshResourceMonitor
         }
     }
 
-    public SshResourceMonitorStatus LastStatus
+    public RemoteResourceMonitorStatus LastStatus
     {
         get
         {
@@ -101,7 +77,7 @@ public sealed class SshResourceMonitor : ISshResourceMonitor
         }
 
         if (!isActive)
-            PublishStatus(new(SshResourceMonitorState.WaitingForActiveTab, "SSH resource monitoring paused"));
+            PublishStatus(new(RemoteResourceMonitorState.WaitingForActiveTab, "SSH resource monitoring paused"));
     }
 
     public void StopMonitoring()
@@ -131,7 +107,7 @@ public sealed class SshResourceMonitor : ISshResourceMonitor
             try
             {
                 if (IsFirstSample())
-                    PublishStatus(new(SshResourceMonitorState.Connecting, "Connecting SSH monitoring channel"));
+                    PublishStatus(new(RemoteResourceMonitorState.Connecting, "Connecting SSH monitoring channel"));
                 LinuxResourceSample sample = await _collector.CollectAsync(cancellationToken).ConfigureAwait(false);
                 DateTimeOffset now = DateTimeOffset.UtcNow;
                 RemoteResourceSnapshot snapshot;
@@ -144,19 +120,19 @@ public sealed class SshResourceMonitor : ISshResourceMonitor
                     _lastSnapshot = snapshot;
                 }
 
-                PublishStatus(new(SshResourceMonitorState.Monitoring, "Monitoring remote resources"));
+                PublishStatus(new(RemoteResourceMonitorState.Monitoring, "Monitoring remote resources"));
                 SnapshotUpdated?.Invoke(snapshot);
                 await DelayAsync(_pollInterval, cancellationToken).ConfigureAwait(false);
             }
             catch (SshResourceMonitorAuthenticationException)
             {
-                PublishStatus(new(SshResourceMonitorState.AuthenticationUnavailable,
+                PublishStatus(new(RemoteResourceMonitorState.AuthenticationUnavailable,
                     "SSH monitoring requires a direct username and password"));
                 await DelayAsync(_pollInterval, cancellationToken).ConfigureAwait(false);
             }
             catch (SshResourceMonitorHostKeyException)
             {
-                PublishStatus(new(SshResourceMonitorState.Unavailable,
+                PublishStatus(new(RemoteResourceMonitorState.Unavailable,
                     "SSH host key has not been trusted in PuTTY"));
                 await DelayAsync(_pollInterval, cancellationToken).ConfigureAwait(false);
             }
@@ -166,7 +142,7 @@ public sealed class SshResourceMonitor : ISshResourceMonitor
             }
             catch
             {
-                PublishStatus(new(SshResourceMonitorState.Unavailable, "Unable to retrieve SSH metrics"));
+                PublishStatus(new(RemoteResourceMonitorState.Unavailable, "Unable to retrieve SSH metrics"));
                 await DelayAsync(_pollInterval, cancellationToken).ConfigureAwait(false);
             }
         }
@@ -184,7 +160,7 @@ public sealed class SshResourceMonitor : ISshResourceMonitor
             return _previousSample is null;
     }
 
-    private void PublishStatus(SshResourceMonitorStatus status)
+    private void PublishStatus(RemoteResourceMonitorStatus status)
     {
         lock (_sync)
             _lastStatus = status;
@@ -225,7 +201,7 @@ public sealed class SshResourceMonitorFactory(Func<ConnectionDefinition, string?
 {
     private readonly Func<ConnectionDefinition, string?> _passwordResolver = passwordResolver ?? throw new ArgumentNullException(nameof(passwordResolver));
 
-    public ISshResourceMonitor? Create(ConnectionDefinition definition)
+    public IRemoteResourceMonitor? Create(ConnectionDefinition definition)
     {
         ArgumentNullException.ThrowIfNull(definition);
         if (definition.Protocol != ProtocolKind.Ssh2)

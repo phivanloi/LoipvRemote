@@ -70,9 +70,12 @@ public sealed class RdpProtocolFactory(
             RedirectPorts = ParseBool(Option(options, "RedirectPorts"), false),
             RedirectPrinters = ParseBool(Option(options, "RedirectPrinters"), false),
             RedirectSmartCards = ParseBool(Option(options, "RedirectSmartCards"), false),
-            RedirectClipboard = ParseBool(Option(options, "RedirectClipboard"), false),
+            // Legacy/imported definitions commonly omit redirection options.
+            // Keep explicit opt-outs, but make two-way clipboard/file transfer
+            // work by default for those existing connections.
+            RedirectClipboard = ParseBool(Option(options, "RedirectClipboard"), true),
             AudioRedirectionMode = (int)ParseEnum(Option(options, "RedirectSound"), RDPSounds.DoNotPlay),
-            DriveRedirection = ParseEnum(Option(options, "RedirectDiskDrives"), RDPDiskDrives.None) switch
+            DriveRedirection = ParseEnum(Option(options, "RedirectDiskDrives"), RDPDiskDrives.Local) switch
             {
                 RDPDiskDrives.All => RdpDriveRedirection.All,
                 RDPDiskDrives.Custom => RdpDriveRedirection.Custom,

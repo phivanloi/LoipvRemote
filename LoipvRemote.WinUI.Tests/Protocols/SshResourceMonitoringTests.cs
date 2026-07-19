@@ -1,3 +1,4 @@
+using LoipvRemote.Protocols.Abstractions;
 using LoipvRemote.Protocols.Putty;
 using NUnit.Framework;
 
@@ -70,7 +71,7 @@ public sealed class SshResourceMonitoringTests
         {
             Assert.That(snapshot.CpuPercent, Is.EqualTo(50));
             Assert.That(snapshot.ReceiveBytesPerSecond, Is.GreaterThan(0));
-            Assert.That(monitor.LastStatus.State, Is.EqualTo(SshResourceMonitorState.Monitoring));
+            Assert.That(monitor.LastStatus.State, Is.EqualTo(RemoteResourceMonitorState.Monitoring));
         });
     }
 

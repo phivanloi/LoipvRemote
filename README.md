@@ -65,6 +65,10 @@ Loipv Remote yêu cầu vùng desktop RDP phù hợp với tab hiện tại. Khi
 
 Nếu máy chủ RDP không hỗ trợ thay đổi độ phân giải động, phiên vẫn được hiển thị bằng SmartSizing để không làm mất vùng desktop đang làm việc.
 
+Khi tab RDP được chọn, thanh cuối cửa sổ sẽ thử lấy CPU, RAM, ổ đĩa, băng thông và uptime qua một kênh CIM riêng bằng thông tin xác thực của connection. Ứng dụng ưu tiên WinRM và tự fallback sang WMI/DCOM (hữu ích với connection dùng địa chỉ IP nhưng máy client chưa cấu hình `TrustedHosts`). Ứng dụng không tự bật dịch vụ quản trị hoặc thay đổi firewall trên máy đích. Nếu cả WinRM và WMI/DCOM đều bị tắt, bị chặn, thiếu quyền hoặc máy chỉ truy cập được qua RDP Gateway, các chỉ số sẽ hiển thị `--` và phiên RDP vẫn hoạt động bình thường.
+
+Clipboard và local-drive redirection được bật mặc định cho connection RDP cũ hoặc imported không có tùy chọn redirection, hỗ trợ copy/paste nội dung và file hai chiều. Giá trị cấu hình tường minh `RedirectClipboard=false` hoặc `RedirectDiskDrives=None` vẫn được tôn trọng.
+
 ### SSH và thanh theo dõi tài nguyên
 
 Với tab SSH đang được chọn, thanh cuối cửa sổ có thể hiển thị CPU, RAM, ổ đĩa, băng thông và uptime. Các chỉ số không khả dụng sẽ hiển thị `--`; điều này phụ thuộc vào quyền và môi trường của máy chủ từ xa.

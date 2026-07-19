@@ -2,7 +2,6 @@ using LoipvRemote.Domain.Connections;
 using LoipvRemote.Domain.Credentials;
 using LoipvRemote.Domain.Protocols;
 using LoipvRemote.Protocols.Abstractions;
-using LoipvRemote.Protocols.Putty;
 using LoipvRemote.WinUI.Hosting;
 using LoipvRemote.WinUI.Sessions;
 using NUnit.Framework;
@@ -47,9 +46,30 @@ public sealed class RemoteSessionWorkspaceTests
     public async Task ConnectAsyncStartsSshResourceMonitorAndCloseAsyncDisposesIt()
     {
         var session = new HostEmbeddedTestSession([]);
-        var monitor = new RecordingSshResourceMonitor();
+        var monitor = new RecordingResourceMonitor();
         var workspace = new RemoteSessionWorkspace(new TestFactory(session, monitor));
         RemoteSessionTab tab = workspace.Open(CreateConnection(ProtocolKind.Ssh2));
+
+        await workspace.ConnectAsync(tab, new TestSurface([]));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(monitor.Started, Is.True);
+            Assert.That(tab.ResourceMonitor, Is.SameAs(monitor));
+        });
+
+        await workspace.CloseAsync(tab);
+
+        Assert.That(monitor.Disposed, Is.True);
+    }
+
+    [Test]
+    public async Task ConnectAsyncStartsRdpResourceMonitorAndCloseAsyncDisposesIt()
+    {
+        var session = new EmbeddedTestSession([]);
+        var monitor = new RecordingResourceMonitor();
+        var workspace = new RemoteSessionWorkspace(new TestFactory(session, monitor));
+        RemoteSessionTab tab = workspace.Open(CreateConnection(ProtocolKind.Rdp));
 
         await workspace.ConnectAsync(tab, new TestSurface([]));
 
@@ -219,10 +239,10 @@ public sealed class RemoteSessionWorkspaceTests
         protocol,
         CredentialReference.None);
 
-    private sealed class TestFactory(IProtocolSession session, ISshResourceMonitor? resourceMonitor = null) : IWinUIProtocolSessionFactory
+    private sealed class TestFactory(IProtocolSession session, IRemoteResourceMonitor? resourceMonitor = null) : IWinUIProtocolSessionFactory
     {
         public IProtocolSession Create(ConnectionDefinition definition) => session;
-        public ISshResourceMonitor? CreateSshResourceMonitor(ConnectionDefinition definition) => resourceMonitor;
+        public IRemoteResourceMonitor? CreateResourceMonitor(ConnectionDefinition definition) => resourceMonitor;
     }
 
     private sealed class SequenceFactory(params IProtocolSession[] sessions) : IWinUIProtocolSessionFactory
@@ -230,7 +250,7 @@ public sealed class RemoteSessionWorkspaceTests
         private readonly Queue<IProtocolSession> _sessions = new(sessions);
 
         public IProtocolSession Create(ConnectionDefinition definition) => _sessions.Dequeue();
-        public ISshResourceMonitor? CreateSshResourceMonitor(ConnectionDefinition definition) => null;
+        public IRemoteResourceMonitor? CreateResourceMonitor(ConnectionDefinition definition) => null;
     }
 
     private sealed class TestSurface(List<string> events) : IEmbeddedSessionSurface
@@ -390,12 +410,12 @@ public sealed class RemoteSessionWorkspaceTests
     }
 
 #pragma warning disable CS0067 // Events are required by the monitor contract; this fake does not raise them.
-    private sealed class RecordingSshResourceMonitor : ISshResourceMonitor
+    private sealed class RecordingResourceMonitor : IRemoteResourceMonitor
     {
         public event Action<RemoteResourceSnapshot>? SnapshotUpdated;
-        public event Action<SshResourceMonitorStatus>? StatusChanged;
+        public event Action<RemoteResourceMonitorStatus>? StatusChanged;
         public RemoteResourceSnapshot? LastSnapshot => null;
-        public SshResourceMonitorStatus LastStatus { get; } = new(SshResourceMonitorState.WaitingForActiveTab, string.Empty);
+        public RemoteResourceMonitorStatus LastStatus { get; } = new(RemoteResourceMonitorState.WaitingForActiveTab, string.Empty);
         public bool Started { get; private set; }
         public bool Disposed { get; private set; }
 

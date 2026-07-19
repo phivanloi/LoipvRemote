@@ -19,7 +19,6 @@ using LoipvRemote.Application.Configuration;
 using LoipvRemote.Application.Credentials;
 using LoipvRemote.Application.Sessions;
 using LoipvRemote.Protocols.Abstractions;
-using LoipvRemote.Protocols.Putty;
 using WinRT.Interop;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage.Pickers;
@@ -943,7 +942,7 @@ public sealed partial class MainWindow : Window, IDisposable
     {
         RemoteSessionWorkspace.Deactivate(_embeddedSessionSurface);
         SetResourceMonitoringActive(null);
-        SshResourceMonitorBar.Visibility = Visibility.Collapsed;
+        ResourceMonitorBar.Visibility = Visibility.Collapsed;
         HideManagedSession();
         WelcomeContent.Visibility = Visibility.Visible;
         ConfigContent.Visibility = Visibility.Collapsed;
@@ -954,7 +953,7 @@ public sealed partial class MainWindow : Window, IDisposable
     {
         RemoteSessionWorkspace.Deactivate(_embeddedSessionSurface);
         SetResourceMonitoringActive(null);
-        SshResourceMonitorBar.Visibility = Visibility.Collapsed;
+        ResourceMonitorBar.Visibility = Visibility.Collapsed;
         HideManagedSession();
         WelcomeContent.Visibility = Visibility.Collapsed;
         ConfigContent.Visibility = Visibility.Visible;
@@ -1916,7 +1915,7 @@ public sealed partial class MainWindow : Window, IDisposable
         try
         {
             await _sessionWorkspace.ConnectAsync(sessionTab, _embeddedSessionSurface);
-            SubscribeSshResourceMonitor(sessionTab);
+            SubscribeResourceMonitor(sessionTab);
             _connectedConnectionIds.Add(sessionTab.Connection.Id);
             if (_connectionCatalog.IsLoaded)
                 RebuildConnectionTree(_connectionCatalog.Tree);
@@ -1967,7 +1966,7 @@ public sealed partial class MainWindow : Window, IDisposable
         };
         if (tab.State == RemoteSessionTabState.Connecting)
         {
-            UpdateSshResourceMonitor(tab);
+            UpdateResourceMonitor(tab);
             SessionContent.Visibility = Visibility.Collapsed;
             SessionLoadingContent.Visibility = Visibility.Visible;
             return;
@@ -1979,7 +1978,7 @@ public sealed partial class MainWindow : Window, IDisposable
             ManagedSessionContent.Visibility = Visibility.Visible;
             SessionContent.Visibility = Visibility.Collapsed;
             managedSession.Activate();
-            UpdateSshResourceMonitor(tab);
+            UpdateResourceMonitor(tab);
             return;
         }
 
@@ -1990,14 +1989,14 @@ public sealed partial class MainWindow : Window, IDisposable
             ConnectSessionButton.IsEnabled = false;
             if (!activateNativeSession)
             {
-                UpdateSshResourceMonitor(tab);
+                UpdateResourceMonitor(tab);
                 return;
             }
 
             try
             {
                 RemoteSessionWorkspace.Activate(tab, _embeddedSessionSurface);
-                UpdateSshResourceMonitor(tab);
+                UpdateResourceMonitor(tab);
             }
             catch (Exception exception)
             {
@@ -2008,25 +2007,25 @@ public sealed partial class MainWindow : Window, IDisposable
 
         SessionContent.Visibility = Visibility.Visible;
         ConnectSessionButton.IsEnabled = tab.State is RemoteSessionTabState.Created or RemoteSessionTabState.Faulted;
-        UpdateSshResourceMonitor(tab);
+        UpdateResourceMonitor(tab);
     }
 
-    private void SubscribeSshResourceMonitor(RemoteSessionTab tab)
+    private void SubscribeResourceMonitor(RemoteSessionTab tab)
     {
-        ISshResourceMonitor? monitor = tab.ResourceMonitor;
+        IRemoteResourceMonitor? monitor = tab.ResourceMonitor;
         if (monitor is null || !_subscribedResourceMonitorTabs.Add(tab))
             return;
 
-        monitor.SnapshotUpdated += _ => QueueSshResourceMonitorUpdate(tab);
-        monitor.StatusChanged += _ => QueueSshResourceMonitorUpdate(tab);
+        monitor.SnapshotUpdated += _ => QueueResourceMonitorUpdate(tab);
+        monitor.StatusChanged += _ => QueueResourceMonitorUpdate(tab);
     }
 
-    private void QueueSshResourceMonitorUpdate(RemoteSessionTab tab)
+    private void QueueResourceMonitorUpdate(RemoteSessionTab tab)
     {
         _ = DispatcherQueue.TryEnqueue(() =>
         {
             if (IsSelectedSession(tab))
-                UpdateSshResourceMonitor(tab);
+                UpdateResourceMonitor(tab);
         });
     }
 
@@ -2041,25 +2040,26 @@ public sealed partial class MainWindow : Window, IDisposable
             candidate.SetResourceMonitoringActive(ReferenceEquals(candidate, activeTab));
     }
 
-    private void UpdateSshResourceMonitor(RemoteSessionTab tab)
+    private void UpdateResourceMonitor(RemoteSessionTab tab)
     {
-        ISshResourceMonitor? monitor = tab.ResourceMonitor;
-        if (tab.Connection.Protocol != ProtocolKind.Ssh2 ||
+        IRemoteResourceMonitor? monitor = tab.ResourceMonitor;
+        if (tab.Connection.Protocol is not (ProtocolKind.Ssh2 or ProtocolKind.Rdp) ||
             tab.State != RemoteSessionTabState.Connected ||
             monitor is null)
         {
-            SshResourceMonitorBar.Visibility = Visibility.Collapsed;
+            ResourceMonitorBar.Visibility = Visibility.Collapsed;
             return;
         }
 
-        SshResourceMonitorBar.Visibility = Visibility.Visible;
+        ResourceMonitorBar.Visibility = Visibility.Visible;
+        ToolTipService.SetToolTip(ResourceMonitorBar, monitor.LastStatus.Message);
         RemoteResourceSnapshot? snapshot = monitor.LastSnapshot;
-        SshMonitorCpu.Text = snapshot?.CpuPercent is double cpu ? $"{cpu:0} %" : "--";
-        SshMonitorMemory.Text = snapshot is null ? "--" : $"{FormatBytes(snapshot.MemoryUsedBytes)} / {FormatBytes(snapshot.MemoryTotalBytes)}";
-        SshMonitorDisk.Text = snapshot is null ? "--" : $"{FormatBytes(snapshot.DiskUsedBytes)} / {FormatBytes(snapshot.DiskTotalBytes)} ({snapshot.DiskPercent:0} %)";
-        SshMonitorReceive.Text = snapshot?.ReceiveBytesPerSecond is long receive ? $"{FormatBytes(receive)}/s" : "--";
-        SshMonitorTransmit.Text = snapshot?.TransmitBytesPerSecond is long transmit ? $"{FormatBytes(transmit)}/s" : "--";
-        SshMonitorUptime.Text = snapshot is null ? "--" : FormatUptime(snapshot.Uptime);
+        ResourceMonitorCpu.Text = snapshot?.CpuPercent is double cpu ? $"{cpu:0} %" : "--";
+        ResourceMonitorMemory.Text = snapshot is null ? "--" : $"{FormatBytes(snapshot.MemoryUsedBytes)} / {FormatBytes(snapshot.MemoryTotalBytes)}";
+        ResourceMonitorDisk.Text = snapshot is null ? "--" : $"{FormatBytes(snapshot.DiskUsedBytes)} / {FormatBytes(snapshot.DiskTotalBytes)} ({snapshot.DiskPercent:0} %)";
+        ResourceMonitorReceive.Text = snapshot?.ReceiveBytesPerSecond is long receive ? $"{FormatBytes(receive)}/s" : "--";
+        ResourceMonitorTransmit.Text = snapshot?.TransmitBytesPerSecond is long transmit ? $"{FormatBytes(transmit)}/s" : "--";
+        ResourceMonitorUptime.Text = snapshot is null ? "--" : FormatUptime(snapshot.Uptime);
     }
 
     private static string FormatBytes(long bytes)

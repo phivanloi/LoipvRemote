@@ -1,5 +1,4 @@
 using LoipvRemote.Protocols.Abstractions;
-using LoipvRemote.Protocols.Putty;
 using LoipvRemote.WinUI.Hosting;
 
 namespace LoipvRemote.WinUI.Sessions;
@@ -75,12 +74,9 @@ public sealed class RemoteSessionWorkspace(IWinUIProtocolSessionFactory protocol
             }
 
             tab.MarkConnected(session);
-            if (tab.Connection.Protocol == Domain.Connections.ProtocolKind.Ssh2)
-            {
-                ISshResourceMonitor? monitor = _protocolFactory.CreateSshResourceMonitor(tab.Connection);
-                tab.SetResourceMonitor(monitor);
-                monitor?.Start();
-            }
+            IRemoteResourceMonitor? monitor = _protocolFactory.CreateResourceMonitor(tab.Connection);
+            tab.SetResourceMonitor(monitor);
+            monitor?.Start();
             if (hasEmbeddedSurface)
             {
                 surface.SetVisible(true);

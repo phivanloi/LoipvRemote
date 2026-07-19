@@ -92,6 +92,28 @@ public sealed class MainWindowXamlLayoutTests
     }
 
     [Test]
+    public void ResourceBarSupportsBothSshAndRdpTabsAndSurfacesMonitorStatus()
+    {
+        string sourceRoot = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "LoipvRemote.WinUI"));
+        XDocument document = XDocument.Load(Path.Combine(sourceRoot, "MainWindow.xaml"));
+        XNamespace xaml = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
+        XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
+        XElement resourceBar = document.Descendants(xaml + "Border")
+            .Single(element => (string?)element.Attribute(x + "Name") == "ResourceMonitorBar");
+        string code = File.ReadAllText(Path.Combine(sourceRoot, "MainWindow.xaml.cs"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That((string?)resourceBar.Attribute("Visibility"), Is.EqualTo("Collapsed"));
+            Assert.That(code, Does.Contain("ProtocolKind.Ssh2 or ProtocolKind.Rdp"));
+            Assert.That(code, Does.Contain("ToolTipService.SetToolTip(ResourceMonitorBar, monitor.LastStatus.Message)"));
+            Assert.That(code, Does.Not.Contain("SshResourceMonitorBar"));
+        });
+    }
+
+    [Test]
     public void LowLevelInputHooksQueueUiWorkAndCaptureTheExactTab()
     {
         string codePath = Path.GetFullPath(Path.Combine(

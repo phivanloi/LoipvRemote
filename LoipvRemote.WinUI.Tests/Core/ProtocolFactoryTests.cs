@@ -202,6 +202,54 @@ public sealed class ProtocolFactoryTests
     }
 
     [Test]
+    public async Task RdpFactoryEnablesTwoWayFileTransferForLegacyDefinitionsWithoutRedirectionOptions()
+    {
+        var client = new RecordingRdpClient();
+        ConnectionDefinition definition = new(
+            Guid.NewGuid(), "rdp-transfer-default", "server.example", 3389, ProtocolKind.Rdp,
+            CredentialReference.None,
+            Options: new ConnectionNodeOptions(
+                new Dictionary<string, string> { ["RdpVersion"] = RdpVersion.Rdc10.ToString() },
+                Array.Empty<string>()));
+
+        using IProtocolSession session = new RdpProtocolFactory(_ => client).Create(definition);
+
+        Assert.That(await session.InitializeAsync(), Is.True);
+        Assert.Multiple(() =>
+        {
+            Assert.That(client.RuntimeConfiguration, Is.Not.Null);
+            Assert.That(client.RuntimeConfiguration!.RedirectClipboard, Is.True);
+            Assert.That(client.RuntimeConfiguration.DriveRedirection, Is.EqualTo(RdpDriveRedirection.Local));
+        });
+    }
+
+    [Test]
+    public async Task RdpFactoryHonorsExplicitFileTransferOptOut()
+    {
+        var client = new RecordingRdpClient();
+        ConnectionDefinition definition = new(
+            Guid.NewGuid(), "rdp-transfer-disabled", "server.example", 3389, ProtocolKind.Rdp,
+            CredentialReference.None,
+            Options: new ConnectionNodeOptions(
+                new Dictionary<string, string>
+                {
+                    ["RedirectClipboard"] = "false",
+                    ["RedirectDiskDrives"] = RDPDiskDrives.None.ToString()
+                },
+                Array.Empty<string>()));
+
+        using IProtocolSession session = new RdpProtocolFactory(_ => client).Create(definition);
+
+        Assert.That(await session.InitializeAsync(), Is.True);
+        Assert.Multiple(() =>
+        {
+            Assert.That(client.RuntimeConfiguration, Is.Not.Null);
+            Assert.That(client.RuntimeConfiguration!.RedirectClipboard, Is.False);
+            Assert.That(client.RuntimeConfiguration.DriveRedirection, Is.EqualTo(RdpDriveRedirection.None));
+        });
+    }
+
+    [Test]
     public async Task PuttySessionDoesNotStartNativeProcessWhenEndpointProbeFails()
     {
         var process = new RecordingPuttyProcessHost();

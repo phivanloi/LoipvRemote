@@ -1,6 +1,5 @@
 using LoipvRemote.Domain.Connections;
 using LoipvRemote.Protocols.Abstractions;
-using LoipvRemote.Protocols.Putty;
 
 namespace LoipvRemote.WinUI.Sessions;
 
@@ -10,7 +9,7 @@ public sealed class RemoteSessionTab(ConnectionDefinition connection)
 
     public ConnectionDefinition Connection { get; } = connection ?? throw new ArgumentNullException(nameof(connection));
     public IProtocolSession? Session { get; private set; }
-    public ISshResourceMonitor? ResourceMonitor { get; private set; }
+    public IRemoteResourceMonitor? ResourceMonitor { get; private set; }
     public RemoteSessionTabState State { get; private set; } = RemoteSessionTabState.Created;
 
     internal SemaphoreSlim LifecycleGate { get; } = new(1, 1);
@@ -34,7 +33,7 @@ public sealed class RemoteSessionTab(ConnectionDefinition connection)
         ClearConnectionCancellation();
     }
 
-    internal void SetResourceMonitor(ISshResourceMonitor? resourceMonitor)
+    internal void SetResourceMonitor(IRemoteResourceMonitor? resourceMonitor)
     {
         if (ReferenceEquals(ResourceMonitor, resourceMonitor))
             return;

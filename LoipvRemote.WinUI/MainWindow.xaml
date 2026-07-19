@@ -166,7 +166,7 @@
                 </Grid.RowDefinitions>
 
                 <Grid x:Name="NativeSessionViewport" Grid.Row="0" />
-                <Border x:Name="SshResourceMonitorBar"
+                <Border x:Name="ResourceMonitorBar"
                         Grid.Row="1"
                         Visibility="Collapsed"
                         Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
@@ -175,12 +175,12 @@
                         Padding="8,5">
                     <ScrollViewer HorizontalScrollMode="Enabled" HorizontalScrollBarVisibility="Auto" VerticalScrollMode="Disabled" VerticalScrollBarVisibility="Hidden">
                         <StackPanel Orientation="Horizontal" Spacing="6">
-                            <Border BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="3" Padding="8,3" MinWidth="76"><StackPanel Orientation="Horizontal" Spacing="5"><TextBlock Text="CPU" /><TextBlock x:Name="SshMonitorCpu" FontWeight="SemiBold" Text="--" /></StackPanel></Border>
-                            <Border BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="3" Padding="8,3" MinWidth="132"><StackPanel Orientation="Horizontal" Spacing="5"><TextBlock Text="RAM" /><TextBlock x:Name="SshMonitorMemory" FontWeight="SemiBold" Text="--" /></StackPanel></Border>
-                            <Border BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="3" Padding="8,3" MinWidth="174"><StackPanel Orientation="Horizontal" Spacing="5"><TextBlock Text="Disk /" /><TextBlock x:Name="SshMonitorDisk" FontWeight="SemiBold" Text="--" /></StackPanel></Border>
-                            <Border BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="3" Padding="8,3" MinWidth="100"><StackPanel Orientation="Horizontal" Spacing="5"><TextBlock Text="In" /><TextBlock x:Name="SshMonitorReceive" FontWeight="SemiBold" Text="--" /></StackPanel></Border>
-                            <Border BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="3" Padding="8,3" MinWidth="100"><StackPanel Orientation="Horizontal" Spacing="5"><TextBlock Text="Out" /><TextBlock x:Name="SshMonitorTransmit" FontWeight="SemiBold" Text="--" /></StackPanel></Border>
-                            <Border BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="3" Padding="8,3" MinWidth="106"><StackPanel Orientation="Horizontal" Spacing="5"><TextBlock Text="Uptime" /><TextBlock x:Name="SshMonitorUptime" FontWeight="SemiBold" Text="--" /></StackPanel></Border>
+                            <Border BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="3" Padding="8,3" MinWidth="76"><StackPanel Orientation="Horizontal" Spacing="5"><TextBlock Text="CPU" /><TextBlock x:Name="ResourceMonitorCpu" FontWeight="SemiBold" Text="--" /></StackPanel></Border>
+                            <Border BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="3" Padding="8,3" MinWidth="132"><StackPanel Orientation="Horizontal" Spacing="5"><TextBlock Text="RAM" /><TextBlock x:Name="ResourceMonitorMemory" FontWeight="SemiBold" Text="--" /></StackPanel></Border>
+                            <Border BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="3" Padding="8,3" MinWidth="174"><StackPanel Orientation="Horizontal" Spacing="5"><TextBlock Text="Disk" /><TextBlock x:Name="ResourceMonitorDisk" FontWeight="SemiBold" Text="--" /></StackPanel></Border>
+                            <Border BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="3" Padding="8,3" MinWidth="100"><StackPanel Orientation="Horizontal" Spacing="5"><TextBlock Text="In" /><TextBlock x:Name="ResourceMonitorReceive" FontWeight="SemiBold" Text="--" /></StackPanel></Border>
+                            <Border BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="3" Padding="8,3" MinWidth="100"><StackPanel Orientation="Horizontal" Spacing="5"><TextBlock Text="Out" /><TextBlock x:Name="ResourceMonitorTransmit" FontWeight="SemiBold" Text="--" /></StackPanel></Border>
+                            <Border BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="3" Padding="8,3" MinWidth="106"><StackPanel Orientation="Horizontal" Spacing="5"><TextBlock Text="Uptime" /><TextBlock x:Name="ResourceMonitorUptime" FontWeight="SemiBold" Text="--" /></StackPanel></Border>
                         </StackPanel>
                     </ScrollViewer>
                 </Border>

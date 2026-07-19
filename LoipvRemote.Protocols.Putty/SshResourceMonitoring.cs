@@ -1,4 +1,5 @@
 using System.Globalization;
+using LoipvRemote.Protocols.Abstractions;
 
 namespace LoipvRemote.Protocols.Putty;
 
@@ -12,18 +13,6 @@ public sealed record LinuxResourceSample(
     long DiskUsedBytes,
     long ReceiveBytes,
     long TransmitBytes,
-    TimeSpan Uptime);
-
-/// <summary>Display-ready values for the SSH resource bar.</summary>
-public sealed record RemoteResourceSnapshot(
-    double? CpuPercent,
-    long MemoryUsedBytes,
-    long MemoryTotalBytes,
-    double DiskPercent,
-    long DiskUsedBytes,
-    long DiskTotalBytes,
-    long? ReceiveBytesPerSecond,
-    long? TransmitBytesPerSecond,
     TimeSpan Uptime);
 
 public static class RemoteResourceSnapshotCalculator

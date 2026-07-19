@@ -3,6 +3,7 @@ using LoipvRemote.Domain.Credentials;
 using LoipvRemote.Protocols.Abstractions;
 using LoipvRemote.WinUI.Hosting;
 using LoipvRemote.WinUI.ViewModels;
+using Microsoft.UI;
 using NUnit.Framework;
 
 namespace LoipvRemote.WinUI.Tests.ViewModels;
@@ -108,9 +109,19 @@ public sealed class ConnectionTreeProjectionTests
         Assert.Multiple(() =>
         {
             Assert.That(item.IconKind, Is.EqualTo(expectedIcon));
-            Assert.That(item.IconSize, Is.EqualTo(16));
+            Assert.That(item.IconSize, Is.EqualTo(14));
             Assert.That(item.IconPathData, Is.Not.Empty);
         });
+    }
+
+    [TestCase(ProtocolKind.Rdp, 0)]
+    [TestCase(ProtocolKind.Ssh2, 3)]
+    [TestCase(ProtocolKind.Vnc, 0)]
+    public void OnlySshIconIsShiftedDown(ProtocolKind protocol, double expectedOffset)
+    {
+        ConnectionTreeItem item = new(Guid.NewGuid(), "Server", false, [], Protocol: protocol);
+
+        Assert.That(item.IconVerticalOffset, Is.EqualTo(expectedOffset));
     }
 
     [Test]
@@ -121,9 +132,22 @@ public sealed class ConnectionTreeProjectionTests
         Assert.Multiple(() =>
         {
             Assert.That(item.IconKind, Is.EqualTo(ConnectionTreeIconKind.Folder));
+            Assert.That(item.IconVerticalOffset, Is.Zero);
             Assert.That(item.IconSize, Is.EqualTo(14));
             Assert.That(item.IconPathData, Is.Not.Empty);
         });
+    }
+
+    [Test]
+    public void DisconnectedTreeIconIsOpaqueBlack()
+    {
+        Assert.That(ConnectionTreeItem.GetIconColor(isConnected: false), Is.EqualTo(Colors.Black));
+    }
+
+    [Test]
+    public void ConnectedTreeIconUsesForestGreen()
+    {
+        Assert.That(ConnectionTreeItem.GetIconColor(isConnected: true), Is.EqualTo(Colors.ForestGreen));
     }
 }
 

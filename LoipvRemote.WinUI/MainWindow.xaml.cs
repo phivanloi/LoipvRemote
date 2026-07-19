@@ -453,7 +453,7 @@ public sealed partial class MainWindow : Window, IDisposable
             protocol,
             options);
         RemoteSessionTab tab = _sessionWorkspace.Open(definition);
-        TabViewItem tabItem = CreateSessionTabItem(definition);
+        TabViewItem tabItem = CreateSessionTabItem(tab);
         _sessionTabs.Add(tabItem, tab);
         Sessions.TabItems.Add(tabItem);
         Sessions.SelectedItem = tabItem;
@@ -1260,7 +1260,7 @@ public sealed partial class MainWindow : Window, IDisposable
         TabViewItem? existingTab = _sessionTabs.FirstOrDefault(pair => ReferenceEquals(pair.Value, tab)).Key;
         if (existingTab is null)
         {
-            existingTab = CreateSessionTabItem(effectiveDefinition);
+            existingTab = CreateSessionTabItem(tab);
             _sessionTabs.Add(existingTab, tab);
             Sessions.TabItems.Add(existingTab);
         }
@@ -1791,9 +1791,10 @@ public sealed partial class MainWindow : Window, IDisposable
         await CloseSessionTabAsync(Sessions, tab);
     }
 
-    private TabViewItem CreateSessionTabItem(ConnectionDefinition definition)
+    private TabViewItem CreateSessionTabItem(RemoteSessionTab sessionTab)
     {
-        var tab = new TabViewItem { Header = CreateSessionTabHeader(definition), IsClosable = true };
+        ArgumentNullException.ThrowIfNull(sessionTab);
+        var tab = new TabViewItem { Header = new SessionTabHeader(sessionTab), IsClosable = true };
         // TabView consumes pointer input internally. Listen to already-handled
         // routed events so middle-click remains a first-class close gesture.
         tab.AddHandler(
@@ -1878,6 +1879,8 @@ public sealed partial class MainWindow : Window, IDisposable
 
     private void Sessions_SelectionChanged(object sender, SelectionChangedEventArgs args)
     {
+        UpdateSessionTabHeaderSelection();
+
         if (Sessions.SelectedItem is TabViewItem tab && _sessionTabs.TryGetValue(tab, out RemoteSessionTab? sessionTab))
             ShowSession(
                 sessionTab,
@@ -1934,6 +1937,15 @@ public sealed partial class MainWindow : Window, IDisposable
             if (sessionTab.State is not RemoteSessionTabState.Connecting)
                 SessionLoadingContent.Visibility = Visibility.Collapsed;
             ConnectSessionButton.IsEnabled = sessionTab.State is not RemoteSessionTabState.Connected;
+        }
+    }
+
+    private void UpdateSessionTabHeaderSelection()
+    {
+        foreach (TabViewItem tab in _sessionTabs.Keys)
+        {
+            if (tab.Header is SessionTabHeader header)
+                header.UpdateSelection(ReferenceEquals(Sessions.SelectedItem, tab));
         }
     }
 
@@ -2073,38 +2085,6 @@ public sealed partial class MainWindow : Window, IDisposable
         ManagedSessionContent.Content = null;
         ManagedSessionContent.Visibility = Visibility.Collapsed;
     }
-
-    private static StackPanel CreateSessionTabHeader(ConnectionDefinition definition) =>
-        new()
-        {
-            Orientation = Orientation.Horizontal,
-            Spacing = 6,
-            VerticalAlignment = VerticalAlignment.Center,
-            Children =
-            {
-                new PathIcon
-                {
-                    Data = ConnectionTreeItem.CreateProtocolIconGeometry(definition.Protocol),
-                    Width = 14,
-                    Height = 14,
-                    VerticalAlignment = VerticalAlignment.Center
-                },
-                new TextBlock
-                {
-                    Text = definition.Name,
-                    FontWeight = FontWeights.SemiBold,
-                    VerticalAlignment = VerticalAlignment.Center
-                },
-                new TextBlock
-                {
-                    Text = definition.Host,
-                    Opacity = 0.72,
-                    VerticalAlignment = VerticalAlignment.Center,
-                    TextTrimming = TextTrimming.CharacterEllipsis,
-                    MaxWidth = 180
-                }
-            }
-        };
 
     private async Task CloseSessionTabsForConnectionAsync(Guid connectionId)
     {

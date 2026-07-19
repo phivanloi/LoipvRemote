@@ -27,6 +27,9 @@ Download the matching installer from the [GitHub Releases](../../releases) page:
 - `LoipvRemote-Installer-arm64.msi` for Windows on ARM.
 
 The installer is self-contained and includes the required Windows App SDK runtime.
+Portable self-contained packages are also available as `LoipvRemote-Portable-x64.zip`
+and `LoipvRemote-Portable-arm64.zip`; extract the matching archive before running
+`LoipvRemote.exe`.
 
 ## Using the app
 

@@ -126,15 +126,27 @@
                           RightTapped="ConnectionTree_RightTapped">
                     <TreeView.ItemTemplate>
                         <DataTemplate>
-                            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                                <PathIcon Data="{Binding Content.IconGeometry}"
-                                          Foreground="{Binding Content.IconForeground}"
-                                          Width="{Binding Content.IconSize}"
-                                          Height="{Binding Content.IconSize}"
-                                          Margin="0,1,0,0"
-                                          VerticalAlignment="Center" />
-                                <TextBlock Text="{Binding Content.DisplayName}" VerticalAlignment="Center" />
-                            </StackPanel>
+                            <Grid Height="20" VerticalAlignment="Center">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="14" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Path Data="{Binding Content.IconGeometry}"
+                                      Fill="{Binding Content.IconForeground}"
+                                      Width="{Binding Content.IconSize}"
+                                      Height="{Binding Content.IconSize}"
+                                      Stretch="Uniform"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center">
+                                    <Path.RenderTransform>
+                                        <TranslateTransform Y="{Binding Content.IconVerticalOffset}" />
+                                    </Path.RenderTransform>
+                                </Path>
+                                <TextBlock Grid.Column="1"
+                                           Margin="6,0,0,0"
+                                           Text="{Binding Content.DisplayName}"
+                                           VerticalAlignment="Center" />
+                            </Grid>
                         </DataTemplate>
                     </TreeView.ItemTemplate>
                     <TreeView.ItemContainerStyle>

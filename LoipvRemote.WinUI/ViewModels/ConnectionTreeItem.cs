@@ -14,6 +14,7 @@ public sealed record ConnectionTreeItem(
     ProtocolKind? Protocol = null)
 {
     private static readonly Brush ConnectedForeground = new SolidColorBrush(Microsoft.UI.Colors.ForestGreen);
+    private static readonly Brush DisconnectedForeground = new SolidColorBrush(Microsoft.UI.Colors.Black);
     private const string FolderPathData = "M1.5,4.25C1.5,3.56 2.06,3 2.75,3H5.75L7.25,4.75H13.25C13.94,4.75 14.5,5.31 14.5,6V12.75C14.5,13.44 13.94,14 13.25,14H2.75C2.06,14 1.5,13.44 1.5,12.75Z";
     private const string RemoteDesktopPathData = "M2,2.5H14C14.55,2.5 15,2.95 15,3.5V10C15,10.55 14.55,11 14,11H9.25V12.5H11.5V14H4.5V12.5H6.75V11H2C1.45,11 1,10.55 1,10V3.5C1,2.95 1.45,2.5 2,2.5ZM2.5,4V9.5H13.5V4Z";
     private const string SshPathData = "M2,2.25H14C14.69,2.25 15.25,2.81 15.25,3.5V12.5C15.25,13.19 14.69,13.75 14,13.75H2C1.31,13.75 0.75,13.19 0.75,12.5V3.5C0.75,2.81 1.31,2.25 2,2.25ZM4,4.5L7,7.5L4,10.5L5.1,11.6L9.2,7.5L5.1,3.4ZM9.75,10.5V12H12.75V10.5Z";
@@ -53,9 +54,24 @@ public sealed record ConnectionTreeItem(
         _ => SshPathData
     };
 
-    public double IconSize => IsFolder ? 14 : 16;
+    public double IconSize => IconKind switch
+    {
+        ConnectionTreeIconKind.Folder => 14,
+        ConnectionTreeIconKind.RemoteDesktop => 14,
+        ConnectionTreeIconKind.SshTerminal => 14,
+        ConnectionTreeIconKind.VncDesktop => 14,
+        _ => 14
+    };
 
-    public Brush? IconForeground => IsConnected ? ConnectedForeground : null;
+    public double IconVerticalOffset => IconKind is ConnectionTreeIconKind.SshTerminal ? 3 : 0;
+
+    internal static Windows.UI.Color GetIconColor(bool isConnected) =>
+        isConnected ? Microsoft.UI.Colors.ForestGreen : Microsoft.UI.Colors.Black;
+
+    internal static Brush GetIconForeground(bool isConnected) =>
+        isConnected ? ConnectedForeground : DisconnectedForeground;
+
+    public Brush IconForeground => GetIconForeground(IsConnected);
 }
 
 public enum ConnectionTreeIconKind

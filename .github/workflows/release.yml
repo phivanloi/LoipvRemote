@@ -172,11 +172,30 @@ jobs:
             -InstallDirectory $installDirectory `
             -LogDirectory $env:RUNNER_TEMP
 
-      - name: Upload release artifact
+      - name: Package portable application
+        shell: pwsh
+        run: |
+          $payload = "LoipvRemoteInstaller\Installer\obj\${{ matrix.platform }}\Release\payload"
+          $application = Join-Path $payload 'LoipvRemote.exe'
+          $resourceIndex = Join-Path $payload 'LoipvRemote.pri'
+          if (-not (Test-Path -LiteralPath $application) -or -not (Test-Path -LiteralPath $resourceIndex)) {
+            throw 'Portable payload must contain LoipvRemote.exe and LoipvRemote.pri.'
+          }
+          $portable = "LoipvRemoteInstaller\Installer\bin\${{ matrix.platform }}\Release\LoipvRemote-Portable-${{ matrix.platform }}.zip"
+          Compress-Archive -Path (Join-Path $payload '*') -DestinationPath $portable -CompressionLevel Optimal -Force
+          $archive = Get-Item -LiteralPath $portable
+          if ($archive.Length -eq 0) {
+            throw 'Portable package is empty.'
+          }
+          Write-Host "Verified $($archive.FullName) ($($archive.Length) bytes)."
+
+      - name: Upload release artifacts
         uses: actions/upload-artifact@v7
         with:
           name: loipvremote-installer-${{ matrix.platform }}
-          path: LoipvRemoteInstaller/Installer/bin/${{ matrix.platform }}/Release/*.msi
+          path: |
+            LoipvRemoteInstaller/Installer/bin/${{ matrix.platform }}/Release/*.msi
+            LoipvRemoteInstaller/Installer/bin/${{ matrix.platform }}/Release/*.zip
           if-no-files-found: error
 
   publish-release:
@@ -198,8 +217,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: pwsh
         run: |
-          $assets = @(Get-ChildItem -LiteralPath release-assets -Filter '*.msi' -File | ForEach-Object FullName)
-          if ($assets.Count -ne 2) {
-            throw "Expected x64 and arm64 MSI artifacts, found $($assets.Count)."
+          $installers = @(Get-ChildItem -LiteralPath release-assets -Filter '*.msi' -File)
+          $portablePackages = @(Get-ChildItem -LiteralPath release-assets -Filter '*.zip' -File)
+          if ($installers.Count -ne 2 -or $portablePackages.Count -ne 2) {
+            throw "Expected two MSI and two portable ZIP artifacts; found $($installers.Count) MSI and $($portablePackages.Count) ZIP files."
           }
+          $assets = @($installers + $portablePackages | Sort-Object Name | ForEach-Object FullName)
           gh release create $env:GITHUB_REF_NAME @assets --verify-tag --generate-notes --title $env:GITHUB_REF_NAME

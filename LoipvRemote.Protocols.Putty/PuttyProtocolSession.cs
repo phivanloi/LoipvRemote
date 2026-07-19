@@ -5,7 +5,7 @@ using System.Diagnostics;
 namespace LoipvRemote.Protocols.Putty;
 
 /// <summary>PuTTY lifecycle, embedding and keyboard routing owned by the protocol module.</summary>
-public sealed class PuttyProtocolSession : IProtocolSession, IEmbeddedWindow, IEmbeddedWindowHost, IInputMessageTarget, IPuttySettingsSession
+public sealed class PuttyProtocolSession : IProtocolSession, IEmbeddedWindow, IEmbeddedWindowHost, IInputMessageTarget, IPuttySettingsSession, IRemoteWorkingDirectorySession
 {
     private readonly IPuttyProcessHost _process;
     private readonly IEmbeddedWindowOperations _windowOperations;
@@ -63,7 +63,24 @@ public sealed class PuttyProtocolSession : IProtocolSession, IEmbeddedWindow, IE
                 : _process.MainWindowHandle;
         }
     }
-    public string WindowTitle => _process.MainWindowTitle;
+    public string WindowTitle
+    {
+        get
+        {
+            nint windowHandle = WindowHandle;
+            string embeddedTitle = windowHandle == IntPtr.Zero
+                ? string.Empty
+                : _windowOperations.GetWindowTitle(windowHandle);
+            return string.IsNullOrWhiteSpace(embeddedTitle)
+                ? _process.MainWindowTitle
+                : embeddedTitle;
+        }
+    }
+    public string? CurrentWorkingDirectory =>
+        SshWorkingDirectoryTitleParser.ParseAbsolute(WindowTitle, _options.LaunchOptions.Username) ??
+        SshWorkingDirectorySessionLogParser.ParseFile(
+            _options.LaunchOptions.SessionLogPath,
+            _options.LaunchOptions.Username);
 
     public void SetHostWindowHandle(IntPtr parentWindowHandle)
     {
@@ -112,6 +129,7 @@ public sealed class PuttyProtocolSession : IProtocolSession, IEmbeddedWindow, IE
         {
             _dpiSettingsSession?.Dispose();
             _dpiSettingsSession = null;
+            SshWorkingDirectorySessionLog.DeleteIfOwned(launchOptions.SessionLogPath);
         }
         State = started ? ProtocolSessionState.Connected : ProtocolSessionState.Faulted;
         return started;
@@ -349,6 +367,7 @@ public sealed class PuttyProtocolSession : IProtocolSession, IEmbeddedWindow, IE
         _focusActivated = false;
         _dpiSettingsSession?.Dispose();
         _dpiSettingsSession = null;
+        SshWorkingDirectorySessionLog.DeleteIfOwned(_options.LaunchOptions.SessionLogPath);
         State = ProtocolSessionState.Closed;
     }
 
@@ -379,6 +398,7 @@ public sealed class PuttyProtocolSession : IProtocolSession, IEmbeddedWindow, IE
     private void ProcessExited(object? sender, EventArgs e)
     {
         _embeddedWindowHandle = IntPtr.Zero;
+        SshWorkingDirectorySessionLog.DeleteIfOwned(_options.LaunchOptions.SessionLogPath);
         _dpiSettingsSession?.Dispose();
         _dpiSettingsSession = null;
         if (State is not ProtocolSessionState.Closing and not ProtocolSessionState.Closed)

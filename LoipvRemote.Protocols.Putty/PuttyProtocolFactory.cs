@@ -43,6 +43,7 @@ public sealed class PuttyProtocolFactory(
                 OpeningCommandPath = Option(definition.Options, "OpeningCommandPath"),
                 PrivateKeyPath = Option(definition.Options, "PrivateKeyPath"),
                 AuthenticationPluginCommand = Option(definition.Options, "AuthenticationPluginCommand"),
+                SessionLogPath = SshWorkingDirectorySessionLog.CreatePath(),
                 AdditionalOptions = Option(definition.Options, "SSHOptions"),
                 Username = Option(definition.Options, "Username")
                 ,PasswordPipeName = passwordPipeName

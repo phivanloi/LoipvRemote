@@ -39,6 +39,12 @@ public static class PuttyLaunchArguments
             Add(arguments, options.Hostname);
         }
 
+        if (!string.IsNullOrWhiteSpace(options.SessionLogPath))
+        {
+            Add(arguments, "-sessionlog", options.SessionLogPath);
+            arguments.Add("-logoverwrite");
+        }
+
         string result = string.Join(' ', arguments);
         if (!string.IsNullOrWhiteSpace(options.AdditionalOptions))
             result += " " + options.AdditionalOptions.Trim();

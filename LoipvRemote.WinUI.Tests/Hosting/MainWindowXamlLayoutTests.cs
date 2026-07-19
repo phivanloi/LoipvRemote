@@ -35,7 +35,6 @@ public sealed class MainWindowXamlLayoutTests
             .ToArray();
         XElement? iconTranslation = icon.Element(xaml + "Path.RenderTransform")?
             .Element(xaml + "TranslateTransform");
-
         Assert.Multiple(() =>
         {
             Assert.That(row.Name.LocalName, Is.EqualTo("Grid"));
@@ -92,7 +91,7 @@ public sealed class MainWindowXamlLayoutTests
     }
 
     [Test]
-    public void ResourceBarSupportsBothSshAndRdpTabsAndSurfacesMonitorStatus()
+    public void ResourceBarSupportsBothSshAndRdpTabsWithoutAnOverallStatusToolTip()
     {
         string sourceRoot = Path.GetFullPath(Path.Combine(
             TestContext.CurrentContext.TestDirectory,
@@ -108,8 +107,144 @@ public sealed class MainWindowXamlLayoutTests
         {
             Assert.That((string?)resourceBar.Attribute("Visibility"), Is.EqualTo("Collapsed"));
             Assert.That(code, Does.Contain("ProtocolKind.Ssh2 or ProtocolKind.Rdp"));
-            Assert.That(code, Does.Contain("ToolTipService.SetToolTip(ResourceMonitorBar, monitor.LastStatus.Message)"));
+            Assert.That(code, Does.Not.Contain("ToolTipService.SetToolTip(ResourceMonitorBar"));
+            Assert.That(code, Does.Contain("ResourceMonitorMemoryToolTip"));
+            Assert.That(code, Does.Contain("ResourceMonitorDiskToolTip"));
             Assert.That(code, Does.Not.Contain("SshResourceMonitorBar"));
+        });
+    }
+
+    [Test]
+    public void ResourceBarShowsCompactPercentagesWithPersistentHoverRamAndDiskDetails()
+    {
+        string sourceRoot = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "LoipvRemote.WinUI"));
+        XDocument document = XDocument.Load(Path.Combine(sourceRoot, "MainWindow.xaml"));
+        XNamespace xaml = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
+        XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
+        XElement memoryChip = document.Descendants(xaml + "Border")
+            .Single(element => (string?)element.Attribute(x + "Name") == "ResourceMonitorMemoryChip");
+        XElement diskChip = document.Descendants(xaml + "Border")
+            .Single(element => (string?)element.Attribute(x + "Name") == "ResourceMonitorDiskChip");
+        XElement memoryToolTip = memoryChip.Descendants(xaml + "ToolTip").Single();
+        XElement diskToolTip = diskChip.Descendants(xaml + "ToolTip").Single();
+        string[] autoSizedChipNames =
+        [
+            "ResourceMonitorCpuChip",
+            "ResourceMonitorMemoryChip",
+            "ResourceMonitorDiskChip",
+            "ResourceMonitorReceiveChip",
+            "ResourceMonitorTransmitChip",
+            "ResourceMonitorUptimeChip",
+            "SshWorkingDirectoryButton",
+        ];
+        XElement[] autoSizedChips = document.Descendants()
+            .Where(element => autoSizedChipNames.Contains((string?)element.Attribute(x + "Name")))
+            .ToArray();
+        string code = File.ReadAllText(Path.Combine(sourceRoot, "MainWindow.xaml.cs"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(document.Descendants(xaml + "Button")
+                .Any(element => (string?)element.Attribute(x + "Name") == "ResourceMonitorMemoryChip"), Is.False);
+            Assert.That(document.Descendants(xaml + "Button")
+                .Any(element => (string?)element.Attribute(x + "Name") == "ResourceMonitorDiskChip"), Is.False);
+            Assert.That(memoryChip.Descendants(xaml + "Flyout"), Is.Empty);
+            Assert.That(diskChip.Descendants(xaml + "Flyout"), Is.Empty);
+            Assert.That((string?)memoryChip.Attribute("PointerEntered"), Is.EqualTo("ResourceMonitorDetailChip_PointerEntered"));
+            Assert.That((string?)memoryChip.Attribute("PointerExited"), Is.EqualTo("ResourceMonitorDetailChip_PointerExited"));
+            Assert.That((string?)diskChip.Attribute("PointerEntered"), Is.EqualTo("ResourceMonitorDetailChip_PointerEntered"));
+            Assert.That((string?)diskChip.Attribute("PointerExited"), Is.EqualTo("ResourceMonitorDetailChip_PointerExited"));
+            Assert.That((string?)memoryToolTip.Attribute(x + "Name"), Is.EqualTo("ResourceMonitorMemoryToolTip"));
+            Assert.That((string?)diskToolTip.Attribute(x + "Name"), Is.EqualTo("ResourceMonitorDiskToolTip"));
+            Assert.That(autoSizedChips, Has.Length.EqualTo(autoSizedChipNames.Length));
+            Assert.That(autoSizedChips.Attributes("MinWidth"), Is.Empty);
+            Assert.That(autoSizedChips.Attributes("MaxWidth"), Is.Empty);
+            Assert.That(code, Does.Contain("ResourceMonitorPresentation.FormatMemoryPercent"));
+            Assert.That(code, Does.Contain("ResourceMonitorPresentation.FormatMemoryDetails"));
+            Assert.That(code, Does.Contain("ResourceMonitorPresentation.FormatDiskDetails"));
+            Assert.That(code, Does.Contain("ApplyResourceWarning"));
+            Assert.That(code, Does.Contain("toolTip.IsOpen = true"));
+            Assert.That(code, Does.Contain("toolTip.IsOpen = false"));
+        });
+    }
+
+    [Test]
+    public void SshWorkingDirectoryChipOpensTheSftpBrowser()
+    {
+        string sourceRoot = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "LoipvRemote.WinUI"));
+        XDocument document = XDocument.Load(Path.Combine(sourceRoot, "MainWindow.xaml"));
+        XNamespace xaml = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
+        XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
+        XElement button = document.Descendants(xaml + "Button")
+            .Single(element => (string?)element.Attribute(x + "Name") == "SshWorkingDirectoryButton");
+        XElement content = button.Elements().Single();
+        XElement icon = content.Element(xaml + "FontIcon")!;
+        XElement[] labels = content.Elements(xaml + "TextBlock").ToArray();
+        string code = File.ReadAllText(Path.Combine(sourceRoot, "MainWindow.xaml.cs"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That((string?)button.Attribute("Visibility"), Is.EqualTo("Collapsed"));
+            Assert.That((string?)button.Attribute("Click"), Is.EqualTo("SshWorkingDirectoryButton_Click"));
+            Assert.That((string?)button.Attribute("HorizontalAlignment"), Is.EqualTo("Left"));
+            Assert.That((string?)button.Attribute("HorizontalContentAlignment"), Is.EqualTo("Left"));
+            Assert.That(button.Attribute("MinWidth"), Is.Null);
+            Assert.That(button.Attribute("MaxWidth"), Is.Null);
+            Assert.That(icon, Is.Not.Null);
+            Assert.That((string?)icon.Attribute("AutomationProperties.Name"), Is.EqualTo("File transfer"));
+            Assert.That((string?)labels[0].Attribute("Text"), Is.EqualTo(":"));
+            Assert.That((string?)labels[1].Attribute(x + "Name"), Is.EqualTo("SshWorkingDirectoryText"));
+            Assert.That(labels[1].Attribute("TextTrimming"), Is.Null);
+            Assert.That(code, Does.Contain("IRemoteWorkingDirectorySession"));
+            Assert.That(code, Does.Contain("SftpBrowserDialog"));
+        });
+    }
+
+    [Test]
+    public void SftpBrowserUsesCommanderStyleLocalAndRemotePanes()
+    {
+        string codePath = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "LoipvRemote.WinUI", "SftpBrowserDialog.cs"));
+        string code = File.ReadAllText(codePath);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(code, Does.Contain("\"SftpLocalFiles\""));
+            Assert.That(code, Does.Contain("\"SftpRemoteFiles\""));
+            Assert.That(code, Does.Contain("SftpDialogSizing.Fit"));
+            Assert.That(code, Does.Contain("Width = dialogSize.Width"));
+            Assert.That(code, Does.Contain("Height = dialogSize.Height"));
+            Assert.That(code, Does.Contain("ContentDialogMaxWidth\"] = 1670d"));
+            Assert.That(code, Does.Contain("Text = $\"SFTP - {connection.Name} | {connection.Host}:{connection.Port}\""));
+            Assert.That(code, Does.Contain("FontSize = 22"));
+            Assert.That(code, Does.Contain("CreateToolbarButton(\"Up\", Symbol.Up)"));
+            Assert.That(code, Does.Contain("CreateToolbarButton(\"Refresh\", Symbol.Refresh)"));
+            Assert.That(code, Does.Contain("CreateToolbarButton(\"New folder\", Symbol.NewFolder)"));
+            Assert.That(code, Does.Contain("new FontIcon { Glyph = \"\\uE711\", FontSize = 14 }"));
+            Assert.That(code, Does.Contain("new TextBlock { Text = \"Close\""));
+            Assert.That(code, Does.Contain("Orientation = Orientation.Horizontal"));
+            Assert.That(code, Does.Not.Contain("CornerRadius = new CornerRadius(20)"));
+            Assert.That(code, Does.Not.Contain("Glyph = \"\\uE711\", FontSize = 22"));
+            Assert.That(code, Does.Contain("Content = new Viewbox"));
+            Assert.That(code, Does.Contain("Child = new SymbolIcon(symbol)"));
+            Assert.That(code, Does.Contain("Width = 32"));
+            Assert.That(code, Does.Contain("Height = 32"));
+            Assert.That(code, Does.Contain("Icon = new SymbolIcon(symbol)"));
+            Assert.That(code, Does.Contain("ToolTipService.SetToolTip(button, accessibleName)"));
+            Assert.That(code, Does.Not.Contain("Content = \"Up\""));
+            Assert.That(code, Does.Not.Contain("Content = \"Refresh\""));
+            Assert.That(code, Does.Not.Contain("Content = \"New folder\""));
+            Assert.That(code, Does.Contain("RightTapped"));
+            Assert.That(code, Does.Not.Contain("CloseButtonText = \"Close\""));
+            Assert.That(code, Does.Not.Contain("var uploadButton = new Button"));
+            Assert.That(code, Does.Not.Contain("var downloadButton = new Button"));
+            Assert.That(code, Does.Not.Contain("FileOpenPicker"));
+            Assert.That(code, Does.Not.Contain("FileSavePicker"));
         });
     }
 

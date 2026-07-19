@@ -63,7 +63,12 @@ public sealed record ConnectionTreeItem(
         _ => 14
     };
 
-    public double IconVerticalOffset => IconKind is ConnectionTreeIconKind.SshTerminal ? 3 : 0;
+    public double IconVerticalOffset => IconKind switch
+    {
+        ConnectionTreeIconKind.SshTerminal => 2,
+        ConnectionTreeIconKind.RemoteDesktop => 1,
+        _ => 0
+    };
 
     internal static Windows.UI.Color GetIconColor(bool isConnected) =>
         isConnected ? Microsoft.UI.Colors.ForestGreen : Microsoft.UI.Colors.Black;

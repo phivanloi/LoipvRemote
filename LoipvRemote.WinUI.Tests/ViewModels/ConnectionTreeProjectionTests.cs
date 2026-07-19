@@ -114,16 +114,6 @@ public sealed class ConnectionTreeProjectionTests
         });
     }
 
-    [TestCase(ProtocolKind.Rdp, 0)]
-    [TestCase(ProtocolKind.Ssh2, 3)]
-    [TestCase(ProtocolKind.Vnc, 0)]
-    public void OnlySshIconIsShiftedDown(ProtocolKind protocol, double expectedOffset)
-    {
-        ConnectionTreeItem item = new(Guid.NewGuid(), "Server", false, [], Protocol: protocol);
-
-        Assert.That(item.IconVerticalOffset, Is.EqualTo(expectedOffset));
-    }
-
     [Test]
     public void FolderTreeItemUsesACompactFolderIcon()
     {
@@ -132,10 +122,19 @@ public sealed class ConnectionTreeProjectionTests
         Assert.Multiple(() =>
         {
             Assert.That(item.IconKind, Is.EqualTo(ConnectionTreeIconKind.Folder));
-            Assert.That(item.IconVerticalOffset, Is.Zero);
             Assert.That(item.IconSize, Is.EqualTo(14));
             Assert.That(item.IconPathData, Is.Not.Empty);
         });
+    }
+
+    [TestCase(ProtocolKind.Rdp, 1)]
+    [TestCase(ProtocolKind.Ssh2, 2)]
+    [TestCase(ProtocolKind.Vnc, 0)]
+    public void ProtocolIconsUseTheRequestedVerticalOffset(ProtocolKind protocol, double expectedOffset)
+    {
+        ConnectionTreeItem item = new(Guid.NewGuid(), "Server", false, [], Protocol: protocol);
+
+        Assert.That(item.IconVerticalOffset, Is.EqualTo(expectedOffset));
     }
 
     [Test]

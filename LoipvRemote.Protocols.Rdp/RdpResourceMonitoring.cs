@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using LoipvRemote.Domain.Connections;
 using LoipvRemote.Protocols.Abstractions;
 
@@ -42,10 +43,12 @@ public static class WindowsResourceSampleParser
         }
 
         if (sample is null ||
-            !double.IsFinite(sample.CpuPercent) || sample.CpuPercent is < 0 or > 100 ||
+            (sample.CpuPercent is double cpuPercent && (!double.IsFinite(cpuPercent) || cpuPercent is < 0 or > 100)) ||
             sample.MemoryUsedBytes < 0 || sample.MemoryTotalBytes < 0 || sample.MemoryUsedBytes > sample.MemoryTotalBytes ||
             sample.DiskUsedBytes < 0 || sample.DiskTotalBytes < 0 || sample.DiskUsedBytes > sample.DiskTotalBytes ||
-            sample.ReceiveBytesPerSecond < 0 || sample.TransmitBytesPerSecond < 0 || sample.UptimeSeconds < 0)
+            sample.Disks?.Any(disk => string.IsNullOrWhiteSpace(disk.Name) ||
+                                      disk.UsedBytes < 0 || disk.TotalBytes < 0 || disk.UsedBytes > disk.TotalBytes) == true ||
+            sample.ReceiveBytesPerSecond is < 0 || sample.TransmitBytesPerSecond is < 0 || sample.UptimeSeconds < 0)
         {
             throw new FormatException("The Windows resource probe returned inconsistent counters.");
         }
@@ -63,24 +66,33 @@ public static class WindowsResourceSampleParser
             sample.DiskTotalBytes,
             sample.ReceiveBytesPerSecond,
             sample.TransmitBytesPerSecond,
-            TimeSpan.FromSeconds(sample.UptimeSeconds));
+            TimeSpan.FromSeconds(sample.UptimeSeconds),
+            sample.Disks is { Length: > 0 }
+                ? sample.Disks
+                    .Select(disk => new RemoteDiskSnapshot(disk.Name, disk.UsedBytes, disk.TotalBytes))
+                    .ToArray()
+                : null);
     }
 
     private sealed record WindowsResourceSample(
-        double CpuPercent,
+        double? CpuPercent,
         long MemoryUsedBytes,
         long MemoryTotalBytes,
         long DiskUsedBytes,
         long DiskTotalBytes,
-        long ReceiveBytesPerSecond,
-        long TransmitBytesPerSecond,
-        long UptimeSeconds);
+        long? ReceiveBytesPerSecond,
+        long? TransmitBytesPerSecond,
+        long UptimeSeconds,
+        WindowsDiskSample[]? Disks);
+
+    private sealed record WindowsDiskSample(string Name, long UsedBytes, long TotalBytes);
 }
 
 /// <summary>Collects Windows metrics over a separate CIM channel without touching the RDP session.</summary>
 public sealed class WindowsCimResourceCollector : IWindowsResourceCollector
 {
     private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(45);
+    private static readonly TimeSpan OptionalCounterTimeout = TimeSpan.FromSeconds(20);
     private static readonly string EncodedProbe = Convert.ToBase64String(Encoding.Unicode.GetBytes(ProbeScript));
     private readonly RdpResourceMonitorConnection _connection;
     private readonly TimeSpan _timeout;
@@ -100,6 +112,43 @@ public sealed class WindowsCimResourceCollector : IWindowsResourceCollector
         if (!string.IsNullOrWhiteSpace(_connection.Username) && _connection.Password is null)
             throw new RemoteResourceMonitorAuthenticationException("The RDP password is unavailable for Windows resource monitoring.");
 
+        TimeSpan optionalTimeout = _timeout < OptionalCounterTimeout ? _timeout : OptionalCounterTimeout;
+        Task<string> operatingSystemProbe = RunProbeAsync("operating-system", _timeout, cancellationToken);
+        Task<string?> diskProbe = TryRunOptionalProbeAsync("disks", _timeout, cancellationToken);
+        Task<string?> cpuProbe = TryRunOptionalProbeAsync("cpu", optionalTimeout, cancellationToken);
+        Task<string?> networkProbe = TryRunOptionalProbeAsync("network", optionalTimeout, cancellationToken);
+
+        string operatingSystem = await operatingSystemProbe.ConfigureAwait(false);
+        string? disks = await diskProbe.ConfigureAwait(false);
+        string? cpu = await cpuProbe.ConfigureAwait(false);
+        string? network = await networkProbe.ConfigureAwait(false);
+        return WindowsResourceSampleParser.Parse(MergeProbeOutputs(operatingSystem, disks, cpu, network));
+    }
+
+    private async Task<string?> TryRunOptionalProbeAsync(
+        string query,
+        TimeSpan timeout,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await RunProbeAsync(query, timeout, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or TimeoutException or FormatException)
+        {
+            return null;
+        }
+    }
+
+    private async Task<string> RunProbeAsync(
+        string query,
+        TimeSpan timeout,
+        CancellationToken cancellationToken)
+    {
         string powerShell = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.System),
             "WindowsPowerShell", "v1.0", "powershell.exe");
@@ -121,6 +170,7 @@ public sealed class WindowsCimResourceCollector : IWindowsResourceCollector
         startInfo.Environment.Remove("PSModulePath");
         startInfo.Environment["LOIPVREMOTE_MONITOR_HOST"] = _connection.Host;
         startInfo.Environment["LOIPVREMOTE_MONITOR_USERNAME"] = _connection.Username;
+        startInfo.Environment["LOIPVREMOTE_MONITOR_QUERY"] = query;
 
         using var process = new Process { StartInfo = startInfo };
         if (!process.Start())
@@ -129,7 +179,7 @@ public sealed class WindowsCimResourceCollector : IWindowsResourceCollector
         await process.StandardInput.WriteLineAsync(_connection.Password ?? string.Empty).ConfigureAwait(false);
         process.StandardInput.Close();
         using var timeoutCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeoutCancellation.CancelAfter(_timeout);
+        timeoutCancellation.CancelAfter(timeout);
         Task<string> standardOutput = process.StandardOutput.ReadToEndAsync(timeoutCancellation.Token);
         Task<string> standardError = process.StandardError.ReadToEndAsync(timeoutCancellation.Token);
         try
@@ -144,7 +194,9 @@ public sealed class WindowsCimResourceCollector : IWindowsResourceCollector
                 throw new InvalidOperationException("Windows resource monitoring is unavailable for this host.");
             }
 
-            return WindowsResourceSampleParser.Parse(output);
+            if (string.IsNullOrWhiteSpace(output))
+                throw new FormatException($"The Windows {query} resource probe returned no data.");
+            return output;
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
@@ -156,6 +208,23 @@ public sealed class WindowsCimResourceCollector : IWindowsResourceCollector
             if (!process.HasExited)
                 TryKill(process);
         }
+    }
+
+    private static string MergeProbeOutputs(params string?[] outputs)
+    {
+        var merged = new JsonObject();
+        foreach (string output in outputs.OfType<string>())
+        {
+            string? json = output.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .LastOrDefault(line => line.StartsWith('{') && line.EndsWith('}'));
+            if (json is null || JsonNode.Parse(json) is not JsonObject probe)
+                continue;
+
+            foreach ((string propertyName, JsonNode? value) in probe)
+                merged[propertyName] = value?.DeepClone();
+        }
+
+        return merged.ToJsonString();
     }
 
     public void Dispose()
@@ -184,37 +253,37 @@ public sealed class WindowsCimResourceCollector : IWindowsResourceCollector
         $ProgressPreference = 'SilentlyContinue'
         $computer = $env:LOIPVREMOTE_MONITOR_HOST
         $username = $env:LOIPVREMOTE_MONITOR_USERNAME
+        $query = $env:LOIPVREMOTE_MONITOR_QUERY
         $password = [Console]::In.ReadLine()
-        $session = $null
-        try {
-            $credential = $null
-            if (-not [string]::IsNullOrWhiteSpace($username)) {
-                $securePassword = [System.Security.SecureString]::new()
-                foreach ($character in $password.ToCharArray()) {
-                    $securePassword.AppendChar($character)
-                }
-                $securePassword.MakeReadOnly()
-                $credential = New-Object System.Management.Automation.PSCredential($username, $securePassword)
-                $password = $null
+        $credential = $null
+        if (-not [string]::IsNullOrWhiteSpace($username)) {
+            $securePassword = [System.Security.SecureString]::new()
+            foreach ($character in $password.ToCharArray()) {
+                $securePassword.AppendChar($character)
             }
+            $securePassword.MakeReadOnly()
+            $credential = New-Object System.Management.Automation.PSCredential($username, $securePassword)
+            $password = $null
+        }
 
-            function New-WsManMonitorSession {
-                if ($null -eq $credential) {
-                    return New-CimSession -ComputerName $computer -Authentication Negotiate
-                } else {
-                    return New-CimSession -ComputerName $computer -Credential $credential -Authentication Negotiate
-                }
+        function New-WsManMonitorSession {
+            if ($null -eq $credential) {
+                return New-CimSession -ComputerName $computer -Authentication Negotiate -OperationTimeoutSec 8
+            } else {
+                return New-CimSession -ComputerName $computer -Credential $credential -Authentication Negotiate -OperationTimeoutSec 8
             }
+        }
 
-            function New-DcomMonitorSession {
-                $dcomOption = New-CimSessionOption -Protocol Dcom
-                if ($null -eq $credential) {
-                    return New-CimSession -ComputerName $computer -SessionOption $dcomOption
-                } else {
-                    return New-CimSession -ComputerName $computer -Credential $credential -SessionOption $dcomOption
-                }
+        function New-DcomMonitorSession {
+            $dcomOption = New-CimSessionOption -Protocol Dcom
+            if ($null -eq $credential) {
+                return New-CimSession -ComputerName $computer -SessionOption $dcomOption -OperationTimeoutSec 8
+            } else {
+                return New-CimSession -ComputerName $computer -Credential $credential -SessionOption $dcomOption -OperationTimeoutSec 8
             }
+        }
 
+        function New-MonitorCimSession {
             $parsedAddress = $null
             $preferDcom = [System.Net.IPAddress]::TryParse($computer, [ref]$parsedAddress)
             if ($preferDcom) {
@@ -222,43 +291,111 @@ public sealed class WindowsCimResourceCollector : IWindowsResourceCollector
                 # configured. Prefer DCOM so monitoring needs no client-side
                 # security-setting change, while retaining WinRM as fallback.
                 try {
-                    $session = New-DcomMonitorSession
+                    return New-DcomMonitorSession
                 } catch {
-                    $session = New-WsManMonitorSession
+                    return New-WsManMonitorSession
                 }
             } else {
                 try {
-                    $session = New-WsManMonitorSession
+                    return New-WsManMonitorSession
                 } catch {
-                    $session = New-DcomMonitorSession
+                    return New-DcomMonitorSession
                 }
             }
-            $os = Get-CimInstance -CimSession $session -ClassName Win32_OperatingSystem
-            $cpu = Get-CimInstance -CimSession $session -ClassName Win32_PerfFormattedData_PerfOS_Processor -Filter "Name='_Total'" | Select-Object -First 1
-            $diskFilter = "DeviceID='$($os.SystemDrive)'"
-            $disk = Get-CimInstance -CimSession $session -ClassName Win32_LogicalDisk -Filter $diskFilter | Select-Object -First 1
-            $network = @(Get-CimInstance -CimSession $session -ClassName Win32_PerfFormattedData_Tcpip_NetworkInterface -ErrorAction SilentlyContinue)
-            $receive = ($network | Measure-Object -Property BytesReceivedPersec -Sum).Sum
-            $transmit = ($network | Measure-Object -Property BytesSentPersec -Sum).Sum
-            if ($null -eq $receive) { $receive = 0 }
-            if ($null -eq $transmit) { $transmit = 0 }
-            $memoryTotal = [int64]$os.TotalVisibleMemorySize * 1024
-            $memoryFree = [int64]$os.FreePhysicalMemory * 1024
-            $diskTotal = if ($null -eq $disk.Size) { 0 } else { [int64]$disk.Size }
-            $diskFree = if ($null -eq $disk.FreeSpace) { 0 } else { [int64]$disk.FreeSpace }
-            $uptime = [math]::Max(0, [int64]((Get-Date) - [datetime]$os.LastBootUpTime).TotalSeconds)
-            [ordered]@{
-                cpuPercent = [double]$cpu.PercentProcessorTime
-                memoryUsedBytes = $memoryTotal - $memoryFree
-                memoryTotalBytes = $memoryTotal
-                diskUsedBytes = $diskTotal - $diskFree
-                diskTotalBytes = $diskTotal
-                receiveBytesPerSecond = [int64]$receive
-                transmitBytesPerSecond = [int64]$transmit
-                uptimeSeconds = $uptime
-            } | ConvertTo-Json -Compress
-        } finally {
-            if ($null -ne $session) { Remove-CimSession -CimSession $session -ErrorAction SilentlyContinue }
+        }
+
+        function New-ClassicWmiScope {
+            $options = [System.Management.ConnectionOptions]::new()
+            $options.Authentication = [System.Management.AuthenticationLevel]::PacketPrivacy
+            $options.Impersonation = [System.Management.ImpersonationLevel]::Impersonate
+            $options.Timeout = [TimeSpan]::FromSeconds(8)
+            if ($null -ne $credential) {
+                $options.Username = $credential.UserName
+                $options.SecurePassword = $credential.Password
+            }
+            $scope = [System.Management.ManagementScope]::new("\\$computer\root\cimv2", $options)
+            $scope.Connect()
+            return $scope
+        }
+
+        function Invoke-ClassicWmiQuery([System.Management.ManagementScope]$scope, [string]$wql) {
+            $queryObject = [System.Management.ObjectQuery]::new($wql)
+            $enumeration = [System.Management.EnumerationOptions]::new()
+            $enumeration.Timeout = [TimeSpan]::FromSeconds(8)
+            $searcher = [System.Management.ManagementObjectSearcher]::new($scope, $queryObject, $enumeration)
+            return @($searcher.Get())
+        }
+
+        switch ($query) {
+            'operating-system' {
+                $session = New-MonitorCimSession
+                $os = Get-CimInstance -CimSession $session -ClassName Win32_OperatingSystem -OperationTimeoutSec 12
+                $memoryTotal = [int64]$os.TotalVisibleMemorySize * 1024
+                $memoryFree = [int64]$os.FreePhysicalMemory * 1024
+                $uptime = [math]::Max(0, [int64]((Get-Date) - [datetime]$os.LastBootUpTime).TotalSeconds)
+                [ordered]@{
+                    memoryUsedBytes = $memoryTotal - $memoryFree
+                    memoryTotalBytes = $memoryTotal
+                    uptimeSeconds = $uptime
+                } | ConvertTo-Json -Compress
+            }
+            'disks' {
+                $session = New-MonitorCimSession
+                $logicalDisks = @(Get-CimInstance -CimSession $session -ClassName Win32_LogicalDisk -Filter "DriveType=3" -OperationTimeoutSec 12)
+                $diskTotal = [int64]0
+                $diskUsed = [int64]0
+                $diskDetails = @($logicalDisks | ForEach-Object {
+                    $size = if ($null -eq $_.Size) { 0 } else { [int64]$_.Size }
+                    $free = if ($null -eq $_.FreeSpace) { 0 } else { [int64]$_.FreeSpace }
+                    $used = $size - $free
+                    $diskTotal += $size
+                    $diskUsed += $used
+                    [pscustomobject][ordered]@{
+                        name = [string]$_.DeviceID
+                        usedBytes = $used
+                        totalBytes = $size
+                    }
+                })
+                [ordered]@{
+                    diskUsedBytes = $diskUsed
+                    diskTotalBytes = $diskTotal
+                    disks = @($diskDetails)
+                } | ConvertTo-Json -Depth 4 -Compress
+            }
+            'cpu' {
+                try {
+                    $scope = New-ClassicWmiScope
+                    $cpu = @(Invoke-ClassicWmiQuery $scope "SELECT PercentProcessorTime FROM Win32_PerfFormattedData_PerfOS_Processor WHERE Name='_Total'") | Select-Object -First 1
+                    if ($null -eq $cpu) { throw 'The classic WMI CPU counter returned no rows.' }
+                } catch {
+                    $session = New-MonitorCimSession
+                    $cpu = Get-CimInstance -CimSession $session -ClassName Win32_PerfFormattedData_PerfOS_Processor -Filter "Name='_Total'" -OperationTimeoutSec 8 | Select-Object -First 1
+                }
+                [ordered]@{
+                    cpuPercent = [double]$cpu.PercentProcessorTime
+                } | ConvertTo-Json -Compress
+            }
+            'network' {
+                try {
+                    $scope = New-ClassicWmiScope
+                    $network = @(Invoke-ClassicWmiQuery $scope 'SELECT BytesReceivedPersec,BytesSentPersec FROM Win32_PerfFormattedData_Tcpip_NetworkInterface')
+                    if ($network.Count -eq 0) { throw 'The classic WMI network counter returned no rows.' }
+                } catch {
+                    $session = New-MonitorCimSession
+                    $network = @(Get-CimInstance -CimSession $session -ClassName Win32_PerfFormattedData_Tcpip_NetworkInterface -OperationTimeoutSec 8)
+                }
+                $receive = ($network | Measure-Object -Property BytesReceivedPersec -Sum).Sum
+                $transmit = ($network | Measure-Object -Property BytesSentPersec -Sum).Sum
+                if ($null -eq $receive) { $receive = 0 }
+                if ($null -eq $transmit) { $transmit = 0 }
+                [ordered]@{
+                    receiveBytesPerSecond = [int64]$receive
+                    transmitBytesPerSecond = [int64]$transmit
+                } | ConvertTo-Json -Compress
+            }
+            default {
+                throw "Unsupported Windows resource query: $query"
+            }
         }
         """;
 }
@@ -267,12 +404,17 @@ public sealed class RdpResourceMonitor : IRemoteResourceMonitor
 {
     private static readonly TimeSpan DefaultPollInterval = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan RetryInterval = TimeSpan.FromSeconds(15);
+    private const int MaxRetainedPerformanceCounterMisses = 1;
+    private const int MaxRetainedCollectorFailures = 1;
     private readonly IWindowsResourceCollector _collector;
     private readonly TimeSpan _pollInterval;
     private readonly object _sync = new();
     private CancellationTokenSource? _cancellation;
     private bool _isActive;
     private bool _disposed;
+    private int _collectorFailures;
+    private int _cpuCounterMisses;
+    private int _networkCounterMisses;
     private RemoteResourceSnapshot? _lastSnapshot;
     private RemoteResourceMonitorStatus _lastStatus = new(RemoteResourceMonitorState.WaitingForActiveTab, "RDP resource monitoring paused");
 
@@ -349,9 +491,17 @@ public sealed class RdpResourceMonitor : IRemoteResourceMonitor
             {
                 if (LastSnapshot is null)
                     PublishStatus(new(RemoteResourceMonitorState.Connecting, "Connecting Windows resource monitoring channel"));
-                RemoteResourceSnapshot snapshot = await _collector.CollectAsync(cancellationToken).ConfigureAwait(false);
+                RemoteResourceSnapshot collected = await _collector.CollectAsync(cancellationToken).ConfigureAwait(false);
+                RemoteResourceSnapshot snapshot = MergeTransientPerformanceCounterMisses(collected, out bool retainedPerformanceSample);
                 PublishSnapshot(snapshot);
-                PublishStatus(new(RemoteResourceMonitorState.Monitoring, "Monitoring Windows resources over CIM (WinRM/DCOM)"));
+                string statusMessage = retainedPerformanceSample
+                    ? "Monitoring Windows resources over CIM/WMI; retaining the last performance sample during a transient retry"
+                    : snapshot.CpuPercent is null ||
+                                       snapshot.ReceiveBytesPerSecond is null ||
+                                       snapshot.TransmitBytesPerSecond is null
+                    ? "Monitoring available Windows resources over CIM/WMI; unavailable performance counters show --"
+                    : "Monitoring Windows resources over CIM/WMI (WinRM/DCOM)";
+                PublishStatus(new(RemoteResourceMonitorState.Monitoring, statusMessage));
                 await DelayAsync(_pollInterval, cancellationToken).ConfigureAwait(false);
             }
             catch (RemoteResourceMonitorAuthenticationException)
@@ -366,11 +516,98 @@ public sealed class RdpResourceMonitor : IRemoteResourceMonitor
             }
             catch
             {
-                ClearSnapshot();
-                PublishStatus(new(RemoteResourceMonitorState.Unavailable, "Windows resource monitoring is unavailable"));
+                if (TryRetainSnapshotAfterTransientCollectorFailure())
+                {
+                    PublishStatus(new(
+                        RemoteResourceMonitorState.Monitoring,
+                        "Monitoring Windows resources over CIM/WMI; retaining the last resource snapshot during a transient retry"));
+                }
+                else
+                {
+                    ClearSnapshot();
+                    PublishStatus(new(RemoteResourceMonitorState.Unavailable, "Windows resource monitoring is unavailable"));
+                }
                 await DelayAsync(RetryInterval, cancellationToken).ConfigureAwait(false);
             }
         }
+    }
+
+    private bool TryRetainSnapshotAfterTransientCollectorFailure()
+    {
+        lock (_sync)
+        {
+            if (_lastSnapshot is null || _collectorFailures >= MaxRetainedCollectorFailures)
+                return false;
+
+            _collectorFailures++;
+            return true;
+        }
+    }
+
+    private RemoteResourceSnapshot MergeTransientPerformanceCounterMisses(
+        RemoteResourceSnapshot collected,
+        out bool retainedPerformanceSample)
+    {
+        double? cpu = collected.CpuPercent;
+        long? receive = collected.ReceiveBytesPerSecond;
+        long? transmit = collected.TransmitBytesPerSecond;
+        retainedPerformanceSample = false;
+
+        lock (_sync)
+        {
+            RemoteResourceSnapshot? previous = _lastSnapshot;
+            if (cpu is not null)
+            {
+                _cpuCounterMisses = 0;
+            }
+            else if (previous?.CpuPercent is not null && _cpuCounterMisses < MaxRetainedPerformanceCounterMisses)
+            {
+                cpu = previous.CpuPercent;
+                _cpuCounterMisses++;
+                retainedPerformanceSample = true;
+            }
+            else
+            {
+                _cpuCounterMisses++;
+            }
+
+            if (receive is not null && transmit is not null)
+            {
+                _networkCounterMisses = 0;
+            }
+            else if (previous?.ReceiveBytesPerSecond is not null &&
+                     previous.TransmitBytesPerSecond is not null &&
+                     _networkCounterMisses < MaxRetainedPerformanceCounterMisses)
+            {
+                receive ??= previous.ReceiveBytesPerSecond;
+                transmit ??= previous.TransmitBytesPerSecond;
+                _networkCounterMisses++;
+                retainedPerformanceSample = true;
+            }
+            else
+            {
+                _networkCounterMisses++;
+            }
+        }
+
+        if (cpu == collected.CpuPercent &&
+            receive == collected.ReceiveBytesPerSecond &&
+            transmit == collected.TransmitBytesPerSecond)
+        {
+            return collected;
+        }
+
+        return new RemoteResourceSnapshot(
+            cpu,
+            collected.MemoryUsedBytes,
+            collected.MemoryTotalBytes,
+            collected.DiskPercent,
+            collected.DiskUsedBytes,
+            collected.DiskTotalBytes,
+            receive,
+            transmit,
+            collected.Uptime,
+            collected.Disks);
     }
 
     private bool IsActive()
@@ -380,13 +617,23 @@ public sealed class RdpResourceMonitor : IRemoteResourceMonitor
 
     private void PublishSnapshot(RemoteResourceSnapshot snapshot)
     {
-        lock (_sync) _lastSnapshot = snapshot;
+        lock (_sync)
+        {
+            _lastSnapshot = snapshot;
+            _collectorFailures = 0;
+        }
         SnapshotUpdated?.Invoke(snapshot);
     }
 
     private void ClearSnapshot()
     {
-        lock (_sync) _lastSnapshot = null;
+        lock (_sync)
+        {
+            _lastSnapshot = null;
+            _collectorFailures = 0;
+            _cpuCounterMisses = 0;
+            _networkCounterMisses = 0;
+        }
     }
 
     private void PublishStatus(RemoteResourceMonitorStatus status)

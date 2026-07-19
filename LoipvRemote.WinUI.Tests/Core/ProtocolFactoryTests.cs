@@ -51,6 +51,8 @@ public sealed class ProtocolFactoryTests
         {
             Assert.That(process.StartOptions?.Arguments, Does.Contain("-ssh"));
             Assert.That(process.StartOptions?.Arguments, Does.Contain("-pwfile \\\\.\\PIPE\\pipe-name"));
+            Assert.That(process.StartOptions?.Arguments, Does.Contain("-sessionlog"));
+            Assert.That(process.StartOptions?.Arguments, Does.Contain("-logoverwrite"));
             Assert.That(process.StartOptions?.Arguments, Does.Not.Contain("secret-value"));
         });
     }
@@ -124,6 +126,80 @@ public sealed class ProtocolFactoryTests
         Assert.That(session.AttachTo((IntPtr)99, TimeSpan.Zero), Is.True);
 
         windows.Received().SetParent((IntPtr)42, (IntPtr)99);
+    }
+
+    [Test]
+    public void PuttySessionExposesTheWorkingDirectoryReportedByTheRemoteShellTitle()
+    {
+        var process = new RecordingPuttyProcessHost(windowTitle: "ubuntu@app-01: /srv/apps");
+        using var session = new PuttyProtocolSession(
+            process,
+            Substitute.For<IEmbeddedWindowOperations>(),
+            new PuttyConnectionOptions(
+                "putty.exe",
+                new PuttyLaunchOptions { Hostname = "server.example", Port = 22 }),
+            new NoopPuttyEndpointProbe());
+
+        Assert.That(((IRemoteWorkingDirectorySession)session).CurrentWorkingDirectory, Is.EqualTo("/srv/apps"));
+    }
+
+    [Test]
+    public void PuttySessionExpandsRootHomeWorkingDirectoryFromTheShellTitle()
+    {
+        var process = new RecordingPuttyProcessHost(windowTitle: "root@app-01: ~");
+        using var session = new PuttyProtocolSession(
+            process,
+            Substitute.For<IEmbeddedWindowOperations>(),
+            new PuttyConnectionOptions(
+                "putty.exe",
+                new PuttyLaunchOptions { Hostname = "server.example", Port = 22, Username = "root" }),
+            new NoopPuttyEndpointProbe());
+
+        Assert.That(((IRemoteWorkingDirectorySession)session).CurrentWorkingDirectory, Is.EqualTo("/root"));
+    }
+
+    [Test]
+    public void PuttySessionFallsBackToTheLatestShellPromptWhenTheServerDoesNotSetATitle()
+    {
+        string sessionLogPath = Path.Combine(
+            TestContext.CurrentContext.WorkDirectory,
+            $"ssh-session-{Guid.NewGuid():N}.log");
+        File.WriteAllText(sessionLogPath, "root@ubuntu18:~# cd /home\r\nroot@ubuntu18:/home# ");
+        var process = new RecordingPuttyProcessHost(windowTitle: "157.66.80.18 - PuTTY");
+        using var session = new PuttyProtocolSession(
+            process,
+            Substitute.For<IEmbeddedWindowOperations>(),
+            new PuttyConnectionOptions(
+                "putty.exe",
+                new PuttyLaunchOptions
+                {
+                    Hostname = "157.66.80.18",
+                    Port = 22,
+                    Username = "root",
+                    SessionLogPath = sessionLogPath
+                }),
+            new NoopPuttyEndpointProbe());
+
+        Assert.That(((IRemoteWorkingDirectorySession)session).CurrentWorkingDirectory, Is.EqualTo("/home"));
+    }
+
+    [Test]
+    public async Task PuttySessionReadsTheRemoteTitleFromTheReparentedWindowHandle()
+    {
+        var process = new RecordingPuttyProcessHost(windowHandle: (IntPtr)42, windowTitle: string.Empty);
+        IEmbeddedWindowOperations windows = Substitute.For<IEmbeddedWindowOperations>();
+        windows.GetWindowTitle((IntPtr)42).Returns("ubuntu@app-01: /home/ubuntu");
+        using var session = new PuttyProtocolSession(
+            process,
+            windows,
+            new PuttyConnectionOptions(
+                "putty.exe",
+                new PuttyLaunchOptions { Hostname = "server.example", Port = 22 }),
+            new NoopPuttyEndpointProbe());
+
+        Assert.That(await session.InitializeAsync(), Is.True);
+        Assert.That(await session.ConnectAsync(), Is.True);
+        Assert.That(((IRemoteWorkingDirectorySession)session).CurrentWorkingDirectory, Is.EqualTo("/home/ubuntu"));
     }
 
     [Test]
@@ -522,12 +598,15 @@ public sealed class ProtocolFactoryTests
     }
 
 
-    private sealed class RecordingPuttyProcessHost(nint windowHandle = default, int processId = 1) : IPuttyProcessHost
+    private sealed class RecordingPuttyProcessHost(
+        nint windowHandle = default,
+        int processId = 1,
+        string windowTitle = "PuTTY") : IPuttyProcessHost
     {
         public bool IsRunning { get; private set; }
         public int ProcessId => processId;
         public nint MainWindowHandle => windowHandle;
-        public string MainWindowTitle => "PuTTY";
+        public string MainWindowTitle => windowTitle;
         public PuttyProcessStartOptions? StartOptions { get; private set; }
 
         public bool Start(PuttyProcessStartOptions options, EventHandler exited)

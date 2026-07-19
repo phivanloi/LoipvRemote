@@ -23,6 +23,18 @@ public sealed class WindowsEmbeddedWindowOperations : IEmbeddedWindowOperations
         return processId;
     }
 
+    public string GetWindowTitle(IntPtr windowHandle)
+    {
+        int titleLength = NativeMethods.GetWindowTextLength(windowHandle);
+        if (titleLength <= 0)
+            return string.Empty;
+
+        StringBuilder title = new(titleLength + 1);
+        return NativeMethods.GetWindowText(windowHandle, title, title.Capacity) > 0
+            ? title.ToString()
+            : string.Empty;
+    }
+
     public bool HasClassName(IntPtr windowHandle, string className)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(className);

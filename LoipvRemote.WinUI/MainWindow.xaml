@@ -175,12 +175,64 @@
                         Padding="8,5">
                     <ScrollViewer HorizontalScrollMode="Enabled" HorizontalScrollBarVisibility="Auto" VerticalScrollMode="Disabled" VerticalScrollBarVisibility="Hidden">
                         <StackPanel Orientation="Horizontal" Spacing="6">
-                            <Border BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="3" Padding="8,3" MinWidth="76"><StackPanel Orientation="Horizontal" Spacing="5"><TextBlock Text="CPU" /><TextBlock x:Name="ResourceMonitorCpu" FontWeight="SemiBold" Text="--" /></StackPanel></Border>
-                            <Border BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="3" Padding="8,3" MinWidth="132"><StackPanel Orientation="Horizontal" Spacing="5"><TextBlock Text="RAM" /><TextBlock x:Name="ResourceMonitorMemory" FontWeight="SemiBold" Text="--" /></StackPanel></Border>
-                            <Border BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="3" Padding="8,3" MinWidth="174"><StackPanel Orientation="Horizontal" Spacing="5"><TextBlock Text="Disk" /><TextBlock x:Name="ResourceMonitorDisk" FontWeight="SemiBold" Text="--" /></StackPanel></Border>
-                            <Border BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="3" Padding="8,3" MinWidth="100"><StackPanel Orientation="Horizontal" Spacing="5"><TextBlock Text="In" /><TextBlock x:Name="ResourceMonitorReceive" FontWeight="SemiBold" Text="--" /></StackPanel></Border>
-                            <Border BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="3" Padding="8,3" MinWidth="100"><StackPanel Orientation="Horizontal" Spacing="5"><TextBlock Text="Out" /><TextBlock x:Name="ResourceMonitorTransmit" FontWeight="SemiBold" Text="--" /></StackPanel></Border>
-                            <Border BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="3" Padding="8,3" MinWidth="106"><StackPanel Orientation="Horizontal" Spacing="5"><TextBlock Text="Uptime" /><TextBlock x:Name="ResourceMonitorUptime" FontWeight="SemiBold" Text="--" /></StackPanel></Border>
+                            <Border x:Name="ResourceMonitorCpuChip" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="3" Padding="8,3"><StackPanel Orientation="Horizontal" Spacing="5"><TextBlock x:Name="ResourceMonitorCpuLabel" Text="CPU" /><TextBlock x:Name="ResourceMonitorCpu" FontWeight="SemiBold" Text="--" /></StackPanel></Border>
+                            <Border x:Name="ResourceMonitorMemoryChip"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="3"
+                                    Padding="8,3"
+                                    PointerEntered="ResourceMonitorDetailChip_PointerEntered"
+                                    PointerExited="ResourceMonitorDetailChip_PointerExited">
+                                <ToolTipService.ToolTip>
+                                    <ToolTip x:Name="ResourceMonitorMemoryToolTip"
+                                             Placement="Top"
+                                             Closed="ResourceMonitorDetailToolTip_Closed">
+                                        <TextBlock x:Name="ResourceMonitorMemoryDetails" TextWrapping="Wrap" MaxWidth="420" />
+                                    </ToolTip>
+                                </ToolTipService.ToolTip>
+                                <StackPanel Orientation="Horizontal" Spacing="5"><TextBlock x:Name="ResourceMonitorMemoryLabel" Text="RAM" /><TextBlock x:Name="ResourceMonitorMemory" FontWeight="SemiBold" Text="--" /></StackPanel>
+                            </Border>
+                            <Border x:Name="ResourceMonitorDiskChip"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="3"
+                                    Padding="8,3"
+                                    PointerEntered="ResourceMonitorDetailChip_PointerEntered"
+                                    PointerExited="ResourceMonitorDetailChip_PointerExited">
+                                <ToolTipService.ToolTip>
+                                    <ToolTip x:Name="ResourceMonitorDiskToolTip"
+                                             Placement="Top"
+                                             Closed="ResourceMonitorDetailToolTip_Closed">
+                                        <TextBlock x:Name="ResourceMonitorDiskDetails" TextWrapping="Wrap" MaxWidth="420" />
+                                    </ToolTip>
+                                </ToolTipService.ToolTip>
+                                <StackPanel Orientation="Horizontal" Spacing="5"><TextBlock x:Name="ResourceMonitorDiskLabel" Text="Disk" /><TextBlock x:Name="ResourceMonitorDisk" FontWeight="SemiBold" Text="--" /></StackPanel>
+                            </Border>
+                            <Border x:Name="ResourceMonitorReceiveChip" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="3" Padding="8,3"><StackPanel Orientation="Horizontal" Spacing="5"><TextBlock Text="In" /><TextBlock x:Name="ResourceMonitorReceive" FontWeight="SemiBold" Text="--" /></StackPanel></Border>
+                            <Border x:Name="ResourceMonitorTransmitChip" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="3" Padding="8,3"><StackPanel Orientation="Horizontal" Spacing="5"><TextBlock Text="Out" /><TextBlock x:Name="ResourceMonitorTransmit" FontWeight="SemiBold" Text="--" /></StackPanel></Border>
+                            <Border x:Name="ResourceMonitorUptimeChip" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="3" Padding="8,3"><StackPanel Orientation="Horizontal" Spacing="5"><TextBlock Text="Uptime" /><TextBlock x:Name="ResourceMonitorUptime" FontWeight="SemiBold" Text="--" /></StackPanel></Border>
+                            <Button x:Name="SshWorkingDirectoryButton"
+                                    Visibility="Collapsed"
+                                    Click="SshWorkingDirectoryButton_Click"
+                                    HorizontalAlignment="Left"
+                                    HorizontalContentAlignment="Left"
+                                    Background="Transparent"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="3"
+                                    Padding="8,3">
+                                <StackPanel Orientation="Horizontal"
+                                            HorizontalAlignment="Left"
+                                            Spacing="4">
+                                    <FontIcon Glyph="&#xE8F7;"
+                                              FontSize="14"
+                                              AutomationProperties.Name="File transfer" />
+                                    <TextBlock Text=":" />
+                                    <TextBlock x:Name="SshWorkingDirectoryText"
+                                               FontWeight="SemiBold"
+                                               Text="Unavailable" />
+                                </StackPanel>
+                            </Button>
                         </StackPanel>
                     </ScrollViewer>
                 </Border>

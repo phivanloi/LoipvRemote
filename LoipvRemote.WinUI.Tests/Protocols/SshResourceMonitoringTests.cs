@@ -51,6 +51,64 @@ public sealed class SshResourceMonitoringTests
     }
 
     [Test]
+    public void LinuxResourceSampleParserReturnsEveryReportedFileSystem()
+    {
+        const string output = "cpu_total=500\n" +
+                              "cpu_idle=150\n" +
+                              "mem_total=8589934592\n" +
+                              "mem_available=4294967296\n" +
+                              "disk_total=429496729600\n" +
+                              "disk_used=193273528320\n" +
+                              "disk=/\t107374182400\t64424509440\n" +
+                              "disk=/data\t322122547200\t128849018880\n" +
+                              "net_rx=12345\n" +
+                              "net_tx=6789\n" +
+                              "uptime_seconds=86461\n";
+
+        LinuxResourceSample sample = LinuxResourceSampleParser.Parse(output);
+        RemoteResourceSnapshot snapshot = RemoteResourceSnapshotCalculator.Calculate(sample, null, TimeSpan.Zero);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(sample.Disks, Has.Count.EqualTo(2));
+            Assert.That(snapshot.Disks, Has.Count.EqualTo(2));
+            Assert.That(snapshot.Disks[0].Name, Is.EqualTo("/"));
+            Assert.That(snapshot.Disks[0].Percent, Is.EqualTo(60));
+            Assert.That(snapshot.Disks[1].Name, Is.EqualTo("/data"));
+            Assert.That(snapshot.DiskPercent, Is.EqualTo(45));
+        });
+    }
+
+    [Test]
+    public void LinuxResourceSampleParserParsesPortableDfTableAndAggregatesDisks()
+    {
+        const string output = "cpu_total=500\n" +
+                              "cpu_idle=150\n" +
+                              "mem_total=8589934592\n" +
+                              "mem_available=4294967296\n" +
+                              "disk_total=100\n" +
+                              "disk_used=60\n" +
+                              "disk_table_begin\n" +
+                              "Filesystem 1024-blocks Used Available Capacity Mounted on\n" +
+                              "/dev/sda1 104857600 62914560 41943040 60% /\n" +
+                              "/dev/sdb1 314572800 125829120 188743680 40% /data\n" +
+                              "disk_table_end\n" +
+                              "net_rx=12345\n" +
+                              "net_tx=6789\n" +
+                              "uptime_seconds=86461\n";
+
+        LinuxResourceSample sample = LinuxResourceSampleParser.Parse(output);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(sample.Disks, Has.Count.EqualTo(2));
+            Assert.That(sample.DiskTotalBytes, Is.EqualTo(400L * 1024 * 1024 * 1024));
+            Assert.That(sample.DiskUsedBytes, Is.EqualTo(180L * 1024 * 1024 * 1024));
+            Assert.That(sample.Disks[1].Name, Is.EqualTo("/data"));
+        });
+    }
+
+    [Test]
     public async Task MonitorPublishesValuesAfterTheSecondActiveSample()
     {
         var collector = new SequenceCollector(

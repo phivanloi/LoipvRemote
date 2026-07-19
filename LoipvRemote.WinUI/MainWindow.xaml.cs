@@ -19,6 +19,7 @@ using LoipvRemote.Application.Configuration;
 using LoipvRemote.Application.Credentials;
 using LoipvRemote.Application.Sessions;
 using LoipvRemote.Protocols.Abstractions;
+using LoipvRemote.Protocols.Putty;
 using WinRT.Interop;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage.Pickers;
@@ -27,6 +28,12 @@ namespace LoipvRemote.WinUI;
 
 public sealed partial class MainWindow : Window, IDisposable
 {
+    private static readonly SolidColorBrush ResourceWarningBackground =
+        new(Microsoft.UI.ColorHelper.FromArgb(0x26, 0xD1, 0x34, 0x38));
+    private static readonly SolidColorBrush ResourceWarningForeground =
+        new(Microsoft.UI.ColorHelper.FromArgb(0xFF, 0xB4, 0x23, 0x18));
+    private static readonly SolidColorBrush TransparentBrush =
+        new(Microsoft.UI.ColorHelper.FromArgb(0, 0, 0, 0));
     private readonly ConnectionCatalog _connectionCatalog;
     private readonly ConnectionTreeViewStateRepository _treeViewStateRepository;
     private readonly ConnectionOptionsEditor _connectionOptionsEditor;
@@ -34,6 +41,8 @@ public sealed partial class MainWindow : Window, IDisposable
     private readonly IConnectionSecretResolver _connectionSecretResolver;
     private readonly PortableConnectionCredentialImporter _portableCredentialImporter;
     private readonly RemoteSessionWorkspace _sessionWorkspace;
+    private readonly SshFileTransferSessionFactory _sshFileTransferSessionFactory;
+    private readonly DispatcherTimer _sshWorkingDirectoryTimer = new() { Interval = TimeSpan.FromSeconds(1) };
     private WindowMinimumSizeController? _minimumSizeController;
     private WindowSessionHotKeyController? _sessionHotKeyController;
     private WindowSessionPointerController? _sessionPointerController;
@@ -41,6 +50,7 @@ public sealed partial class MainWindow : Window, IDisposable
     private readonly Dictionary<TreeViewNode, ConnectionTreeItem> _connectionNodes = [];
     private readonly Dictionary<TabViewItem, RemoteSessionTab> _sessionTabs = [];
     private readonly HashSet<RemoteSessionTab> _subscribedResourceMonitorTabs = [];
+    private readonly HashSet<FrameworkElement> _hoveredResourceMonitorDetailChips = [];
     private readonly HashSet<Guid> _connectedConnectionIds = [];
     private readonly HashSet<Guid> _expandedFolderIds = [];
     private readonly SessionTabCloseGate _sessionTabCloseGate = new();
@@ -60,6 +70,7 @@ public sealed partial class MainWindow : Window, IDisposable
     private int _pendingSessionTabNavigation;
     private int _sessionTabNavigationQueued;
     private bool _disposed;
+    private bool _sftpDialogOpen;
 
     public MainWindow(
         ConnectionCatalog connectionCatalog,
@@ -77,7 +88,11 @@ public sealed partial class MainWindow : Window, IDisposable
         _connectionSecretResolver = connectionSecretResolver ?? throw new ArgumentNullException(nameof(connectionSecretResolver));
         _portableCredentialImporter = portableCredentialImporter ?? throw new ArgumentNullException(nameof(portableCredentialImporter));
         _sessionWorkspace = sessionWorkspace ?? throw new ArgumentNullException(nameof(sessionWorkspace));
+        _sshFileTransferSessionFactory = new(definition => _connectionSecretResolver.Resolve(definition, "Password"));
         InitializeComponent();
+
+        _sshWorkingDirectoryTimer.Tick += SshWorkingDirectoryTimerOnTick;
+        _sshWorkingDirectoryTimer.Start();
 
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBarDragRegion);
@@ -919,6 +934,8 @@ public sealed partial class MainWindow : Window, IDisposable
             return;
 
         _disposed = true;
+        _sshWorkingDirectoryTimer.Stop();
+        _sshWorkingDirectoryTimer.Tick -= SshWorkingDirectoryTimerOnTick;
         _embeddedSessionSurface?.Dispose();
         _embeddedSessionSurface = null;
         AppWindow.Changed -= AppWindowOnChanged;
@@ -1379,6 +1396,7 @@ public sealed partial class MainWindow : Window, IDisposable
         menu.Opening += XamlPopup_Opening;
         menu.Closed += XamlPopup_Closed;
         menu.Items.Add(CreateContextMenuItem("Edit connection", Symbol.Edit, EditSelectedNodeButton_Click));
+        menu.Items.Add(CreateContextMenuItem("Copy info", Symbol.Copy, CopySelectedConnectionInfoButton_Click));
         menu.Items.Add(CreateContextMenuItem("Duplicate", Symbol.Copy, DuplicateSelectedNodeButton_Click));
         menu.Items.Add(CreateContextMenuItem("Move", Symbol.MoveToFolder, MoveSelectedNodeButton_Click));
         menu.Items.Add(new MenuFlyoutSeparator());
@@ -1406,6 +1424,40 @@ public sealed partial class MainWindow : Window, IDisposable
         };
         item.Click += click;
         return item;
+    }
+
+    private async void CopySelectedConnectionInfoButton_Click(object sender, RoutedEventArgs args)
+    {
+        if (_selectedConnection is null)
+        {
+            ConnectionStatus.Text = "Select a connection before copying its info.";
+            return;
+        }
+
+        ConnectionDefinition? effectiveDefinition =
+            _connectionCatalog.FindResolvedConnection(_selectedConnection.Id);
+        if (effectiveDefinition is null)
+        {
+            ConnectionStatus.Text = "The selected connection no longer exists.";
+            return;
+        }
+
+        try
+        {
+            IReadOnlyList<LocalCredentialDefinition> credentials = await _localCredentialStore.ListAsync();
+            string clipboardText = ConnectionClipboardInfoFormatter.Format(
+                effectiveDefinition,
+                credentials,
+                _connectionSecretResolver.Resolve(effectiveDefinition, "Password"));
+            var content = new DataPackage { RequestedOperation = DataPackageOperation.Copy };
+            content.SetText(clipboardText);
+            Clipboard.SetContent(content);
+            ConnectionStatus.Text = "Connection info copied to clipboard.";
+        }
+        catch (Exception exception)
+        {
+            ConnectionStatus.Text = $"Connection info was not copied: {exception.Message}";
+        }
     }
 
     private static T? FindAncestor<T>(DependencyObject source) where T : DependencyObject
@@ -2047,19 +2099,141 @@ public sealed partial class MainWindow : Window, IDisposable
             tab.State != RemoteSessionTabState.Connected ||
             monitor is null)
         {
+            CloseResourceMonitorDetailToolTips();
             ResourceMonitorBar.Visibility = Visibility.Collapsed;
             return;
         }
 
         ResourceMonitorBar.Visibility = Visibility.Visible;
-        ToolTipService.SetToolTip(ResourceMonitorBar, monitor.LastStatus.Message);
         RemoteResourceSnapshot? snapshot = monitor.LastSnapshot;
         ResourceMonitorCpu.Text = snapshot?.CpuPercent is double cpu ? $"{cpu:0} %" : "--";
-        ResourceMonitorMemory.Text = snapshot is null ? "--" : $"{FormatBytes(snapshot.MemoryUsedBytes)} / {FormatBytes(snapshot.MemoryTotalBytes)}";
-        ResourceMonitorDisk.Text = snapshot is null ? "--" : $"{FormatBytes(snapshot.DiskUsedBytes)} / {FormatBytes(snapshot.DiskTotalBytes)} ({snapshot.DiskPercent:0} %)";
+        ResourceMonitorMemory.Text = ResourceMonitorPresentation.FormatMemoryPercent(snapshot);
+        ResourceMonitorDisk.Text = ResourceMonitorPresentation.FormatDiskPercent(snapshot);
         ResourceMonitorReceive.Text = snapshot?.ReceiveBytesPerSecond is long receive ? $"{FormatBytes(receive)}/s" : "--";
         ResourceMonitorTransmit.Text = snapshot?.TransmitBytesPerSecond is long transmit ? $"{FormatBytes(transmit)}/s" : "--";
         ResourceMonitorUptime.Text = snapshot is null ? "--" : FormatUptime(snapshot.Uptime);
+
+        string memoryDetails = snapshot is null
+            ? monitor.LastStatus.Message
+            : ResourceMonitorPresentation.FormatMemoryDetails(snapshot);
+        string diskDetails = snapshot is null
+            ? monitor.LastStatus.Message
+            : ResourceMonitorPresentation.FormatDiskDetails(snapshot);
+        ResourceMonitorMemoryDetails.Text = memoryDetails;
+        ResourceMonitorDiskDetails.Text = diskDetails;
+
+        ApplyResourceWarning(ResourceMonitorCpuChip, ResourceMonitorCpuLabel, ResourceMonitorCpu, snapshot?.CpuPercent);
+        ApplyResourceWarning(ResourceMonitorMemoryChip, ResourceMonitorMemoryLabel, ResourceMonitorMemory, ResourceMonitorPresentation.GetMemoryPercent(snapshot));
+        ApplyResourceWarning(ResourceMonitorDiskChip, ResourceMonitorDiskLabel, ResourceMonitorDisk, snapshot?.DiskPercent);
+        UpdateSshWorkingDirectory(tab);
+    }
+
+    private void ResourceMonitorDetailChip_PointerEntered(object sender, PointerRoutedEventArgs args)
+    {
+        if (sender is not FrameworkElement chip || GetResourceMonitorDetailToolTip(chip) is not ToolTip toolTip)
+            return;
+
+        _hoveredResourceMonitorDetailChips.Add(chip);
+        toolTip.IsOpen = true;
+    }
+
+    private void ResourceMonitorDetailChip_PointerExited(object sender, PointerRoutedEventArgs args)
+    {
+        if (sender is not FrameworkElement chip || GetResourceMonitorDetailToolTip(chip) is not ToolTip toolTip)
+            return;
+
+        _hoveredResourceMonitorDetailChips.Remove(chip);
+        toolTip.IsOpen = false;
+    }
+
+    private void ResourceMonitorDetailToolTip_Closed(object sender, object args)
+    {
+        if (sender is not ToolTip toolTip || GetResourceMonitorDetailChip(toolTip) is not FrameworkElement chip ||
+            !_hoveredResourceMonitorDetailChips.Contains(chip))
+        {
+            return;
+        }
+
+        _ = DispatcherQueue.TryEnqueue(() =>
+        {
+            if (_hoveredResourceMonitorDetailChips.Contains(chip))
+                toolTip.IsOpen = true;
+        });
+    }
+
+    private ToolTip? GetResourceMonitorDetailToolTip(FrameworkElement chip)
+    {
+        if (ReferenceEquals(chip, ResourceMonitorMemoryChip))
+            return ResourceMonitorMemoryToolTip;
+        if (ReferenceEquals(chip, ResourceMonitorDiskChip))
+            return ResourceMonitorDiskToolTip;
+        return null;
+    }
+
+    private Border? GetResourceMonitorDetailChip(ToolTip toolTip)
+    {
+        if (ReferenceEquals(toolTip, ResourceMonitorMemoryToolTip))
+            return ResourceMonitorMemoryChip;
+        if (ReferenceEquals(toolTip, ResourceMonitorDiskToolTip))
+            return ResourceMonitorDiskChip;
+        return null;
+    }
+
+    private void CloseResourceMonitorDetailToolTips()
+    {
+        _hoveredResourceMonitorDetailChips.Clear();
+        ResourceMonitorMemoryToolTip.IsOpen = false;
+        ResourceMonitorDiskToolTip.IsOpen = false;
+    }
+
+    private void SshWorkingDirectoryTimerOnTick(object? sender, object args)
+    {
+        if (Sessions.SelectedItem is TabViewItem selectedTab &&
+            _sessionTabs.TryGetValue(selectedTab, out RemoteSessionTab? sessionTab))
+        {
+            UpdateSshWorkingDirectory(sessionTab);
+        }
+    }
+
+    private void UpdateSshWorkingDirectory(RemoteSessionTab tab)
+    {
+        bool isConnectedSsh = tab.Connection.Protocol == ProtocolKind.Ssh2 &&
+                              tab.State == RemoteSessionTabState.Connected;
+        SshWorkingDirectoryButton.Visibility = isConnectedSsh ? Visibility.Visible : Visibility.Collapsed;
+        if (!isConnectedSsh)
+            return;
+
+        string? workingDirectory = (tab.Session as IRemoteWorkingDirectorySession)?.CurrentWorkingDirectory;
+        SshWorkingDirectoryText.Text = workingDirectory ?? "Unavailable";
+        ToolTipService.SetToolTip(
+            SshWorkingDirectoryButton,
+            workingDirectory is null
+                ? "Open SFTP in the SSH home directory. The shell has not reported its current directory."
+                : $"Open SFTP at {workingDirectory}");
+    }
+
+    private async void SshWorkingDirectoryButton_Click(object sender, RoutedEventArgs args)
+    {
+        if (_sftpDialogOpen ||
+            Sessions.SelectedItem is not TabViewItem selectedTab ||
+            !_sessionTabs.TryGetValue(selectedTab, out RemoteSessionTab? sessionTab) ||
+            sessionTab.Connection.Protocol != ProtocolKind.Ssh2 ||
+            sessionTab.State != RemoteSessionTabState.Connected)
+        {
+            return;
+        }
+
+        _sftpDialogOpen = true;
+        try
+        {
+            string? workingDirectory = (sessionTab.Session as IRemoteWorkingDirectorySession)?.CurrentWorkingDirectory;
+            var browser = new SftpBrowserDialog(this, _sshFileTransferSessionFactory);
+            await browser.ShowAsync(sessionTab.Connection, workingDirectory, ShowDialogAsync);
+        }
+        finally
+        {
+            _sftpDialogOpen = false;
+        }
     }
 
     private static string FormatBytes(long bytes)
@@ -2074,6 +2248,36 @@ public sealed partial class MainWindow : Window, IDisposable
         }
 
         return unit == 0 ? $"{value:0} {units[unit]}" : $"{value:0.0} {units[unit]}";
+    }
+
+    private static void ApplyResourceWarning(
+        Border chip,
+        TextBlock label,
+        TextBlock value,
+        double? percent)
+    {
+        bool warning = ResourceMonitorPresentation.IsWarning(percent);
+        chip.Background = warning ? ResourceWarningBackground : null;
+        if (warning)
+        {
+            label.Foreground = ResourceWarningForeground;
+            value.Foreground = ResourceWarningForeground;
+        }
+        else
+        {
+            label.ClearValue(TextBlock.ForegroundProperty);
+            value.ClearValue(TextBlock.ForegroundProperty);
+        }
+    }
+
+    private static void ApplyResourceWarning(Control chip, double? percent)
+    {
+        bool warning = ResourceMonitorPresentation.IsWarning(percent);
+        chip.Background = warning ? ResourceWarningBackground : TransparentBrush;
+        if (warning)
+            chip.Foreground = ResourceWarningForeground;
+        else
+            chip.ClearValue(Control.ForegroundProperty);
     }
 
     private static string FormatUptime(TimeSpan uptime) => uptime.TotalDays >= 1

@@ -140,9 +140,12 @@ public sealed class SshResourceMonitor : IRemoteResourceMonitor
             {
                 break;
             }
-            catch
+            catch (Exception exception)
             {
-                PublishStatus(new(RemoteResourceMonitorState.Unavailable, "Unable to retrieve SSH metrics"));
+                string message = exception is FormatException or InvalidOperationException
+                    ? $"Unable to retrieve SSH metrics: {exception.Message}"
+                    : "Unable to retrieve SSH metrics";
+                PublishStatus(new(RemoteResourceMonitorState.Unavailable, message));
                 await DelayAsync(_pollInterval, cancellationToken).ConfigureAwait(false);
             }
         }
@@ -244,7 +247,17 @@ internal sealed class SshNetLinuxResourceCollector : ILinuxResourceCollector
         command.CommandTimeout = CommandTimeout;
         string output = await Task.Run(command.Execute, cancellationToken).ConfigureAwait(false);
         if (command.ExitStatus != 0)
-            throw new InvalidOperationException("The Linux resource probe failed.");
+        {
+            string error = string.Concat(command.Error
+                    .Where(character => !char.IsControl(character) || character == ' '))
+                .Trim();
+            if (error.Length > 160)
+                error = error[..160];
+            throw new InvalidOperationException(
+                error.Length == 0
+                    ? "The Linux resource probe failed."
+                    : $"The Linux resource probe failed: {error}");
+        }
 
         return LinuxResourceSampleParser.Parse(output);
     }
@@ -336,6 +349,7 @@ disk=""$(df -Pk / | awk ""NR==2 {print \$2*1024, \$3*1024}"" )""
 set -- $disk
 disk_total=$1
 disk_used=$2
+disk_table=""$(df -Pk -x tmpfs -x devtmpfs -x squashfs -x overlay 2>/dev/null || df -Pk)""
 network=""$(awk ""NR>2 {iface=\$1; sub(/:$/, x, iface); if(iface !~ /^lo$/) {rx += \$2; tx += \$10}} END {print rx+0, tx+0}"" /proc/net/dev)""
 set -- $network
 net_rx=$1
@@ -347,6 +361,7 @@ printf ""mem_total=%s\n"" ""$mem_total""
 printf ""mem_available=%s\n"" ""$mem_available""
 printf ""disk_total=%s\n"" ""$disk_total""
 printf ""disk_used=%s\n"" ""$disk_used""
+printf ""disk_table_begin\n%s\ndisk_table_end\n"" ""$disk_table""
 printf ""net_rx=%s\n"" ""$net_rx""
 printf ""net_tx=%s\n"" ""$net_tx""
 printf ""uptime_seconds=%s\n"" ""$uptime_seconds""

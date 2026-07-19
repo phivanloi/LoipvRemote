@@ -6,6 +6,7 @@ public interface IEmbeddedWindowOperations
     bool IsForegroundWindow(IntPtr windowHandle);
     IntPtr FindChildWindow(IntPtr parentHandle, IntPtr afterHandle = default);
     uint GetWindowProcessId(IntPtr windowHandle);
+    string GetWindowTitle(IntPtr windowHandle);
     bool HasClassName(IntPtr windowHandle, string className);
     void Hide(IntPtr windowHandle);
     void Show(IntPtr windowHandle);

@@ -11,6 +11,7 @@ public sealed record PuttyLaunchOptions
     public string PrivateKeyPath { get; init; } = string.Empty;
     public string OpeningCommandPath { get; init; } = string.Empty;
     public string AuthenticationPluginCommand { get; init; } = string.Empty;
+    public string SessionLogPath { get; init; } = string.Empty;
     public bool SuppressCredentials { get; init; }
     public int Port { get; init; }
     public string Hostname { get; init; } = string.Empty;

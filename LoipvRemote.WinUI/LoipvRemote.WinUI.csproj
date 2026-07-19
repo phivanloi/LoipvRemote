@@ -6,15 +6,16 @@
     <RootNamespace>LoipvRemote.WinUI</RootNamespace>
     <AssemblyName>LoipvRemote</AssemblyName>
     <ApplicationIcon>..\LoipvRemoteInstaller\Installer\Resources\AppIcon.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
     <UseWinUI>true</UseWinUI>
     <!-- The installer ships the Windows App SDK runtime with LoipvRemote. -->
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <Platforms>x64;arm64</Platforms>
     <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
-    <Version>3.0.2.7</Version>
-    <AssemblyVersion>3.0.2.7</AssemblyVersion>
-    <FileVersion>3.0.2.7</FileVersion>
-    <InformationalVersion>3.0.2.7</InformationalVersion>
+    <Version>3.0.2.8</Version>
+    <AssemblyVersion>3.0.2.8</AssemblyVersion>
+    <FileVersion>3.0.2.8</FileVersion>
+    <InformationalVersion>3.0.2.8</InformationalVersion>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
     <PublishReadyToRun>false</PublishReadyToRun>

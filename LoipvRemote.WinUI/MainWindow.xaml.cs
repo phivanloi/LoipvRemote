@@ -36,6 +36,8 @@ public sealed partial class MainWindow : Window, IDisposable
     private readonly PortableConnectionCredentialImporter _portableCredentialImporter;
     private readonly RemoteSessionWorkspace _sessionWorkspace;
     private WindowMinimumSizeController? _minimumSizeController;
+    private WindowSessionHotKeyController? _sessionHotKeyController;
+    private WindowSessionPointerController? _sessionPointerController;
     private Win32EmbeddedSessionSurface? _embeddedSessionSurface;
     private readonly Dictionary<TreeViewNode, ConnectionTreeItem> _connectionNodes = [];
     private readonly Dictionary<TabViewItem, RemoteSessionTab> _sessionTabs = [];
@@ -54,6 +56,10 @@ public sealed partial class MainWindow : Window, IDisposable
     private int _xamlPopupDepth;
     private bool _titleBarRegionUpdateQueued;
     private bool _windowWasDeactivated;
+    private bool _windowMinimized;
+    private CancellationTokenSource? _hotKeyDeactivationCancellation;
+    private int _pendingSessionTabNavigation;
+    private int _sessionTabNavigationQueued;
     private bool _disposed;
 
     public MainWindow(
@@ -81,6 +87,8 @@ public sealed partial class MainWindow : Window, IDisposable
             presenter.Maximize();
         AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "LoipvRemote.ico"));
         TryInstallMinimumSizeController();
+        TryInstallSessionHotKeyController();
+        TryInstallSessionPointerController();
         AppWindow.Closing += AppWindowOnClosing;
         AppWindow.Changed += AppWindowOnChanged;
         Activated += MainWindowOnActivated;
@@ -111,7 +119,7 @@ public sealed partial class MainWindow : Window, IDisposable
 
     private void QueueTitleBarInteractiveRegionUpdate()
     {
-        if (_titleBarRegionUpdateQueued)
+        if (_windowMinimized || _titleBarRegionUpdateQueued)
             return;
 
         _titleBarRegionUpdateQueued = true;
@@ -124,7 +132,8 @@ public sealed partial class MainWindow : Window, IDisposable
 
     private void UpdateTitleBarLayout()
     {
-        if (!ExtendsContentIntoTitleBar ||
+        if (_windowMinimized ||
+            !ExtendsContentIntoTitleBar ||
             AppTitleBar.XamlRoot is null ||
             AppTitleBar.XamlRoot.RasterizationScale <= 0)
         {
@@ -244,6 +253,34 @@ public sealed partial class MainWindow : Window, IDisposable
         }
     }
 
+    private static TextBlock CreateDialogValidationText() => new()
+    {
+        TextWrapping = TextWrapping.Wrap,
+        Visibility = Visibility.Collapsed
+    };
+
+    private void KeepDialogOpenWhenInvalid(
+        ContentDialog dialog,
+        TextBlock validationText,
+        Func<string?> getError,
+        Func<Control> getInvalidField)
+    {
+        dialog.Closing += (dialogSender, eventArgs) =>
+        {
+            if (eventArgs.Result != ContentDialogResult.Primary)
+                return;
+
+            string? error = getError();
+            if (error is null)
+                return;
+
+            eventArgs.Cancel = true;
+            validationText.Text = error;
+            validationText.Visibility = Visibility.Visible;
+            _ = DispatcherQueue.TryEnqueue(() => getInvalidField().Focus(FocusState.Programmatic));
+        };
+    }
+
     private void XamlPopup_Opening(object? sender, object args) => BeginXamlPopup();
 
     private void XamlPopup_Closed(object? sender, object args) => EndXamlPopup();
@@ -297,6 +334,7 @@ public sealed partial class MainWindow : Window, IDisposable
         var passwordBox = new PasswordBox { Header = "Password (stored with DPAPI)" };
         ComboBox credentialBox = await CreateCredentialBoxAsync(CredentialReference.None);
         protocolBox.SelectedItem = ProtocolKind.Ssh2;
+        TextBlock validationText = CreateDialogValidationText();
         var dialog = new ContentDialog
         {
             XamlRoot = RootGrid.XamlRoot,
@@ -307,9 +345,25 @@ public sealed partial class MainWindow : Window, IDisposable
             Content = new StackPanel
             {
                 Spacing = 12,
-                Children = { nameBox, hostBox, portBox, protocolBox, credentialBox, optionsBox, passwordBox }
+                Children = { validationText, nameBox, hostBox, portBox, protocolBox, credentialBox, optionsBox, passwordBox }
             }
         };
+
+        KeepDialogOpenWhenInvalid(
+            dialog,
+            validationText,
+            () => ConnectionDialogValidation.GetError(
+                nameBox.Text,
+                hostBox.Text,
+                protocolBox.SelectedItem is ProtocolKind selectedProtocol ? selectedProtocol : null,
+                portBox.Value),
+            () => string.IsNullOrWhiteSpace(nameBox.Text)
+                ? nameBox
+                : string.IsNullOrWhiteSpace(hostBox.Text)
+                    ? hostBox
+                    : protocolBox.SelectedItem is not ProtocolKind
+                        ? protocolBox
+                        : portBox);
 
         if (await ShowDialogAsync(dialog) != ContentDialogResult.Primary)
             return;
@@ -358,6 +412,7 @@ public sealed partial class MainWindow : Window, IDisposable
         var protocolBox = new ComboBox { Header = "Protocol", ItemsSource = Enum.GetValues<ProtocolKind>(), SelectedItem = ProtocolKind.Ssh2 };
         var usernameBox = new TextBox { Header = "Username (optional)" };
         var passwordBox = new PasswordBox { Header = "Password (only for this session)" };
+        TextBlock validationText = CreateDialogValidationText();
         var dialog = new ContentDialog
         {
             XamlRoot = RootGrid.XamlRoot,
@@ -365,8 +420,20 @@ public sealed partial class MainWindow : Window, IDisposable
             PrimaryButtonText = "Connect",
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary,
-            Content = new StackPanel { Spacing = 12, Children = { hostBox, portBox, protocolBox, usernameBox, passwordBox } }
+            Content = new StackPanel { Spacing = 12, Children = { validationText, hostBox, portBox, protocolBox, usernameBox, passwordBox } }
         };
+        KeepDialogOpenWhenInvalid(
+            dialog,
+            validationText,
+            () => ConnectionDialogValidation.GetQuickConnectError(
+                hostBox.Text,
+                protocolBox.SelectedItem is ProtocolKind selectedProtocol ? selectedProtocol : null,
+                portBox.Value),
+            () => string.IsNullOrWhiteSpace(hostBox.Text)
+                ? hostBox
+                : protocolBox.SelectedItem is not ProtocolKind
+                    ? protocolBox
+                    : portBox);
         if (await ShowDialogAsync(dialog) != ContentDialogResult.Primary)
             return;
         if (protocolBox.SelectedItem is not ProtocolKind protocol ||
@@ -386,12 +453,13 @@ public sealed partial class MainWindow : Window, IDisposable
             protocol,
             options);
         RemoteSessionTab tab = _sessionWorkspace.Open(definition);
-        var tabItem = new TabViewItem { Header = CreateSessionTabHeader(definition), IsClosable = true };
+        TabViewItem tabItem = CreateSessionTabItem(definition);
         _sessionTabs.Add(tabItem, tab);
         Sessions.TabItems.Add(tabItem);
         Sessions.SelectedItem = tabItem;
         ShowSession(tab);
         QueueTitleBarInteractiveRegionUpdate();
+        await ConnectSessionAsync(tab);
     }
 
     private async Task<ComboBox> CreateCredentialBoxAsync(LoipvRemote.Domain.Credentials.CredentialReference selected)
@@ -449,6 +517,7 @@ public sealed partial class MainWindow : Window, IDisposable
     private async void NewFolderButton_Click(object sender, RoutedEventArgs args)
     {
         var nameBox = new TextBox { Header = "Folder name", PlaceholderText = "Production" };
+        TextBlock validationText = CreateDialogValidationText();
         var dialog = new ContentDialog
         {
             XamlRoot = RootGrid.XamlRoot,
@@ -456,8 +525,13 @@ public sealed partial class MainWindow : Window, IDisposable
             PrimaryButtonText = "Save",
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary,
-            Content = nameBox
+            Content = new StackPanel { Spacing = 12, Children = { validationText, nameBox } }
         };
+        KeepDialogOpenWhenInvalid(
+            dialog,
+            validationText,
+            () => ConnectionDialogValidation.GetFolderError(nameBox.Text),
+            () => nameBox);
 
         if (await ShowDialogAsync(dialog) != ContentDialogResult.Primary)
             return;
@@ -507,6 +581,18 @@ public sealed partial class MainWindow : Window, IDisposable
 
     private async void ExportConnectionsButton_Click(object sender, RoutedEventArgs args)
     {
+        var confirmation = new ContentDialog
+        {
+            XamlRoot = RootGrid.XamlRoot,
+            Title = "Export plaintext credentials?",
+            Content = PortableExportPolicy.GetWarning(_connectionCatalog.Tree.Connections.Count),
+            PrimaryButtonText = "Export",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Close
+        };
+        if (await ShowDialogAsync(confirmation) != ContentDialogResult.Primary)
+            return;
+
         var picker = new FileSavePicker { SuggestedFileName = "LoipvRemote-connections" };
         picker.FileTypeChoices.Add("LoipvRemote XML", [".xml"]);
         InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(this));
@@ -556,6 +642,7 @@ public sealed partial class MainWindow : Window, IDisposable
         var passwordBox = new PasswordBox { Header = "New password (leave blank to keep current)" };
         var clearPasswordBox = new CheckBox { Content = "Clear stored password" };
         ComboBox credentialBox = await CreateCredentialBoxAsync(connection.Credential);
+        TextBlock validationText = CreateDialogValidationText();
         var dialog = new ContentDialog
         {
             XamlRoot = RootGrid.XamlRoot,
@@ -563,8 +650,23 @@ public sealed partial class MainWindow : Window, IDisposable
             PrimaryButtonText = "Save",
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary,
-            Content = new StackPanel { Spacing = 12, Children = { nameBox, hostBox, portBox, protocolBox, credentialBox, optionsBox, passwordBox, clearPasswordBox } }
+            Content = new StackPanel { Spacing = 12, Children = { validationText, nameBox, hostBox, portBox, protocolBox, credentialBox, optionsBox, passwordBox, clearPasswordBox } }
         };
+        KeepDialogOpenWhenInvalid(
+            dialog,
+            validationText,
+            () => ConnectionDialogValidation.GetError(
+                nameBox.Text,
+                hostBox.Text,
+                protocolBox.SelectedItem is ProtocolKind selectedProtocol ? selectedProtocol : null,
+                portBox.Value),
+            () => string.IsNullOrWhiteSpace(nameBox.Text)
+                ? nameBox
+                : string.IsNullOrWhiteSpace(hostBox.Text)
+                    ? hostBox
+                    : protocolBox.SelectedItem is not ProtocolKind
+                        ? protocolBox
+                        : portBox);
 
         if (await ShowDialogAsync(dialog) != ContentDialogResult.Primary)
             return;
@@ -616,6 +718,7 @@ public sealed partial class MainWindow : Window, IDisposable
             TextWrapping = TextWrapping.Wrap,
             MinHeight = 72
         };
+        TextBlock validationText = CreateDialogValidationText();
         var dialog = new ContentDialog
         {
             XamlRoot = RootGrid.XamlRoot,
@@ -623,8 +726,13 @@ public sealed partial class MainWindow : Window, IDisposable
             PrimaryButtonText = "Save",
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary,
-            Content = new StackPanel { Spacing = 12, Children = { nameBox, optionsBox } }
+            Content = new StackPanel { Spacing = 12, Children = { validationText, nameBox, optionsBox } }
         };
+        KeepDialogOpenWhenInvalid(
+            dialog,
+            validationText,
+            () => ConnectionDialogValidation.GetFolderError(nameBox.Text),
+            () => nameBox);
         if (await ShowDialogAsync(dialog) != ContentDialogResult.Primary)
             return;
 
@@ -674,7 +782,22 @@ public sealed partial class MainWindow : Window, IDisposable
 
     private void AppWindowOnChanged(AppWindow sender, AppWindowChangedEventArgs args)
     {
-        if (args.DidPositionChange || args.DidSizeChange || args.DidPresenterChange)
+        _windowMinimized = sender.Presenter is OverlappedPresenter
+        {
+            State: OverlappedPresenterState.Minimized
+        };
+        bool shouldRefreshNativeSession = WindowTransitionPolicy.ShouldRefreshNativeSession(
+            _windowMinimized,
+            args.DidPositionChange,
+            args.DidSizeChange,
+            args.DidPresenterChange);
+        if (_windowMinimized)
+        {
+            _embeddedSessionSurface?.SuspendForMinimize();
+            return;
+        }
+
+        if (shouldRefreshNativeSession)
             _embeddedSessionSurface?.RefreshLayoutAndRestoreFocus();
 
         if (args.DidSizeChange || args.DidPresenterChange)
@@ -685,9 +808,15 @@ public sealed partial class MainWindow : Window, IDisposable
     {
         if (args.WindowActivationState == WindowActivationState.Deactivated)
         {
+            QueueSessionHotKeyDeactivationCheck();
             _windowWasDeactivated = true;
             return;
         }
+
+        _hotKeyDeactivationCancellation?.Cancel();
+        _hotKeyDeactivationCancellation?.Dispose();
+        _hotKeyDeactivationCancellation = null;
+        SetSessionHotKeysEnabled(true);
 
         // Window.Activated can be raised more than once while the native
         // child processes a focus message. Restore focus only for a real
@@ -697,6 +826,47 @@ public sealed partial class MainWindow : Window, IDisposable
 
         _windowWasDeactivated = false;
         _embeddedSessionSurface?.RestoreFocusAfterTransition();
+    }
+
+    private void SetSessionHotKeysEnabled(bool enabled)
+    {
+        try
+        {
+            _sessionHotKeyController?.SetEnabled(enabled);
+        }
+        catch (Exception exception)
+        {
+            System.Diagnostics.Debug.WriteLine(exception);
+        }
+    }
+
+    private void QueueSessionHotKeyDeactivationCheck()
+    {
+        _hotKeyDeactivationCancellation?.Cancel();
+        _hotKeyDeactivationCancellation?.Dispose();
+        CancellationTokenSource cancellation = _hotKeyDeactivationCancellation = new();
+        _ = DisableSessionHotKeysIfFocusLeftAppAsync(cancellation.Token);
+    }
+
+    private async Task DisableSessionHotKeysIfFocusLeftAppAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            // PuTTY is a child HWND owned by another process, so WinUI may
+            // briefly report Deactivated while the user is still inside this
+            // app. Let foreground ownership settle before unregistering.
+            await Task.Delay(75, cancellationToken);
+            if (!cancellationToken.IsCancellationRequested &&
+                _sessionHotKeyController is { } controller &&
+                !controller.HasForegroundOwnership())
+            {
+                SetSessionHotKeysEnabled(false);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // The app became active again before the ownership check settled.
+        }
     }
 
     private void MainWindowOnClosed(object sender, WindowEventArgs args)
@@ -758,7 +928,14 @@ public sealed partial class MainWindow : Window, IDisposable
         AppTitleBar.SizeChanged -= AppTitleBarOnSizeChanged;
         Sessions.Loaded -= SessionsOnLoaded;
         Sessions.LayoutUpdated -= SessionsOnLayoutUpdated;
+        _hotKeyDeactivationCancellation?.Cancel();
+        _hotKeyDeactivationCancellation?.Dispose();
+        _hotKeyDeactivationCancellation = null;
         _minimumSizeController?.Dispose();
+        _sessionHotKeyController?.Dispose();
+        _sessionHotKeyController = null;
+        _sessionPointerController?.Dispose();
+        _sessionPointerController = null;
         GC.SuppressFinalize(this);
     }
 
@@ -872,6 +1049,7 @@ public sealed partial class MainWindow : Window, IDisposable
         var nameBox = new TextBox { Header = "Credential name", PlaceholderText = "Production administrator" };
         var userNameBox = new TextBox { Header = "Username", PlaceholderText = "administrator" };
         var passwordBox = new PasswordBox { Header = "Password" };
+        TextBlock validationText = CreateDialogValidationText();
         var dialog = new ContentDialog
         {
             XamlRoot = RootGrid.XamlRoot,
@@ -879,8 +1057,13 @@ public sealed partial class MainWindow : Window, IDisposable
             PrimaryButtonText = "Save",
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary,
-            Content = new StackPanel { Spacing = 12, Children = { nameBox, userNameBox, passwordBox } }
+            Content = new StackPanel { Spacing = 12, Children = { validationText, nameBox, userNameBox, passwordBox } }
         };
+        KeepDialogOpenWhenInvalid(
+            dialog,
+            validationText,
+            () => ConnectionDialogValidation.GetCredentialError(nameBox.Text, passwordBox.Password),
+            () => string.IsNullOrWhiteSpace(nameBox.Text) ? nameBox : passwordBox);
         if (await ShowDialogAsync(dialog) != ContentDialogResult.Primary)
             return;
 
@@ -909,6 +1092,7 @@ public sealed partial class MainWindow : Window, IDisposable
         var nameBox = new TextBox { Header = "Credential name", Text = selected.Credential.Name };
         var userNameBox = new TextBox { Header = "Username", Text = selected.Credential.UserName };
         var passwordBox = new PasswordBox { Header = "Password (required to replace the protected secret)" };
+        TextBlock validationText = CreateDialogValidationText();
         var dialog = new ContentDialog
         {
             XamlRoot = RootGrid.XamlRoot,
@@ -916,8 +1100,13 @@ public sealed partial class MainWindow : Window, IDisposable
             PrimaryButtonText = "Save",
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary,
-            Content = new StackPanel { Spacing = 12, Children = { nameBox, userNameBox, passwordBox } }
+            Content = new StackPanel { Spacing = 12, Children = { validationText, nameBox, userNameBox, passwordBox } }
         };
+        KeepDialogOpenWhenInvalid(
+            dialog,
+            validationText,
+            () => ConnectionDialogValidation.GetCredentialError(nameBox.Text, passwordBox.Password),
+            () => string.IsNullOrWhiteSpace(nameBox.Text) ? nameBox : passwordBox);
         if (await ShowDialogAsync(dialog) != ContentDialogResult.Primary)
             return;
 
@@ -1071,7 +1260,7 @@ public sealed partial class MainWindow : Window, IDisposable
         TabViewItem? existingTab = _sessionTabs.FirstOrDefault(pair => ReferenceEquals(pair.Value, tab)).Key;
         if (existingTab is null)
         {
-            existingTab = new TabViewItem { Header = CreateSessionTabHeader(effectiveDefinition), IsClosable = true };
+            existingTab = CreateSessionTabItem(effectiveDefinition);
             _sessionTabs.Add(existingTab, tab);
             Sessions.TabItems.Add(existingTab);
         }
@@ -1348,6 +1537,136 @@ public sealed partial class MainWindow : Window, IDisposable
         }
     }
 
+    private void TryInstallSessionHotKeyController()
+    {
+        try
+        {
+            _sessionHotKeyController = new WindowSessionHotKeyController(
+                WindowNative.GetWindowHandle(this),
+                QueueSessionTabNavigation,
+                EmbeddingDiagnostics.Write,
+                RecoverSessionKeyboardFocus);
+            _sessionHotKeyController.SetEnabled(true);
+        }
+        catch (Exception exception)
+        {
+            _sessionHotKeyController?.Dispose();
+            _sessionHotKeyController = null;
+            EmbeddingDiagnostics.Write(
+                $"session-keyboard-hook-failed type={exception.GetType().Name} hresult={exception.HResult}");
+        }
+    }
+
+    private void QueueSessionTabNavigation(int direction)
+    {
+        if (direction is not (-1 or 1))
+            return;
+
+        _ = Interlocked.Add(ref _pendingSessionTabNavigation, direction);
+        QueuePendingSessionTabNavigation();
+    }
+
+    private void QueuePendingSessionTabNavigation()
+    {
+        if (Interlocked.CompareExchange(ref _sessionTabNavigationQueued, 1, 0) != 0)
+            return;
+
+        if (DispatcherQueue.TryEnqueue(ProcessQueuedSessionTabNavigation))
+            return;
+
+        _ = Interlocked.Exchange(ref _sessionTabNavigationQueued, 0);
+    }
+
+    private void ProcessQueuedSessionTabNavigation()
+    {
+        int offset = Interlocked.Exchange(ref _pendingSessionTabNavigation, 0);
+        try
+        {
+            if (offset != 0)
+                NavigateSessionTabs(offset);
+        }
+        finally
+        {
+            _ = Interlocked.Exchange(ref _sessionTabNavigationQueued, 0);
+            if (Volatile.Read(ref _pendingSessionTabNavigation) != 0)
+                QueuePendingSessionTabNavigation();
+        }
+    }
+
+    private void RecoverSessionKeyboardFocus()
+    {
+        ProcessQueuedSessionTabNavigation();
+        _embeddedSessionSurface?.RestoreFocusAfterTransition();
+    }
+
+    private void NavigateSessionTabs(int direction)
+    {
+        if (Sessions.SelectedItem is not TabViewItem currentTab)
+            return;
+
+        TabViewItem[] tabs = Sessions.TabItems
+            .OfType<TabViewItem>()
+            .Where(_sessionTabs.ContainsKey)
+            .ToArray();
+        TabViewItem? selectedTab = SessionTabSelection.SelectRelative(tabs, currentTab, direction);
+        if (selectedTab is not null)
+            Sessions.SelectedItem = selectedTab;
+    }
+
+    private void TryInstallSessionPointerController()
+    {
+        try
+        {
+            _sessionPointerController = new WindowSessionPointerController(
+                WindowNative.GetWindowHandle(this),
+                TryQueueCloseSessionTabAtClientPoint);
+            EmbeddingDiagnostics.Write("session-pointer-hook-installed");
+        }
+        catch (Exception exception)
+        {
+            _sessionPointerController?.Dispose();
+            _sessionPointerController = null;
+            EmbeddingDiagnostics.Write(
+                $"session-pointer-hook-failed type={exception.GetType().Name} hresult={exception.HResult}");
+        }
+    }
+
+    private bool TryQueueCloseSessionTabAtClientPoint(int physicalX, int physicalY)
+    {
+        if (RootGrid.XamlRoot is null || RootGrid.XamlRoot.RasterizationScale <= 0)
+            return false;
+
+        double scale = RootGrid.XamlRoot.RasterizationScale;
+        double logicalX = physicalX / scale;
+        double logicalY = physicalY / scale;
+        foreach (TabViewItem tab in Sessions.TabItems.OfType<TabViewItem>())
+        {
+            if (!_sessionTabs.ContainsKey(tab) || !tab.IsLoaded)
+                continue;
+
+            Windows.Foundation.Point origin = tab.TransformToVisual(RootGrid)
+                .TransformPoint(new Windows.Foundation.Point(0, 0));
+            if (!SessionTabPointerPolicy.ContainsPoint(
+                    logicalX,
+                    logicalY,
+                    origin.X,
+                    origin.Y,
+                    tab.ActualWidth,
+                    tab.ActualHeight))
+            {
+                continue;
+            }
+
+            EmbeddingDiagnostics.Write(
+                $"session-tab-middle-click x={physicalX} y={physicalY} scale={scale:F2}");
+            return DispatcherQueue.TryEnqueue(() => _ = CloseSessionTabAsync(Sessions, tab));
+        }
+
+        EmbeddingDiagnostics.Write(
+            $"session-tab-middle-click-miss x={physicalX} y={physicalY} scale={scale:F2}");
+        return false;
+    }
+
     private async void RenameSelectedFolderButton_Click(object sender, RoutedEventArgs args)
     {
         if (_selectedFolder is null)
@@ -1363,6 +1682,7 @@ public sealed partial class MainWindow : Window, IDisposable
             nameBox.Focus(FocusState.Programmatic);
             nameBox.SelectAll();
         };
+        TextBlock validationText = CreateDialogValidationText();
         var dialog = new ContentDialog
         {
             XamlRoot = RootGrid.XamlRoot,
@@ -1370,8 +1690,17 @@ public sealed partial class MainWindow : Window, IDisposable
             PrimaryButtonText = "Rename",
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary,
-            Content = nameBox
+            Content = new StackPanel
+            {
+                Spacing = 12,
+                Children = { validationText, nameBox }
+            }
         };
+        KeepDialogOpenWhenInvalid(
+            dialog,
+            validationText,
+            () => ConnectionDialogValidation.GetFolderError(nameBox.Text),
+            () => nameBox);
         if (await ShowDialogAsync(dialog) != ContentDialogResult.Primary)
             return;
 
@@ -1440,7 +1769,47 @@ public sealed partial class MainWindow : Window, IDisposable
 
     private async void Sessions_TabCloseRequested(TabView sender, TabViewTabCloseRequestedEventArgs args)
     {
-        if (args.Tab is not TabViewItem tab || !_sessionTabCloseGate.TryEnter())
+        if (args.Tab is TabViewItem tab)
+            await CloseSessionTabAsync(sender, tab);
+    }
+
+    private async void SessionTab_PointerPressed(object sender, PointerRoutedEventArgs args)
+    {
+        if (sender is not TabViewItem tab)
+            return;
+
+        var properties = args.GetCurrentPoint(tab).Properties;
+        bool middleButtonPressed = properties.IsMiddleButtonPressed ||
+            properties.PointerUpdateKind is Microsoft.UI.Input.PointerUpdateKind.MiddleButtonPressed or
+                Microsoft.UI.Input.PointerUpdateKind.MiddleButtonReleased;
+        EmbeddingDiagnostics.Write(
+            $"session-tab-pointer event={args.Pointer.PointerDeviceType} update={properties.PointerUpdateKind} middle={properties.IsMiddleButtonPressed} closable={tab.IsClosable}");
+        if (!SessionTabPointerPolicy.ShouldClose(middleButtonPressed, tab.IsClosable))
+            return;
+
+        args.Handled = true;
+        await CloseSessionTabAsync(Sessions, tab);
+    }
+
+    private TabViewItem CreateSessionTabItem(ConnectionDefinition definition)
+    {
+        var tab = new TabViewItem { Header = CreateSessionTabHeader(definition), IsClosable = true };
+        // TabView consumes pointer input internally. Listen to already-handled
+        // routed events so middle-click remains a first-class close gesture.
+        tab.AddHandler(
+            UIElement.PointerPressedEvent,
+            new PointerEventHandler(SessionTab_PointerPressed),
+            handledEventsToo: true);
+        tab.AddHandler(
+            UIElement.PointerReleasedEvent,
+            new PointerEventHandler(SessionTab_PointerPressed),
+            handledEventsToo: true);
+        return tab;
+    }
+
+    private async Task CloseSessionTabAsync(TabView sender, TabViewItem tab)
+    {
+        if (!_sessionTabCloseGate.TryEnter())
             return;
 
         try
@@ -1510,11 +1879,9 @@ public sealed partial class MainWindow : Window, IDisposable
     private void Sessions_SelectionChanged(object sender, SelectionChangedEventArgs args)
     {
         if (Sessions.SelectedItem is TabViewItem tab && _sessionTabs.TryGetValue(tab, out RemoteSessionTab? sessionTab))
-            // ConnectAsync already made this native session visible and gave
-            // it focus. Updating the surrounding WinUI state must not invoke
-            // the tab activation path a second time, or PuTTY flashes while
-            // several ShowWindow/focus calls race its initial paint.
-            ShowSession(sessionTab, activateNativeSession: false);
+            ShowSession(
+                sessionTab,
+                SessionPresentationPolicy.ShouldActivateNativeSession(SessionPresentationTrigger.TabSelection));
 
         QueueTitleBarInteractiveRegionUpdate();
     }
@@ -1550,11 +1917,17 @@ public sealed partial class MainWindow : Window, IDisposable
             _connectedConnectionIds.Add(sessionTab.Connection.Id);
             if (_connectionCatalog.IsLoaded)
                 RebuildConnectionTree(_connectionCatalog.Tree);
-            ShowSession(sessionTab);
+            ShowSession(
+                sessionTab,
+                SessionPresentationPolicy.ShouldActivateNativeSession(SessionPresentationTrigger.ConnectionCompleted));
         }
         catch (Exception exception)
         {
-            SessionStatus.Text = $"Connection failed: {exception.Message}";
+            EmbeddingDiagnostics.Write(
+                $"session-connect-failed type={exception.GetType().Name} hresult=0x{exception.HResult:X8} " +
+                $"stack={exception.StackTrace?.Replace(Environment.NewLine, " | ")}");
+            SessionContent.Visibility = Visibility.Visible;
+            SessionStatus.Text = SessionPresentationPolicy.FormatConnectionFailure(exception.Message);
         }
         finally
         {

@@ -8,5 +8,8 @@ public static class WindowsEmbeddedWindowFocusControllerFactory
     public static EmbeddedWindowFocusController Create() => new(
         NativeMethods.GetWindowThreadProcessId,
         NativeMethods.AttachThreadInput,
-        NativeMethods.SetFocus);
+        NativeMethods.SetFocus,
+        NativeMethods.GetFocus,
+        NativeMethods.GetForegroundWindow,
+        NativeMethods.SetForegroundWindow);
 }

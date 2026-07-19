@@ -143,8 +143,25 @@ public sealed class Win32EmbeddedSessionSurface : IEmbeddedSessionSurface, IDisp
         QueueWindowTransitionRefresh();
     }
 
+    /// <summary>Stops delayed native work while Windows parks a minimized HWND off-screen.</summary>
+    public void SuspendForMinimize()
+    {
+        if (_disposed)
+            return;
+
+        _focusRestoreCancellation?.Cancel();
+        _focusRestoreCancellation?.Dispose();
+        _focusRestoreCancellation = null;
+        _windowTransitionCancellation?.Cancel();
+        _windowTransitionCancellation?.Dispose();
+        _windowTransitionCancellation = null;
+        CancelDynamicDisplayUpdate();
+        EmbeddingDiagnostics.Write("window-minimized; native layout suspended");
+    }
+
     /// <summary>Reclaims terminal focus after a tab or window activation transition.</summary>
-    public void RestoreFocusAfterTransition() => QueueFocusRestore();
+    public void RestoreFocusAfterTransition() =>
+        NativeSessionFocusTransition.Restore(Focus, QueueFocusRestore);
 
     public void Dispose()
     {
@@ -210,8 +227,16 @@ public sealed class Win32EmbeddedSessionSurface : IEmbeddedSessionSurface, IDisp
 
     private void UpdateBounds(bool forceDynamicDisplayUpdate = false)
     {
-        if (_disposed || _nativeHost is null || _placementTarget.XamlRoot is null || _placementTarget.ActualWidth <= 0 || _placementTarget.ActualHeight <= 0)
+        if (_disposed || _nativeHost is null || _placementTarget.XamlRoot is null)
             return;
+
+        if (!WindowTransitionPolicy.ShouldUpdateNativeBounds(
+                IsIconic(_ownerWindowHandle),
+                _placementTarget.ActualWidth,
+                _placementTarget.ActualHeight))
+        {
+            return;
+        }
 
         GeneralTransform transform = _placementTarget.TransformToVisual(null);
         Point origin = transform.TransformPoint(new Point(0, 0));
@@ -407,6 +432,10 @@ public sealed class Win32EmbeddedSessionSurface : IEmbeddedSessionSurface, IDisp
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern bool ClientToScreen(IntPtr windowHandle, ref NativePoint point);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool IsIconic(IntPtr windowHandle);
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern bool SetForegroundWindow(IntPtr windowHandle);

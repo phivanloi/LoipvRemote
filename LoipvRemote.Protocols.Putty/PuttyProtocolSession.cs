@@ -10,6 +10,7 @@ public sealed class PuttyProtocolSession : IProtocolSession, IEmbeddedWindow, IE
     private readonly IPuttyProcessHost _process;
     private readonly IEmbeddedWindowOperations _windowOperations;
     private readonly PuttyConnectionOptions _options;
+    private readonly IPuttyEndpointProbe _endpointProbe;
     // Process.MainWindowHandle becomes zero as soon as Windows re-parents a
     // top-level PuTTY window.  Keep the HWND captured before SetParent so the
     // rest of the session can still remove chrome, size and focus that window.
@@ -25,11 +26,13 @@ public sealed class PuttyProtocolSession : IProtocolSession, IEmbeddedWindow, IE
     public PuttyProtocolSession(
         IPuttyProcessHost process,
         IEmbeddedWindowOperations windowOperations,
-        PuttyConnectionOptions options)
+        PuttyConnectionOptions options,
+        IPuttyEndpointProbe endpointProbe)
     {
         _process = process ?? throw new ArgumentNullException(nameof(process));
         _windowOperations = windowOperations ?? throw new ArgumentNullException(nameof(windowOperations));
         _options = options ?? throw new ArgumentNullException(nameof(options));
+        _endpointProbe = endpointProbe ?? throw new ArgumentNullException(nameof(endpointProbe));
         _options.Validate();
     }
 
@@ -114,10 +117,31 @@ public sealed class PuttyProtocolSession : IProtocolSession, IEmbeddedWindow, IE
         return started;
     }
 
-    public ValueTask<bool> ConnectAsync(CancellationToken cancellationToken = default)
+    public async ValueTask<bool> ConnectAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return ValueTask.FromResult(ConnectCore());
+        if (State != ProtocolSessionState.Initialized)
+            return false;
+
+        PuttyLaunchOptions launchOptions = _options.LaunchOptions;
+        if (!launchOptions.UseSavedSessionOnly)
+        {
+            try
+            {
+                await _endpointProbe.ProbeAsync(
+                    launchOptions.Hostname,
+                    launchOptions.Port,
+                    TimeSpan.FromSeconds(8),
+                    cancellationToken);
+            }
+            catch
+            {
+                State = ProtocolSessionState.Faulted;
+                throw;
+            }
+        }
+
+        return ConnectCore();
     }
 
     public ValueTask DisconnectAsync(CancellationToken cancellationToken = default)

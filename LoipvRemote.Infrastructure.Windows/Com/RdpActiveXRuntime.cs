@@ -46,6 +46,8 @@ public sealed class RdpActiveXRuntime : IRdpClient, IRdpCredentialClient, IRdpRu
         get => !IsWindowEnabled(_windowHandle);
         set => _ = EnableWindow(_windowHandle, !value);
     }
+    internal bool RedirectDrivesEnabled => Client.AdvancedSettings2.RedirectDrives;
+    internal bool RedirectClipboardEnabled => Client.AdvancedSettings6.RedirectClipboard;
 
     public event EventHandler? Connecting;
     public event EventHandler? Connected;
@@ -313,14 +315,32 @@ public sealed class RdpActiveXRuntime : IRdpClient, IRdpCredentialClient, IRdpRu
             Client.AdvancedSettings2.RedirectDrives = false;
             return;
         }
-        if (mode == RdpDriveRedirection.All)
+        if (mode is RdpDriveRedirection.All or RdpDriveRedirection.Local)
         {
+            // "Local" means the local file-system drives exposed by the RDP
+            // client. The ActiveX master switch is the supported path for
+            // publishing those drives as \\tsclient shares.
             Client.AdvancedSettings2.RedirectDrives = true;
             return;
         }
 
-        IMsRdpClientNonScriptable5 nonScriptable = Client as IMsRdpClientNonScriptable5
-            ?? throw new InvalidOperationException("The RDP ActiveX control does not expose drive redirection settings.");
+        // RedirectDrives is the master permission for the RDP drive virtual
+        // channel. Selecting individual entries in DriveCollection is not
+        // sufficient while this switch remains false: the session connects,
+        // but \\tsclient is never published on the remote machine.
+        Client.AdvancedSettings2.RedirectDrives = true;
+
+        // The scriptable and non-scriptable interfaces are separate COM
+        // projections. A CLR cast of the IMsRdpClient10 RCW is not sufficient
+        // on current Windows builds, so explicitly query the coclass IUnknown.
+        IMsRdpClientNonScriptable5? nonScriptable = QueryComInterface<IMsRdpClientNonScriptable5>();
+        if (nonScriptable is null)
+        {
+            // Keep the session usable and file transfer available. The master
+            // switch exposes local drives even when this OS cannot provide the
+            // optional per-drive selector.
+            return;
+        }
         HashSet<char> localFixedDrives = DriveInfo.GetDrives()
             .Where(drive => drive.DriveType == DriveType.Fixed)
             .Select(drive => char.ToUpperInvariant(drive.Name[0]))
@@ -334,6 +354,32 @@ public sealed class RdpActiveXRuntime : IRdpClient, IRdpCredentialClient, IRdpRu
             drive.RedirectionState = mode == RdpDriveRedirection.Custom
                 ? customDrives.Contains(letter.ToString(), StringComparison.OrdinalIgnoreCase)
                 : localFixedDrives.Contains(letter);
+        }
+    }
+
+    private T? QueryComInterface<T>() where T : class
+    {
+        if (_comControl is null)
+            return null;
+
+        IntPtr unknown = IntPtr.Zero;
+        IntPtr requestedInterface = IntPtr.Zero;
+        try
+        {
+            unknown = Marshal.GetIUnknownForObject(_comControl);
+            Guid interfaceId = typeof(T).GUID;
+            int result = Marshal.QueryInterface(unknown, in interfaceId, out requestedInterface);
+            if (result < 0 || requestedInterface == IntPtr.Zero)
+                return null;
+
+            return Marshal.GetTypedObjectForIUnknown(requestedInterface, typeof(T)) as T;
+        }
+        finally
+        {
+            if (requestedInterface != IntPtr.Zero)
+                Marshal.Release(requestedInterface);
+            if (unknown != IntPtr.Zero)
+                Marshal.Release(unknown);
         }
     }
 

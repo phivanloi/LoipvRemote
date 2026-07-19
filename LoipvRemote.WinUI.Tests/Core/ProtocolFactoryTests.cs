@@ -17,11 +17,13 @@ namespace LoipvRemote.WinUI.Tests.Core;
 
 public sealed class ProtocolFactoryTests
 {
-    [TestCase(12, 96, 10)]
-    [TestCase(12, 144, 7)]
-    [TestCase(12, 192, 5)]
-    [TestCase(12, 288, 5)]
-    public void PuttyFontScalingKeepsPhysicalTextSizeStableAcrossDpi(int savedHeight, int dpi, int expectedHeight)
+    [TestCase(12, 96, 12)]
+    [TestCase(12, 144, 12)]
+    [TestCase(12, 192, 12)]
+    [TestCase(12, 288, 12)]
+    [TestCase(7, 120, 10)]
+    [TestCase(30, 120, 18)]
+    public void PuttyFontScalingKeepsTerminalTextBalancedWithTheUi(int savedHeight, int dpi, int expectedHeight)
     {
         Assert.That(PuttyFontScaling.GetFontHeight(savedHeight, (uint)dpi), Is.EqualTo(expectedHeight));
     }
@@ -40,7 +42,8 @@ public sealed class ProtocolFactoryTests
             () => process,
             () => Substitute.For<IEmbeddedWindowOperations>(),
             passwordResolver: _ => "secret-value",
-            passwordPipeFactory: (_, _) => "pipe-name").Create(definition);
+            passwordPipeFactory: (_, _) => "pipe-name",
+            endpointProbeFactory: () => new NoopPuttyEndpointProbe()).Create(definition);
 
         Assert.That(await session.InitializeAsync(), Is.True);
         Assert.That(await session.ConnectAsync(), Is.True);
@@ -70,7 +73,8 @@ public sealed class ProtocolFactoryTests
                     Hostname = "server.example",
                     Port = 22,
                     Username = "operator"
-                }));
+                }),
+            new NoopPuttyEndpointProbe());
 
         Assert.That(await session.InitializeAsync(), Is.True);
         session.SetHostWindowHandle((IntPtr)99);
@@ -111,7 +115,8 @@ public sealed class ProtocolFactoryTests
         using var session = new PuttyProtocolSession(
             process,
             windows,
-            new PuttyConnectionOptions("putty.exe", new PuttyLaunchOptions { Hostname = "server.example", Port = 22 }));
+            new PuttyConnectionOptions("putty.exe", new PuttyLaunchOptions { Hostname = "server.example", Port = 22 }),
+            new NoopPuttyEndpointProbe());
 
         Assert.That(await session.InitializeAsync(), Is.True);
         session.SetHostWindowHandle((IntPtr)99);
@@ -132,7 +137,8 @@ public sealed class ProtocolFactoryTests
         using var session = new PuttyProtocolSession(
             process,
             windows,
-            new PuttyConnectionOptions("putty.exe", new PuttyLaunchOptions { Hostname = "server.example", Port = 22 }));
+            new PuttyConnectionOptions("putty.exe", new PuttyLaunchOptions { Hostname = "server.example", Port = 22 }),
+            new NoopPuttyEndpointProbe());
 
         Assert.That(await session.InitializeAsync(), Is.True);
         session.SetHostWindowHandle((IntPtr)99);
@@ -164,6 +170,52 @@ public sealed class ProtocolFactoryTests
 
         ConnectionDefinition invalid = definition with { Protocol = ProtocolKind.Ssh2 };
         Assert.That(() => new RdpProtocolFactory(_ => client).Create(invalid), Throws.TypeOf<NotSupportedException>());
+    }
+
+    [Test]
+    public async Task RdpFactoryAppliesClipboardAndLocalDriveRedirectionForFileTransfer()
+    {
+        var client = new RecordingRdpClient();
+        ConnectionDefinition definition = new(
+            Guid.NewGuid(), "rdp-transfer", "server.example", 3389, ProtocolKind.Rdp, CredentialReference.None,
+            Options: new ConnectionNodeOptions(
+                new Dictionary<string, string>
+                {
+                    ["RedirectClipboard"] = "true",
+                    ["RedirectDiskDrives"] = RDPDiskDrives.Local.ToString(),
+                    ["CacheBitmaps"] = "true",
+                    ["Colors"] = RDPColors.Colors32Bit.ToString()
+                },
+                Array.Empty<string>()));
+
+        using IProtocolSession session = new RdpProtocolFactory(_ => client).Create(definition);
+
+        Assert.That(await session.InitializeAsync(), Is.True);
+        Assert.Multiple(() =>
+        {
+            Assert.That(client.RuntimeConfiguration, Is.Not.Null);
+            Assert.That(client.RuntimeConfiguration!.RedirectClipboard, Is.True);
+            Assert.That(client.RuntimeConfiguration.DriveRedirection, Is.EqualTo(RdpDriveRedirection.Local));
+            Assert.That(client.RuntimeConfiguration.CacheBitmaps, Is.True);
+            Assert.That(client.RuntimeConfiguration.ColorDepth, Is.EqualTo(32));
+        });
+    }
+
+    [Test]
+    public async Task PuttySessionDoesNotStartNativeProcessWhenEndpointProbeFails()
+    {
+        var process = new RecordingPuttyProcessHost();
+        using var session = new PuttyProtocolSession(
+            process,
+            Substitute.For<IEmbeddedWindowOperations>(),
+            new PuttyConnectionOptions(
+                "putty.exe",
+                new PuttyLaunchOptions { Hostname = "127.0.0.1", Port = 22 }),
+            new FailingPuttyEndpointProbe());
+
+        Assert.That(await session.InitializeAsync(), Is.True);
+        Assert.ThrowsAsync<SocketException>(async () => await session.ConnectAsync());
+        Assert.That(process.StartOptions, Is.Null);
     }
 
     [Test]
@@ -253,6 +305,50 @@ public sealed class ProtocolFactoryTests
         Assert.That(client.AttachTo(host.Handle, TimeSpan.Zero), Is.True);
         Assert.That(() => client.Initialize(), Throws.Nothing);
         Assert.That(client.IsAvailable, Is.True);
+    }
+
+    [Test]
+    [Platform("Win")]
+    public void NativeRdpHostEnablesMasterRedirectionSwitchesForLocalFileTransfer()
+    {
+        using var host = new NativeProbeWindow();
+        using var client = new RdpActiveXRuntime(RdpVersion.Rdc10);
+
+        Assert.That(client.AttachTo(host.Handle, TimeSpan.Zero), Is.True);
+        client.Initialize();
+        client.ApplyConfiguration(new RdpRuntimeConfiguration
+        {
+            Server = "server.example",
+            Port = 3389,
+            RedirectClipboard = true,
+            DriveRedirection = RdpDriveRedirection.Local
+        });
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(client.RedirectClipboardEnabled, Is.True);
+            Assert.That(client.RedirectDrivesEnabled, Is.True);
+        });
+    }
+
+    [Test]
+    [Platform("Win")]
+    public void NativeRdpHostKeepsCustomDriveRedirectionUsableWhenSelectingIndividualDrives()
+    {
+        using var host = new NativeProbeWindow();
+        using var client = new RdpActiveXRuntime(RdpVersion.Rdc10);
+
+        Assert.That(client.AttachTo(host.Handle, TimeSpan.Zero), Is.True);
+        client.Initialize();
+
+        Assert.That(() => client.ApplyConfiguration(new RdpRuntimeConfiguration
+        {
+            Server = "server.example",
+            Port = 3389,
+            DriveRedirection = RdpDriveRedirection.Custom,
+            CustomDrives = "C"
+        }), Throws.Nothing);
+        Assert.That(client.RedirectDrivesEnabled, Is.True);
     }
 
     [Test]
@@ -398,15 +494,28 @@ public sealed class ProtocolFactoryTests
         public void Dispose() => StopProcess();
     }
 
+    private sealed class FailingPuttyEndpointProbe : IPuttyEndpointProbe
+    {
+        public Task ProbeAsync(string host, int port, TimeSpan timeout, CancellationToken cancellationToken = default) =>
+            throw new SocketException((int)SocketError.ConnectionRefused);
+    }
+
+    private sealed class NoopPuttyEndpointProbe : IPuttyEndpointProbe
+    {
+        public Task ProbeAsync(string host, int port, TimeSpan timeout, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+    }
+
     private sealed class RecordingRdpClient : IRdpClient, IRdpRuntimeClient
     {
         public int ConnectCalls { get; private set; }
         public RdpDisplayConfiguration? Display { get; private set; }
+        public RdpRuntimeConfiguration? RuntimeConfiguration { get; private set; }
         public void Initialize() { }
         public void ConfigureEndpoint(string host, int port) { }
         public void Connect() => ConnectCalls++;
         public void Disconnect() { }
-        public void ApplyConfiguration(RdpRuntimeConfiguration configuration) { }
+        public void ApplyConfiguration(RdpRuntimeConfiguration configuration) => RuntimeConfiguration = configuration;
         public void ApplyDisplay(RdpDisplayConfiguration display) => Display = display;
     }
 

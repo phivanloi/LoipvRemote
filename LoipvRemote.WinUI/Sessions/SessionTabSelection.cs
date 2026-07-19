@@ -3,6 +3,36 @@ namespace LoipvRemote.WinUI.Sessions;
 /// <summary>Selects the nearest surviving session tab after the active tab closes.</summary>
 internal static class SessionTabSelection
 {
+    public static T? SelectRelative<T>(IReadOnlyList<T> tabs, T currentTab, int direction)
+        where T : class
+    {
+        ArgumentNullException.ThrowIfNull(tabs);
+        ArgumentNullException.ThrowIfNull(currentTab);
+        ArgumentOutOfRangeException.ThrowIfZero(direction);
+        if (tabs.Count < 2)
+            return null;
+
+        int currentIndex = -1;
+        for (int index = 0; index < tabs.Count; index++)
+        {
+            if (ReferenceEquals(tabs[index], currentTab))
+            {
+                currentIndex = index;
+                break;
+            }
+        }
+
+        if (currentIndex < 0)
+            return null;
+
+        int normalizedOffset = direction % tabs.Count;
+        if (normalizedOffset == 0)
+            return null;
+
+        int selectedIndex = (currentIndex + normalizedOffset + tabs.Count) % tabs.Count;
+        return tabs[selectedIndex];
+    }
+
     public static T? SelectAfterClose<T>(IReadOnlyList<T> tabs, T closingTab)
         where T : class
     {

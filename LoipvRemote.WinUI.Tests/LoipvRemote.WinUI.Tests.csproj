@@ -20,4 +20,10 @@
   <ItemGroup>
     <ProjectReference Include="..\LoipvRemote.WinUI\LoipvRemote.WinUI.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\LoipvRemote.WinUI\app.manifest"
+          Link="Fixtures\LoipvRemote.app.manifest"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

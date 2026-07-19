@@ -10,6 +10,7 @@ using LoipvRemote.Application.Configuration;
 using LoipvRemote.Application.Credentials;
 using LoipvRemote.Protocols.Abstractions;
 using LoipvRemote.Protocols.Vnc;
+using LoipvRemote.WinUI.Hosting;
 
 namespace LoipvRemote.WinUI;
 
@@ -68,6 +69,9 @@ public partial class App : Microsoft.UI.Xaml.Application
             // WinUI turns a startup exception into a native XAML crash.  Write
             // the original managed exception to stderr so CI and installer
             // smoke tests preserve the actionable cause.
+            EmbeddingDiagnostics.Write(
+                $"startup-failed type={exception.GetType().FullName} hresult=0x{exception.HResult:X8} " +
+                $"message={exception.Message} stack={exception.StackTrace?.Replace(Environment.NewLine, " | ")}");
             Console.Error.WriteLine(exception);
             throw;
         }

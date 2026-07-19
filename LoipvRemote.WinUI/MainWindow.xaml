@@ -131,6 +131,7 @@
                                           Foreground="{Binding Content.IconForeground}"
                                           Width="{Binding Content.IconSize}"
                                           Height="{Binding Content.IconSize}"
+                                          Margin="0,1,0,0"
                                           VerticalAlignment="Center" />
                                 <TextBlock Text="{Binding Content.DisplayName}" VerticalAlignment="Center" />
                             </StackPanel>
@@ -149,7 +150,7 @@
             <Grid x:Name="SessionSurface">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="*" />
-                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="38" />
                 </Grid.RowDefinitions>
 
                 <Grid x:Name="NativeSessionViewport" Grid.Row="0" />

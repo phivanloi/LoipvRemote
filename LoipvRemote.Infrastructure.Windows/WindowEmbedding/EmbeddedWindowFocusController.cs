@@ -13,16 +13,25 @@ public sealed class EmbeddedWindowFocusController
     private readonly WindowThreadResolver _getWindowThreadProcessId;
     private readonly Func<uint, uint, bool, bool> _attachThreadInput;
     private readonly Func<IntPtr, IntPtr> _setFocus;
+    private readonly Func<IntPtr> _getFocus;
+    private readonly Func<IntPtr> _getForegroundWindow;
+    private readonly Func<IntPtr, bool> _setForegroundWindow;
     private readonly object _syncRoot = new();
 
     public EmbeddedWindowFocusController(
         WindowThreadResolver getWindowThreadProcessId,
         Func<uint, uint, bool, bool> attachThreadInput,
-        Func<IntPtr, IntPtr> setFocus)
+        Func<IntPtr, IntPtr> setFocus,
+        Func<IntPtr> getFocus,
+        Func<IntPtr> getForegroundWindow,
+        Func<IntPtr, bool> setForegroundWindow)
     {
         _getWindowThreadProcessId = getWindowThreadProcessId ?? throw new ArgumentNullException(nameof(getWindowThreadProcessId));
         _attachThreadInput = attachThreadInput ?? throw new ArgumentNullException(nameof(attachThreadInput));
         _setFocus = setFocus ?? throw new ArgumentNullException(nameof(setFocus));
+        _getFocus = getFocus ?? throw new ArgumentNullException(nameof(getFocus));
+        _getForegroundWindow = getForegroundWindow ?? throw new ArgumentNullException(nameof(getForegroundWindow));
+        _setForegroundWindow = setForegroundWindow ?? throw new ArgumentNullException(nameof(setForegroundWindow));
     }
 
     public bool TryFocus(IntPtr ownerWindowHandle, IntPtr embeddedWindowHandle)
@@ -32,6 +41,13 @@ public sealed class EmbeddedWindowFocusController
 
         lock (_syncRoot)
         {
+            if (_getForegroundWindow() != ownerWindowHandle &&
+                !_setForegroundWindow(ownerWindowHandle) &&
+                _getForegroundWindow() != ownerWindowHandle)
+            {
+                return false;
+            }
+
             uint ownerThreadId = _getWindowThreadProcessId(ownerWindowHandle, out _);
             uint embeddedThreadId = _getWindowThreadProcessId(embeddedWindowHandle, out _);
             if (ownerThreadId == 0 || embeddedThreadId == 0)
@@ -40,7 +56,7 @@ public sealed class EmbeddedWindowFocusController
             if (ownerThreadId == embeddedThreadId)
             {
                 _setFocus(embeddedWindowHandle);
-                return true;
+                return _getFocus() == embeddedWindowHandle;
             }
 
             if (!_attachThreadInput(ownerThreadId, embeddedThreadId, true))
@@ -49,7 +65,7 @@ public sealed class EmbeddedWindowFocusController
             try
             {
                 _setFocus(embeddedWindowHandle);
-                return true;
+                return _getFocus() == embeddedWindowHandle;
             }
             finally
             {

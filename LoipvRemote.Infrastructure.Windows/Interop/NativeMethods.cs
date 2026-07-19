@@ -42,6 +42,9 @@ namespace LoipvRemote.Infrastructure.Windows.Interop
         [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
         public static extern IntPtr GetForegroundWindow();
 
+        [DllImport("user32.dll")]
+        public static extern IntPtr GetFocus();
+
         [DllImport("user32.dll", SetLastError = true)]
         public static extern uint GetDpiForWindow(IntPtr hWnd);
 

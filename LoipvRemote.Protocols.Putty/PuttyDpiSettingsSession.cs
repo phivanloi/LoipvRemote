@@ -109,14 +109,11 @@ public static class PuttyFontScaling
 {
     public static int GetFontHeight(int savedFontHeight, uint dpi)
     {
-        // PuTTY's default 12px font is visually too large when hosted in the
-        // compact WinUI terminal area. Use a 10px baseline at 100% DPI while
-        // still respecting deliberately smaller saved fonts.
-        int baseHeight = Math.Clamp(savedFontHeight, 5, 10);
-        uint effectiveDpi = Math.Max(dpi, 96);
-        return Math.Clamp(
-            (int)Math.Round(baseHeight * 96d / effectiveDpi, MidpointRounding.AwayFromZero),
-            5,
-            24);
+        // PuTTY already renders its saved pixel height in the DPI context of
+        // its own HWND. Scaling that value down again makes terminal text
+        // progressively smaller than WinUI text. Preserve the user's logical
+        // size and only constrain extremes that would be unusable when hosted.
+        _ = dpi;
+        return Math.Clamp(savedFontHeight, 10, 18);
     }
 }

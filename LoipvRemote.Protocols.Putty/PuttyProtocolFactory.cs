@@ -9,13 +9,15 @@ public sealed class PuttyProtocolFactory(
     Func<IEmbeddedWindowOperations> windowOperationsFactory,
     Func<string?>? executableLocator = null,
     Func<ConnectionDefinition, string?>? passwordResolver = null,
-    Func<string, string, string>? passwordPipeFactory = null) : IProtocolFactory
+    Func<string, string, string>? passwordPipeFactory = null,
+    Func<IPuttyEndpointProbe>? endpointProbeFactory = null) : IProtocolFactory
 {
     private readonly Func<IPuttyProcessHost> _processFactory = processFactory ?? throw new ArgumentNullException(nameof(processFactory));
     private readonly Func<IEmbeddedWindowOperations> _windowOperationsFactory = windowOperationsFactory ?? throw new ArgumentNullException(nameof(windowOperationsFactory));
     private readonly Func<string?> _executableLocator = executableLocator ?? LocateExecutable;
     private readonly Func<ConnectionDefinition, string?>? _passwordResolver = passwordResolver;
     private readonly Func<string, string, string>? _passwordPipeFactory = passwordPipeFactory;
+    private readonly Func<IPuttyEndpointProbe> _endpointProbeFactory = endpointProbeFactory ?? (() => new PuttyEndpointProbe());
 
     public IProtocolSession Create(ConnectionDefinition definition)
     {
@@ -51,7 +53,7 @@ public sealed class PuttyProtocolFactory(
             StartMinimized: false);
 
         options.Validate();
-        return new PuttyProtocolSession(_processFactory(), _windowOperationsFactory(), options);
+        return new PuttyProtocolSession(_processFactory(), _windowOperationsFactory(), options, _endpointProbeFactory());
     }
 
     private string ResolveExecutable(ConnectionNodeOptions? options)

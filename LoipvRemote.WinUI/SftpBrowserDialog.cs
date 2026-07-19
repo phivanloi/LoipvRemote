@@ -1,11 +1,16 @@
 using LoipvRemote.Domain.Connections;
+using LoipvRemote.Infrastructure.Windows.Interop;
 using LoipvRemote.Protocols.Putty;
+using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Markup;
+using System.Runtime.InteropServices;
+using WinRT.Interop;
+using Windows.Graphics;
 using Windows.System;
 
 namespace LoipvRemote.WinUI;
@@ -17,13 +22,9 @@ internal sealed class SftpBrowserDialog(Window owner, SshFileTransferSessionFact
     private readonly SshFileTransferSessionFactory _sessionFactory =
         sessionFactory ?? throw new ArgumentNullException(nameof(sessionFactory));
 
-    public async Task ShowAsync(
-        ConnectionDefinition connection,
-        string? initialRemotePath,
-        Func<ContentDialog, Task<ContentDialogResult>> showDialogAsync)
+    public async Task ShowAsync(ConnectionDefinition connection, string? initialRemotePath)
     {
         ArgumentNullException.ThrowIfNull(connection);
-        ArgumentNullException.ThrowIfNull(showDialogAsync);
 
         await using ISshFileTransferSession session = _sessionFactory.Create(connection);
         using var cancellation = new CancellationTokenSource();
@@ -89,6 +90,7 @@ internal sealed class SftpBrowserDialog(Window owner, SshFileTransferSessionFact
         panes.Children.Add(localPane);
         Grid.SetColumn(remotePane, 1);
         panes.Children.Add(remotePane);
+        Grid alertOverlay = CreateAlertOverlay();
 
         var activity = new StackPanel
         {
@@ -121,21 +123,31 @@ internal sealed class SftpBrowserDialog(Window owner, SshFileTransferSessionFact
         SftpDialogSize dialogSize = SftpDialogSizing.Fit(
             xamlRoot?.Size.Width ?? double.NaN,
             xamlRoot?.Size.Height ?? double.NaN);
-        var content = new Grid { Width = dialogSize.Width, Height = dialogSize.Height, RowSpacing = 14 };
+        double rasterizationScale = xamlRoot?.RasterizationScale ?? 1d;
+        var content = new Grid
+        {
+            Margin = new Thickness(24),
+            RowSpacing = 14
+        };
         content.RowDefinitions.Add(new() { Height = GridLength.Auto });
         content.RowDefinitions.Add(new() { Height = new GridLength(1, GridUnitType.Star) });
         content.Children.Add(header);
         Grid.SetRow(panes, 1);
         content.Children.Add(panes);
+        Grid.SetRowSpan(alertOverlay, 2);
+        Canvas.SetZIndex(alertOverlay, 10);
+        content.Children.Add(alertOverlay);
 
-        var dialog = new ContentDialog
+        var window = new Window
         {
-            Content = content,
-            XamlRoot = xamlRoot
+            Title = $"SFTP - {connection.Name} | {connection.Host}:{connection.Port}",
+            Content = content
         };
-        dialog.Resources["ContentDialogMaxWidth"] = 1670d;
-        dialog.Resources["ContentDialogMaxHeight"] = 984d;
-        closeButton.Click += (_, _) => dialog.Hide();
+        window.AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "LoipvRemote.ico"));
+        if (window.AppWindow.Presenter is OverlappedPresenter presenter)
+            presenter.SetBorderAndTitleBar(true, false);
+        closeButton.Click += (_, _) => window.Close();
+        var closed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
         void UpdateButtons(bool busy)
         {
@@ -224,22 +236,34 @@ internal sealed class SftpBrowserDialog(Window owner, SshFileTransferSessionFact
         {
             try
             {
-                SetBusy(true, $"Uploading {selected.Name}...");
+                selected.TransferStatus.Begin(FileTransferDirection.Upload);
+                status.Text = $"Uploading {selected.Name}...";
+                var transferProgress = new Progress<FileTransferProgress>(selected.TransferStatus.Report);
+                string destinationDirectory = session.CurrentRemotePath;
                 string remoteName = selected.Name;
-                string remoteTarget = SshRemotePath.Combine(session.CurrentRemotePath, remoteName);
+                string remoteTarget = SshRemotePath.Combine(destinationDirectory, remoteName);
                 for (int suffix = 1; await session.FileExistsAsync(remoteTarget, cancellation.Token); suffix++)
                 {
                     remoteName = FileTransferName.CreateCollisionName(selected.Name, suffix);
-                    remoteTarget = SshRemotePath.Combine(session.CurrentRemotePath, remoteName);
+                    remoteTarget = SshRemotePath.Combine(destinationDirectory, remoteName);
                 }
 
-                await session.UploadFileAsync(selected.FullPath, remoteTarget, cancellation.Token);
+                await session.UploadFileAsync(
+                    selected.FullPath,
+                    remoteTarget,
+                    transferProgress,
+                    cancellation.Token);
+                selected.TransferStatus.Report(new FileTransferProgress(selected.Length, selected.Length));
                 IReadOnlyList<SshFileTransferEntry> entries = await session.RefreshAsync(cancellation.Token);
                 ShowRemoteEntries(entries, $"Uploaded {selected.Name} → {remoteTarget}");
             }
+            catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+            {
+            }
             catch (Exception exception)
             {
-                SetBusy(false, $"Upload failed: {exception.Message}");
+                selected.TransferStatus.Fail();
+                status.Text = $"Upload failed: {exception.Message}";
             }
         }
 
@@ -247,7 +271,9 @@ internal sealed class SftpBrowserDialog(Window owner, SshFileTransferSessionFact
         {
             try
             {
-                SetBusy(true, $"Downloading {selected.Name}...");
+                selected.TransferStatus.Begin(FileTransferDirection.Download);
+                status.Text = $"Downloading {selected.Name}...";
+                var transferProgress = new Progress<FileTransferProgress>(selected.TransferStatus.Report);
                 string localName = selected.Name;
                 string localTarget = Path.Combine(localCurrentPath, localName);
                 for (int suffix = 1; File.Exists(localTarget) || Directory.Exists(localTarget); suffix++)
@@ -256,18 +282,27 @@ internal sealed class SftpBrowserDialog(Window owner, SshFileTransferSessionFact
                     localTarget = Path.Combine(localCurrentPath, localName);
                 }
 
-                await session.DownloadFileAsync(selected.FullPath, localTarget, cancellation.Token);
+                await session.DownloadFileAsync(
+                    selected.FullPath,
+                    localTarget,
+                    transferProgress,
+                    cancellation.Token);
+                selected.TransferStatus.Report(new FileTransferProgress(selected.Length, selected.Length));
                 RefreshLocal($"Downloaded {selected.FullPath} → {localTarget}");
+            }
+            catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+            {
             }
             catch (Exception exception)
             {
-                SetBusy(false, $"Download failed: {exception.Message}");
+                selected.TransferStatus.Fail();
+                status.Text = $"Download failed: {exception.Message}";
             }
         }
 
         async Task CreateLocalFolderAsync()
         {
-            string? name = await PromptForNameAsync(localNewFolderButton, "New local folder", string.Empty, "Create");
+            string? name = await PromptForNameAsync(alertOverlay, "New local folder", string.Empty, "Create");
             if (name is null)
                 return;
 
@@ -284,7 +319,7 @@ internal sealed class SftpBrowserDialog(Window owner, SshFileTransferSessionFact
 
         async Task CreateRemoteFolderAsync()
         {
-            string? name = await PromptForNameAsync(remoteNewFolderButton, "New remote folder", string.Empty, "Create");
+            string? name = await PromptForNameAsync(alertOverlay, "New remote folder", string.Empty, "Create");
             if (name is null)
                 return;
 
@@ -305,7 +340,7 @@ internal sealed class SftpBrowserDialog(Window owner, SshFileTransferSessionFact
 
         async Task RenameLocalAsync(LocalFileTransferEntry selected)
         {
-            string? name = await PromptForNameAsync(localFiles, $"Rename {selected.Name}", selected.Name, "Rename");
+            string? name = await PromptForNameAsync(alertOverlay, $"Rename {selected.Name}", selected.Name, "Rename");
             if (name is null || string.Equals(name, selected.Name, StringComparison.Ordinal))
                 return;
 
@@ -328,7 +363,7 @@ internal sealed class SftpBrowserDialog(Window owner, SshFileTransferSessionFact
 
         async Task RenameRemoteAsync(SshFileTransferEntry selected)
         {
-            string? name = await PromptForNameAsync(remoteFiles, $"Rename {selected.Name}", selected.Name, "Rename");
+            string? name = await PromptForNameAsync(alertOverlay, $"Rename {selected.Name}", selected.Name, "Rename");
             if (name is null || string.Equals(name, selected.Name, StringComparison.Ordinal))
                 return;
 
@@ -351,7 +386,7 @@ internal sealed class SftpBrowserDialog(Window owner, SshFileTransferSessionFact
         async Task DeleteLocalAsync(LocalFileTransferEntry selected)
         {
             if (!await ConfirmAsync(
-                    localFiles,
+                    alertOverlay,
                     $"Delete {selected.Name}?",
                     selected.IsDirectory ? "Only an empty folder can be deleted." : "This file will be permanently deleted."))
                 return;
@@ -373,7 +408,7 @@ internal sealed class SftpBrowserDialog(Window owner, SshFileTransferSessionFact
         async Task DeleteRemoteAsync(SshFileTransferEntry selected)
         {
             if (!await ConfirmAsync(
-                    remoteFiles,
+                    alertOverlay,
                     $"Delete {selected.Name}?",
                     selected.IsDirectory ? "Only an empty folder can be deleted." : "This file will be permanently deleted."))
                 return;
@@ -407,7 +442,9 @@ internal sealed class SftpBrowserDialog(Window owner, SshFileTransferSessionFact
 
         void ShowLocalContextMenu(object sender, RightTappedRoutedEventArgs eventArgs)
         {
-            if (progress.IsActive || GetRightTappedItem(localFiles, eventArgs) is not LocalFileTransferEntry selected)
+            if (progress.IsActive ||
+                GetRightTappedItem(localFiles, eventArgs) is not LocalFileTransferEntry selected ||
+                selected.TransferStatus.IsActive)
                 return;
 
             var menu = new MenuFlyout();
@@ -431,7 +468,8 @@ internal sealed class SftpBrowserDialog(Window owner, SshFileTransferSessionFact
         void ShowRemoteContextMenu(object sender, RightTappedRoutedEventArgs eventArgs)
         {
             if (progress.IsActive || !remoteReady ||
-                GetRightTappedItem(remoteFiles, eventArgs) is not SshFileTransferEntry selected)
+                GetRightTappedItem(remoteFiles, eventArgs) is not SshFileTransferEntry selected ||
+                selected.TransferStatus.IsActive)
                 return;
 
             var menu = new MenuFlyout();
@@ -452,14 +490,11 @@ internal sealed class SftpBrowserDialog(Window owner, SshFileTransferSessionFact
             ShowContextMenu(menu, remoteFiles, eventArgs);
         }
 
-        dialog.Opened += async (_, _) =>
+        window.Closed += (_, _) =>
         {
-            RefreshLocal(string.Empty);
-            await RunRemoteAsync(
-                token => session.ConnectAsync(initialRemotePath, token),
-                "Connecting SFTP...");
+            cancellation.Cancel();
+            closed.TrySetResult();
         };
-        dialog.Closed += (_, _) => cancellation.Cancel();
 
         localPath.KeyDown += (_, eventArgs) =>
         {
@@ -519,7 +554,136 @@ internal sealed class SftpBrowserDialog(Window owner, SshFileTransferSessionFact
         localFiles.RightTapped += ShowLocalContextMenu;
         remoteFiles.RightTapped += ShowRemoteContextMenu;
 
-        await showDialogAsync(dialog);
+        SetNativeOwner(window, _owner);
+        KeepAboveEmbeddedSession(window, _owner);
+        window.Activate();
+        SizeAndCenterWindow(window, _owner, dialogSize, rasterizationScale);
+        RefreshLocal(string.Empty);
+        await RunRemoteAsync(
+            token => session.ConnectAsync(initialRemotePath, token),
+            "Connecting SFTP...");
+        await closed.Task;
+    }
+
+    private static void SetNativeOwner(Window window, Window owner)
+    {
+        IntPtr windowHandle = WindowNative.GetWindowHandle(window);
+        IntPtr ownerHandle = WindowNative.GetWindowHandle(owner);
+        if (windowHandle == IntPtr.Zero || ownerHandle == IntPtr.Zero)
+            throw new InvalidOperationException("SFTP window ownership requires valid native window handles.");
+
+        const int GwlHwndParent = -8;
+        Marshal.SetLastPInvokeError(0);
+        _ = NativeMethods.SetWindowLongPtr(windowHandle, GwlHwndParent, ownerHandle);
+        int error = Marshal.GetLastPInvokeError();
+        if (error != 0)
+            throw new InvalidOperationException($"Could not assign the SFTP window owner (Win32 error {error}).");
+    }
+
+    private static void KeepAboveEmbeddedSession(Window window, Window owner)
+    {
+        IntPtr windowHandle = WindowNative.GetWindowHandle(window);
+        IntPtr ownerHandle = WindowNative.GetWindowHandle(owner);
+        var topmostTimer = window.DispatcherQueue.CreateTimer();
+        topmostTimer.Interval = TimeSpan.FromMilliseconds(100);
+        topmostTimer.IsRepeating = true;
+
+        void ApplyTopmostState()
+        {
+            if (!IsLoipvRemoteForeground(ownerHandle))
+                return;
+
+            const int SwpNoSize = 0x0001;
+            const int SwpNoMove = 0x0002;
+            const int SwpNoActivate = 0x0010;
+            _ = NativeMethods.SetWindowPos(
+                windowHandle,
+                IntPtr.Zero,
+                0,
+                0,
+                0,
+                0,
+                SwpNoSize | SwpNoMove | SwpNoActivate);
+        }
+
+        void RefreshTopmostState(object sender, WindowActivatedEventArgs eventArgs)
+        {
+            _ = sender;
+            _ = eventArgs;
+            window.DispatcherQueue.TryEnqueue(ApplyTopmostState);
+        }
+
+        topmostTimer.Tick += (_, _) => ApplyTopmostState();
+        window.Activated += RefreshTopmostState;
+        owner.Activated += RefreshTopmostState;
+        window.Closed += (_, _) =>
+        {
+            topmostTimer.Stop();
+            window.Activated -= RefreshTopmostState;
+            owner.Activated -= RefreshTopmostState;
+        };
+
+        ApplyTopmostState();
+        topmostTimer.Start();
+    }
+
+    private static bool IsLoipvRemoteForeground(IntPtr ownerHandle)
+    {
+        IntPtr foregroundHandle = NativeMethods.GetForegroundWindow();
+        if (foregroundHandle == IntPtr.Zero)
+            return false;
+
+        _ = NativeMethods.GetWindowThreadProcessId(foregroundHandle, out uint foregroundProcessId);
+        bool foregroundUsesAppProcess = foregroundProcessId == (uint)Environment.ProcessId;
+        bool foregroundIsInsideOwner = IsWindowOrDescendant(foregroundHandle, ownerHandle);
+        return SftpWindowActivationPolicy.ShouldStayTopmost(
+            foregroundUsesAppProcess,
+            foregroundIsInsideOwner);
+    }
+
+    private static bool IsWindowOrDescendant(IntPtr windowHandle, IntPtr ownerHandle)
+    {
+        const int MaxParentDepth = 64;
+        IntPtr current = windowHandle;
+        for (int depth = 0; current != IntPtr.Zero && depth < MaxParentDepth; depth++)
+        {
+            if (current == ownerHandle)
+                return true;
+
+            IntPtr parent = NativeMethods.GetParent(current);
+            if (parent == current)
+                break;
+            current = parent;
+        }
+
+        return false;
+    }
+
+    private static void SizeAndCenterWindow(
+        Window window,
+        Window owner,
+        SftpDialogSize dialogSize,
+        double rasterizationScale)
+    {
+        DisplayArea displayArea = DisplayArea.GetFromWindowId(owner.AppWindow.Id, DisplayAreaFallback.Primary);
+        RectInt32 workArea = displayArea.WorkArea;
+        int width = Math.Min(
+            workArea.Width,
+            Math.Max(1, (int)Math.Ceiling(dialogSize.Width * rasterizationScale)));
+        int height = Math.Min(
+            workArea.Height,
+            Math.Max(1, (int)Math.Ceiling(dialogSize.Height * rasterizationScale)));
+        PointInt32 ownerPosition = owner.AppWindow.Position;
+        SizeInt32 ownerSize = owner.AppWindow.Size;
+        int x = Math.Clamp(
+            ownerPosition.X + ((ownerSize.Width - width) / 2),
+            workArea.X,
+            workArea.X + workArea.Width - width);
+        int y = Math.Clamp(
+            ownerPosition.Y + ((ownerSize.Height - height) / 2),
+            workArea.Y,
+            workArea.Y + workArea.Height - height);
+        window.AppWindow.MoveAndResize(new RectInt32(x, y, width, height));
     }
 
     private static object? GetRightTappedItem(ListView list, RightTappedRoutedEventArgs eventArgs)
@@ -549,8 +713,47 @@ internal sealed class SftpBrowserDialog(Window owner, SshFileTransferSessionFact
         menu.ShowAt(target, new FlyoutShowOptions { Position = eventArgs.GetPosition(target) });
     }
 
+    private static Grid CreateAlertOverlay()
+    {
+        var overlay = new Grid
+        {
+            Visibility = Visibility.Collapsed,
+            Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(
+                Microsoft.UI.ColorHelper.FromArgb(96, 0, 0, 0))
+        };
+        AutomationProperties.SetAutomationId(overlay, "SftpConfirmationOverlay");
+        return overlay;
+    }
+
+    private static Border CreateCenteredAlertCard(UIElement content) => new()
+    {
+        Child = content,
+        MinWidth = 360,
+        MaxWidth = 520,
+        Padding = new Thickness(20),
+        CornerRadius = new CornerRadius(8),
+        Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.White),
+        BorderBrush = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.LightGray),
+        BorderThickness = new Thickness(1),
+        HorizontalAlignment = HorizontalAlignment.Center,
+        VerticalAlignment = VerticalAlignment.Center
+    };
+
+    private static void ShowCenteredAlert(Grid overlay, Border card)
+    {
+        overlay.Children.Clear();
+        overlay.Children.Add(card);
+        overlay.Visibility = Visibility.Visible;
+    }
+
+    private static void HideCenteredAlert(Grid overlay)
+    {
+        overlay.Visibility = Visibility.Collapsed;
+        overlay.Children.Clear();
+    }
+
     private static async Task<string?> PromptForNameAsync(
-        FrameworkElement target,
+        Grid alertOverlay,
         string title,
         string initialValue,
         string confirmText)
@@ -590,12 +793,7 @@ internal sealed class SftpBrowserDialog(Window owner, SshFileTransferSessionFact
         panel.Children.Add(error);
         panel.Children.Add(actions);
 
-        var flyout = new Flyout
-        {
-            Content = panel,
-            Placement = FlyoutPlacementMode.Bottom,
-            LightDismissOverlayMode = LightDismissOverlayMode.On
-        };
+        Border card = CreateCenteredAlertCard(panel);
 
         void Submit()
         {
@@ -607,30 +805,36 @@ internal sealed class SftpBrowserDialog(Window owner, SshFileTransferSessionFact
                 return;
             }
 
-            completion.TrySetResult(value);
-            flyout.Hide();
+            if (completion.TrySetResult(value))
+                HideCenteredAlert(alertOverlay);
         }
 
         confirm.Click += (_, _) => Submit();
         cancel.Click += (_, _) =>
         {
-            completion.TrySetResult(null);
-            flyout.Hide();
+            if (completion.TrySetResult(null))
+                HideCenteredAlert(alertOverlay);
         };
         input.KeyDown += (_, eventArgs) =>
         {
-            if (eventArgs.Key != VirtualKey.Enter)
-                return;
-            eventArgs.Handled = true;
-            Submit();
+            if (eventArgs.Key == VirtualKey.Enter)
+            {
+                eventArgs.Handled = true;
+                Submit();
+            }
+            else if (eventArgs.Key == VirtualKey.Escape)
+            {
+                eventArgs.Handled = true;
+                if (completion.TrySetResult(null))
+                    HideCenteredAlert(alertOverlay);
+            }
         };
-        flyout.Opened += (_, _) => input.Focus(FocusState.Programmatic);
-        flyout.Closed += (_, _) => completion.TrySetResult(null);
-        flyout.ShowAt(target);
+        ShowCenteredAlert(alertOverlay, card);
+        input.Focus(FocusState.Programmatic);
         return await completion.Task;
     }
 
-    private static async Task<bool> ConfirmAsync(FrameworkElement target, string title, string message)
+    private static async Task<bool> ConfirmAsync(Grid alertOverlay, string title, string message)
     {
         var completion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         var delete = new Button { Content = "Delete" };
@@ -653,24 +857,19 @@ internal sealed class SftpBrowserDialog(Window owner, SshFileTransferSessionFact
         panel.Children.Add(new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap });
         panel.Children.Add(actions);
 
-        var flyout = new Flyout
-        {
-            Content = panel,
-            Placement = FlyoutPlacementMode.Bottom,
-            LightDismissOverlayMode = LightDismissOverlayMode.On
-        };
+        Border card = CreateCenteredAlertCard(panel);
         delete.Click += (_, _) =>
         {
-            completion.TrySetResult(true);
-            flyout.Hide();
+            if (completion.TrySetResult(true))
+                HideCenteredAlert(alertOverlay);
         };
         cancel.Click += (_, _) =>
         {
-            completion.TrySetResult(false);
-            flyout.Hide();
+            if (completion.TrySetResult(false))
+                HideCenteredAlert(alertOverlay);
         };
-        flyout.Closed += (_, _) => completion.TrySetResult(false);
-        flyout.ShowAt(target);
+        ShowCenteredAlert(alertOverlay, card);
+        cancel.Focus(FocusState.Programmatic);
         return await completion.Task;
     }
 
@@ -725,13 +924,18 @@ internal sealed class SftpBrowserDialog(Window owner, SshFileTransferSessionFact
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="20" />
                     <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="72" />
                     <ColumnDefinition Width="82" />
                     <ColumnDefinition Width="128" />
                 </Grid.ColumnDefinitions>
                 <FontIcon Glyph="{Binding IconGlyph}" FontSize="14" VerticalAlignment="Center" />
                 <TextBlock Grid.Column="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-                <TextBlock Grid.Column="2" Text="{Binding SizeText}" HorizontalAlignment="Right" VerticalAlignment="Center" />
-                <TextBlock Grid.Column="3" Text="{Binding ModifiedText}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                    <FontIcon Glyph="{Binding TransferStatus.Glyph}" FontSize="12" />
+                    <TextBlock Text="{Binding TransferStatus.Text}" VerticalAlignment="Center" />
+                </StackPanel>
+                <TextBlock Grid.Column="3" Text="{Binding SizeText}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="4" Text="{Binding ModifiedText}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
             </Grid>
         </DataTemplate>
         """);
@@ -774,14 +978,18 @@ internal sealed class SftpBrowserDialog(Window owner, SshFileTransferSessionFact
 
         var columns = new Grid { Padding = new Thickness(8, 4, 8, 4), ColumnSpacing = 8 };
         columns.ColumnDefinitions.Add(new() { Width = new GridLength(1, GridUnitType.Star) });
+        columns.ColumnDefinitions.Add(new() { Width = new GridLength(72) });
         columns.ColumnDefinitions.Add(new() { Width = new GridLength(82) });
         columns.ColumnDefinitions.Add(new() { Width = new GridLength(128) });
         columns.Children.Add(new TextBlock { Text = "Name", Opacity = 0.7 });
+        var transfer = new TextBlock { Text = "Transfer", Opacity = 0.7 };
+        Grid.SetColumn(transfer, 1);
+        columns.Children.Add(transfer);
         var size = new TextBlock { Text = "Size", Opacity = 0.7, HorizontalAlignment = HorizontalAlignment.Right };
-        Grid.SetColumn(size, 1);
+        Grid.SetColumn(size, 2);
         columns.Children.Add(size);
         var modified = new TextBlock { Text = "Modified", Opacity = 0.7 };
-        Grid.SetColumn(modified, 2);
+        Grid.SetColumn(modified, 3);
         columns.Children.Add(modified);
 
         var pane = new Grid { RowSpacing = 6 };
@@ -840,6 +1048,7 @@ internal sealed record LocalFileTransferEntry(
     long Length,
     DateTime LastWriteTimeUtc)
 {
+    public FileTransferRowStatus TransferStatus { get; } = new();
     public string IconGlyph => IsDirectory ? "\uE8B7" : "\uE8A5";
     public string SizeText => IsDirectory ? string.Empty : FileTransferDisplay.FormatSize(Length);
     public string ModifiedText => LastWriteTimeUtc.ToLocalTime().ToString("g", System.Globalization.CultureInfo.CurrentCulture);

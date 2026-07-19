@@ -1,3 +1,5 @@
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using LoipvRemote.Domain.Connections;
 using Renci.SshNet;
 
@@ -10,12 +12,85 @@ public sealed record SshFileTransferEntry(
     long Length,
     DateTime LastWriteTimeUtc)
 {
+    public FileTransferRowStatus TransferStatus { get; } = new();
     public string IconGlyph => IsDirectory ? "\uE8B7" : "\uE8A5";
     public string SizeText => IsDirectory ? string.Empty : FileTransferDisplay.FormatSize(Length);
     public string ModifiedText => LastWriteTimeUtc.ToLocalTime().ToString("g", System.Globalization.CultureInfo.CurrentCulture);
     public string DisplayText => IsDirectory
         ? $"[Folder] {Name}"
         : $"{Name}    {SizeText}";
+}
+
+public readonly record struct FileTransferProgress(long TransferredBytes, long TotalBytes)
+{
+    public int Percentage => TotalBytes <= 0
+        ? 100
+        : (int)Math.Clamp(TransferredBytes * 100L / TotalBytes, 0, 100);
+}
+
+public enum FileTransferDirection
+{
+    Upload,
+    Download
+}
+
+public sealed class FileTransferRowStatus : INotifyPropertyChanged
+{
+    private FileTransferDirection _direction;
+    private string _glyph = string.Empty;
+    private string _text = string.Empty;
+    private bool _isActive;
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    public string Glyph
+    {
+        get => _glyph;
+        private set => SetField(ref _glyph, value);
+    }
+
+    public string Text
+    {
+        get => _text;
+        private set => SetField(ref _text, value);
+    }
+
+    public bool IsActive
+    {
+        get => _isActive;
+        private set => SetField(ref _isActive, value);
+    }
+
+    public void Begin(FileTransferDirection direction)
+    {
+        _direction = direction;
+        Glyph = direction == FileTransferDirection.Upload ? "\uE898" : "\uE896";
+        Text = "0%";
+        IsActive = true;
+    }
+
+    public void Report(FileTransferProgress progress)
+    {
+        Glyph = _direction == FileTransferDirection.Upload ? "\uE898" : "\uE896";
+        Text = $"{progress.Percentage}%";
+        IsActive = progress.Percentage < 100;
+    }
+
+    public void Fail()
+    {
+        Glyph = "\uE783";
+        Text = "Failed";
+        IsActive = false;
+    }
+
+    private void SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+    {
+        if (EqualityComparer<T>.Default.Equals(field, value))
+            return;
+
+        field = value;
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
 }
 
 public static class FileTransferDisplay
@@ -58,8 +133,16 @@ public interface ISshFileTransferSession : IAsyncDisposable
     Task RenameAsync(string oldRemotePath, string newRemotePath, CancellationToken cancellationToken = default);
     Task DeleteFileAsync(string remotePath, CancellationToken cancellationToken = default);
     Task DeleteDirectoryAsync(string remotePath, CancellationToken cancellationToken = default);
-    Task UploadFileAsync(string localPath, string remotePath, CancellationToken cancellationToken = default);
-    Task DownloadFileAsync(string remotePath, string localPath, CancellationToken cancellationToken = default);
+    Task UploadFileAsync(
+        string localPath,
+        string remotePath,
+        IProgress<FileTransferProgress>? progress = null,
+        CancellationToken cancellationToken = default);
+    Task DownloadFileAsync(
+        string remotePath,
+        string localPath,
+        IProgress<FileTransferProgress>? progress = null,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed class SshFileTransferSessionFactory(Func<ConnectionDefinition, string?> passwordResolver)
@@ -144,37 +227,7 @@ internal sealed class SshNetFileTransferSession : ISshFileTransferSession
         if (_client?.IsConnected != true)
         {
             _client?.Dispose();
-            var connectionInfo = new ConnectionInfo(
-                _connection.Host,
-                _connection.Port,
-                _connection.Username,
-                new PasswordAuthenticationMethod(_connection.Username, _connection.Password));
-            PuttyHostKeyTrustStore.PreferCachedHostKeyAlgorithms(connectionInfo, _connection.Host, _connection.Port);
-            var client = new SftpClient(connectionInfo);
-            bool hostKeyRejected = false;
-            client.HostKeyReceived += (_, eventArgs) =>
-            {
-                eventArgs.CanTrust = PuttyHostKeyTrustStore.IsTrusted(
-                    _connection.Host,
-                    _connection.Port,
-                    eventArgs.HostKeyName,
-                    eventArgs.HostKey);
-                hostKeyRejected = !eventArgs.CanTrust;
-            };
-
-            try
-            {
-                await Task.Run(client.Connect, cancellationToken).ConfigureAwait(false);
-            }
-            catch
-            {
-                client.Dispose();
-                if (hostKeyRejected)
-                    throw new InvalidOperationException("The SSH host key has not been trusted in PuTTY.");
-                throw;
-            }
-
-            _client = client;
+            _client = await CreateConnectedClientAsync(cancellationToken).ConfigureAwait(false);
         }
 
         string homePath = _client.WorkingDirectory;
@@ -238,19 +291,63 @@ internal sealed class SshNetFileTransferSession : ISshFileTransferSession
     public async Task UploadFileAsync(
         string localPath,
         string remotePath,
+        IProgress<FileTransferProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
+        using SftpClient client = await CreateConnectedClientAsync(cancellationToken).ConfigureAwait(false);
         await using FileStream source = new(localPath, FileMode.Open, FileAccess.Read, FileShare.Read, 64 * 1024, useAsync: true);
-        await GetConnectedClient().UploadFileAsync(source, remotePath, cancellationToken).ConfigureAwait(false);
+        await using var trackedSource = new TransferProgressStream(source, source.Length, progress, trackReads: true);
+        await client.UploadFileAsync(trackedSource, remotePath, cancellationToken).ConfigureAwait(false);
+        progress?.Report(new FileTransferProgress(source.Length, source.Length));
     }
 
     public async Task DownloadFileAsync(
         string remotePath,
         string localPath,
+        IProgress<FileTransferProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
+        using SftpClient client = await CreateConnectedClientAsync(cancellationToken).ConfigureAwait(false);
+        long totalBytes = (await client.GetAttributesAsync(remotePath, cancellationToken).ConfigureAwait(false)).Size;
         await using FileStream destination = new(localPath, FileMode.Create, FileAccess.Write, FileShare.None, 64 * 1024, useAsync: true);
-        await GetConnectedClient().DownloadFileAsync(remotePath, destination, cancellationToken).ConfigureAwait(false);
+        await using var trackedDestination = new TransferProgressStream(destination, totalBytes, progress, trackReads: false);
+        await client.DownloadFileAsync(remotePath, trackedDestination, cancellationToken).ConfigureAwait(false);
+        progress?.Report(new FileTransferProgress(totalBytes, totalBytes));
+    }
+
+    private async Task<SftpClient> CreateConnectedClientAsync(CancellationToken cancellationToken)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        var connectionInfo = new ConnectionInfo(
+            _connection.Host,
+            _connection.Port,
+            _connection.Username,
+            new PasswordAuthenticationMethod(_connection.Username, _connection.Password));
+        PuttyHostKeyTrustStore.PreferCachedHostKeyAlgorithms(connectionInfo, _connection.Host, _connection.Port);
+        var client = new SftpClient(connectionInfo);
+        bool hostKeyRejected = false;
+        client.HostKeyReceived += (_, eventArgs) =>
+        {
+            eventArgs.CanTrust = PuttyHostKeyTrustStore.IsTrusted(
+                _connection.Host,
+                _connection.Port,
+                eventArgs.HostKeyName,
+                eventArgs.HostKey);
+            hostKeyRejected = !eventArgs.CanTrust;
+        };
+
+        try
+        {
+            await Task.Run(client.Connect, cancellationToken).ConfigureAwait(false);
+            return client;
+        }
+        catch
+        {
+            client.Dispose();
+            if (hostKeyRejected)
+                throw new InvalidOperationException("The SSH host key has not been trusted in PuTTY.");
+            throw;
+        }
     }
 
     private SftpClient GetConnectedClient()
@@ -283,5 +380,110 @@ internal sealed class SshNetFileTransferSession : ISshFileTransferSession
 
         GC.SuppressFinalize(this);
         return ValueTask.CompletedTask;
+    }
+}
+
+internal sealed class TransferProgressStream(
+    Stream inner,
+    long totalBytes,
+    IProgress<FileTransferProgress>? progress,
+    bool trackReads) : Stream
+{
+    private long _transferredBytes;
+    private int _lastPercentage = -1;
+
+    public override bool CanRead => inner.CanRead;
+    public override bool CanSeek => inner.CanSeek;
+    public override bool CanWrite => inner.CanWrite;
+    public override long Length => inner.Length;
+    public override long Position { get => inner.Position; set => inner.Position = value; }
+
+    public override void Flush() => inner.Flush();
+    public override Task FlushAsync(CancellationToken cancellationToken) => inner.FlushAsync(cancellationToken);
+    public override long Seek(long offset, SeekOrigin origin) => inner.Seek(offset, origin);
+    public override void SetLength(long value) => inner.SetLength(value);
+
+    public override int Read(byte[] buffer, int offset, int count)
+    {
+        int read = inner.Read(buffer, offset, count);
+        if (trackReads)
+            Report(read);
+        return read;
+    }
+
+    public override async Task<int> ReadAsync(
+        byte[] buffer,
+        int offset,
+        int count,
+        CancellationToken cancellationToken)
+    {
+        int read = await inner.ReadAsync(buffer.AsMemory(offset, count), cancellationToken).ConfigureAwait(false);
+        if (trackReads)
+            Report(read);
+        return read;
+    }
+
+    public override async ValueTask<int> ReadAsync(
+        Memory<byte> buffer,
+        CancellationToken cancellationToken = default)
+    {
+        int read = await inner.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+        if (trackReads)
+            Report(read);
+        return read;
+    }
+
+    public override void Write(byte[] buffer, int offset, int count)
+    {
+        inner.Write(buffer, offset, count);
+        if (!trackReads)
+            Report(count);
+    }
+
+    public override async Task WriteAsync(
+        byte[] buffer,
+        int offset,
+        int count,
+        CancellationToken cancellationToken)
+    {
+        await inner.WriteAsync(buffer.AsMemory(offset, count), cancellationToken).ConfigureAwait(false);
+        if (!trackReads)
+            Report(count);
+    }
+
+    public override async ValueTask WriteAsync(
+        ReadOnlyMemory<byte> buffer,
+        CancellationToken cancellationToken = default)
+    {
+        await inner.WriteAsync(buffer, cancellationToken).ConfigureAwait(false);
+        if (!trackReads)
+            Report(buffer.Length);
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+            inner.Flush();
+        base.Dispose(disposing);
+    }
+
+    public override async ValueTask DisposeAsync()
+    {
+        await inner.FlushAsync().ConfigureAwait(false);
+        await base.DisposeAsync().ConfigureAwait(false);
+    }
+
+    private void Report(int delta)
+    {
+        if (delta <= 0 || progress is null)
+            return;
+
+        long transferred = Interlocked.Add(ref _transferredBytes, delta);
+        var update = new FileTransferProgress(transferred, totalBytes);
+        if (update.Percentage == _lastPercentage)
+            return;
+
+        _lastPercentage = update.Percentage;
+        progress.Report(update);
     }
 }

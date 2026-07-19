@@ -36,4 +36,19 @@ public sealed class SftpContextMenuPolicyTests
             Assert.That(size.Height, Is.LessThan(availableHeight));
         });
     }
+
+    [TestCase(true, false, true)]
+    [TestCase(false, true, true)]
+    [TestCase(false, false, false)]
+    public void WindowStaysTopmostOnlyWhileLoipvRemoteOwnsTheForeground(
+        bool foregroundUsesAppProcess,
+        bool foregroundIsInsideOwner,
+        bool expected)
+    {
+        Assert.That(
+            SftpWindowActivationPolicy.ShouldStayTopmost(
+                foregroundUsesAppProcess,
+                foregroundIsInsideOwner),
+            Is.EqualTo(expected));
+    }
 }

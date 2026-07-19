@@ -217,9 +217,24 @@ public sealed class MainWindowXamlLayoutTests
             Assert.That(code, Does.Contain("\"SftpLocalFiles\""));
             Assert.That(code, Does.Contain("\"SftpRemoteFiles\""));
             Assert.That(code, Does.Contain("SftpDialogSizing.Fit"));
-            Assert.That(code, Does.Contain("Width = dialogSize.Width"));
-            Assert.That(code, Does.Contain("Height = dialogSize.Height"));
-            Assert.That(code, Does.Contain("ContentDialogMaxWidth\"] = 1670d"));
+            Assert.That(code, Does.Contain("var window = new Window"));
+            Assert.That(code, Does.Contain("SetNativeOwner(window, _owner);"));
+            Assert.That(code, Does.Contain("KeepAboveEmbeddedSession(window, _owner);"));
+            Assert.That(
+                code.IndexOf("SetNativeOwner(window, _owner);", StringComparison.Ordinal),
+                Is.LessThan(code.IndexOf("window.Activate();", StringComparison.Ordinal)));
+            Assert.That(
+                code.IndexOf("KeepAboveEmbeddedSession(window, _owner);", StringComparison.Ordinal),
+                Is.LessThan(code.IndexOf("window.Activate();", StringComparison.Ordinal)));
+            Assert.That(code, Does.Not.Contain("IsAlwaysOnTop"));
+            Assert.That(code, Does.Contain("NativeMethods.SetWindowPos("));
+            Assert.That(code, Does.Contain("if (!IsLoipvRemoteForeground(ownerHandle))"));
+            Assert.That(code, Does.Contain("window.DispatcherQueue.CreateTimer()"));
+            Assert.That(code, Does.Contain("topmostTimer.Stop()"));
+            Assert.That(code, Does.Contain("window.Activate()"));
+            Assert.That(code, Does.Contain("SizeAndCenterWindow(window, _owner, dialogSize, rasterizationScale)"));
+            Assert.That(code, Does.Not.Contain("new ContentDialog"));
+            Assert.That(code, Does.Not.Contain("showDialogAsync"));
             Assert.That(code, Does.Contain("Text = $\"SFTP - {connection.Name} | {connection.Host}:{connection.Port}\""));
             Assert.That(code, Does.Contain("FontSize = 22"));
             Assert.That(code, Does.Contain("CreateToolbarButton(\"Up\", Symbol.Up)"));
@@ -245,6 +260,16 @@ public sealed class MainWindowXamlLayoutTests
             Assert.That(code, Does.Not.Contain("var downloadButton = new Button"));
             Assert.That(code, Does.Not.Contain("FileOpenPicker"));
             Assert.That(code, Does.Not.Contain("FileSavePicker"));
+            Assert.That(code, Does.Contain("SftpConfirmationOverlay"));
+            Assert.That(code, Does.Contain("HorizontalAlignment = HorizontalAlignment.Center"));
+            Assert.That(code, Does.Contain("VerticalAlignment = VerticalAlignment.Center"));
+            Assert.That(code, Does.Not.Contain("FlyoutPlacementMode.Bottom"));
+            Assert.That(code, Does.Not.Contain("flyout.ShowAt(target)"));
+            Assert.That(code, Does.Contain("TransferStatus.Glyph"));
+            Assert.That(code, Does.Contain("TransferStatus.Text"));
+            Assert.That(code, Does.Contain("new Progress<FileTransferProgress>"));
+            Assert.That(code, Does.Not.Contain("SetBusy(true, $\"Uploading"));
+            Assert.That(code, Does.Not.Contain("SetBusy(true, $\"Downloading"));
         });
     }
 

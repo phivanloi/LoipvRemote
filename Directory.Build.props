@@ -3,7 +3,7 @@
     <!-- Keep every shipped assembly version aligned with the MSI product.
          Windows Installer otherwise preserves changed DLLs when their default
          1.0.0.0 file version matches the already-installed copy. -->
-    <LoipvRemoteProductVersion>3.0.2.37</LoipvRemoteProductVersion>
+    <LoipvRemoteProductVersion>3.0.2.42</LoipvRemoteProductVersion>
     <Version>$(LoipvRemoteProductVersion)</Version>
     <AssemblyVersion>$(LoipvRemoteProductVersion)</AssemblyVersion>
     <FileVersion>$(LoipvRemoteProductVersion)</FileVersion>

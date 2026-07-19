@@ -100,4 +100,75 @@ public sealed class SshFileTransferTests
     {
         Assert.That(FileTransferName.CreateCollisionName(fileName, existingSuffix + 1), Is.EqualTo(expected));
     }
+
+    [TestCase(0, 100, 0)]
+    [TestCase(1, 100, 1)]
+    [TestCase(50, 100, 50)]
+    [TestCase(150, 100, 100)]
+    [TestCase(0, 0, 100)]
+    public void TransferProgressClampsAStablePercentage(long transferred, long total, int expected)
+    {
+        Assert.That(new FileTransferProgress(transferred, total).Percentage, Is.EqualTo(expected));
+    }
+
+    [Test]
+    public void TransferRowStatusShowsDirectionAndPercentageWithoutAWindowWideBusyState()
+    {
+        var status = new FileTransferRowStatus();
+
+        status.Begin(FileTransferDirection.Upload);
+        Assert.Multiple(() =>
+        {
+            Assert.That(status.Glyph, Is.EqualTo("\uE898"));
+            Assert.That(status.Text, Is.EqualTo("0%"));
+            Assert.That(status.IsActive, Is.True);
+        });
+
+        status.Report(new FileTransferProgress(42, 100));
+        Assert.That(status.Text, Is.EqualTo("42%"));
+
+        status.Report(new FileTransferProgress(100, 100));
+        Assert.Multiple(() =>
+        {
+            Assert.That(status.Text, Is.EqualTo("100%"));
+            Assert.That(status.IsActive, Is.False);
+        });
+    }
+
+    [TestCase(true)]
+    [TestCase(false)]
+    public async Task TransferProgressStreamReportsRealReadAndWriteProgress(bool trackReads)
+    {
+        byte[] payload = new byte[100];
+        var updates = new List<FileTransferProgress>();
+        var progress = new InlineProgress<FileTransferProgress>(updates.Add);
+
+        if (trackReads)
+        {
+            await using var source = new MemoryStream(payload);
+            await using var tracked = new TransferProgressStream(source, payload.Length, progress, trackReads: true);
+            var buffer = new byte[17];
+            while (await tracked.ReadAsync(buffer) > 0)
+            {
+            }
+        }
+        else
+        {
+            await using var destination = new MemoryStream();
+            await using var tracked = new TransferProgressStream(destination, payload.Length, progress, trackReads: false);
+            await tracked.WriteAsync(payload);
+        }
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(updates, Is.Not.Empty);
+            Assert.That(updates[^1].TransferredBytes, Is.EqualTo(payload.Length));
+            Assert.That(updates[^1].Percentage, Is.EqualTo(100));
+        });
+    }
+
+    private sealed class InlineProgress<T>(Action<T> report) : IProgress<T>
+    {
+        public void Report(T value) => report(value);
+    }
 }

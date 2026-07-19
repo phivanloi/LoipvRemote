@@ -2228,7 +2228,7 @@ public sealed partial class MainWindow : Window, IDisposable
         {
             string? workingDirectory = (sessionTab.Session as IRemoteWorkingDirectorySession)?.CurrentWorkingDirectory;
             var browser = new SftpBrowserDialog(this, _sshFileTransferSessionFactory);
-            await browser.ShowAsync(sessionTab.Connection, workingDirectory, ShowDialogAsync);
+            await browser.ShowAsync(sessionTab.Connection, workingDirectory);
         }
         finally
         {

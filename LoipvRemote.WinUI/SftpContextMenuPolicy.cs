@@ -45,3 +45,11 @@ public static class SftpDialogSizing
         return Math.Max(0, Math.Min(desired, available - ScreenMargin));
     }
 }
+
+public static class SftpWindowActivationPolicy
+{
+    public static bool ShouldStayTopmost(
+        bool foregroundUsesAppProcess,
+        bool foregroundIsInsideOwner) =>
+        foregroundUsesAppProcess || foregroundIsInsideOwner;
+}

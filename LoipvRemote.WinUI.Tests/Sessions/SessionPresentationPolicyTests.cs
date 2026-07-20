@@ -37,6 +37,23 @@ public sealed class SessionPresentationPolicyTests
     }
 
     [Test]
+    public void BackgroundConnectionCompletionRestoresTheCurrentlySelectedSession()
+    {
+        var completedSession = new object();
+        var selectedSession = new object();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(
+                SessionPresentationPolicy.ShouldRestoreSelectedSession(completedSession, selectedSession),
+                Is.True);
+            Assert.That(
+                SessionPresentationPolicy.ShouldRestoreSelectedSession(selectedSession, selectedSession),
+                Is.False);
+        });
+    }
+
+    [Test]
     public void ConnectionFailureStatusKeepsTheActionableReasonVisible()
     {
         string status = SessionPresentationPolicy.FormatConnectionFailure("Drive redirection is unavailable.");

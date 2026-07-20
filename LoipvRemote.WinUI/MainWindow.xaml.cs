@@ -1971,24 +1971,46 @@ public sealed partial class MainWindow : Window, IDisposable
             _connectedConnectionIds.Add(sessionTab.Connection.Id);
             if (_connectionCatalog.IsLoaded)
                 RebuildConnectionTree(_connectionCatalog.Tree);
-            ShowSession(
-                sessionTab,
-                SessionPresentationPolicy.ShouldActivateNativeSession(SessionPresentationTrigger.ConnectionCompleted));
+            PresentSelectedSessionAfterConnectionCompleted(sessionTab);
         }
         catch (Exception exception)
         {
             EmbeddingDiagnostics.Write(
                 $"session-connect-failed type={exception.GetType().Name} hresult=0x{exception.HResult:X8} " +
                 $"stack={exception.StackTrace?.Replace(Environment.NewLine, " | ")}");
-            SessionContent.Visibility = Visibility.Visible;
-            SessionStatus.Text = SessionPresentationPolicy.FormatConnectionFailure(exception.Message);
+            if (IsSelectedSession(sessionTab))
+            {
+                ShowSession(sessionTab);
+                SessionStatus.Text = SessionPresentationPolicy.FormatConnectionFailure(exception.Message);
+            }
         }
         finally
         {
-            if (sessionTab.State is not RemoteSessionTabState.Connecting)
-                SessionLoadingContent.Visibility = Visibility.Collapsed;
-            ConnectSessionButton.IsEnabled = sessionTab.State is not RemoteSessionTabState.Connected;
+            if (IsSelectedSession(sessionTab))
+            {
+                if (sessionTab.State is not RemoteSessionTabState.Connecting)
+                    SessionLoadingContent.Visibility = Visibility.Collapsed;
+                ConnectSessionButton.IsEnabled = sessionTab.State is not RemoteSessionTabState.Connected;
+            }
         }
+    }
+
+    private void PresentSelectedSessionAfterConnectionCompleted(RemoteSessionTab completedSession)
+    {
+        if (Sessions.SelectedItem is not TabViewItem selectedTab ||
+            !_sessionTabs.TryGetValue(selectedTab, out RemoteSessionTab? selectedSession))
+        {
+            return;
+        }
+
+        bool restoreSelectedSession = SessionPresentationPolicy.ShouldRestoreSelectedSession(
+            completedSession,
+            selectedSession);
+        bool activateNativeSession = SessionPresentationPolicy.ShouldActivateNativeSession(
+            restoreSelectedSession
+                ? SessionPresentationTrigger.TabSelection
+                : SessionPresentationTrigger.ConnectionCompleted);
+        ShowSession(selectedSession, activateNativeSession);
     }
 
     private void UpdateSessionTabHeaderSelection()

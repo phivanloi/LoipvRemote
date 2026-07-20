@@ -93,6 +93,22 @@ public sealed class MainWindowXamlLayoutTests
     }
 
     [Test]
+    public void ConcurrentConnectionCompletionPresentsTheTabThatIsStillSelected()
+    {
+        string codePath = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "LoipvRemote.WinUI", "MainWindow.xaml.cs"));
+        string code = File.ReadAllText(codePath).ReplaceLineEndings("\n");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(code, Does.Contain("PresentSelectedSessionAfterConnectionCompleted(sessionTab);"));
+            Assert.That(code, Does.Contain("private void PresentSelectedSessionAfterConnectionCompleted(RemoteSessionTab completedSession)"));
+            Assert.That(code, Does.Contain("ShowSession(selectedSession, activateNativeSession);"));
+        });
+    }
+
+    [Test]
     public void SessionViewportKeepsTheSameHeightAcrossSshAndRdpTabs()
     {
         string xamlPath = Path.GetFullPath(Path.Combine(

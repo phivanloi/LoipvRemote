@@ -14,4 +14,16 @@ internal static class NativeSessionFocusTransition
         focusImmediately();
         queueSettledLayoutRetry();
     }
+
+    public static async Task WaitUntilUnblockedAsync(
+        Func<bool> isFocusBlocked,
+        TimeSpan retryInterval,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(isFocusBlocked);
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(retryInterval, TimeSpan.Zero);
+
+        while (isFocusBlocked())
+            await Task.Delay(retryInterval, cancellationToken).ConfigureAwait(false);
+    }
 }

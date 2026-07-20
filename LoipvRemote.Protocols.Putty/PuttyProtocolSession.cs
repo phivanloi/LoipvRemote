@@ -5,8 +5,9 @@ using System.Diagnostics;
 namespace LoipvRemote.Protocols.Putty;
 
 /// <summary>PuTTY lifecycle, embedding and keyboard routing owned by the protocol module.</summary>
-public sealed class PuttyProtocolSession : IProtocolSession, IEmbeddedWindow, IEmbeddedWindowHost, IInputMessageTarget, IPuttySettingsSession, IRemoteWorkingDirectorySession
+public sealed class PuttyProtocolSession : IProtocolSession, IEmbeddedWindow, IEmbeddedWindowHost, IInputMessageTarget, IPuttySettingsSession, IRemoteWorkingDirectorySession, IEmbeddedWindowFocusDeferral
 {
+    private const int MaximumTopLevelWindowsToInspect = 128;
     private readonly IPuttyProcessHost _process;
     private readonly IEmbeddedWindowOperations _windowOperations;
     private readonly PuttyConnectionOptions _options;
@@ -43,6 +44,7 @@ public sealed class PuttyProtocolSession : IProtocolSession, IEmbeddedWindow, IE
         ProtocolCapabilities.Reconnect |
         ProtocolCapabilities.InputForwarding;
     public bool IsAvailable => State == ProtocolSessionState.Connected && _process.IsRunning;
+    public bool IsFocusBlocked => HasBlockingTopLevelDialog();
     public nint WindowHandle
     {
         get
@@ -58,9 +60,29 @@ public sealed class PuttyProtocolSession : IProtocolSession, IEmbeddedWindow, IE
                 return hostedWindow;
             }
 
+            nint processWindow = _process.MainWindowHandle;
+            if (IsPuttyTerminalWindow(processWindow))
+            {
+                _embeddedWindowHandle = processWindow;
+                return processWindow;
+            }
+
+            // While PuTTY displays its first-use host-key alert,
+            // Process.MainWindowHandle may temporarily point at the dialog.
+            // Locate the real terminal HWND instead so the alert is never
+            // re-parented into the session surface.
+            nint topLevelTerminal = FindTopLevelPuttyTerminalWindow();
+            if (topLevelTerminal != IntPtr.Zero)
+            {
+                _embeddedWindowHandle = topLevelTerminal;
+                return topLevelTerminal;
+            }
+
             return _embeddedWindowHandle != IntPtr.Zero
                 ? _embeddedWindowHandle
-                : _process.MainWindowHandle;
+                : IsPuttyDialogWindow(processWindow)
+                    ? IntPtr.Zero
+                    : processWindow;
         }
     }
     public string WindowTitle
@@ -177,6 +199,8 @@ public sealed class PuttyProtocolSession : IProtocolSession, IEmbeddedWindow, IE
         nint windowHandle = WindowHandle;
         if (!IsAvailable || windowHandle == IntPtr.Zero)
             return;
+        if (IsFocusBlocked)
+            return;
 
         EnsureAttachedWindow(windowHandle);
         EnsureWindowShown(windowHandle);
@@ -259,6 +283,54 @@ public sealed class PuttyProtocolSession : IProtocolSession, IEmbeddedWindow, IE
 
         return IntPtr.Zero;
     }
+
+    private nint FindTopLevelPuttyTerminalWindow()
+    {
+        if (!_process.IsRunning || _process.ProcessId <= 0)
+            return IntPtr.Zero;
+
+        IntPtr afterHandle = IntPtr.Zero;
+        for (int i = 0; i < MaximumTopLevelWindowsToInspect; i++)
+        {
+            IntPtr candidate = _windowOperations.FindChildWindow(IntPtr.Zero, afterHandle);
+            if (candidate == IntPtr.Zero || candidate == afterHandle)
+                return IntPtr.Zero;
+            if (IsPuttyTerminalWindow(candidate))
+                return candidate;
+            afterHandle = candidate;
+        }
+
+        return IntPtr.Zero;
+    }
+
+    private bool HasBlockingTopLevelDialog()
+    {
+        if (!_process.IsRunning || _process.ProcessId <= 0)
+            return false;
+
+        IntPtr afterHandle = IntPtr.Zero;
+        for (int i = 0; i < MaximumTopLevelWindowsToInspect; i++)
+        {
+            IntPtr candidate = _windowOperations.FindChildWindow(IntPtr.Zero, afterHandle);
+            if (candidate == IntPtr.Zero || candidate == afterHandle)
+                return false;
+            if (IsPuttyDialogWindow(candidate))
+                return true;
+            afterHandle = candidate;
+        }
+
+        return false;
+    }
+
+    private bool IsPuttyTerminalWindow(IntPtr windowHandle) =>
+        windowHandle != IntPtr.Zero &&
+        _windowOperations.GetWindowProcessId(windowHandle) == (uint)_process.ProcessId &&
+        _windowOperations.HasClassName(windowHandle, "PuTTY");
+
+    private bool IsPuttyDialogWindow(IntPtr windowHandle) =>
+        windowHandle != IntPtr.Zero &&
+        _windowOperations.GetWindowProcessId(windowHandle) == (uint)_process.ProcessId &&
+        _windowOperations.HasClassName(windowHandle, "#32770");
 
     public void Resize(EmbeddedWindowBounds bounds)
     {

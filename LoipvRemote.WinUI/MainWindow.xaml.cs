@@ -2016,6 +2016,11 @@ public sealed partial class MainWindow : Window, IDisposable
             RemoteSessionTabState.Closed => "Closed",
             _ => string.Empty
         };
+        if (_embeddedSessionSurface is not null &&
+            SessionPresentationPolicy.ShouldDeactivateNativeSurface(tab.State))
+        {
+            RemoteSessionWorkspace.Deactivate(_embeddedSessionSurface);
+        }
         if (tab.State == RemoteSessionTabState.Connecting)
         {
             UpdateResourceMonitor(tab);
@@ -2233,6 +2238,7 @@ public sealed partial class MainWindow : Window, IDisposable
         finally
         {
             _sftpDialogOpen = false;
+            RecoverSessionKeyboardFocus();
         }
     }
 

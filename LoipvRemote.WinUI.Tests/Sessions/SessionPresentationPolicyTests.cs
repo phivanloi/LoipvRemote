@@ -24,6 +24,18 @@ public sealed class SessionPresentationPolicyTests
         Assert.That(shouldActivate, Is.False);
     }
 
+    [TestCase(RemoteSessionTabState.Created, true)]
+    [TestCase(RemoteSessionTabState.Connecting, true)]
+    [TestCase(RemoteSessionTabState.Connected, false)]
+    [TestCase(RemoteSessionTabState.Faulted, true)]
+    [TestCase(RemoteSessionTabState.Closed, true)]
+    public void TabsWithoutAConnectedSessionHideThePreviousNativeSurface(
+        RemoteSessionTabState state,
+        bool expected)
+    {
+        Assert.That(SessionPresentationPolicy.ShouldDeactivateNativeSurface(state), Is.EqualTo(expected));
+    }
+
     [Test]
     public void ConnectionFailureStatusKeepsTheActionableReasonVisible()
     {

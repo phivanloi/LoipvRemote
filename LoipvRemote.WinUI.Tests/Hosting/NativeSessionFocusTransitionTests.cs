@@ -16,4 +16,23 @@ public sealed class NativeSessionFocusTransitionTests
 
         Assert.That(calls, Is.EqualTo(["focus", "retry"]));
     }
+
+    [Test]
+    public async Task DeferredFocusWaitsUntilTheNativeSecurityDialogCloses()
+    {
+        bool focusBlocked = true;
+
+        Task wait = NativeSessionFocusTransition.WaitUntilUnblockedAsync(
+            () => focusBlocked,
+            TimeSpan.FromMilliseconds(10),
+            CancellationToken.None);
+
+        await Task.Delay(30);
+        Assert.That(wait.IsCompleted, Is.False);
+
+        focusBlocked = false;
+        await wait.WaitAsync(TimeSpan.FromSeconds(1));
+
+        Assert.That(wait.IsCompletedSuccessfully, Is.True);
+    }
 }

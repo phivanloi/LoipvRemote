@@ -72,6 +72,27 @@ public sealed class MainWindowXamlLayoutTests
     }
 
     [Test]
+    public void FailedSessionTabsHideThePreviouslyVisibleNativeSurface()
+    {
+        string codePath = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "LoipvRemote.WinUI", "MainWindow.xaml.cs"));
+        string code = File.ReadAllText(codePath).ReplaceLineEndings("\n");
+        int methodStart = code.IndexOf("private void ShowSession(", StringComparison.Ordinal);
+        int methodEnd = code.IndexOf("private void SubscribeResourceMonitor(", methodStart, StringComparison.Ordinal);
+        string method = code[methodStart..methodEnd];
+        int deactivate = method.IndexOf("SessionPresentationPolicy.ShouldDeactivateNativeSurface(tab.State)", StringComparison.Ordinal);
+        int connectingBranch = method.IndexOf("if (tab.State == RemoteSessionTabState.Connecting)", StringComparison.Ordinal);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(deactivate, Is.GreaterThanOrEqualTo(0));
+            Assert.That(method, Does.Contain("RemoteSessionWorkspace.Deactivate(_embeddedSessionSurface);"));
+            Assert.That(deactivate, Is.LessThan(connectingBranch));
+        });
+    }
+
+    [Test]
     public void SessionViewportKeepsTheSameHeightAcrossSshAndRdpTabs()
     {
         string xamlPath = Path.GetFullPath(Path.Combine(
@@ -270,6 +291,24 @@ public sealed class MainWindowXamlLayoutTests
             Assert.That(code, Does.Contain("new Progress<FileTransferProgress>"));
             Assert.That(code, Does.Not.Contain("SetBusy(true, $\"Uploading"));
             Assert.That(code, Does.Not.Contain("SetBusy(true, $\"Downloading"));
+        });
+    }
+
+    [Test]
+    public void ClosingSftpBrowserRestoresKeyboardFocusToActiveSshSession()
+    {
+        string codePath = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "LoipvRemote.WinUI", "MainWindow.xaml.cs"));
+        string code = File.ReadAllText(codePath);
+
+        int dialogClosed = code.IndexOf("_sftpDialogOpen = false;", StringComparison.Ordinal);
+        int focusRestored = code.IndexOf("RecoverSessionKeyboardFocus();", dialogClosed, StringComparison.Ordinal);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(dialogClosed, Is.GreaterThanOrEqualTo(0));
+            Assert.That(focusRestored, Is.GreaterThan(dialogClosed));
         });
     }
 

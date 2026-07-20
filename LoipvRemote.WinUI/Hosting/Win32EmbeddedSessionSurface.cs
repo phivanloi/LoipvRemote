@@ -58,6 +58,12 @@ public sealed class Win32EmbeddedSessionSurface : IEmbeddedSessionSurface, IDisp
     public void SetVisible(bool visible)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
+        if (!visible)
+        {
+            _focusRestoreCancellation?.Cancel();
+            _focusRestoreCancellation?.Dispose();
+            _focusRestoreCancellation = null;
+        }
         if (_nativeHost is not null)
         {
             bool visibilityChanged = _isVisible != visible;
@@ -213,9 +219,14 @@ public sealed class Win32EmbeddedSessionSurface : IEmbeddedSessionSurface, IDisp
         try
         {
             // A new PuTTY terminal needs one pass after its first layout to
-            // accept input. Do not repeat focus requests: reactivating a
-            // foreign child window repeatedly makes the terminal flicker.
+            // accept input. A first-use host-key alert may remain open for an
+            // arbitrary amount of time, so wait for that native modal dialog
+            // to close before the single settled focus request is dispatched.
             await Task.Delay(150, cancellationToken);
+            await NativeSessionFocusTransition.WaitUntilUnblockedAsync(
+                () => _session is IEmbeddedWindowFocusDeferral { IsFocusBlocked: true },
+                TimeSpan.FromMilliseconds(100),
+                cancellationToken);
             if (!cancellationToken.IsCancellationRequested)
                 _placementTarget.DispatcherQueue.TryEnqueue(Focus);
         }

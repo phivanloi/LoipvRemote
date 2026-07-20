@@ -129,6 +129,67 @@ public sealed class ProtocolFactoryTests
     }
 
     [Test]
+    public async Task PuttySessionIgnoresTheSecurityAlertAndEmbedsTheTerminalWindow()
+    {
+        var process = new RecordingPuttyProcessHost(windowHandle: (IntPtr)41, processId: 200);
+        IEmbeddedWindowOperations windows = Substitute.For<IEmbeddedWindowOperations>();
+        windows.HasClassName((IntPtr)41, "#32770").Returns(true);
+        windows.FindChildWindow(IntPtr.Zero, IntPtr.Zero).Returns((IntPtr)41);
+        windows.FindChildWindow(IntPtr.Zero, (IntPtr)41).Returns((IntPtr)42);
+        windows.HasClassName((IntPtr)42, "PuTTY").Returns(true);
+        windows.GetWindowProcessId(Arg.Any<IntPtr>()).Returns(200u);
+
+        using var session = new PuttyProtocolSession(
+            process,
+            windows,
+            new PuttyConnectionOptions("putty.exe", new PuttyLaunchOptions { Hostname = "server.example", Port = 22 }),
+            new NoopPuttyEndpointProbe());
+
+        Assert.That(await session.InitializeAsync(), Is.True);
+        session.SetHostWindowHandle((IntPtr)99);
+        Assert.That(await session.ConnectAsync(), Is.True);
+        Assert.That(session.AttachTo((IntPtr)99, TimeSpan.Zero), Is.True);
+
+        windows.Received().SetParent((IntPtr)42, (IntPtr)99);
+        windows.DidNotReceive().SetParent((IntPtr)41, Arg.Any<IntPtr>());
+    }
+
+    [Test]
+    public async Task PuttySessionDefersKeyboardFocusWhileTheSecurityAlertIsOpen()
+    {
+        bool securityAlertOpen = true;
+        var process = new RecordingPuttyProcessHost(windowHandle: (IntPtr)42, processId: 200);
+        IEmbeddedWindowOperations windows = Substitute.For<IEmbeddedWindowOperations>();
+        windows.HasClassName((IntPtr)42, "PuTTY").Returns(true);
+        windows.FindChildWindow(IntPtr.Zero, IntPtr.Zero)
+            .Returns(_ => securityAlertOpen ? (IntPtr)41 : IntPtr.Zero);
+        windows.HasClassName((IntPtr)41, "#32770").Returns(true);
+        windows.GetWindowProcessId(Arg.Any<IntPtr>()).Returns(200u);
+        windows.TryFocus((IntPtr)7, (IntPtr)42).Returns(true);
+
+        using var session = new PuttyProtocolSession(
+            process,
+            windows,
+            new PuttyConnectionOptions("putty.exe", new PuttyLaunchOptions { Hostname = "server.example", Port = 22 }),
+            new NoopPuttyEndpointProbe());
+
+        Assert.That(await session.InitializeAsync(), Is.True);
+        session.SetHostWindowHandle((IntPtr)99);
+        Assert.That(await session.ConnectAsync(), Is.True);
+        Assert.That(session.AttachTo((IntPtr)99, TimeSpan.Zero), Is.True);
+
+        Assert.That(session.IsFocusBlocked, Is.True);
+        session.Focus((IntPtr)7);
+        windows.DidNotReceive().TryFocus(Arg.Any<IntPtr>(), Arg.Any<IntPtr>());
+
+        securityAlertOpen = false;
+        Assert.That(session.IsFocusBlocked, Is.False);
+        session.Focus((IntPtr)7);
+
+        windows.Received().TryFocus((IntPtr)7, (IntPtr)42);
+    }
+
+    [Test]
     public void PuttySessionExposesTheWorkingDirectoryReportedByTheRemoteShellTitle()
     {
         var process = new RecordingPuttyProcessHost(windowTitle: "ubuntu@app-01: /srv/apps");

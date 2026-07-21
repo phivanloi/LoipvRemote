@@ -5,7 +5,7 @@ using System.Diagnostics;
 namespace LoipvRemote.Protocols.Putty;
 
 /// <summary>PuTTY lifecycle, embedding and keyboard routing owned by the protocol module.</summary>
-public sealed class PuttyProtocolSession : IProtocolSession, IEmbeddedWindow, IEmbeddedWindowHost, IInputMessageTarget, IPuttySettingsSession, IRemoteWorkingDirectorySession, IEmbeddedWindowFocusDeferral
+public sealed class PuttyProtocolSession : IProtocolSession, IEmbeddedWindow, IEmbeddedWindowHost, IInputMessageTarget, IPuttySettingsSession, IRemoteWorkingDirectorySession, IEmbeddedWindowFocusDeferral, IEmbeddedWindowFocusTarget
 {
     private const int MaximumTopLevelWindowsToInspect = 128;
     private readonly IPuttyProcessHost _process;
@@ -195,19 +195,22 @@ public sealed class PuttyProtocolSession : IProtocolSession, IEmbeddedWindow, IE
         => Focus(IntPtr.Zero);
 
     public void Focus(IntPtr ownerWindowHandle)
+        => _ = TryFocus(ownerWindowHandle);
+
+    public bool TryFocus(IntPtr ownerWindowHandle)
     {
         nint windowHandle = WindowHandle;
         if (!IsAvailable || windowHandle == IntPtr.Zero)
-            return;
+            return false;
         if (IsFocusBlocked)
-            return;
+            return false;
 
         EnsureAttachedWindow(windowHandle);
         EnsureWindowShown(windowHandle);
         EnsureBorderlessChildStyle(windowHandle);
         if (ownerWindowHandle != IntPtr.Zero &&
             _windowOperations.TryFocus(ownerWindowHandle, windowHandle))
-            return;
+            return true;
 
         if (!_focusActivated)
         {
@@ -216,6 +219,8 @@ public sealed class PuttyProtocolSession : IProtocolSession, IEmbeddedWindow, IE
         }
 
         _windowOperations.SetFocus(windowHandle);
+        return ownerWindowHandle == IntPtr.Zero ||
+            _windowOperations.TryFocus(ownerWindowHandle, windowHandle);
     }
 
     public bool AttachTo(IntPtr parentWindowHandle, TimeSpan timeout)

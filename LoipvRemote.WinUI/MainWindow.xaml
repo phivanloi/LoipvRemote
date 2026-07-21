@@ -242,6 +242,7 @@
                     <TextBlock Text="Loipv Remote" Style="{ThemeResource TitleTextBlockStyle}" HorizontalAlignment="Center" />
                     <TextBlock Text="Select a connection to start a remote session." HorizontalAlignment="Center" />
                     <TextBlock x:Name="ConnectionStatus" HorizontalAlignment="Center" Opacity="0.7" />
+                    <TextBlock x:Name="WelcomeVersionText" HorizontalAlignment="Center" Opacity="0.55" FontSize="12" />
                 </StackPanel>
                 <ScrollViewer x:Name="ConfigContent" Grid.Row="0" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="640">
                     <StackPanel Spacing="12" Padding="32">

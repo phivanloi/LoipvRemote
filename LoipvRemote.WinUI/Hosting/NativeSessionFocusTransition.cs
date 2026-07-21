@@ -26,4 +26,30 @@ internal static class NativeSessionFocusTransition
         while (isFocusBlocked())
             await Task.Delay(retryInterval, cancellationToken).ConfigureAwait(false);
     }
+
+    public static async Task<bool> RestoreUntilSuccessfulAsync(
+        Func<CancellationToken, ValueTask<bool>> tryFocus,
+        Func<bool> canContinue,
+        IReadOnlyList<TimeSpan> retryDelays,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(tryFocus);
+        ArgumentNullException.ThrowIfNull(canContinue);
+        ArgumentNullException.ThrowIfNull(retryDelays);
+
+        foreach (TimeSpan delay in retryDelays)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!canContinue())
+                return false;
+            if (delay > TimeSpan.Zero)
+                await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+            if (!canContinue())
+                return false;
+            if (await tryFocus(cancellationToken).ConfigureAwait(false))
+                return true;
+        }
+
+        return false;
+    }
 }

@@ -342,6 +342,9 @@ public sealed class MainWindowXamlLayoutTests
             Assert.That(code, Does.Contain("ProcessQueuedSessionTabNavigation"));
             Assert.That(code, Does.Contain("RecoverSessionKeyboardFocus"));
             Assert.That(code, Does.Contain("Interlocked.Exchange(ref _pendingSessionTabNavigation"));
+            Assert.That(code, Does.Contain("DispatcherQueue.TryEnqueue(() =>"));
+            Assert.That(code, Does.Contain("NavigateSessionTabs(offset);"));
+            Assert.That(code, Does.Contain("_embeddedSessionSurface?.RestoreFocusAfterTransition();"));
             Assert.That(code, Does.Contain("TryQueueCloseSessionTabAtClientPoint"));
             Assert.That(code, Does.Contain("CloseSessionTabAsync(Sessions, tab)"));
         });

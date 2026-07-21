@@ -16,6 +16,13 @@ namespace LoipvRemote.WinUI.Hosting;
 /// </summary>
 public sealed class Win32EmbeddedSessionSurface : IEmbeddedSessionSurface, IDisposable
 {
+    private static readonly TimeSpan[] FocusRetryDelays =
+    [
+        TimeSpan.Zero,
+        TimeSpan.FromMilliseconds(75),
+        TimeSpan.FromMilliseconds(175),
+        TimeSpan.FromMilliseconds(350)
+    ];
     private readonly FrameworkElement _placementTarget;
     private readonly IntPtr _ownerWindowHandle;
     private WindowsChildWindowHost? _nativeHost;
@@ -132,14 +139,16 @@ public sealed class Win32EmbeddedSessionSurface : IEmbeddedSessionSurface, IDisp
 
     public void Focus()
     {
-        if (!_isVisible)
+        IEmbeddedWindow? targetSession = _session;
+        if (_placementTarget.DispatcherQueue.HasThreadAccess)
+        {
+            _ = TryFocusSession(targetSession);
             return;
+        }
 
-        // The owning WinUI window is already active when this method is
-        // reached. Changing foreground/Z-order from here raises a second
-        // activation cycle, which can continuously repaint the native SSH
-        // child. Transfer keyboard focus only.
-        _session?.Focus(_ownerWindowHandle);
+        // Native keyboard hooks run on their own thread. Queueing here keeps
+        // GetFocus/SetFocus on the WinUI input queue that owns the host HWND.
+        _ = _placementTarget.DispatcherQueue.TryEnqueue(() => _ = TryFocusSession(targetSession));
     }
 
     public void RefreshLayoutAndRestoreFocus()
@@ -211,29 +220,89 @@ public sealed class Win32EmbeddedSessionSurface : IEmbeddedSessionSurface, IDisp
         _focusRestoreCancellation?.Cancel();
         _focusRestoreCancellation?.Dispose();
         CancellationTokenSource cancellation = _focusRestoreCancellation = new();
-        _ = RestoreFocusAfterLayoutAsync(cancellation.Token);
+        IEmbeddedWindow targetSession = _session;
+        _ = RestoreFocusAfterLayoutAsync(targetSession, cancellation.Token);
     }
 
-    private async Task RestoreFocusAfterLayoutAsync(CancellationToken cancellationToken)
+    private async Task RestoreFocusAfterLayoutAsync(
+        IEmbeddedWindow targetSession,
+        CancellationToken cancellationToken)
     {
         try
         {
             // A new PuTTY terminal needs one pass after its first layout to
             // accept input. A first-use host-key alert may remain open for an
             // arbitrary amount of time, so wait for that native modal dialog
-            // to close before the single settled focus request is dispatched.
+            // to close before bounded, verified focus attempts are dispatched.
             await Task.Delay(150, cancellationToken);
             await NativeSessionFocusTransition.WaitUntilUnblockedAsync(
-                () => _session is IEmbeddedWindowFocusDeferral { IsFocusBlocked: true },
+                () => ReferenceEquals(_session, targetSession) &&
+                    targetSession is IEmbeddedWindowFocusDeferral { IsFocusBlocked: true },
                 TimeSpan.FromMilliseconds(100),
                 cancellationToken);
-            if (!cancellationToken.IsCancellationRequested)
-                _placementTarget.DispatcherQueue.TryEnqueue(Focus);
+            _ = await NativeSessionFocusTransition.RestoreUntilSuccessfulAsync(
+                token => DispatchFocusAttemptAsync(targetSession, token),
+                () => !_disposed && _isVisible && ReferenceEquals(_session, targetSession),
+                FocusRetryDelays,
+                cancellationToken);
         }
         catch (OperationCanceledException)
         {
             // A later size/layout update superseded this focus request.
         }
+    }
+
+    private bool TryFocusSession(IEmbeddedWindow? targetSession)
+    {
+        if (_disposed || !_isVisible || targetSession is null ||
+            !ReferenceEquals(_session, targetSession))
+        {
+            return false;
+        }
+
+        // The owning WinUI window is already active here. PuTTY exposes a
+        // verified transfer so a rejected SetFocus never becomes a silent
+        // success; other embedded protocols retain their existing contract.
+        bool focused;
+        try
+        {
+            if (targetSession is IEmbeddedWindowFocusTarget focusTarget)
+            {
+                focused = focusTarget.TryFocus(_ownerWindowHandle);
+            }
+            else
+            {
+                targetSession.Focus(_ownerWindowHandle);
+                focused = true;
+            }
+        }
+        catch (Exception exception)
+        {
+            EmbeddingDiagnostics.Write(
+                $"session-focus-recovered type={exception.GetType().Name} hresult=0x{exception.HResult:X8}");
+            return false;
+        }
+
+        EmbeddingDiagnostics.Write(
+            $"session-focus-attempt session={targetSession.GetType().Name} focused={focused} child={FormatHandle(targetSession.WindowHandle)}");
+        return focused;
+    }
+
+    private async ValueTask<bool> DispatchFocusAttemptAsync(
+        IEmbeddedWindow targetSession,
+        CancellationToken cancellationToken)
+    {
+        if (_placementTarget.DispatcherQueue.HasThreadAccess)
+            return TryFocusSession(targetSession);
+
+        var completion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        if (!_placementTarget.DispatcherQueue.TryEnqueue(
+                () => completion.TrySetResult(TryFocusSession(targetSession))))
+        {
+            return false;
+        }
+
+        return await completion.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
     }
 
     private void UpdateBounds(bool forceDynamicDisplayUpdate = false)

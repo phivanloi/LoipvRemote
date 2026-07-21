@@ -70,6 +70,7 @@ public sealed class WindowSessionHotKeyController : IDisposable
         {
             _tabChordActive = false;
             _pendingDirection = 0;
+            _focusRecoveryPending = false;
         }
     }
 
@@ -192,15 +193,7 @@ public sealed class WindowSessionHotKeyController : IDisposable
                 controller._pendingDirection = 0;
                 controller.WriteDiagnostics($"session-keyboard-tab-navigate direction={direction}");
                 controller._focusRecoveryPending = true;
-                bool recovered = DispatchNavigationAndRecoverFocus(
-                    direction,
-                    controller._navigate,
-                    controller._recoverFocus);
-                if (recovered)
-                {
-                    controller._focusRecoveryPending = false;
-                    controller.WriteDiagnostics("session-keyboard-focus-recovery-after-tab");
-                }
+                DispatchNavigation(direction, controller._navigate);
 
                 return (IntPtr)1;
             }
@@ -219,19 +212,13 @@ public sealed class WindowSessionHotKeyController : IDisposable
     internal static bool ShouldDispatchNavigation(bool keyUp, bool tabChordActive, int pendingDirection) =>
         keyUp && tabChordActive && pendingDirection is -1 or 1;
 
-    internal static bool DispatchNavigationAndRecoverFocus(
+    internal static void DispatchNavigation(
         int direction,
-        Action<int> navigate,
-        Action? recoverFocus)
+        Action<int> navigate)
     {
         ArgumentNullException.ThrowIfNull(navigate);
 
         navigate(direction);
-        if (recoverFocus is null)
-            return false;
-
-        recoverFocus();
-        return true;
     }
 
     internal static bool ShouldRecoverFocusBeforeKeyDispatch(

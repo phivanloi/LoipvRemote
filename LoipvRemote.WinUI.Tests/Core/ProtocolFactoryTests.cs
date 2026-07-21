@@ -292,6 +292,36 @@ public sealed class ProtocolFactoryTests
     }
 
     [Test]
+    public async Task PuttySessionVerifiesFocusAgainAfterTheFallbackActivation()
+    {
+        var process = new RecordingPuttyProcessHost(windowHandle: (IntPtr)42);
+        IEmbeddedWindowOperations windows = Substitute.For<IEmbeddedWindowOperations>();
+        windows.HasClassName((IntPtr)42, "PuTTY").Returns(true);
+        windows.TryFocus((IntPtr)7, (IntPtr)42).Returns(false, true);
+
+        using var session = new PuttyProtocolSession(
+            process,
+            windows,
+            new PuttyConnectionOptions("putty.exe", new PuttyLaunchOptions { Hostname = "server.example", Port = 22 }),
+            new NoopPuttyEndpointProbe());
+
+        Assert.That(await session.InitializeAsync(), Is.True);
+        session.SetHostWindowHandle((IntPtr)99);
+        Assert.That(await session.ConnectAsync(), Is.True);
+        Assert.That(session.AttachTo((IntPtr)99, TimeSpan.Zero), Is.True);
+
+        bool focused = ((IEmbeddedWindowFocusTarget)session).TryFocus((IntPtr)7);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(focused, Is.True);
+            windows.Received(2).TryFocus((IntPtr)7, (IntPtr)42);
+            windows.Received(1).Activate((IntPtr)42);
+            windows.Received(1).SetFocus((IntPtr)42);
+        });
+    }
+
+    [Test]
     public async Task RdpFactoryUsesRdpClientAndRejectsDifferentProtocol()
     {
         var client = new RecordingRdpClient();

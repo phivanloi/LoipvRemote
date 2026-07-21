@@ -35,4 +35,46 @@ public sealed class NativeSessionFocusTransitionTests
 
         Assert.That(wait.IsCompletedSuccessfully, Is.True);
     }
+
+    [Test]
+    public async Task DeferredFocusRetriesUntilTheSelectedNativeSessionOwnsFocus()
+    {
+        int attempts = 0;
+
+        bool focused = await NativeSessionFocusTransition.RestoreUntilSuccessfulAsync(
+            _ => ValueTask.FromResult(++attempts == 3),
+            canContinue: () => true,
+            retryDelays: [TimeSpan.Zero, TimeSpan.Zero, TimeSpan.Zero],
+            CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(focused, Is.True);
+            Assert.That(attempts, Is.EqualTo(3));
+        });
+    }
+
+    [Test]
+    public async Task DeferredFocusStopsWhenItsSessionIsNoLongerSelected()
+    {
+        int attempts = 0;
+        bool selected = true;
+
+        bool focused = await NativeSessionFocusTransition.RestoreUntilSuccessfulAsync(
+            _ =>
+            {
+                attempts++;
+                selected = false;
+                return ValueTask.FromResult(false);
+            },
+            canContinue: () => selected,
+            retryDelays: [TimeSpan.Zero, TimeSpan.Zero, TimeSpan.Zero],
+            CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(focused, Is.False);
+            Assert.That(attempts, Is.EqualTo(1));
+        });
+    }
 }

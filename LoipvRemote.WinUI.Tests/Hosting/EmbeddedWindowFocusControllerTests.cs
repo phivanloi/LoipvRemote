@@ -63,20 +63,15 @@ public sealed class EmbeddedWindowFocusControllerTests
     }
 
     [Test]
-    public void TabNavigationCompletesFocusRecoveryBeforeTheNextKeyIsDispatched()
+    public void TabNavigationOnlyQueuesNavigationFromTheLowLevelHookThread()
     {
         var events = new List<string>();
 
-        bool recovered = WindowSessionHotKeyController.DispatchNavigationAndRecoverFocus(
+        WindowSessionHotKeyController.DispatchNavigation(
             1,
-            direction => events.Add($"navigate:{direction}"),
-            () => events.Add("recover-focus"));
+            direction => events.Add($"navigate:{direction}"));
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(recovered, Is.True);
-            Assert.That(events, Is.EqualTo(["navigate:1", "recover-focus"]));
-        });
+        Assert.That(events, Is.EqualTo(["navigate:1"]));
     }
 
     [TestCase(true, true, true, true)]

@@ -90,6 +90,7 @@ public sealed partial class MainWindow : Window, IDisposable
         _sessionWorkspace = sessionWorkspace ?? throw new ArgumentNullException(nameof(sessionWorkspace));
         _sshFileTransferSessionFactory = new(definition => _connectionSecretResolver.Resolve(definition, "Password"));
         InitializeComponent();
+        WelcomeVersionText.Text = ApplicationVersionText.Current;
 
         _sshWorkingDirectoryTimer.Tick += SshWorkingDirectoryTimerOnTick;
         _sshWorkingDirectoryTimer.Start();
@@ -1634,7 +1635,14 @@ public sealed partial class MainWindow : Window, IDisposable
         try
         {
             if (offset != 0)
+            {
                 NavigateSessionTabs(offset);
+                // This method always runs on the WinUI dispatcher. Restore
+                // focus only after SelectionChanged has attached the newly
+                // selected native session; doing it in the low-level keyboard
+                // hook races the tab change and uses the wrong input queue.
+                _embeddedSessionSurface?.RestoreFocusAfterTransition();
+            }
         }
         finally
         {
@@ -1646,8 +1654,13 @@ public sealed partial class MainWindow : Window, IDisposable
 
     private void RecoverSessionKeyboardFocus()
     {
-        ProcessQueuedSessionTabNavigation();
-        _embeddedSessionSurface?.RestoreFocusAfterTransition();
+        // This callback can originate from the Win32 low-level keyboard hook.
+        // Never touch WinUI controls or cross-process focus from that thread.
+        _ = DispatcherQueue.TryEnqueue(() =>
+        {
+            ProcessQueuedSessionTabNavigation();
+            _embeddedSessionSurface?.RestoreFocusAfterTransition();
+        });
     }
 
     private void NavigateSessionTabs(int direction)

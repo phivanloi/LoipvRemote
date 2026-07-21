@@ -11,5 +11,6 @@ public static class WindowsEmbeddedWindowFocusControllerFactory
         NativeMethods.SetFocus,
         NativeMethods.GetFocus,
         NativeMethods.GetForegroundWindow,
-        NativeMethods.SetForegroundWindow);
+        NativeMethods.SetForegroundWindow,
+        NativeMethods.GetThreadFocusWindow);
 }

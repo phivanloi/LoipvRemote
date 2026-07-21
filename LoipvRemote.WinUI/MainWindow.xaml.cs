@@ -841,6 +841,18 @@ public sealed partial class MainWindow : Window, IDisposable
 
         _windowWasDeactivated = false;
         _embeddedSessionSurface?.RestoreFocusAfterTransition();
+        QueueSessionFocusAfterWindowActivation();
+    }
+
+    private void QueueSessionFocusAfterWindowActivation()
+    {
+        // WinUI may move focus back to its XAML root after the Activated
+        // callback returns. Queue one more restore for the next UI turn so
+        // the embedded terminal owns keyboard focus before the user types.
+        _ = DispatcherQueue.TryEnqueue(() =>
+        {
+            _embeddedSessionSurface?.RestoreFocusAfterTransition();
+        });
     }
 
     private void SetSessionHotKeysEnabled(bool enabled)
@@ -1683,7 +1695,9 @@ public sealed partial class MainWindow : Window, IDisposable
         {
             _sessionPointerController = new WindowSessionPointerController(
                 WindowNative.GetWindowHandle(this),
-                TryQueueCloseSessionTabAtClientPoint);
+                TryQueueCloseSessionTabAtClientPoint,
+                GetEmbeddedSessionHostHandle,
+                QueueEmbeddedSessionFocus);
             EmbeddingDiagnostics.Write("session-pointer-hook-installed");
         }
         catch (Exception exception)
@@ -1693,6 +1707,18 @@ public sealed partial class MainWindow : Window, IDisposable
             EmbeddingDiagnostics.Write(
                 $"session-pointer-hook-failed type={exception.GetType().Name} hresult={exception.HResult}");
         }
+    }
+
+    private IntPtr GetEmbeddedSessionHostHandle() =>
+        _embeddedSessionSurface?.Handle ?? IntPtr.Zero;
+
+    private void QueueEmbeddedSessionFocus()
+    {
+        _ = DispatcherQueue.TryEnqueue(() =>
+        {
+            if (!_windowMinimized)
+                _embeddedSessionSurface?.RestoreFocusAfterTransition();
+        });
     }
 
     private bool TryQueueCloseSessionTabAtClientPoint(int physicalX, int physicalY)

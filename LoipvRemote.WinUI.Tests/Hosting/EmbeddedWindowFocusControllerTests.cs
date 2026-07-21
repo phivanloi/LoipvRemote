@@ -99,6 +99,21 @@ public sealed class EmbeddedWindowFocusControllerTests
         Assert.That(WindowSessionPointerController.ShouldSuppressMiddleClick(handled), Is.EqualTo(expected));
     }
 
+    [TestCase(true, true, true)]
+    [TestCase(true, false, false)]
+    [TestCase(false, true, false)]
+    public void PrimaryClickRestoresFocusOnlyInsideTheEmbeddedSession(
+        bool primaryButtonDown,
+        bool insideEmbeddedSession,
+        bool expected)
+    {
+        Assert.That(
+            WindowSessionPointerController.ShouldRestoreEmbeddedFocus(
+                primaryButtonDown,
+                insideEmbeddedSession),
+            Is.EqualTo(expected));
+    }
+
     [TestCase(10, 10, false, true)]
     [TestCase(10, 20, true, true)]
     [TestCase(10, 20, false, false)]
@@ -235,6 +250,39 @@ public sealed class EmbeddedWindowFocusControllerTests
             Assert.That(result, Is.False);
             Assert.That(attachments, Is.EqualTo([true, false]));
         });
+    }
+
+    [Test]
+    public void TryFocusReturnsFalseWhenFocusIsLostAfterInputQueuesAreDetached()
+    {
+        var owner = (IntPtr)10;
+        var embedded = (IntPtr)20;
+        IntPtr attachedQueueFocus = IntPtr.Zero;
+        bool queuesAttached = false;
+        var controller = new EmbeddedWindowFocusController(
+            (IntPtr handle, out uint processId) =>
+            {
+                processId = handle == owner ? 1u : 2u;
+                return handle == owner ? 100u : 200u;
+            },
+            (_, _, attach) =>
+            {
+                queuesAttached = attach;
+                return true;
+            },
+            handle =>
+            {
+                attachedQueueFocus = handle;
+                return IntPtr.Zero;
+            },
+            () => attachedQueueFocus,
+            () => owner,
+            _ => true,
+            _ => queuesAttached ? attachedQueueFocus : owner);
+
+        bool result = controller.TryFocus(owner, embedded);
+
+        Assert.That(result, Is.False);
     }
 
     [Test]

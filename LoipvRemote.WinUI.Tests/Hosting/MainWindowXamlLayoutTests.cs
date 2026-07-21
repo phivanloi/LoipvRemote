@@ -349,4 +349,52 @@ public sealed class MainWindowXamlLayoutTests
             Assert.That(code, Does.Contain("CloseSessionTabAsync(Sessions, tab)"));
         });
     }
+
+    [Test]
+    public void WindowReactivationQueuesFocusAfterWinUiFinishesItsActivationPass()
+    {
+        string codePath = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "LoipvRemote.WinUI", "MainWindow.xaml.cs"));
+        string code = File.ReadAllText(codePath);
+
+        int activationHandler = code.IndexOf("private void MainWindowOnActivated", StringComparison.Ordinal);
+        int postActivationFocus = code.IndexOf("QueueSessionFocusAfterWindowActivation();", activationHandler, StringComparison.Ordinal);
+        int queuedFocusMethod = code.IndexOf("private void QueueSessionFocusAfterWindowActivation()", postActivationFocus, StringComparison.Ordinal);
+        int dispatcherFocus = code.IndexOf("DispatcherQueue.TryEnqueue", queuedFocusMethod, StringComparison.Ordinal);
+        int restoreFocus = code.IndexOf("RestoreFocusAfterTransition();", dispatcherFocus, StringComparison.Ordinal);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(postActivationFocus, Is.GreaterThan(activationHandler));
+            Assert.That(queuedFocusMethod, Is.GreaterThan(postActivationFocus));
+            Assert.That(dispatcherFocus, Is.GreaterThan(queuedFocusMethod));
+            Assert.That(restoreFocus, Is.GreaterThan(dispatcherFocus));
+        });
+    }
+
+    [Test]
+    public void EmbeddedSessionPrimaryClickQueuesFocusOnTheUiThread()
+    {
+        string codePath = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "LoipvRemote.WinUI", "MainWindow.xaml.cs"));
+        string code = File.ReadAllText(codePath);
+
+        int pointerController = code.IndexOf("new WindowSessionPointerController(", StringComparison.Ordinal);
+        int hostHandleProvider = code.IndexOf("GetEmbeddedSessionHostHandle", pointerController, StringComparison.Ordinal);
+        int focusCallback = code.IndexOf("QueueEmbeddedSessionFocus", hostHandleProvider, StringComparison.Ordinal);
+        int focusMethod = code.IndexOf("private void QueueEmbeddedSessionFocus()", focusCallback, StringComparison.Ordinal);
+        int dispatcher = code.IndexOf("DispatcherQueue.TryEnqueue", focusMethod, StringComparison.Ordinal);
+        int restoreFocus = code.IndexOf("RestoreFocusAfterTransition();", dispatcher, StringComparison.Ordinal);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(hostHandleProvider, Is.GreaterThan(pointerController));
+            Assert.That(focusCallback, Is.GreaterThan(hostHandleProvider));
+            Assert.That(focusMethod, Is.GreaterThan(focusCallback));
+            Assert.That(dispatcher, Is.GreaterThan(focusMethod));
+            Assert.That(restoreFocus, Is.GreaterThan(dispatcher));
+        });
+    }
 }

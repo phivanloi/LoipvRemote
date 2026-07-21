@@ -16,6 +16,7 @@ public sealed class EmbeddedWindowFocusController
     private readonly Func<IntPtr> _getFocus;
     private readonly Func<IntPtr> _getForegroundWindow;
     private readonly Func<IntPtr, bool> _setForegroundWindow;
+    private readonly Func<uint, IntPtr> _getThreadFocusWindow;
     private readonly object _syncRoot = new();
 
     public EmbeddedWindowFocusController(
@@ -24,7 +25,8 @@ public sealed class EmbeddedWindowFocusController
         Func<IntPtr, IntPtr> setFocus,
         Func<IntPtr> getFocus,
         Func<IntPtr> getForegroundWindow,
-        Func<IntPtr, bool> setForegroundWindow)
+        Func<IntPtr, bool> setForegroundWindow,
+        Func<uint, IntPtr>? getThreadFocusWindow = null)
     {
         _getWindowThreadProcessId = getWindowThreadProcessId ?? throw new ArgumentNullException(nameof(getWindowThreadProcessId));
         _attachThreadInput = attachThreadInput ?? throw new ArgumentNullException(nameof(attachThreadInput));
@@ -32,6 +34,7 @@ public sealed class EmbeddedWindowFocusController
         _getFocus = getFocus ?? throw new ArgumentNullException(nameof(getFocus));
         _getForegroundWindow = getForegroundWindow ?? throw new ArgumentNullException(nameof(getForegroundWindow));
         _setForegroundWindow = setForegroundWindow ?? throw new ArgumentNullException(nameof(setForegroundWindow));
+        _getThreadFocusWindow = getThreadFocusWindow ?? (_ => _getFocus());
     }
 
     public bool TryFocus(IntPtr ownerWindowHandle, IntPtr embeddedWindowHandle)
@@ -48,18 +51,19 @@ public sealed class EmbeddedWindowFocusController
 
             if (ownerThreadId == embeddedThreadId)
             {
-                if (_getFocus() == embeddedWindowHandle)
+                if (_getThreadFocusWindow(embeddedThreadId) == embeddedWindowHandle)
                     return true;
                 if (!BringOwnerToForeground(ownerWindowHandle))
                     return false;
 
                 _setFocus(embeddedWindowHandle);
-                return _getFocus() == embeddedWindowHandle;
+                return HasDurableEmbeddedFocus(ownerWindowHandle, embeddedWindowHandle, embeddedThreadId);
             }
 
             if (!_attachThreadInput(ownerThreadId, embeddedThreadId, true))
                 return false;
 
+            bool focusAccepted;
             try
             {
                 // The delayed focus retry runs after PuTTY has normally
@@ -68,19 +72,34 @@ public sealed class EmbeddedWindowFocusController
                 // a visible terminal flash. Once the input queues are joined,
                 // GetFocus can verify the foreign HWND directly and the retry
                 // can become a no-op.
-                if (_getFocus() == embeddedWindowHandle)
-                    return true;
-                if (!BringOwnerToForeground(ownerWindowHandle))
-                    return false;
+                focusAccepted = _getFocus() == embeddedWindowHandle;
+                if (!focusAccepted)
+                {
+                    if (!BringOwnerToForeground(ownerWindowHandle))
+                        return false;
 
-                _setFocus(embeddedWindowHandle);
-                return _getFocus() == embeddedWindowHandle;
+                    _setFocus(embeddedWindowHandle);
+                    focusAccepted = _getFocus() == embeddedWindowHandle;
+                }
             }
             finally
             {
                 _attachThreadInput(ownerThreadId, embeddedThreadId, false);
             }
+
+            return focusAccepted &&
+                HasDurableEmbeddedFocus(ownerWindowHandle, embeddedWindowHandle, embeddedThreadId);
         }
+    }
+
+    private bool HasDurableEmbeddedFocus(
+        IntPtr ownerWindowHandle,
+        IntPtr embeddedWindowHandle,
+        uint embeddedThreadId)
+    {
+        IntPtr foregroundWindow = _getForegroundWindow();
+        return (foregroundWindow == ownerWindowHandle || foregroundWindow == embeddedWindowHandle) &&
+            _getThreadFocusWindow(embeddedThreadId) == embeddedWindowHandle;
     }
 
     private bool BringOwnerToForeground(IntPtr ownerWindowHandle) =>

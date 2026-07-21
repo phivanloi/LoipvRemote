@@ -3,13 +3,14 @@ using System.Runtime.InteropServices;
 namespace LoipvRemote.Infrastructure.Windows.WindowEmbedding;
 
 /// <summary>
-/// Routes middle-clicks in the custom title bar to the WinUI tab strip. A
-/// low-level hook is required because SetTitleBar regions can be handled by the
-/// compositor without producing XAML or ordinary HWND pointer messages.
+/// Routes pointer gestures that ordinary XAML events cannot observe. This
+/// includes middle-clicks in the custom title bar and primary clicks inside a
+/// cross-process embedded protocol HWND.
 /// </summary>
 public sealed class WindowSessionPointerController : IDisposable
 {
     private const int WhMouseLl = 14;
+    private const uint WmLeftButtonDown = 0x0201;
     private const uint WmMiddleButtonDown = 0x0207;
     private static readonly object SyncRoot = new();
     private static readonly MouseHookProcedure Callback = MouseProcedure;
@@ -17,15 +18,25 @@ public sealed class WindowSessionPointerController : IDisposable
 
     private readonly IntPtr _windowHandle;
     private readonly Func<int, int, bool> _middleClick;
+    private readonly Func<IntPtr> _embeddedSessionHostHandle;
+    private readonly Action _embeddedSessionPrimaryClick;
     private IntPtr _hookHandle;
     private bool _disposed;
 
-    public WindowSessionPointerController(IntPtr windowHandle, Func<int, int, bool> middleClick)
+    public WindowSessionPointerController(
+        IntPtr windowHandle,
+        Func<int, int, bool> middleClick,
+        Func<IntPtr> embeddedSessionHostHandle,
+        Action embeddedSessionPrimaryClick)
     {
         if (windowHandle == IntPtr.Zero)
             throw new ArgumentException("A top-level window handle is required.", nameof(windowHandle));
 
         _middleClick = middleClick ?? throw new ArgumentNullException(nameof(middleClick));
+        _embeddedSessionHostHandle = embeddedSessionHostHandle ??
+            throw new ArgumentNullException(nameof(embeddedSessionHostHandle));
+        _embeddedSessionPrimaryClick = embeddedSessionPrimaryClick ??
+            throw new ArgumentNullException(nameof(embeddedSessionPrimaryClick));
         _windowHandle = windowHandle;
         lock (SyncRoot)
         {
@@ -67,8 +78,10 @@ public sealed class WindowSessionPointerController : IDisposable
     private static IntPtr MouseProcedure(int code, IntPtr wParam, IntPtr lParam)
     {
         WindowSessionPointerController? controller = _current;
+        bool primaryButtonDown = wParam == (IntPtr)WmLeftButtonDown;
+        bool middleButtonDown = wParam == (IntPtr)WmMiddleButtonDown;
         if (code < 0 || controller is null || controller._disposed ||
-            wParam != (IntPtr)WmMiddleButtonDown || lParam == IntPtr.Zero)
+            (!primaryButtonDown && !middleButtonDown) || lParam == IntPtr.Zero)
         {
             return CallNextHookEx(IntPtr.Zero, code, wParam, lParam);
         }
@@ -77,6 +90,22 @@ public sealed class WindowSessionPointerController : IDisposable
         {
             MouseHookData data = Marshal.PtrToStructure<MouseHookData>(lParam);
             IntPtr windowAtPoint = WindowFromPoint(data.Point);
+            if (primaryButtonDown)
+            {
+                IntPtr embeddedHost = controller._embeddedSessionHostHandle();
+                bool insideEmbeddedSession = embeddedHost != IntPtr.Zero &&
+                    WindowSessionHotKeyController.IsDescendantWindow(
+                        embeddedHost,
+                        windowAtPoint,
+                        GetParent);
+                if (ShouldRestoreEmbeddedFocus(primaryButtonDown, insideEmbeddedSession))
+                    controller._embeddedSessionPrimaryClick();
+
+                // Focus recovery augments the native click; it must never
+                // consume terminal selection, cursor placement, or RDP input.
+                return CallNextHookEx(controller._hookHandle, code, wParam, lParam);
+            }
+
             if (!WindowSessionHotKeyController.IsDescendantWindow(
                     controller._windowHandle,
                     windowAtPoint,
@@ -102,6 +131,11 @@ public sealed class WindowSessionPointerController : IDisposable
     }
 
     internal static bool ShouldSuppressMiddleClick(bool handled) => handled;
+
+    internal static bool ShouldRestoreEmbeddedFocus(
+        bool primaryButtonDown,
+        bool insideEmbeddedSession) =>
+        primaryButtonDown && insideEmbeddedSession;
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern IntPtr SetWindowsHookEx(

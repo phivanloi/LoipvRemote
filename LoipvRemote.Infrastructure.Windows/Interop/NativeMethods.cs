@@ -46,6 +46,20 @@ namespace LoipvRemote.Infrastructure.Windows.Interop
         public static extern IntPtr GetFocus();
 
         [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool GetGUIThreadInfo(uint idThread, ref GUITHREADINFO threadInfo);
+
+        public static IntPtr GetThreadFocusWindow(uint threadId)
+        {
+            var threadInfo = new GUITHREADINFO
+            {
+                cbSize = (uint)Marshal.SizeOf<GUITHREADINFO>()
+            };
+            return GetGUIThreadInfo(threadId, ref threadInfo)
+                ? threadInfo.hwndFocus
+                : IntPtr.Zero;
+        }
+
+        [DllImport("user32.dll", SetLastError = true)]
         public static extern uint GetDpiForWindow(IntPtr hWnd);
 
         [DllImport("user32.dll", SetLastError = true)]
@@ -195,6 +209,20 @@ namespace LoipvRemote.Infrastructure.Windows.Interop
         #endregion
 
         #region Structures
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct GUITHREADINFO
+        {
+            public uint cbSize;
+            public uint flags;
+            public IntPtr hwndActive;
+            public IntPtr hwndFocus;
+            public IntPtr hwndCapture;
+            public IntPtr hwndMenuOwner;
+            public IntPtr hwndMoveSize;
+            public IntPtr hwndCaret;
+            public RECT rcCaret;
+        }
 
         [StructLayout(LayoutKind.Sequential)]
         public struct WINDOWPOS

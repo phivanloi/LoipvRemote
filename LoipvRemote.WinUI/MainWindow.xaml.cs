@@ -919,13 +919,42 @@ public sealed partial class MainWindow : Window, IDisposable
             return;
 
         _shutdownInProgress = true;
+        StopInteractiveSessionInputForShutdown();
+        try
+        {
+            // Session teardown can take several seconds, especially when a
+            // remote endpoint is no longer responding. The first close click
+            // must still dismiss the shell immediately.
+            sender.Hide();
+        }
+        catch (Exception exception)
+        {
+            EmbeddingDiagnostics.Write(
+                $"window-hide-during-shutdown-failed type={exception.GetType().Name} hresult=0x{exception.HResult:X8}");
+        }
         _ = CloseAfterSessionCleanupAsync();
+    }
+
+    private void StopInteractiveSessionInputForShutdown()
+    {
+        Activated -= MainWindowOnActivated;
+        _hotKeyDeactivationCancellation?.Cancel();
+        _hotKeyDeactivationCancellation?.Dispose();
+        _hotKeyDeactivationCancellation = null;
+        _sessionHotKeyController?.Dispose();
+        _sessionHotKeyController = null;
+        _sessionPointerController?.Dispose();
+        _sessionPointerController = null;
+        RemoteSessionWorkspace.Deactivate(_embeddedSessionSurface);
     }
 
     private async Task CloseAfterSessionCleanupAsync()
     {
         try
         {
+            // Let WinUI commit AppWindow.Hide before any native protocol
+            // shutdown path can synchronously wait for a child process.
+            await Task.Yield();
             await _sessionWorkspace.CloseAllAsync();
         }
         catch (Exception)

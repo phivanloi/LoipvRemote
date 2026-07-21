@@ -397,4 +397,35 @@ public sealed class MainWindowXamlLayoutTests
             Assert.That(restoreFocus, Is.GreaterThan(dispatcher));
         });
     }
+
+    [Test]
+    public void FirstWindowCloseImmediatelyHidesTheShellBeforeSessionCleanup()
+    {
+        string codePath = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "LoipvRemote.WinUI", "MainWindow.xaml.cs"));
+        string code = File.ReadAllText(codePath);
+
+        int closingHandler = code.IndexOf("private void AppWindowOnClosing", StringComparison.Ordinal);
+        int shutdownStarted = code.IndexOf("_shutdownInProgress = true;", closingHandler, StringComparison.Ordinal);
+        int stopInput = code.IndexOf("StopInteractiveSessionInputForShutdown();", shutdownStarted, StringComparison.Ordinal);
+        int hideWindow = code.IndexOf("sender.Hide();", stopInput, StringComparison.Ordinal);
+        int cleanup = code.IndexOf("CloseAfterSessionCleanupAsync();", hideWindow, StringComparison.Ordinal);
+        int cleanupMethod = code.IndexOf("private async Task CloseAfterSessionCleanupAsync()", cleanup, StringComparison.Ordinal);
+        int disposeMethod = code.IndexOf("public void Dispose()", cleanupMethod, StringComparison.Ordinal);
+        int yieldForHide = code.IndexOf("await Task.Yield();", cleanupMethod, StringComparison.Ordinal);
+        int closeSessions = code.IndexOf("await _sessionWorkspace.CloseAllAsync();", cleanupMethod, StringComparison.Ordinal);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(shutdownStarted, Is.GreaterThan(closingHandler));
+            Assert.That(stopInput, Is.GreaterThan(shutdownStarted));
+            Assert.That(hideWindow, Is.GreaterThan(stopInput));
+            Assert.That(cleanup, Is.GreaterThan(hideWindow));
+            Assert.That(yieldForHide, Is.GreaterThan(cleanupMethod));
+            Assert.That(yieldForHide, Is.LessThan(disposeMethod));
+            Assert.That(closeSessions, Is.GreaterThan(yieldForHide));
+            Assert.That(closeSessions, Is.LessThan(disposeMethod));
+        });
+    }
 }

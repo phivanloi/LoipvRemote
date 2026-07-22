@@ -68,7 +68,7 @@
                         <SymbolIcon Symbol="More" />
                     </Button.Content>
                     <Button.Flyout>
-                        <MenuFlyout Placement="Bottom" Opening="XamlPopup_Opening" Closed="XamlPopup_Closed">
+                        <MenuFlyout Placement="BottomEdgeAlignedRight">
                             <MenuFlyoutItem Text="Quick connect" Click="QuickConnectButton_Click">
                                 <MenuFlyoutItem.Icon><SymbolIcon Symbol="Link" /></MenuFlyoutItem.Icon>
                             </MenuFlyoutItem>

@@ -22,6 +22,9 @@ public sealed class WindowsChildWindowHost : IDisposable
     private const uint SwpShowWindow = 0x0040;
     private const int SwHide = 0;
     private const int SwShowNoActivate = 4;
+    private const int RgnDiff = 4;
+    private EmbeddedWindowBounds _bounds;
+    private EmbeddedWindowBounds[] _occludedRegions = [];
 
     public WindowsChildWindowHost(IntPtr parentWindowHandle)
     {
@@ -67,6 +70,28 @@ public sealed class WindowsChildWindowHost : IDisposable
         {
             throw new InvalidOperationException($"Could not resize the embedded session host window (Win32 error {Marshal.GetLastWin32Error()}).");
         }
+
+        _bounds = bounds;
+        ApplyWindowRegion();
+    }
+
+    /// <summary>
+    /// Removes only the areas occupied by XAML menus/dialogs from the native
+    /// popup. The remaining SSH/RDP pixels stay visible and interactive.
+    /// </summary>
+    public void SetOccludedRegions(IEnumerable<EmbeddedWindowBounds> regions)
+    {
+        ObjectDisposedException.ThrowIf(Handle == IntPtr.Zero, this);
+        ArgumentNullException.ThrowIfNull(regions);
+        _occludedRegions = regions.Where(region => region.IsValid).ToArray();
+        ApplyWindowRegion();
+    }
+
+    public void ClearOccludedRegions()
+    {
+        ObjectDisposedException.ThrowIf(Handle == IntPtr.Zero, this);
+        _occludedRegions = [];
+        ApplyWindowRegion();
     }
 
     public void SetVisible(bool visible)
@@ -130,6 +155,58 @@ public sealed class WindowsChildWindowHost : IDisposable
         }
     }
 
+    private void ApplyWindowRegion()
+    {
+        if (!_bounds.IsValid || Handle == IntPtr.Zero)
+            return;
+
+        if (_occludedRegions.Length == 0)
+        {
+            if (SetWindowRgn(Handle, IntPtr.Zero, redraw: true) == 0)
+                throw new InvalidOperationException($"Could not clear the remote session clipping region (Win32 error {Marshal.GetLastWin32Error()}).");
+            return;
+        }
+
+        IntPtr visibleRegion = CreateRectRgn(0, 0, _bounds.Width, _bounds.Height);
+        if (visibleRegion == IntPtr.Zero)
+            throw new InvalidOperationException($"Could not create the remote session clipping region (Win32 error {Marshal.GetLastWin32Error()}).");
+
+        try
+        {
+            foreach (EmbeddedWindowBounds occluded in _occludedRegions)
+            {
+                IntPtr hole = CreateRectRgn(
+                    occluded.X,
+                    occluded.Y,
+                    occluded.X + occluded.Width,
+                    occluded.Y + occluded.Height);
+                if (hole == IntPtr.Zero)
+                    throw new InvalidOperationException($"Could not create a popup exclusion region (Win32 error {Marshal.GetLastWin32Error()}).");
+
+                try
+                {
+                    if (CombineRgn(visibleRegion, visibleRegion, hole, RgnDiff) == 0)
+                        throw new InvalidOperationException($"Could not apply a popup exclusion region (Win32 error {Marshal.GetLastWin32Error()}).");
+                }
+                finally
+                {
+                    _ = DeleteObject(hole);
+                }
+            }
+
+            if (SetWindowRgn(Handle, visibleRegion, redraw: true) == 0)
+                throw new InvalidOperationException($"Could not apply the remote session clipping region (Win32 error {Marshal.GetLastWin32Error()}).");
+
+            // SetWindowRgn transfers ownership to Windows after success.
+            visibleRegion = IntPtr.Zero;
+        }
+        finally
+        {
+            if (visibleRegion != IntPtr.Zero)
+                _ = DeleteObject(visibleRegion);
+        }
+    }
+
     public void Dispose()
     {
         if (Handle == IntPtr.Zero)
@@ -176,4 +253,16 @@ public sealed class WindowsChildWindowHost : IDisposable
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern IntPtr SetFocus(IntPtr windowHandle);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern int SetWindowRgn(IntPtr windowHandle, IntPtr region, [MarshalAs(UnmanagedType.Bool)] bool redraw);
+
+    [DllImport("gdi32.dll", SetLastError = true)]
+    private static extern IntPtr CreateRectRgn(int left, int top, int right, int bottom);
+
+    [DllImport("gdi32.dll", SetLastError = true)]
+    private static extern int CombineRgn(IntPtr destination, IntPtr source1, IntPtr source2, int combineMode);
+
+    [DllImport("gdi32.dll")]
+    private static extern bool DeleteObject(IntPtr handle);
 }

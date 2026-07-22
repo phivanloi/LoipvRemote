@@ -61,7 +61,7 @@ public sealed partial class MainWindow : Window, IDisposable
     private bool _suppressSessionOpenForContextMenu;
     private bool _shutdownInProgress;
     private bool _sessionShutdownCompleted;
-    private RemoteSessionTab? _nativeSessionHiddenForPopup;
+    private ContentDialog? _activeContentDialog;
     private int _xamlPopupDepth;
     private bool _titleBarRegionUpdateQueued;
     private bool _windowWasDeactivated;
@@ -69,6 +69,7 @@ public sealed partial class MainWindow : Window, IDisposable
     private CancellationTokenSource? _hotKeyDeactivationCancellation;
     private int _pendingSessionTabNavigation;
     private int _sessionTabNavigationQueued;
+    private long _embeddedFocusRestoreSuppressedUntil;
     private bool _disposed;
     private bool _sftpDialogOpen;
 
@@ -200,6 +201,25 @@ public sealed partial class MainWindow : Window, IDisposable
         return null;
     }
 
+    private static FrameworkElement? FindNamedDescendant(DependencyObject root, string name)
+    {
+        for (int index = 0; index < VisualTreeHelper.GetChildrenCount(root); index++)
+        {
+            DependencyObject child = VisualTreeHelper.GetChild(root, index);
+            if (child is FrameworkElement element &&
+                string.Equals(element.Name, name, StringComparison.Ordinal))
+            {
+                return element;
+            }
+
+            FrameworkElement? nestedMatch = FindNamedDescendant(child, name);
+            if (nestedMatch is not null)
+                return nestedMatch;
+        }
+
+        return null;
+    }
+
     private void TryInstallMinimumSizeController()
     {
         try
@@ -257,6 +277,8 @@ public sealed partial class MainWindow : Window, IDisposable
 
     private async Task<ContentDialogResult> ShowDialogAsync(ContentDialog dialog)
     {
+        _activeContentDialog = dialog;
+        dialog.Opened += (_, _) => QueueXamlPopupOcclusionUpdate();
         BeginXamlPopup();
         try
         {
@@ -264,6 +286,8 @@ public sealed partial class MainWindow : Window, IDisposable
         }
         finally
         {
+            if (ReferenceEquals(_activeContentDialog, dialog))
+                _activeContentDialog = null;
             EndXamlPopup();
         }
     }
@@ -298,21 +322,14 @@ public sealed partial class MainWindow : Window, IDisposable
 
     private void XamlPopup_Opening(object? sender, object args) => BeginXamlPopup();
 
+    private void XamlPopup_Opened(object? sender, object args) => QueueXamlPopupOcclusionUpdate();
+
     private void XamlPopup_Closed(object? sender, object args) => EndXamlPopup();
 
     private void BeginXamlPopup()
     {
-        if (_xamlPopupDepth++ != 0 || _embeddedSessionSurface is null)
-            return;
-
-        if (Sessions.SelectedItem is TabViewItem selectedTab &&
-            _sessionTabs.TryGetValue(selectedTab, out RemoteSessionTab? sessionTab) &&
-            sessionTab.State == RemoteSessionTabState.Connected &&
-            sessionTab.Session is IEmbeddedWindow)
-        {
-            _nativeSessionHiddenForPopup = sessionTab;
-            RemoteSessionWorkspace.Deactivate(_embeddedSessionSurface);
-        }
+        _xamlPopupDepth++;
+        CancelEmbeddedSessionFocusRestore();
     }
 
     private void EndXamlPopup()
@@ -320,16 +337,60 @@ public sealed partial class MainWindow : Window, IDisposable
         if (_xamlPopupDepth == 0 || --_xamlPopupDepth != 0)
             return;
 
-        RemoteSessionTab? sessionTab = _nativeSessionHiddenForPopup;
-        _nativeSessionHiddenForPopup = null;
-        if (sessionTab is not null &&
-            sessionTab.State == RemoteSessionTabState.Connected &&
+        _embeddedSessionSurface?.ClearXamlOverlayOcclusions();
+        if (!_windowMinimized &&
+            SessionContent.Visibility == Visibility.Visible &&
             Sessions.SelectedItem is TabViewItem selectedTab &&
             _sessionTabs.TryGetValue(selectedTab, out RemoteSessionTab? selectedSession) &&
-            ReferenceEquals(selectedSession, sessionTab))
+            selectedSession.State == RemoteSessionTabState.Connected)
         {
-            ShowSession(sessionTab);
+            _embeddedSessionSurface?.RestoreFocusAfterTransition();
         }
+    }
+
+    private void QueueXamlPopupOcclusionUpdate()
+    {
+        _ = DispatcherQueue.TryEnqueue(UpdateXamlPopupOcclusions);
+    }
+
+    private void UpdateXamlPopupOcclusions()
+    {
+        if (_xamlPopupDepth == 0 ||
+            _embeddedSessionSurface is null ||
+            RootGrid.XamlRoot is null)
+        {
+            return;
+        }
+
+        var overlays = new List<FrameworkElement>();
+        if (_activeContentDialog is { IsLoaded: true } dialog)
+        {
+            // ContentDialog itself spans the complete XamlRoot. Clipping that
+            // rectangle removes the whole native session. The template's
+            // BackgroundElement is the actual dialog card; content is a safe
+            // fallback for custom templates.
+            FrameworkElement dialogSurface =
+                FindNamedDescendant(dialog, "BackgroundElement") ??
+                dialog.Content as FrameworkElement ??
+                dialog;
+            overlays.Add(dialogSurface);
+        }
+
+        foreach (Popup popup in VisualTreeHelper.GetOpenPopupsForXamlRoot(RootGrid.XamlRoot))
+        {
+            if (popup.Child is not FrameworkElement child)
+                continue;
+
+            MenuFlyoutPresenter? presenter = child as MenuFlyoutPresenter ??
+                FindDescendant<MenuFlyoutPresenter>(child);
+            if (presenter is not null)
+                overlays.Add(presenter);
+        }
+
+        _ = NativeUiExceptionGuard.TryRun(
+            () => _embeddedSessionSurface.SetXamlOverlayOcclusions(overlays),
+            exception => EmbeddingDiagnostics.Write(
+                $"xaml-overlay-occlusion-recovered type={exception.GetType().Name} hresult=0x{exception.HResult:X8}"));
     }
 
     private async void NewConnectionButton_Click(object sender, RoutedEventArgs args)
@@ -813,7 +874,12 @@ public sealed partial class MainWindow : Window, IDisposable
         }
 
         if (shouldRefreshNativeSession)
-            _embeddedSessionSurface?.RefreshLayoutAndRestoreFocus();
+        {
+            if (IsEmbeddedFocusRestoreSuppressed())
+                _embeddedSessionSurface?.RefreshLayoutAfterWindowTransition();
+            else
+                _embeddedSessionSurface?.RefreshLayoutAndRestoreFocus();
+        }
 
         if (args.DidSizeChange || args.DidPresenterChange)
             QueueTitleBarInteractiveRegionUpdate();
@@ -832,6 +898,16 @@ public sealed partial class MainWindow : Window, IDisposable
         _hotKeyDeactivationCancellation?.Dispose();
         _hotKeyDeactivationCancellation = null;
         SetSessionHotKeysEnabled(true);
+
+        // A click on Minimize/Maximize/Close first reactivates the WinUI
+        // owner while PuTTY still owns the foreign input queue. Restoring SSH
+        // focus in this activation pass steals the mouse-up and makes the
+        // caption action require repeated clicks.
+        if (IsEmbeddedFocusRestoreSuppressed())
+        {
+            _windowWasDeactivated = false;
+            return;
+        }
 
         // Window.Activated can be raised more than once while the native
         // child processes a focus message. Restore focus only for a real
@@ -1434,8 +1510,15 @@ public sealed partial class MainWindow : Window, IDisposable
 
     private MenuFlyout CreateConnectionContextMenu()
     {
-        var menu = new MenuFlyout();
+        var menu = new MenuFlyout
+        {
+            // Keep the connection menu inside the fixed-width sidebar. Native
+            // SSH/RDP HWNDs occupy the content column and otherwise cover any
+            // part of a XAML flyout that extends across that boundary.
+            Placement = FlyoutPlacementMode.RightEdgeAlignedTop
+        };
         menu.Opening += XamlPopup_Opening;
+        menu.Opened += XamlPopup_Opened;
         menu.Closed += XamlPopup_Closed;
         menu.Items.Add(CreateContextMenuItem("Edit connection", Symbol.Edit, EditSelectedNodeButton_Click));
         menu.Items.Add(CreateContextMenuItem("Copy info", Symbol.Copy, CopySelectedConnectionInfoButton_Click));
@@ -1448,8 +1531,12 @@ public sealed partial class MainWindow : Window, IDisposable
 
     private MenuFlyout CreateFolderContextMenu()
     {
-        var menu = new MenuFlyout();
+        var menu = new MenuFlyout
+        {
+            Placement = FlyoutPlacementMode.RightEdgeAlignedTop
+        };
         menu.Opening += XamlPopup_Opening;
+        menu.Opened += XamlPopup_Opened;
         menu.Closed += XamlPopup_Closed;
         menu.Items.Add(CreateContextMenuItem("Rename", Symbol.Edit, RenameSelectedFolderButton_Click));
         menu.Items.Add(new MenuFlyoutSeparator());
@@ -1725,8 +1812,9 @@ public sealed partial class MainWindow : Window, IDisposable
             _sessionPointerController = new WindowSessionPointerController(
                 WindowNative.GetWindowHandle(this),
                 TryQueueCloseSessionTabAtClientPoint,
-                GetEmbeddedSessionHostHandle,
-                QueueEmbeddedSessionFocus);
+                GetEmbeddedSessionFocusTargetHandle,
+                QueueEmbeddedSessionFocus,
+                CancelEmbeddedSessionFocusRestore);
             EmbeddingDiagnostics.Write("session-pointer-hook-installed");
         }
         catch (Exception exception)
@@ -1738,17 +1826,32 @@ public sealed partial class MainWindow : Window, IDisposable
         }
     }
 
-    private IntPtr GetEmbeddedSessionHostHandle() =>
-        _embeddedSessionSurface?.Handle ?? IntPtr.Zero;
+    private IntPtr GetEmbeddedSessionFocusTargetHandle() =>
+        _embeddedSessionSurface?.FocusTargetWindowHandle ?? IntPtr.Zero;
 
     private void QueueEmbeddedSessionFocus()
     {
+        Volatile.Write(ref _embeddedFocusRestoreSuppressedUntil, 0);
         _ = DispatcherQueue.TryEnqueue(() =>
         {
             if (!_windowMinimized)
-                _embeddedSessionSurface?.RestoreFocusAfterTransition();
+                _embeddedSessionSurface?.Focus();
         });
     }
+
+    private void CancelEmbeddedSessionFocusRestore()
+    {
+        Volatile.Write(
+            ref _embeddedFocusRestoreSuppressedUntil,
+            SessionFocusRestorePolicy.CreateShellClickSuppressionDeadline(
+                Environment.TickCount64));
+        _embeddedSessionSurface?.CancelPendingFocusRestore();
+    }
+
+    private bool IsEmbeddedFocusRestoreSuppressed() =>
+        SessionFocusRestorePolicy.ShouldSuppressForShellClick(
+            Volatile.Read(ref _embeddedFocusRestoreSuppressedUntil),
+            Environment.TickCount64);
 
     private bool TryQueueCloseSessionTabAtClientPoint(int physicalX, int physicalY)
     {

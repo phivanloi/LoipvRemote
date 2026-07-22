@@ -114,6 +114,75 @@ public sealed class EmbeddedWindowFocusControllerTests
             Is.EqualTo(expected));
     }
 
+    [Test]
+    public void PrimaryClickFocusTargetExcludesTheNativeHostAndUnrelatedWindows()
+    {
+        var parents = new Dictionary<IntPtr, IntPtr>
+        {
+            [(IntPtr)30] = (IntPtr)20,
+            [(IntPtr)20] = (IntPtr)10,
+            [(IntPtr)10] = (IntPtr)1,
+            [(IntPtr)40] = (IntPtr)10
+        };
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(
+                WindowSessionPointerController.IsInsideEmbeddedFocusTarget(
+                    (IntPtr)20,
+                    (IntPtr)20,
+                    window => parents.GetValueOrDefault(window)),
+                Is.True,
+                "The PuTTY terminal itself must restore focus.");
+            Assert.That(
+                WindowSessionPointerController.IsInsideEmbeddedFocusTarget(
+                    (IntPtr)20,
+                    (IntPtr)30,
+                    window => parents.GetValueOrDefault(window)),
+                Is.True,
+                "A native child inside PuTTY must restore focus.");
+            Assert.That(
+                WindowSessionPointerController.IsInsideEmbeddedFocusTarget(
+                    (IntPtr)20,
+                    (IntPtr)10,
+                    window => parents.GetValueOrDefault(window)),
+                Is.False,
+                "The shared native host must not trigger PuTTY focus recovery.");
+            Assert.That(
+                WindowSessionPointerController.IsInsideEmbeddedFocusTarget(
+                    (IntPtr)20,
+                    (IntPtr)40,
+                    window => parents.GetValueOrDefault(window)),
+                Is.False,
+                "A sibling window must not trigger PuTTY focus recovery.");
+            Assert.That(
+                WindowSessionPointerController.IsInsideEmbeddedFocusTarget(
+                    IntPtr.Zero,
+                    (IntPtr)20,
+                    window => parents.GetValueOrDefault(window)),
+                Is.False,
+                "No active PuTTY terminal means no click focus recovery.");
+        });
+    }
+
+    [TestCase(true, true, false, true)]
+    [TestCase(true, true, true, false)]
+    [TestCase(true, false, false, false)]
+    [TestCase(false, true, false, false)]
+    public void PrimaryClickInsideTheShellCancelsPendingSshFocusOnlyOutsidePutty(
+        bool primaryButtonDown,
+        bool insideOwnerWindow,
+        bool insideEmbeddedFocusTarget,
+        bool expected)
+    {
+        Assert.That(
+            WindowSessionPointerController.ShouldCancelEmbeddedFocusRestore(
+                primaryButtonDown,
+                insideOwnerWindow,
+                insideEmbeddedFocusTarget),
+            Is.EqualTo(expected));
+    }
+
     [TestCase(10, 10, false, true)]
     [TestCase(10, 20, true, true)]
     [TestCase(10, 20, false, false)]

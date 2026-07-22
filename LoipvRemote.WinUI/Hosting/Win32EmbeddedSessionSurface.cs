@@ -2,6 +2,7 @@ using LoipvRemote.Infrastructure.Windows.WindowEmbedding;
 using LoipvRemote.Domain.Protocols;
 using LoipvRemote.Protocols.Abstractions;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using System.Runtime.InteropServices;
 using Windows.Foundation;
@@ -34,6 +35,7 @@ public sealed class Win32EmbeddedSessionSurface : IEmbeddedSessionSurface, IDisp
     private CancellationTokenSource? _windowTransitionCancellation;
     private IEmbeddedWindow? _adaptiveDisplaySession;
     private RdpDisplayConfiguration? _lastAdaptiveDisplay;
+    private FrameworkElement[] _xamlOverlayElements = [];
     private bool _dynamicResolutionUnavailable;
     private bool _isVisible;
     private bool _disposed;
@@ -51,6 +53,14 @@ public sealed class Win32EmbeddedSessionSurface : IEmbeddedSessionSurface, IDisp
 
     public IntPtr Handle => _nativeHost?.Handle ?? IntPtr.Zero;
 
+    /// <summary>
+    /// Returns the actual cross-process terminal HWND only when the active
+    /// protocol supports verified focus recovery. The shared native host is
+    /// deliberately excluded so shell clicks can never trigger SSH focus.
+    /// </summary>
+    public IntPtr FocusTargetWindowHandle =>
+        _session is IEmbeddedWindowFocusTarget ? _session.WindowHandle : IntPtr.Zero;
+
     public void EnsureHostWindow()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -66,11 +76,7 @@ public sealed class Win32EmbeddedSessionSurface : IEmbeddedSessionSurface, IDisp
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         if (!visible)
-        {
-            _focusRestoreCancellation?.Cancel();
-            _focusRestoreCancellation?.Dispose();
-            _focusRestoreCancellation = null;
-        }
+            CancelPendingFocusRestore();
         if (_nativeHost is not null)
         {
             bool visibilityChanged = _isVisible != visible;
@@ -158,15 +164,23 @@ public sealed class Win32EmbeddedSessionSurface : IEmbeddedSessionSurface, IDisp
         QueueWindowTransitionRefresh();
     }
 
+    /// <summary>
+    /// Completes a maximize/restore layout pass without taking focus away
+    /// from the shell control whose native pointer action is still running.
+    /// </summary>
+    public void RefreshLayoutAfterWindowTransition()
+    {
+        UpdateBoundsSafely();
+        QueueWindowTransitionRefresh();
+    }
+
     /// <summary>Stops delayed native work while Windows parks a minimized HWND off-screen.</summary>
     public void SuspendForMinimize()
     {
         if (_disposed)
             return;
 
-        _focusRestoreCancellation?.Cancel();
-        _focusRestoreCancellation?.Dispose();
-        _focusRestoreCancellation = null;
+        CancelPendingFocusRestore();
         _windowTransitionCancellation?.Cancel();
         _windowTransitionCancellation?.Dispose();
         _windowTransitionCancellation = null;
@@ -178,6 +192,39 @@ public sealed class Win32EmbeddedSessionSurface : IEmbeddedSessionSurface, IDisp
     public void RestoreFocusAfterTransition() =>
         NativeSessionFocusTransition.Restore(Focus, QueueFocusRestore);
 
+    /// <summary>
+    /// Cancels delayed focus attempts when the user intentionally clicks a
+    /// shell control outside the embedded PuTTY window. This method is safe to
+    /// call from the low-level mouse-hook thread.
+    /// </summary>
+    public void CancelPendingFocusRestore()
+    {
+        CancellationTokenSource? cancellation = Interlocked.Exchange(
+            ref _focusRestoreCancellation,
+            null);
+        CancelAndDispose(cancellation);
+    }
+
+    /// <summary>
+    /// Keeps the native session visible while exposing only the rectangles
+    /// needed by WinUI menus and dialogs above the owned native popup.
+    /// </summary>
+    public void SetXamlOverlayOcclusions(IEnumerable<FrameworkElement> overlays)
+    {
+        ArgumentNullException.ThrowIfNull(overlays);
+        _xamlOverlayElements = overlays
+            .Where(element => element is not null)
+            .Distinct()
+            .ToArray();
+        ApplyXamlOverlayOcclusions();
+    }
+
+    public void ClearXamlOverlayOcclusions()
+    {
+        _xamlOverlayElements = [];
+        _nativeHost?.ClearOccludedRegions();
+    }
+
     public void Dispose()
     {
         if (_disposed)
@@ -186,8 +233,8 @@ public sealed class Win32EmbeddedSessionSurface : IEmbeddedSessionSurface, IDisp
         _disposed = true;
         _placementTarget.SizeChanged -= PlacementTargetOnSizeChanged;
         _placementTarget.LayoutUpdated -= PlacementTargetOnLayoutUpdated;
-        _focusRestoreCancellation?.Cancel();
-        _focusRestoreCancellation?.Dispose();
+        _xamlOverlayElements = [];
+        CancelPendingFocusRestore();
         CancelDynamicDisplayUpdate();
         _windowTransitionCancellation?.Cancel();
         _windowTransitionCancellation?.Dispose();
@@ -217,9 +264,11 @@ public sealed class Win32EmbeddedSessionSurface : IEmbeddedSessionSurface, IDisp
         if (_disposed || !_isVisible || _nativeHost is null || _session is null)
             return;
 
-        _focusRestoreCancellation?.Cancel();
-        _focusRestoreCancellation?.Dispose();
-        CancellationTokenSource cancellation = _focusRestoreCancellation = new();
+        CancellationTokenSource cancellation = new();
+        CancellationTokenSource? previous = Interlocked.Exchange(
+            ref _focusRestoreCancellation,
+            cancellation);
+        CancelAndDispose(previous);
         IEmbeddedWindow targetSession = _session;
         _ = RestoreFocusAfterLayoutAsync(targetSession, cancellation.Token);
     }
@@ -249,6 +298,21 @@ public sealed class Win32EmbeddedSessionSurface : IEmbeddedSessionSurface, IDisp
         catch (OperationCanceledException)
         {
             // A later size/layout update superseded this focus request.
+        }
+    }
+
+    private static void CancelAndDispose(CancellationTokenSource? cancellation)
+    {
+        if (cancellation is null)
+            return;
+
+        try
+        {
+            cancellation.Cancel();
+        }
+        finally
+        {
+            cancellation.Dispose();
         }
     }
 
@@ -342,6 +406,7 @@ public sealed class Win32EmbeddedSessionSurface : IEmbeddedSessionSurface, IDisp
             _nativeHost.Resize(hostBounds);
             EmbeddingDiagnostics.Write($"host-resized bounds={hostBounds.X},{hostBounds.Y},{hostBounds.Width},{hostBounds.Height} {DescribeWindow(_nativeHost.Handle)}");
         }
+        ApplyXamlOverlayOcclusions(hostBounds);
         // The protocol HWND is a child of _nativeHost, whereas the native host
         // itself is a child of the WinUI top-level HWND. The protocol must be
         // sized in local coordinates; passing the WinUI offset here would push
@@ -353,6 +418,83 @@ public sealed class Win32EmbeddedSessionSurface : IEmbeddedSessionSurface, IDisp
         }
 
         UpdateAdaptiveRdpDisplay(hostBounds, scale, forceDynamicDisplayUpdate);
+    }
+
+    private void ApplyXamlOverlayOcclusions() 
+    {
+        if (_lastReportedBounds is EmbeddedWindowBounds hostBounds)
+            ApplyXamlOverlayOcclusions(hostBounds);
+    }
+
+    private void ApplyXamlOverlayOcclusions(EmbeddedWindowBounds hostBounds)
+    {
+        if (_nativeHost is null)
+            return;
+
+        EmbeddedWindowBounds[] holes = _xamlOverlayElements
+            .Select(element => new
+            {
+                Element = element,
+                Bounds = TryGetOverlayScreenBounds(element)
+            })
+            .Where(item => item.Bounds.HasValue)
+            .Select(item => OverlayOcclusionPolicy.ToHostLocalHole(
+                hostBounds,
+                item.Bounds!.Value,
+                padding: item.Element is MenuFlyoutPresenter ? 6 : 96))
+            .Where(bounds => bounds.HasValue)
+            .Select(bounds => bounds!.Value)
+            .ToArray();
+        if (_xamlOverlayElements.Length > 0)
+        {
+            EmbeddingDiagnostics.Write(
+                $"xaml-overlay-occlusion overlays={_xamlOverlayElements.Length} holes={holes.Length} " +
+                $"host={hostBounds.X},{hostBounds.Y},{hostBounds.Width},{hostBounds.Height} " +
+                $"regions={string.Join(';', holes.Select(hole => $"{hole.X},{hole.Y},{hole.Width},{hole.Height}"))}");
+        }
+        _nativeHost.SetOccludedRegions(holes);
+        if (holes.Length > 0)
+        {
+            // Opening a WinUI popup moves its composition surface above the
+            // owned native host. Raise the clipped host without activating it;
+            // the dialog/menu remains visible through the excluded rectangle.
+            _nativeHost.BringToFront();
+        }
+    }
+
+    private EmbeddedWindowBounds? TryGetOverlayScreenBounds(FrameworkElement overlay)
+    {
+        if (overlay.XamlRoot is null ||
+            overlay.XamlRoot.RasterizationScale <= 0 ||
+            overlay.ActualWidth <= 0 ||
+            overlay.ActualHeight <= 0)
+        {
+            return null;
+        }
+
+        try
+        {
+            Point origin = overlay.TransformToVisual(null)
+                .TransformPoint(new Point(0, 0));
+            double scale = overlay.XamlRoot.RasterizationScale;
+            NativePoint screenOrigin = new()
+            {
+                X = (int)Math.Round(origin.X * scale),
+                Y = (int)Math.Round(origin.Y * scale)
+            };
+            if (!ClientToScreen(_ownerWindowHandle, ref screenOrigin))
+                return null;
+
+            return new EmbeddedWindowBounds(
+                screenOrigin.X,
+                screenOrigin.Y,
+                Math.Max(1, (int)Math.Round(overlay.ActualWidth * scale)),
+                Math.Max(1, (int)Math.Round(overlay.ActualHeight * scale)));
+        }
+        catch (InvalidOperationException)
+        {
+            return null;
+        }
     }
 
     private void UpdateAdaptiveRdpDisplay(

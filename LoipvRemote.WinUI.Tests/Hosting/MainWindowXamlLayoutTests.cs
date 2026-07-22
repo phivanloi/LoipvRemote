@@ -6,6 +6,79 @@ namespace LoipvRemote.WinUI.Tests.Hosting;
 public sealed class MainWindowXamlLayoutTests
 {
     [Test]
+    public void TitleBarMenuStaysInsideSidebarWithoutHidingTheNativeSession()
+    {
+        string xamlPath = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "LoipvRemote.WinUI", "MainWindow.xaml"));
+        XDocument document = XDocument.Load(xamlPath);
+        XNamespace xaml = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
+        XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
+
+        XElement titleBarActions = document.Descendants(xaml + "StackPanel")
+            .Single(element => (string?)element.Attribute(x + "Name") == "TitleBarActions");
+        XElement menu = titleBarActions.Descendants(xaml + "MenuFlyout").Single();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(
+                (string?)menu.Attribute("Placement"),
+                Is.EqualTo("BottomEdgeAlignedRight"));
+            Assert.That(menu.Attribute("Opening"), Is.Null);
+            Assert.That(menu.Attribute("Closed"), Is.Null);
+        });
+    }
+
+    [Test]
+    public void ContextMenusAndDialogsOccludeOnlyTheirOwnNativeSurfaceArea()
+    {
+        string codePath = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "LoipvRemote.WinUI", "MainWindow.xaml.cs"));
+        string code = File.ReadAllText(codePath);
+        int begin = code.IndexOf("private void BeginXamlPopup()", StringComparison.Ordinal);
+        int end = code.IndexOf("private void EndXamlPopup", begin, StringComparison.Ordinal);
+        string beginMethod = code[begin..end];
+        int dialogOpened = code.IndexOf("dialog.Opened +=", StringComparison.Ordinal);
+        int dialogBackground = code.IndexOf("FindNamedDescendant(dialog, \"BackgroundElement\")", StringComparison.Ordinal);
+        int popupOpenedHandler = code.IndexOf("private void XamlPopup_Opened", StringComparison.Ordinal);
+        int applyOcclusion = code.IndexOf("SetXamlOverlayOcclusions", popupOpenedHandler, StringComparison.Ordinal);
+        int contextMenu = code.IndexOf("private MenuFlyout CreateConnectionContextMenu", StringComparison.Ordinal);
+        int contextMenuOpened = code.IndexOf("menu.Opened += XamlPopup_Opened;", contextMenu, StringComparison.Ordinal);
+        int folderMenu = code.IndexOf("private MenuFlyout CreateFolderContextMenu", StringComparison.Ordinal);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(beginMethod, Does.Not.Contain("RemoteSessionWorkspace.Deactivate"));
+            Assert.That(dialogOpened, Is.GreaterThanOrEqualTo(0));
+            Assert.That(dialogBackground, Is.GreaterThan(dialogOpened));
+            Assert.That(popupOpenedHandler, Is.GreaterThanOrEqualTo(0));
+            Assert.That(applyOcclusion, Is.GreaterThan(popupOpenedHandler));
+            Assert.That(contextMenuOpened, Is.GreaterThan(contextMenu));
+            Assert.That(
+                code.IndexOf("Placement = FlyoutPlacementMode.RightEdgeAlignedTop", contextMenu, StringComparison.Ordinal),
+                Is.InRange(contextMenu, folderMenu));
+            Assert.That(
+                code.IndexOf("Placement = FlyoutPlacementMode.RightEdgeAlignedTop", folderMenu, StringComparison.Ordinal),
+                Is.GreaterThan(folderMenu));
+        });
+
+        string surfacePath = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "LoipvRemote.WinUI", "Hosting", "Win32EmbeddedSessionSurface.cs"));
+        string surfaceCode = File.ReadAllText(surfacePath);
+        int setRegions = surfaceCode.IndexOf("_nativeHost.SetOccludedRegions(holes);", StringComparison.Ordinal);
+        int bringToFront = surfaceCode.IndexOf("_nativeHost.BringToFront();", setRegions, StringComparison.Ordinal);
+        int nextMethod = surfaceCode.IndexOf("private EmbeddedWindowBounds? TryGetOverlayScreenBounds", setRegions, StringComparison.Ordinal);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(setRegions, Is.GreaterThanOrEqualTo(0));
+            Assert.That(bringToFront, Is.InRange(setRegions, nextMethod));
+        });
+    }
+
+    [Test]
     public void QuickConnectImmediatelyConnectsTheOpenedSession()
     {
         string codePath = Path.GetFullPath(Path.Combine(
@@ -382,19 +455,54 @@ public sealed class MainWindowXamlLayoutTests
         string code = File.ReadAllText(codePath);
 
         int pointerController = code.IndexOf("new WindowSessionPointerController(", StringComparison.Ordinal);
-        int hostHandleProvider = code.IndexOf("GetEmbeddedSessionHostHandle", pointerController, StringComparison.Ordinal);
-        int focusCallback = code.IndexOf("QueueEmbeddedSessionFocus", hostHandleProvider, StringComparison.Ordinal);
+        int focusTargetHandleProvider = code.IndexOf("GetEmbeddedSessionFocusTargetHandle", pointerController, StringComparison.Ordinal);
+        int focusCallback = code.IndexOf("QueueEmbeddedSessionFocus", focusTargetHandleProvider, StringComparison.Ordinal);
+        int cancelCallback = code.IndexOf("CancelEmbeddedSessionFocusRestore", focusCallback, StringComparison.Ordinal);
         int focusMethod = code.IndexOf("private void QueueEmbeddedSessionFocus()", focusCallback, StringComparison.Ordinal);
         int dispatcher = code.IndexOf("DispatcherQueue.TryEnqueue", focusMethod, StringComparison.Ordinal);
-        int restoreFocus = code.IndexOf("RestoreFocusAfterTransition();", dispatcher, StringComparison.Ordinal);
+        int directFocus = code.IndexOf("_embeddedSessionSurface?.Focus();", dispatcher, StringComparison.Ordinal);
+        int cancelMethod = code.IndexOf("private void CancelEmbeddedSessionFocusRestore()", directFocus, StringComparison.Ordinal);
+        int cancelPendingFocus = code.IndexOf("CancelPendingFocusRestore();", cancelMethod, StringComparison.Ordinal);
 
         Assert.Multiple(() =>
         {
-            Assert.That(hostHandleProvider, Is.GreaterThan(pointerController));
-            Assert.That(focusCallback, Is.GreaterThan(hostHandleProvider));
+            Assert.That(focusTargetHandleProvider, Is.GreaterThan(pointerController));
+            Assert.That(focusCallback, Is.GreaterThan(focusTargetHandleProvider));
+            Assert.That(cancelCallback, Is.GreaterThan(focusCallback));
             Assert.That(focusMethod, Is.GreaterThan(focusCallback));
             Assert.That(dispatcher, Is.GreaterThan(focusMethod));
-            Assert.That(restoreFocus, Is.GreaterThan(dispatcher));
+            Assert.That(directFocus, Is.GreaterThan(dispatcher));
+            Assert.That(cancelMethod, Is.GreaterThan(directFocus));
+            Assert.That(cancelPendingFocus, Is.GreaterThan(cancelMethod));
+        });
+    }
+
+    [Test]
+    public void ShellCaptionClickSuppressesSshFocusUntilTheNativeActionCompletes()
+    {
+        string codePath = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "LoipvRemote.WinUI", "MainWindow.xaml.cs"));
+        string code = File.ReadAllText(codePath);
+
+        int shellClick = code.IndexOf("private void CancelEmbeddedSessionFocusRestore()", StringComparison.Ordinal);
+        int armSuppression = code.IndexOf("CreateShellClickSuppressionDeadline", shellClick, StringComparison.Ordinal);
+        int cancelPending = code.IndexOf("CancelPendingFocusRestore();", armSuppression, StringComparison.Ordinal);
+        int activationHandler = code.IndexOf("private void MainWindowOnActivated", StringComparison.Ordinal);
+        int activationGate = code.IndexOf("IsEmbeddedFocusRestoreSuppressed()", activationHandler, StringComparison.Ordinal);
+        int activationRestore = code.IndexOf("RestoreFocusAfterTransition();", activationHandler, StringComparison.Ordinal);
+        int windowChanged = code.IndexOf("private void AppWindowOnChanged", StringComparison.Ordinal);
+        int layoutOnly = code.IndexOf("RefreshLayoutAfterWindowTransition();", windowChanged, StringComparison.Ordinal);
+        int layoutAndFocus = code.IndexOf("RefreshLayoutAndRestoreFocus();", windowChanged, StringComparison.Ordinal);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(armSuppression, Is.GreaterThan(shellClick));
+            Assert.That(cancelPending, Is.GreaterThan(armSuppression));
+            Assert.That(activationGate, Is.GreaterThan(activationHandler));
+            Assert.That(activationGate, Is.LessThan(activationRestore));
+            Assert.That(layoutOnly, Is.GreaterThan(windowChanged));
+            Assert.That(layoutOnly, Is.LessThan(layoutAndFocus));
         });
     }
 

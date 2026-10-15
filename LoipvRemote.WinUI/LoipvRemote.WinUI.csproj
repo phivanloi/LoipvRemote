@@ -1,0 +1,91 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
+    <RootNamespace>LoipvRemote.WinUI</RootNamespace>
+    <AssemblyName>LoipvRemote</AssemblyName>
+    <ApplicationIcon>..\LoipvRemoteInstaller\Installer\Resources\AppIcon.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <UseWinUI>true</UseWinUI>
+    <!-- The installer ships the Windows App SDK runtime with LoipvRemote. -->
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <Platforms>x64;arm64</Platforms>
+    <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
+    <Version>3.0.2.53</Version>
+    <AssemblyVersion>3.0.2.53</AssemblyVersion>
+    <FileVersion>3.0.2.53</FileVersion>
+    <InformationalVersion>3.0.2.53</InformationalVersion>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <PublishReadyToRun>false</PublishReadyToRun>
+  </PropertyGroup>
+
+  <!-- Keep the developer executable distinct from the installed MSI while
+       smoke-testing the WinUI shell. Release output keeps the public
+       executable name consumed by the installer. -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <AssemblyName>LoipvRemote.WinUI.Debug</AssemblyName>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Platform)' == 'x64'">
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Platform)' == 'arm64'">
+    <PlatformTarget>ARM64</PlatformTarget>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\LoipvRemote.Application\LoipvRemote.Application.csproj" />
+    <ProjectReference Include="..\LoipvRemote.Domain\LoipvRemote.Domain.csproj" />
+    <ProjectReference Include="..\LoipvRemote.Infrastructure.Persistence\LoipvRemote.Infrastructure.Persistence.csproj" />
+    <ProjectReference Include="..\LoipvRemote.Infrastructure.Windows\LoipvRemote.Infrastructure.Windows.csproj" />
+    <ProjectReference Include="..\LoipvRemote.Protocols.Abstractions\LoipvRemote.Protocols.Abstractions.csproj" />
+    <ProjectReference Include="..\LoipvRemote.Protocols.Putty\LoipvRemote.Protocols.Putty.csproj" />
+    <ProjectReference Include="..\LoipvRemote.Protocols.Rdp\LoipvRemote.Protocols.Rdp.csproj" />
+    <ProjectReference Include="..\LoipvRemote.Protocols.Vnc\LoipvRemote.Protocols.Vnc.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\LoipvRemoteInstaller\Installer\Resources\AppIcon.ico"
+             Link="LoipvRemote.ico"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="TerminalAssets\**\*"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\THIRD_PARTY_NOTICES.md"
+             Link="THIRD_PARTY_NOTICES.md"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="LoipvRemote.WinUI.Tests" />
+  </ItemGroup>
+
+  <Target Name="BundlePortablePowerShell"
+          AfterTargets="Publish"
+          Condition="'$(RuntimeIdentifier)' == 'win-x64' Or '$(RuntimeIdentifier)' == 'win-arm64'">
+    <PropertyGroup>
+      <PowerShellArchitecture Condition="'$(RuntimeIdentifier)' == 'win-x64'">x64</PowerShellArchitecture>
+      <PowerShellArchitecture Condition="'$(RuntimeIdentifier)' == 'win-arm64'">arm64</PowerShellArchitecture>
+      <PowerShellRuntimeDestination>$(PublishDir)Runtime\PowerShell</PowerShellRuntimeDestination>
+    </PropertyGroup>
+    <Copy SourceFiles="$(TargetDir)$(AssemblyName).pri"
+          DestinationFolder="$(PublishDir)"
+          SkipUnchangedFiles="true"
+          Condition="Exists('$(TargetDir)$(AssemblyName).pri')" />
+    <Error Condition="!Exists('$(PublishDir)$(AssemblyName).pri')"
+           Text="The WinUI application PRI was not added to the direct publish payload." />
+    <Exec Command="powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\..\eng\Prepare-PowerShellRuntime.ps1&quot; -Architecture &quot;$(PowerShellArchitecture)&quot; -Destination &quot;$(PowerShellRuntimeDestination)&quot;" />
+    <Error Condition="!Exists('$(PowerShellRuntimeDestination)\pwsh.exe')"
+           Text="The bundled PowerShell runtime was not added to the publish payload." />
+  </Target>
+</Project>

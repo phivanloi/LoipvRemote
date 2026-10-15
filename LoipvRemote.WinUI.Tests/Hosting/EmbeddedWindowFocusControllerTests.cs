@@ -1,0 +1,405 @@
+using LoipvRemote.Infrastructure.Windows.WindowEmbedding;
+using NUnit.Framework;
+
+namespace LoipvRemote.WinUI.Tests.Hosting;
+
+public sealed class EmbeddedWindowFocusControllerTests
+{
+    [Test]
+    public void IsDescendantWindowWalksCrossProcessParentChain()
+    {
+        var parents = new Dictionary<IntPtr, IntPtr>
+        {
+            [(IntPtr)30] = (IntPtr)20,
+            [(IntPtr)20] = (IntPtr)10,
+            [(IntPtr)10] = IntPtr.Zero
+        };
+
+        Assert.That(
+            WindowSessionHotKeyController.IsDescendantWindow(
+                (IntPtr)10,
+                (IntPtr)30,
+                window => parents.GetValueOrDefault(window)),
+            Is.True);
+        Assert.That(
+            WindowSessionHotKeyController.IsDescendantWindow(
+                (IntPtr)99,
+                (IntPtr)30,
+                window => parents.GetValueOrDefault(window)),
+            Is.False);
+    }
+
+    [TestCase(true, false, true)]
+    [TestCase(false, true, true)]
+    [TestCase(true, true, true)]
+    [TestCase(false, false, false)]
+    public void ShouldHandleTabShortcutUsesStableActivationOrForegroundOwnership(
+        bool enabled,
+        bool ownsForeground,
+        bool expected)
+    {
+        Assert.That(
+            WindowSessionHotKeyController.ShouldHandleTabShortcut(enabled, ownsForeground),
+            Is.EqualTo(expected));
+    }
+
+    [TestCase(true, true, 1, true)]
+    [TestCase(true, true, -1, true)]
+    [TestCase(false, true, 1, false)]
+    [TestCase(true, false, 1, false)]
+    [TestCase(true, true, 0, false)]
+    public void TabNavigationIsDispatchedOnlyAfterTheCapturedTabKeyIsReleased(
+        bool keyUp,
+        bool tabChordActive,
+        int pendingDirection,
+        bool expected)
+    {
+        Assert.That(
+            WindowSessionHotKeyController.ShouldDispatchNavigation(
+                keyUp,
+                tabChordActive,
+                pendingDirection),
+            Is.EqualTo(expected));
+    }
+
+    [Test]
+    public void TabNavigationOnlyQueuesNavigationFromTheLowLevelHookThread()
+    {
+        var events = new List<string>();
+
+        WindowSessionHotKeyController.DispatchNavigation(
+            1,
+            direction => events.Add($"navigate:{direction}"));
+
+        Assert.That(events, Is.EqualTo(["navigate:1"]));
+    }
+
+    [TestCase(true, true, true, true)]
+    [TestCase(true, false, true, false)]
+    [TestCase(false, true, true, false)]
+    [TestCase(true, true, false, false)]
+    public void FirstOrdinaryKeyAfterTabNavigationForcesFocusRecoveryBeforeDispatch(
+        bool recoveryPending,
+        bool keyDown,
+        bool ownsForeground,
+        bool expected)
+    {
+        Assert.That(
+            WindowSessionHotKeyController.ShouldRecoverFocusBeforeKeyDispatch(
+                recoveryPending,
+                keyDown,
+                ownsForeground),
+            Is.EqualTo(expected));
+    }
+
+    [TestCase(true, true)]
+    [TestCase(false, false)]
+    public void MiddleClickIsSuppressedOnlyWhenTheApplicationHandledATab(bool handled, bool expected)
+    {
+        Assert.That(WindowSessionPointerController.ShouldSuppressMiddleClick(handled), Is.EqualTo(expected));
+    }
+
+    [TestCase(true, true, true)]
+    [TestCase(true, false, false)]
+    [TestCase(false, true, false)]
+    public void PrimaryClickRestoresFocusOnlyInsideTheEmbeddedSession(
+        bool primaryButtonDown,
+        bool insideEmbeddedSession,
+        bool expected)
+    {
+        Assert.That(
+            WindowSessionPointerController.ShouldRestoreEmbeddedFocus(
+                primaryButtonDown,
+                insideEmbeddedSession),
+            Is.EqualTo(expected));
+    }
+
+    [Test]
+    public void RightClickOnTheShellCancelsPendingEmbeddedFocusRestore()
+    {
+        string sourcePath = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..",
+            "LoipvRemote.Infrastructure.Windows", "WindowEmbedding", "WindowSessionPointerController.cs"));
+        string source = File.ReadAllText(sourcePath);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(source, Does.Contain("WmRightButtonDown"));
+            Assert.That(source, Does.Contain("bool rightButtonDown"));
+            Assert.That(source, Does.Contain("if (primaryButtonDown || rightButtonDown)"));
+            Assert.That(source, Does.Contain("primaryButtonDown || rightButtonDown,"));
+        });
+    }
+
+    [Test]
+    public void PrimaryClickFocusTargetExcludesTheNativeHostAndUnrelatedWindows()
+    {
+        var parents = new Dictionary<IntPtr, IntPtr>
+        {
+            [(IntPtr)30] = (IntPtr)20,
+            [(IntPtr)20] = (IntPtr)10,
+            [(IntPtr)10] = (IntPtr)1,
+            [(IntPtr)40] = (IntPtr)10
+        };
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(
+                WindowSessionPointerController.IsInsideEmbeddedFocusTarget(
+                    (IntPtr)20,
+                    (IntPtr)20,
+                    window => parents.GetValueOrDefault(window)),
+                Is.True,
+                "The PuTTY terminal itself must restore focus.");
+            Assert.That(
+                WindowSessionPointerController.IsInsideEmbeddedFocusTarget(
+                    (IntPtr)20,
+                    (IntPtr)30,
+                    window => parents.GetValueOrDefault(window)),
+                Is.True,
+                "A native child inside PuTTY must restore focus.");
+            Assert.That(
+                WindowSessionPointerController.IsInsideEmbeddedFocusTarget(
+                    (IntPtr)20,
+                    (IntPtr)10,
+                    window => parents.GetValueOrDefault(window)),
+                Is.False,
+                "The shared native host must not trigger PuTTY focus recovery.");
+            Assert.That(
+                WindowSessionPointerController.IsInsideEmbeddedFocusTarget(
+                    (IntPtr)20,
+                    (IntPtr)40,
+                    window => parents.GetValueOrDefault(window)),
+                Is.False,
+                "A sibling window must not trigger PuTTY focus recovery.");
+            Assert.That(
+                WindowSessionPointerController.IsInsideEmbeddedFocusTarget(
+                    IntPtr.Zero,
+                    (IntPtr)20,
+                    window => parents.GetValueOrDefault(window)),
+                Is.False,
+                "No active PuTTY terminal means no click focus recovery.");
+        });
+    }
+
+    [TestCase(true, true, false, true)]
+    [TestCase(true, true, true, false)]
+    [TestCase(true, false, false, false)]
+    [TestCase(false, true, false, false)]
+    public void PrimaryClickInsideTheShellCancelsPendingSshFocusOnlyOutsidePutty(
+        bool primaryButtonDown,
+        bool insideOwnerWindow,
+        bool insideEmbeddedFocusTarget,
+        bool expected)
+    {
+        Assert.That(
+            WindowSessionPointerController.ShouldCancelEmbeddedFocusRestore(
+                primaryButtonDown,
+                insideOwnerWindow,
+                insideEmbeddedFocusTarget),
+            Is.EqualTo(expected));
+    }
+
+    [TestCase(10, 10, false, true)]
+    [TestCase(10, 20, true, true)]
+    [TestCase(10, 20, false, false)]
+    public void SessionHotKeysRemainActiveForTheOwnerOrEmbeddedChild(
+        int ownerValue,
+        int foregroundValue,
+        bool isChild,
+        bool expected)
+    {
+        bool result = WindowSessionHotKeyController.OwnsForegroundWindow(
+            (IntPtr)ownerValue,
+            (IntPtr)foregroundValue,
+            (_, _) => isChild);
+
+        Assert.That(result, Is.EqualTo(expected));
+    }
+
+    [Test]
+    public void TryFocusBringsOwnerForwardAndVerifiesEmbeddedFocus()
+    {
+        var owner = (IntPtr)10;
+        var embedded = (IntPtr)20;
+        IntPtr foreground = IntPtr.Zero;
+        IntPtr focused = IntPtr.Zero;
+        var attachments = new List<bool>();
+        var controller = new EmbeddedWindowFocusController(
+            (IntPtr handle, out uint processId) =>
+            {
+                processId = handle == owner ? 1u : 2u;
+                return handle == owner ? 100u : 200u;
+            },
+            (_, _, attach) =>
+            {
+                attachments.Add(attach);
+                return true;
+            },
+            handle =>
+            {
+                IntPtr previous = focused;
+                focused = handle;
+                return previous;
+            },
+            () => focused,
+            () => foreground,
+            handle =>
+            {
+                foreground = handle;
+                return true;
+            });
+
+        bool result = controller.TryFocus(owner, embedded);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.True);
+            Assert.That(foreground, Is.EqualTo(owner));
+            Assert.That(focused, Is.EqualTo(embedded));
+            Assert.That(attachments, Is.EqualTo([true, false]));
+        });
+    }
+
+    [Test]
+    public void TryFocusDoesNotReactivateWindowsWhenEmbeddedWindowAlreadyHasFocus()
+    {
+        var owner = (IntPtr)10;
+        var embedded = (IntPtr)20;
+        IntPtr focused = embedded;
+        int foregroundAttempts = 0;
+        int focusAttempts = 0;
+        var attachments = new List<bool>();
+        var controller = new EmbeddedWindowFocusController(
+            (IntPtr handle, out uint processId) =>
+            {
+                processId = handle == owner ? 1u : 2u;
+                return handle == owner ? 100u : 200u;
+            },
+            (_, _, attach) =>
+            {
+                attachments.Add(attach);
+                return true;
+            },
+            handle =>
+            {
+                focusAttempts++;
+                IntPtr previous = focused;
+                focused = handle;
+                return previous;
+            },
+            () => focused,
+            () => embedded,
+            _ =>
+            {
+                foregroundAttempts++;
+                return true;
+            });
+
+        bool result = controller.TryFocus(owner, embedded);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.True);
+            Assert.That(foregroundAttempts, Is.Zero);
+            Assert.That(focusAttempts, Is.Zero);
+            Assert.That(attachments, Is.EqualTo([true, false]));
+        });
+    }
+
+    [Test]
+    public void TryFocusReturnsFalseWhenWindowsDidNotKeepEmbeddedFocus()
+    {
+        var owner = (IntPtr)10;
+        var embedded = (IntPtr)20;
+        var attachments = new List<bool>();
+        var controller = new EmbeddedWindowFocusController(
+            (IntPtr handle, out uint processId) =>
+            {
+                processId = 1;
+                return handle == owner ? 100u : 200u;
+            },
+            (_, _, attach) =>
+            {
+                attachments.Add(attach);
+                return true;
+            },
+            _ => IntPtr.Zero,
+            () => owner,
+            () => owner,
+            _ => true);
+
+        bool result = controller.TryFocus(owner, embedded);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.False);
+            Assert.That(attachments, Is.EqualTo([true, false]));
+        });
+    }
+
+    [Test]
+    public void TryFocusReturnsFalseWhenFocusIsLostAfterInputQueuesAreDetached()
+    {
+        var owner = (IntPtr)10;
+        var embedded = (IntPtr)20;
+        IntPtr attachedQueueFocus = IntPtr.Zero;
+        bool queuesAttached = false;
+        var controller = new EmbeddedWindowFocusController(
+            (IntPtr handle, out uint processId) =>
+            {
+                processId = handle == owner ? 1u : 2u;
+                return handle == owner ? 100u : 200u;
+            },
+            (_, _, attach) =>
+            {
+                queuesAttached = attach;
+                return true;
+            },
+            handle =>
+            {
+                attachedQueueFocus = handle;
+                return IntPtr.Zero;
+            },
+            () => attachedQueueFocus,
+            () => owner,
+            _ => true,
+            _ => queuesAttached ? attachedQueueFocus : owner);
+
+        bool result = controller.TryFocus(owner, embedded);
+
+        Assert.That(result, Is.False);
+    }
+
+    [Test]
+    public void TryFocusStopsWhenOwnerCannotBecomeForeground()
+    {
+        var owner = (IntPtr)10;
+        var embedded = (IntPtr)20;
+        bool focusAttempted = false;
+        var controller = new EmbeddedWindowFocusController(
+            (IntPtr handle, out uint processId) =>
+            {
+                processId = 1;
+                return handle == owner ? 100u : 200u;
+            },
+            (_, _, _) => true,
+            _ =>
+            {
+                focusAttempted = true;
+                return IntPtr.Zero;
+            },
+            () => IntPtr.Zero,
+            () => IntPtr.Zero,
+            _ => false);
+
+        bool result = controller.TryFocus(owner, embedded);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.False);
+            Assert.That(focusAttempted, Is.False);
+        });
+    }
+}

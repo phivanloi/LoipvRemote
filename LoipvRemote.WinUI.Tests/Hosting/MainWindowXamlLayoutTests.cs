@@ -1,0 +1,719 @@
+using NUnit.Framework;
+using System.Xml.Linq;
+
+namespace LoipvRemote.WinUI.Tests.Hosting;
+
+public sealed class MainWindowXamlLayoutTests
+{
+    [Test]
+    public void WelcomeProvidesPreviousTabRestoreAction()
+    {
+        string xamlPath = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "LoipvRemote.WinUI", "MainWindow.xaml"));
+        XDocument document = XDocument.Load(xamlPath);
+        XNamespace xaml = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
+        XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
+
+        XElement welcome = document.Descendants(xaml + "StackPanel")
+            .Single(element => (string?)element.Attribute(x + "Name") == "WelcomeContent");
+        XElement button = welcome.Descendants(xaml + "Button")
+            .Single(element => (string?)element.Attribute(x + "Name") == "RestorePreviousTabsButton");
+        XElement icon = button.Descendants(xaml + "SymbolIcon").Single();
+        XElement label = button.Descendants(xaml + "TextBlock").Single();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That((string?)button.Attribute("Visibility"), Is.EqualTo("Collapsed"));
+            Assert.That((string?)button.Attribute("Click"), Is.EqualTo("RestorePreviousTabsButton_Click"));
+            Assert.That((string?)icon.Attribute("Symbol"), Is.EqualTo("Refresh"));
+            Assert.That((string?)label.Attribute("Text"), Is.EqualTo("Restore previous tabs"));
+        });
+    }
+
+    [Test]
+    public void PreviousTabsLoadAfterConnectionsAndSaveBeforeSessionTeardown()
+    {
+        string codePath = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "LoipvRemote.WinUI", "MainWindow.xaml.cs"));
+        string code = File.ReadAllText(codePath);
+
+        int rootLoaded = code.IndexOf("private async void RootGridOnLoaded", StringComparison.Ordinal);
+        int loadConnections = code.IndexOf("await LoadConnectionTreeAsync();", rootLoaded, StringComparison.Ordinal);
+        int loadTabs = code.IndexOf("await LoadPreviousSessionTabsAsync();", rootLoaded, StringComparison.Ordinal);
+        int cleanup = code.IndexOf("private async Task CloseAfterSessionCleanupAsync", StringComparison.Ordinal);
+        int saveTabs = code.IndexOf("await _previousSessionTabsRepository.SaveAsync", cleanup, StringComparison.Ordinal);
+        int closeSessions = code.IndexOf("await _sessionWorkspace.CloseAllAsync();", cleanup, StringComparison.Ordinal);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(loadTabs, Is.GreaterThan(loadConnections));
+            Assert.That(saveTabs, Is.GreaterThan(cleanup));
+            Assert.That(saveTabs, Is.LessThan(closeSessions));
+        });
+    }
+
+    [Test]
+    public void TitleBarBottomBorderMatchesSidebarDivider()
+    {
+        string xamlPath = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "LoipvRemote.WinUI", "MainWindow.xaml"));
+        XDocument document = XDocument.Load(xamlPath);
+        XNamespace xaml = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
+        XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
+
+        XElement titleBarDivider = document.Descendants(xaml + "Border")
+            .Single(element => (string?)element.Attribute(x + "Name") == "TitleBarBottomBorder");
+        XElement sidebar = document.Descendants(xaml + "Grid")
+            .Single(element =>
+                (string?)element.Attribute("Grid.Column") == "0" &&
+                (string?)element.Attribute("BorderThickness") == "0,0,1,0");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That((string?)titleBarDivider.Attribute("Grid.Row"), Is.EqualTo("0"));
+            Assert.That((string?)titleBarDivider.Attribute("BorderThickness"), Is.EqualTo("0,0,0,1"));
+            Assert.That(
+                (string?)titleBarDivider.Attribute("BorderBrush"),
+                Is.EqualTo((string?)sidebar.Attribute("BorderBrush")));
+            Assert.That((string?)titleBarDivider.Attribute("IsHitTestVisible"), Is.EqualTo("False"));
+        });
+    }
+
+    [Test]
+    public void TitleBarMenuStaysInsideSidebarWithoutHidingTheNativeSession()
+    {
+        string xamlPath = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "LoipvRemote.WinUI", "MainWindow.xaml"));
+        XDocument document = XDocument.Load(xamlPath);
+        XNamespace xaml = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
+        XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
+
+        XElement titleBarActions = document.Descendants(xaml + "StackPanel")
+            .Single(element => (string?)element.Attribute(x + "Name") == "TitleBarActions");
+        XElement menu = titleBarActions.Descendants(xaml + "MenuFlyout").Single();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(
+                (string?)menu.Attribute("Placement"),
+                Is.EqualTo("BottomEdgeAlignedRight"));
+            Assert.That(menu.Attribute("Opening"), Is.Null);
+            Assert.That(menu.Attribute("Closed"), Is.Null);
+        });
+    }
+
+    [Test]
+    public void ContentDialogsHideTheNativeSurfaceWhileMenusOccludeOnlyTheirOwnArea()
+    {
+        string codePath = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "LoipvRemote.WinUI", "MainWindow.xaml.cs"));
+        string code = File.ReadAllText(codePath);
+        int begin = code.IndexOf("private void BeginXamlPopup()", StringComparison.Ordinal);
+        int end = code.IndexOf("private void EndXamlPopup", begin, StringComparison.Ordinal);
+        string beginMethod = code[begin..end];
+        int showDialog = code.IndexOf("private async Task<ContentDialogResult> ShowDialogAsync", StringComparison.Ordinal);
+        int hideForDialog = code.IndexOf("bool restoreEmbeddedSession = HasSelectedConnectedEmbeddedSession();", showDialog, StringComparison.Ordinal);
+        int hideNativeSurface = code.IndexOf("_embeddedSessionSurface?.SetVisible(false);", showDialog, StringComparison.Ordinal);
+        int restoreNativeSurface = code.IndexOf("_embeddedSessionSurface?.SetVisible(true);", showDialog, StringComparison.Ordinal);
+        int popupOpenedHandler = code.IndexOf("private void XamlPopup_Opened", StringComparison.Ordinal);
+        int applyOcclusion = code.IndexOf("SetXamlOverlayOcclusions", popupOpenedHandler, StringComparison.Ordinal);
+        int contextMenu = code.IndexOf("private MenuFlyout CreateConnectionContextMenu", StringComparison.Ordinal);
+        int contextMenuOpened = code.IndexOf("menu.Opened += XamlPopup_Opened;", contextMenu, StringComparison.Ordinal);
+        int rightTapHandler = code.IndexOf("private void ConnectionTree_RightTapped", StringComparison.Ordinal);
+        string rightTapMethod = code[rightTapHandler..contextMenu];
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(beginMethod, Does.Not.Contain("RemoteSessionWorkspace.Deactivate"));
+            Assert.That(hideForDialog, Is.GreaterThan(showDialog));
+            Assert.That(hideNativeSurface, Is.GreaterThan(hideForDialog));
+            Assert.That(restoreNativeSurface, Is.GreaterThan(hideNativeSurface));
+            Assert.That(code, Does.Not.Contain("FindNamedDescendant(dialog, \"BackgroundElement\")"));
+            Assert.That(popupOpenedHandler, Is.GreaterThanOrEqualTo(0));
+            Assert.That(applyOcclusion, Is.GreaterThan(popupOpenedHandler));
+            Assert.That(contextMenuOpened, Is.GreaterThan(contextMenu));
+            Assert.That(rightTapMethod,
+                Does.Contain("menu.ShowAt(container, new FlyoutShowOptions { Position = args.GetPosition(container) });"));
+            Assert.That(code, Does.Not.Contain("Placement = FlyoutPlacementMode.RightEdgeAlignedTop"));
+        });
+
+        string surfacePath = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "LoipvRemote.WinUI", "Hosting", "Win32EmbeddedSessionSurface.cs"));
+        string surfaceCode = File.ReadAllText(surfacePath);
+        int setRegions = surfaceCode.IndexOf("_nativeHost.SetOccludedRegions(holes);", StringComparison.Ordinal);
+        int hiddenSurfaceGuard = surfaceCode.IndexOf("if (_nativeHost is null || !_isVisible)", StringComparison.Ordinal);
+        int bringToFront = surfaceCode.IndexOf("_nativeHost.BringToFront();", setRegions, StringComparison.Ordinal);
+        int nextMethod = surfaceCode.IndexOf("private EmbeddedWindowBounds? TryGetOverlayScreenBounds", setRegions, StringComparison.Ordinal);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(setRegions, Is.GreaterThanOrEqualTo(0));
+            Assert.That(hiddenSurfaceGuard, Is.LessThan(setRegions));
+            Assert.That(bringToFront, Is.InRange(setRegions, nextMethod));
+        });
+    }
+
+    [Test]
+    public void ContextMenuClosesBeforeItRunsACommandAndConnectionEditorLabelsItsPasswordFieldAsEditable()
+    {
+        string codePath = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "LoipvRemote.WinUI", "MainWindow.xaml.cs"));
+        string code = File.ReadAllText(codePath);
+
+        int showDialog = code.IndexOf("private async Task<ContentDialogResult> ShowDialogAsync", StringComparison.Ordinal);
+        int showDialogEnd = code.IndexOf("private bool HasSelectedConnectedEmbeddedSession", showDialog, StringComparison.Ordinal);
+        int contextMenuItemFactory = code.IndexOf("private static MenuFlyoutItem CreateContextMenuItem", StringComparison.Ordinal);
+        int hideMenu = code.IndexOf("menu.Hide();", contextMenuItemFactory, StringComparison.Ordinal);
+        int waitForClose = code.IndexOf("await menuClosed.Task;", contextMenuItemFactory, StringComparison.Ordinal);
+        int invokeCommand = code.IndexOf("click(sender, args);", contextMenuItemFactory, StringComparison.Ordinal);
+        int editor = code.IndexOf("private async void EditSelectedNodeButton_Click", StringComparison.Ordinal);
+        int passwordBox = code.IndexOf("var passwordBox = new PasswordBox { Header = \"Password (stored with DPAPI)\"", editor, StringComparison.Ordinal);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(showDialog, Is.GreaterThanOrEqualTo(0));
+            Assert.That(showDialogEnd, Is.GreaterThan(showDialog));
+            Assert.That(code.IndexOf("await Task.Yield();", showDialog, showDialogEnd - showDialog, StringComparison.Ordinal), Is.EqualTo(-1));
+            Assert.That(contextMenuItemFactory, Is.GreaterThanOrEqualTo(0));
+            Assert.That(hideMenu, Is.GreaterThan(contextMenuItemFactory));
+            Assert.That(waitForClose, Is.GreaterThan(hideMenu));
+            Assert.That(invokeCommand, Is.GreaterThan(waitForClose));
+            Assert.That(passwordBox, Is.GreaterThan(editor));
+            Assert.That(code, Does.Contain("Header = \"Username\""));
+            Assert.That(code, Does.Contain("ConnectionOptionsEditor.Format(connection.Options, \"Username\")"));
+            Assert.That(code, Does.Contain("ConnectionOptionsEditor.WithOptionValue(options, \"Username\", usernameBox.Text)"));
+        });
+    }
+
+    [Test]
+    public void RightClickInTheConnectionTreeSuppressesSessionOpeningBeforeSelectionChanges()
+    {
+        string xamlPath = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "LoipvRemote.WinUI", "MainWindow.xaml"));
+        string codePath = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "LoipvRemote.WinUI", "MainWindow.xaml.cs"));
+        string xaml = File.ReadAllText(xamlPath);
+        string code = File.ReadAllText(codePath);
+
+        int pointerHandler = code.IndexOf("private void ConnectionTree_PointerPressed", StringComparison.Ordinal);
+        int rightTapHandler = code.IndexOf("private void ConnectionTree_RightTapped", StringComparison.Ordinal);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(xaml, Does.Contain("PointerPressed=\"ConnectionTree_PointerPressed\""));
+            Assert.That(pointerHandler, Is.GreaterThanOrEqualTo(0));
+            Assert.That(code.IndexOf("IsRightButtonPressed", pointerHandler, StringComparison.Ordinal),
+                Is.InRange(pointerHandler, rightTapHandler));
+            Assert.That(code.IndexOf("_suppressSessionOpenForContextMenu = true", pointerHandler, StringComparison.Ordinal),
+                Is.InRange(pointerHandler, rightTapHandler));
+        });
+    }
+
+    [Test]
+    public void QuickConnectImmediatelyConnectsTheOpenedSession()
+    {
+        string codePath = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "LoipvRemote.WinUI", "MainWindow.xaml.cs"));
+        string code = File.ReadAllText(codePath);
+
+        const string expectedSequence = "ShowSession(tab);\n        QueueTitleBarInteractiveRegionUpdate();\n        await ConnectSessionAsync(tab);";
+        Assert.That(code.ReplaceLineEndings("\n"), Does.Contain(expectedSequence));
+    }
+
+    [Test]
+    public void ConnectionTreeIconAndLabelAreVisuallyCenteredTogether()
+    {
+        string xamlPath = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "LoipvRemote.WinUI", "MainWindow.xaml"));
+        XDocument document = XDocument.Load(xamlPath);
+        XNamespace xaml = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
+
+        XElement icon = document.Descendants(xaml + "Path")
+            .Single(element => (string?)element.Attribute("Data") == "{Binding Content.IconGeometry}");
+        XElement row = icon.Parent!;
+        XElement label = row.Elements(xaml + "TextBlock").Single();
+        XElement[] columns = row.Element(xaml + "Grid.ColumnDefinitions")!
+            .Elements(xaml + "ColumnDefinition")
+            .ToArray();
+        XElement? iconTranslation = icon.Element(xaml + "Path.RenderTransform")?
+            .Element(xaml + "TranslateTransform");
+        Assert.Multiple(() =>
+        {
+            Assert.That(row.Name.LocalName, Is.EqualTo("Grid"));
+            Assert.That((string?)row.Attribute("Height"), Is.EqualTo("20"));
+            Assert.That((string?)row.Attribute("VerticalAlignment"), Is.EqualTo("Center"));
+            Assert.That((string?)columns[0].Attribute("Width"), Is.EqualTo("14"));
+            Assert.That((string?)icon.Attribute("Fill"), Is.EqualTo("{Binding Content.IconForeground}"));
+            Assert.That((string?)icon.Attribute("Stretch"), Is.EqualTo("Uniform"));
+            Assert.That((string?)icon.Attribute("HorizontalAlignment"), Is.EqualTo("Center"));
+            Assert.That((string?)icon.Attribute("VerticalAlignment"), Is.EqualTo("Center"));
+            Assert.That(icon.Attribute("Margin"), Is.Null);
+            Assert.That(
+                (string?)iconTranslation?.Attribute("Y"),
+                Is.EqualTo("{Binding Content.IconVerticalOffset}"));
+            Assert.That((string?)label.Attribute("Grid.Column"), Is.EqualTo("1"));
+            Assert.That((string?)label.Attribute("Margin"), Is.EqualTo("6,0,0,0"));
+            Assert.That((string?)label.Attribute("VerticalAlignment"), Is.EqualTo("Center"));
+        });
+    }
+
+    [Test]
+    public void SessionTabSelectionRefreshesEveryTabHeader()
+    {
+        string codePath = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "LoipvRemote.WinUI", "MainWindow.xaml.cs"));
+        string code = File.ReadAllText(codePath).ReplaceLineEndings("\n");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(code, Does.Contain("private void UpdateSessionTabHeaderSelection()"));
+            Assert.That(code, Does.Contain("header.UpdateSelection(ReferenceEquals(Sessions.SelectedItem, tab));"));
+            Assert.That(code, Does.Contain("private void Sessions_SelectionChanged(object sender, SelectionChangedEventArgs args)\n    {\n        UpdateSessionTabHeaderSelection();"));
+        });
+    }
+
+    [Test]
+    public void FailedSessionTabsHideThePreviouslyVisibleNativeSurface()
+    {
+        string codePath = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "LoipvRemote.WinUI", "MainWindow.xaml.cs"));
+        string code = File.ReadAllText(codePath).ReplaceLineEndings("\n");
+        int methodStart = code.IndexOf("private void ShowSession(", StringComparison.Ordinal);
+        int methodEnd = code.IndexOf("private void SubscribeResourceMonitor(", methodStart, StringComparison.Ordinal);
+        string method = code[methodStart..methodEnd];
+        int deactivate = method.IndexOf("SessionPresentationPolicy.ShouldDeactivateNativeSurface(tab.State)", StringComparison.Ordinal);
+        int connectingBranch = method.IndexOf("if (tab.State == RemoteSessionTabState.Connecting)", StringComparison.Ordinal);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(deactivate, Is.GreaterThanOrEqualTo(0));
+            Assert.That(method, Does.Contain("RemoteSessionWorkspace.Deactivate(_embeddedSessionSurface);"));
+            Assert.That(deactivate, Is.LessThan(connectingBranch));
+        });
+    }
+
+    [Test]
+    public void RdpConnectionYieldsTheUiTurnBeforeInitializingTheNativeControl()
+    {
+        string codePath = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "LoipvRemote.WinUI", "MainWindow.xaml.cs"));
+        string code = File.ReadAllText(codePath).ReplaceLineEndings("\n");
+        int methodStart = code.IndexOf("private async Task ConnectSessionAsync", StringComparison.Ordinal);
+        int methodEnd = code.IndexOf("private void PresentSelectedSessionAfterConnectionCompleted", methodStart, StringComparison.Ordinal);
+        string method = code[methodStart..methodEnd];
+        int loadingVisible = method.IndexOf("SessionLoadingContent.Visibility = Visibility.Visible;", StringComparison.Ordinal);
+        int rdpYield = method.IndexOf("if (sessionTab.Connection.Protocol == ProtocolKind.Rdp)\n                await Task.Yield();", StringComparison.Ordinal);
+        int connect = method.IndexOf("await _sessionWorkspace.ConnectAsync(sessionTab, _embeddedSessionSurface);", StringComparison.Ordinal);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(loadingVisible, Is.GreaterThanOrEqualTo(0));
+            Assert.That(rdpYield, Is.GreaterThan(loadingVisible));
+            Assert.That(connect, Is.GreaterThan(rdpYield));
+        });
+    }
+
+    [Test]
+    public void StartupPrewarmsTheDefaultRdpActiveXControlBeforeTheWindowIsActivated()
+    {
+        string appPath = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "LoipvRemote.WinUI", "App.xaml.cs"));
+        string app = File.ReadAllText(appPath).ReplaceLineEndings("\n");
+        int ensureWindow = app.IndexOf("private void EnsureMainWindow()", StringComparison.Ordinal);
+        int warmUp = app.IndexOf("RdpActiveXRuntime.WarmUp(RdpVersion.Rdc10);", ensureWindow, StringComparison.Ordinal);
+        int activate = app.IndexOf("_window.Activate();", ensureWindow, StringComparison.Ordinal);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(warmUp, Is.GreaterThan(ensureWindow));
+            Assert.That(activate, Is.GreaterThan(warmUp));
+        });
+    }
+
+    [Test]
+    public void ConcurrentConnectionCompletionPresentsTheTabThatIsStillSelected()
+    {
+        string codePath = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "LoipvRemote.WinUI", "MainWindow.xaml.cs"));
+        string code = File.ReadAllText(codePath).ReplaceLineEndings("\n");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(code, Does.Contain("PresentSelectedSessionAfterConnectionCompleted(sessionTab);"));
+            Assert.That(code, Does.Contain("private void PresentSelectedSessionAfterConnectionCompleted(RemoteSessionTab completedSession)"));
+            Assert.That(code, Does.Contain("ShowSession(selectedSession, activateNativeSession);"));
+        });
+    }
+
+    [Test]
+    public void SessionViewportKeepsTheSameHeightAcrossSshAndRdpTabs()
+    {
+        string xamlPath = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "LoipvRemote.WinUI", "MainWindow.xaml"));
+        XDocument document = XDocument.Load(xamlPath);
+        XNamespace xaml = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
+        XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
+
+        XElement sessionSurface = document.Descendants(xaml + "Grid")
+            .Single(element => (string?)element.Attribute(x + "Name") == "SessionSurface");
+        XElement[] rows = sessionSurface.Element(xaml + "Grid.RowDefinitions")!
+            .Elements(xaml + "RowDefinition")
+            .ToArray();
+
+        Assert.That((string?)rows[1].Attribute("Height"), Is.EqualTo("38"));
+    }
+
+    [Test]
+    public void ResourceBarSupportsBothSshAndRdpTabsWithoutAnOverallStatusToolTip()
+    {
+        string sourceRoot = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "LoipvRemote.WinUI"));
+        XDocument document = XDocument.Load(Path.Combine(sourceRoot, "MainWindow.xaml"));
+        XNamespace xaml = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
+        XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
+        XElement resourceBar = document.Descendants(xaml + "Border")
+            .Single(element => (string?)element.Attribute(x + "Name") == "ResourceMonitorBar");
+        string code = File.ReadAllText(Path.Combine(sourceRoot, "MainWindow.xaml.cs"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That((string?)resourceBar.Attribute("Visibility"), Is.EqualTo("Collapsed"));
+            Assert.That(code, Does.Contain("ProtocolKind.Ssh2 or ProtocolKind.Rdp"));
+            Assert.That(code, Does.Not.Contain("ToolTipService.SetToolTip(ResourceMonitorBar"));
+            Assert.That(code, Does.Contain("ResourceMonitorMemoryToolTip"));
+            Assert.That(code, Does.Contain("ResourceMonitorDiskToolTip"));
+            Assert.That(code, Does.Not.Contain("SshResourceMonitorBar"));
+        });
+    }
+
+    [Test]
+    public void ResourceBarShowsCompactPercentagesWithPersistentHoverRamAndDiskDetails()
+    {
+        string sourceRoot = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "LoipvRemote.WinUI"));
+        XDocument document = XDocument.Load(Path.Combine(sourceRoot, "MainWindow.xaml"));
+        XNamespace xaml = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
+        XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
+        XElement memoryChip = document.Descendants(xaml + "Border")
+            .Single(element => (string?)element.Attribute(x + "Name") == "ResourceMonitorMemoryChip");
+        XElement diskChip = document.Descendants(xaml + "Border")
+            .Single(element => (string?)element.Attribute(x + "Name") == "ResourceMonitorDiskChip");
+        XElement memoryToolTip = memoryChip.Descendants(xaml + "ToolTip").Single();
+        XElement diskToolTip = diskChip.Descendants(xaml + "ToolTip").Single();
+        string[] autoSizedChipNames =
+        [
+            "ResourceMonitorCpuChip",
+            "ResourceMonitorMemoryChip",
+            "ResourceMonitorDiskChip",
+            "ResourceMonitorReceiveChip",
+            "ResourceMonitorTransmitChip",
+            "ResourceMonitorUptimeChip",
+            "SshWorkingDirectoryButton",
+        ];
+        XElement[] autoSizedChips = document.Descendants()
+            .Where(element => autoSizedChipNames.Contains((string?)element.Attribute(x + "Name")))
+            .ToArray();
+        string code = File.ReadAllText(Path.Combine(sourceRoot, "MainWindow.xaml.cs"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(document.Descendants(xaml + "Button")
+                .Any(element => (string?)element.Attribute(x + "Name") == "ResourceMonitorMemoryChip"), Is.False);
+            Assert.That(document.Descendants(xaml + "Button")
+                .Any(element => (string?)element.Attribute(x + "Name") == "ResourceMonitorDiskChip"), Is.False);
+            Assert.That(memoryChip.Descendants(xaml + "Flyout"), Is.Empty);
+            Assert.That(diskChip.Descendants(xaml + "Flyout"), Is.Empty);
+            Assert.That((string?)memoryChip.Attribute("PointerEntered"), Is.EqualTo("ResourceMonitorDetailChip_PointerEntered"));
+            Assert.That((string?)memoryChip.Attribute("PointerExited"), Is.EqualTo("ResourceMonitorDetailChip_PointerExited"));
+            Assert.That((string?)diskChip.Attribute("PointerEntered"), Is.EqualTo("ResourceMonitorDetailChip_PointerEntered"));
+            Assert.That((string?)diskChip.Attribute("PointerExited"), Is.EqualTo("ResourceMonitorDetailChip_PointerExited"));
+            Assert.That((string?)memoryToolTip.Attribute(x + "Name"), Is.EqualTo("ResourceMonitorMemoryToolTip"));
+            Assert.That((string?)diskToolTip.Attribute(x + "Name"), Is.EqualTo("ResourceMonitorDiskToolTip"));
+            Assert.That(autoSizedChips, Has.Length.EqualTo(autoSizedChipNames.Length));
+            Assert.That(autoSizedChips.Attributes("MinWidth"), Is.Empty);
+            Assert.That(autoSizedChips.Attributes("MaxWidth"), Is.Empty);
+            Assert.That(code, Does.Contain("ResourceMonitorPresentation.FormatMemoryPercent"));
+            Assert.That(code, Does.Contain("ResourceMonitorPresentation.FormatMemoryDetails"));
+            Assert.That(code, Does.Contain("ResourceMonitorPresentation.FormatDiskDetails"));
+            Assert.That(code, Does.Contain("ApplyResourceWarning"));
+            Assert.That(code, Does.Contain("toolTip.IsOpen = true"));
+            Assert.That(code, Does.Contain("toolTip.IsOpen = false"));
+        });
+    }
+
+    [Test]
+    public void SshWorkingDirectoryChipOpensTheSftpBrowser()
+    {
+        string sourceRoot = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "LoipvRemote.WinUI"));
+        XDocument document = XDocument.Load(Path.Combine(sourceRoot, "MainWindow.xaml"));
+        XNamespace xaml = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
+        XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
+        XElement button = document.Descendants(xaml + "Button")
+            .Single(element => (string?)element.Attribute(x + "Name") == "SshWorkingDirectoryButton");
+        XElement content = button.Elements().Single();
+        XElement icon = content.Element(xaml + "FontIcon")!;
+        XElement[] labels = content.Elements(xaml + "TextBlock").ToArray();
+        string code = File.ReadAllText(Path.Combine(sourceRoot, "MainWindow.xaml.cs"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That((string?)button.Attribute("Visibility"), Is.EqualTo("Collapsed"));
+            Assert.That((string?)button.Attribute("Click"), Is.EqualTo("SshWorkingDirectoryButton_Click"));
+            Assert.That((string?)button.Attribute("HorizontalAlignment"), Is.EqualTo("Left"));
+            Assert.That((string?)button.Attribute("HorizontalContentAlignment"), Is.EqualTo("Left"));
+            Assert.That(button.Attribute("MinWidth"), Is.Null);
+            Assert.That(button.Attribute("MaxWidth"), Is.Null);
+            Assert.That(icon, Is.Not.Null);
+            Assert.That((string?)icon.Attribute("AutomationProperties.Name"), Is.EqualTo("File transfer"));
+            Assert.That((string?)labels[0].Attribute("Text"), Is.EqualTo(":"));
+            Assert.That((string?)labels[1].Attribute(x + "Name"), Is.EqualTo("SshWorkingDirectoryText"));
+            Assert.That(labels[1].Attribute("TextTrimming"), Is.Null);
+            Assert.That(code, Does.Contain("IRemoteWorkingDirectorySession"));
+            Assert.That(code, Does.Contain("SftpBrowserDialog"));
+        });
+    }
+
+    [Test]
+    public void SftpBrowserUsesCommanderStyleLocalAndRemotePanes()
+    {
+        string codePath = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "LoipvRemote.WinUI", "SftpBrowserDialog.cs"));
+        string code = File.ReadAllText(codePath);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(code, Does.Contain("\"SftpLocalFiles\""));
+            Assert.That(code, Does.Contain("\"SftpRemoteFiles\""));
+            Assert.That(code, Does.Contain("SftpDialogSizing.Fit"));
+            Assert.That(code, Does.Contain("var window = new Window"));
+            Assert.That(code, Does.Contain("SetNativeOwner(window, _owner);"));
+            Assert.That(code, Does.Contain("KeepAboveEmbeddedSession(window, _owner);"));
+            Assert.That(
+                code.IndexOf("SetNativeOwner(window, _owner);", StringComparison.Ordinal),
+                Is.LessThan(code.IndexOf("window.Activate();", StringComparison.Ordinal)));
+            Assert.That(
+                code.IndexOf("KeepAboveEmbeddedSession(window, _owner);", StringComparison.Ordinal),
+                Is.LessThan(code.IndexOf("window.Activate();", StringComparison.Ordinal)));
+            Assert.That(code, Does.Not.Contain("IsAlwaysOnTop"));
+            Assert.That(code, Does.Contain("NativeMethods.SetWindowPos("));
+            Assert.That(code, Does.Contain("if (!IsLoipvRemoteForeground(ownerHandle))"));
+            Assert.That(code, Does.Contain("window.DispatcherQueue.CreateTimer()"));
+            Assert.That(code, Does.Contain("topmostTimer.Stop()"));
+            Assert.That(code, Does.Contain("window.Activate()"));
+            Assert.That(code, Does.Contain("SizeAndCenterWindow(window, _owner, dialogSize, rasterizationScale)"));
+            Assert.That(code, Does.Not.Contain("new ContentDialog"));
+            Assert.That(code, Does.Not.Contain("showDialogAsync"));
+            Assert.That(code, Does.Contain("Text = $\"SFTP - {connection.Name} | {connection.Host}:{connection.Port}\""));
+            Assert.That(code, Does.Contain("FontSize = 22"));
+            Assert.That(code, Does.Contain("CreateToolbarButton(\"Up\", Symbol.Up)"));
+            Assert.That(code, Does.Contain("CreateToolbarButton(\"Refresh\", Symbol.Refresh)"));
+            Assert.That(code, Does.Contain("CreateToolbarButton(\"New folder\", Symbol.NewFolder)"));
+            Assert.That(code, Does.Contain("new FontIcon { Glyph = \"\\uE711\", FontSize = 14 }"));
+            Assert.That(code, Does.Contain("new TextBlock { Text = \"Close\""));
+            Assert.That(code, Does.Contain("Orientation = Orientation.Horizontal"));
+            Assert.That(code, Does.Not.Contain("CornerRadius = new CornerRadius(20)"));
+            Assert.That(code, Does.Not.Contain("Glyph = \"\\uE711\", FontSize = 22"));
+            Assert.That(code, Does.Contain("Content = new Viewbox"));
+            Assert.That(code, Does.Contain("Child = new SymbolIcon(symbol)"));
+            Assert.That(code, Does.Contain("Width = 32"));
+            Assert.That(code, Does.Contain("Height = 32"));
+            Assert.That(code, Does.Contain("Icon = new SymbolIcon(symbol)"));
+            Assert.That(code, Does.Contain("ToolTipService.SetToolTip(button, accessibleName)"));
+            Assert.That(code, Does.Not.Contain("Content = \"Up\""));
+            Assert.That(code, Does.Not.Contain("Content = \"Refresh\""));
+            Assert.That(code, Does.Not.Contain("Content = \"New folder\""));
+            Assert.That(code, Does.Contain("RightTapped"));
+            Assert.That(code, Does.Not.Contain("CloseButtonText = \"Close\""));
+            Assert.That(code, Does.Not.Contain("var uploadButton = new Button"));
+            Assert.That(code, Does.Not.Contain("var downloadButton = new Button"));
+            Assert.That(code, Does.Not.Contain("FileOpenPicker"));
+            Assert.That(code, Does.Not.Contain("FileSavePicker"));
+            Assert.That(code, Does.Contain("SftpConfirmationOverlay"));
+            Assert.That(code, Does.Contain("HorizontalAlignment = HorizontalAlignment.Center"));
+            Assert.That(code, Does.Contain("VerticalAlignment = VerticalAlignment.Center"));
+            Assert.That(code, Does.Not.Contain("FlyoutPlacementMode.Bottom"));
+            Assert.That(code, Does.Not.Contain("flyout.ShowAt(target)"));
+            Assert.That(code, Does.Contain("TransferStatus.Glyph"));
+            Assert.That(code, Does.Contain("TransferStatus.Text"));
+            Assert.That(code, Does.Contain("new Progress<FileTransferProgress>"));
+            Assert.That(code, Does.Not.Contain("SetBusy(true, $\"Uploading"));
+            Assert.That(code, Does.Not.Contain("SetBusy(true, $\"Downloading"));
+        });
+    }
+
+    [Test]
+    public void ClosingSftpBrowserRestoresKeyboardFocusToActiveSshSession()
+    {
+        string codePath = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "LoipvRemote.WinUI", "MainWindow.xaml.cs"));
+        string code = File.ReadAllText(codePath);
+
+        int dialogClosed = code.IndexOf("_sftpDialogOpen = false;", StringComparison.Ordinal);
+        int focusRestored = code.IndexOf("RecoverSessionKeyboardFocus();", dialogClosed, StringComparison.Ordinal);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(dialogClosed, Is.GreaterThanOrEqualTo(0));
+            Assert.That(focusRestored, Is.GreaterThan(dialogClosed));
+        });
+    }
+
+    [Test]
+    public void LowLevelInputHooksQueueUiWorkAndCaptureTheExactTab()
+    {
+        string codePath = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "LoipvRemote.WinUI", "MainWindow.xaml.cs"));
+        string code = File.ReadAllText(codePath);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(code, Does.Contain("QueueSessionTabNavigation"));
+            Assert.That(code, Does.Contain("ProcessQueuedSessionTabNavigation"));
+            Assert.That(code, Does.Contain("RecoverSessionKeyboardFocus"));
+            Assert.That(code, Does.Contain("Interlocked.Exchange(ref _pendingSessionTabNavigation"));
+            Assert.That(code, Does.Contain("DispatcherQueue.TryEnqueue(() =>"));
+            Assert.That(code, Does.Contain("NavigateSessionTabs(offset);"));
+            Assert.That(code, Does.Contain("_embeddedSessionSurface?.RestoreFocusAfterTransition();"));
+            Assert.That(code, Does.Contain("TryQueueCloseSessionTabAtClientPoint"));
+            Assert.That(code, Does.Contain("CloseSessionTabAsync(Sessions, tab)"));
+        });
+    }
+
+    [Test]
+    public void WindowReactivationQueuesFocusAfterWinUiFinishesItsActivationPass()
+    {
+        string codePath = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "LoipvRemote.WinUI", "MainWindow.xaml.cs"));
+        string code = File.ReadAllText(codePath);
+
+        int activationHandler = code.IndexOf("private void MainWindowOnActivated", StringComparison.Ordinal);
+        int postActivationFocus = code.IndexOf("QueueSessionFocusAfterWindowActivation();", activationHandler, StringComparison.Ordinal);
+        int queuedFocusMethod = code.IndexOf("private void QueueSessionFocusAfterWindowActivation()", postActivationFocus, StringComparison.Ordinal);
+        int dispatcherFocus = code.IndexOf("DispatcherQueue.TryEnqueue", queuedFocusMethod, StringComparison.Ordinal);
+        int restoreFocus = code.IndexOf("RestoreFocusAfterTransition();", dispatcherFocus, StringComparison.Ordinal);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(postActivationFocus, Is.GreaterThan(activationHandler));
+            Assert.That(queuedFocusMethod, Is.GreaterThan(postActivationFocus));
+            Assert.That(dispatcherFocus, Is.GreaterThan(queuedFocusMethod));
+            Assert.That(restoreFocus, Is.GreaterThan(dispatcherFocus));
+        });
+    }
+
+    [Test]
+    public void EmbeddedSessionPrimaryClickQueuesFocusOnTheUiThread()
+    {
+        string codePath = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "LoipvRemote.WinUI", "MainWindow.xaml.cs"));
+        string code = File.ReadAllText(codePath);
+
+        int pointerController = code.IndexOf("new WindowSessionPointerController(", StringComparison.Ordinal);
+        int focusTargetHandleProvider = code.IndexOf("GetEmbeddedSessionFocusTargetHandle", pointerController, StringComparison.Ordinal);
+        int focusCallback = code.IndexOf("QueueEmbeddedSessionFocus", focusTargetHandleProvider, StringComparison.Ordinal);
+        int cancelCallback = code.IndexOf("CancelEmbeddedSessionFocusRestore", focusCallback, StringComparison.Ordinal);
+        int focusMethod = code.IndexOf("private void QueueEmbeddedSessionFocus()", focusCallback, StringComparison.Ordinal);
+        int dispatcher = code.IndexOf("DispatcherQueue.TryEnqueue", focusMethod, StringComparison.Ordinal);
+        int directFocus = code.IndexOf("_embeddedSessionSurface?.Focus();", dispatcher, StringComparison.Ordinal);
+        int cancelMethod = code.IndexOf("private void CancelEmbeddedSessionFocusRestore()", directFocus, StringComparison.Ordinal);
+        int cancelPendingFocus = code.IndexOf("CancelPendingFocusRestore();", cancelMethod, StringComparison.Ordinal);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(focusTargetHandleProvider, Is.GreaterThan(pointerController));
+            Assert.That(focusCallback, Is.GreaterThan(focusTargetHandleProvider));
+            Assert.That(cancelCallback, Is.GreaterThan(focusCallback));
+            Assert.That(focusMethod, Is.GreaterThan(focusCallback));
+            Assert.That(dispatcher, Is.GreaterThan(focusMethod));
+            Assert.That(directFocus, Is.GreaterThan(dispatcher));
+            Assert.That(cancelMethod, Is.GreaterThan(directFocus));
+            Assert.That(cancelPendingFocus, Is.GreaterThan(cancelMethod));
+        });
+    }
+
+    [Test]
+    public void ShellCaptionClickSuppressesSshFocusUntilTheNativeActionCompletes()
+    {
+        string codePath = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "LoipvRemote.WinUI", "MainWindow.xaml.cs"));
+        string code = File.ReadAllText(codePath);
+
+        int shellClick = code.IndexOf("private void CancelEmbeddedSessionFocusRestore()", StringComparison.Ordinal);
+        int armSuppression = code.IndexOf("CreateShellClickSuppressionDeadline", shellClick, StringComparison.Ordinal);
+        int cancelPending = code.IndexOf("CancelPendingFocusRestore();", armSuppression, StringComparison.Ordinal);
+        int activationHandler = code.IndexOf("private void MainWindowOnActivated", StringComparison.Ordinal);
+        int activationGate = code.IndexOf("IsEmbeddedFocusRestoreSuppressed()", activationHandler, StringComparison.Ordinal);
+        int activationRestore = code.IndexOf("RestoreFocusAfterTransition();", activationHandler, StringComparison.Ordinal);
+        int windowChanged = code.IndexOf("private void AppWindowOnChanged", StringComparison.Ordinal);
+        int layoutOnly = code.IndexOf("RefreshLayoutAfterWindowTransition();", windowChanged, StringComparison.Ordinal);
+        int layoutAndFocus = code.IndexOf("RefreshLayoutAndRestoreFocus();", windowChanged, StringComparison.Ordinal);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(armSuppression, Is.GreaterThan(shellClick));
+            Assert.That(cancelPending, Is.GreaterThan(armSuppression));
+            Assert.That(activationGate, Is.GreaterThan(activationHandler));
+            Assert.That(activationGate, Is.LessThan(activationRestore));
+            Assert.That(layoutOnly, Is.GreaterThan(windowChanged));
+            Assert.That(layoutOnly, Is.LessThan(layoutAndFocus));
+        });
+    }
+
+    [Test]
+    public void FirstWindowCloseImmediatelyHidesTheShellBeforeSessionCleanup()
+    {
+        string codePath = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "LoipvRemote.WinUI", "MainWindow.xaml.cs"));
+        string code = File.ReadAllText(codePath);
+
+        int closingHandler = code.IndexOf("private void AppWindowOnClosing", StringComparison.Ordinal);
+        int shutdownStarted = code.IndexOf("_shutdownInProgress = true;", closingHandler, StringComparison.Ordinal);
+        int stopInput = code.IndexOf("StopInteractiveSessionInputForShutdown();", shutdownStarted, StringComparison.Ordinal);
+        int hideWindow = code.IndexOf("sender.Hide();", stopInput, StringComparison.Ordinal);
+        int cleanup = code.IndexOf("CloseAfterSessionCleanupAsync();", hideWindow, StringComparison.Ordinal);
+        int cleanupMethod = code.IndexOf("private async Task CloseAfterSessionCleanupAsync()", cleanup, StringComparison.Ordinal);
+        int disposeMethod = code.IndexOf("public void Dispose()", cleanupMethod, StringComparison.Ordinal);
+        int yieldForHide = code.IndexOf("await Task.Yield();", cleanupMethod, StringComparison.Ordinal);
+        int closeSessions = code.IndexOf("await _sessionWorkspace.CloseAllAsync();", cleanupMethod, StringComparison.Ordinal);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(shutdownStarted, Is.GreaterThan(closingHandler));
+            Assert.That(stopInput, Is.GreaterThan(shutdownStarted));
+            Assert.That(hideWindow, Is.GreaterThan(stopInput));
+            Assert.That(cleanup, Is.GreaterThan(hideWindow));
+            Assert.That(yieldForHide, Is.GreaterThan(cleanupMethod));
+            Assert.That(yieldForHide, Is.LessThan(disposeMethod));
+            Assert.That(closeSessions, Is.GreaterThan(yieldForHide));
+            Assert.That(closeSessions, Is.LessThan(disposeMethod));
+        });
+    }
+}

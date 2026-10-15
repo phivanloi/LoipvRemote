@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+  <Package Name="LoipvRemote"
+           Manufacturer="Loipv"
+           Language="1033"
+           Version="!(bind.FileVersion.MainExecutableFile)"
+           UpgradeCode="$(UpgradeCode)"
+           Scope="perUser">
+    <MajorUpgrade Schedule="afterInstallInitialize"
+                  DowngradeErrorMessage="A newer version of LoipvRemote is already installed." />
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+
+    <StandardDirectory Id="LocalAppDataFolder">
+      <Directory Id="LocalProgramsFolder" Name="Programs">
+        <Directory Id="INSTALLFOLDER" Name="LoipvRemote" />
+      </Directory>
+    </StandardDirectory>
+    <StandardDirectory Id="DesktopFolder" />
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="ApplicationProgramsFolder" Name="LoipvRemote" />
+    </StandardDirectory>
+
+    <ComponentGroup Id="ApplicationPayload" Directory="INSTALLFOLDER">
+      <Component Id="MainExecutableComponent" Guid="A028EE50-3135-46C7-83C0-1D14D36E146C">
+        <File Id="MainExecutableFile" Source="$(var.ApplicationPublishDir)LoipvRemote.exe" KeyPath="yes" />
+      </Component>
+      <Files Include="$(var.ApplicationPublishDir)**">
+        <Exclude Files="$(var.ApplicationPublishDir)LoipvRemote.exe" />
+        <Exclude Files="$(var.ApplicationPublishDir)**\*.pdb" />
+      </Files>
+      <Component Id="LegacyPayloadCleanupComponent" Guid="B25B6DD2-3D3C-43EE-9F67-7613E8E638AB">
+        <!-- Never remove user-owned connection data.  These names are former
+             runtime dependencies and modules removed from the current product. -->
+        <RemoveFile Id="RemoveLegacyComerr" Name="comerr64.dll" On="install" />
+        <RemoveFile Id="RemoveLegacySqliteNative" Name="e_sqlite3.dll" On="install" />
+        <RemoveFile Id="RemoveLegacyProtobuf" Name="Google.Protobuf.dll" On="install" />
+        <RemoveFile Id="RemoveLegacyGssapi" Name="gssapi64.dll" On="install" />
+        <RemoveFile Id="RemoveLegacyLz4" Name="K4os.Compression.LZ4.dll" On="install" />
+        <RemoveFile Id="RemoveLegacyLz4Streams" Name="K4os.Compression.LZ4.Streams.dll" On="install" />
+        <RemoveFile Id="RemoveLegacyHash" Name="K4os.Hash.xxHash.dll" On="install" />
+        <RemoveFile Id="RemoveLegacyK5" Name="k5sprt64.dll" On="install" />
+        <RemoveFile Id="RemoveLegacyKrb5" Name="krb5_64.dll" On="install" />
+        <RemoveFile Id="RemoveLegacyKrbCc" Name="krbcc64.dll" On="install" />
+        <RemoveFile Id="RemoveLegacyConnectorsPdb" Name="LoipvRemote.Connectors.pdb" On="install" />
+        <RemoveFile Id="RemoveLegacyDesktopPdb" Name="LoipvRemote.Desktop.pdb" On="install" />
+        <RemoveFile Id="RemoveLegacyBrowser" Name="LoipvRemote.Protocols.Browser.dll" On="install" />
+        <RemoveFile Id="RemoveLegacyBrowserPdb" Name="LoipvRemote.Protocols.Browser.pdb" On="install" />
+        <RemoveFile Id="RemoveLegacyExternalApps" Name="LoipvRemote.Protocols.ExternalApps.dll" On="install" />
+        <RemoveFile Id="RemoveLegacyExternalAppsPdb" Name="LoipvRemote.Protocols.ExternalApps.pdb" On="install" />
+        <RemoveFile Id="RemoveLegacySqlite" Name="Microsoft.Data.Sqlite.dll" On="install" />
+        <RemoveFile Id="RemoveLegacyMySql" Name="MySql.Data.dll" On="install" />
+        <RemoveFile Id="RemoveLegacyObjectListView" Name="ObjectListView.pdb" On="install" />
+        <RemoveFile Id="RemoveLegacySshNet" Name="Renci.SshNet.dll" On="install" />
+        <RemoveFile Id="RemoveLegacySqliteBatteries" Name="SQLitePCLRaw.batteries_v2.dll" On="install" />
+        <RemoveFile Id="RemoveLegacySqliteCore" Name="SQLitePCLRaw.core.dll" On="install" />
+        <RemoveFile Id="RemoveLegacySqliteProvider" Name="SQLitePCLRaw.provider.e_sqlite3.dll" On="install" />
+        <RemoveFile Id="RemoveLegacyCodeDom" Name="System.CodeDom.dll" On="install" />
+        <RemoveFile Id="RemoveLegacyOdbc" Name="System.Data.Odbc.dll" On="install" />
+        <RemoveFile Id="RemoveLegacyManagement" Name="System.Management.dll" On="install" />
+        <RemoveFile Id="RemoveLegacyPermissions" Name="System.Security.Permissions.dll" On="install" />
+        <RemoveFile Id="RemoveLegacyWindowsExtensions" Name="System.Windows.Extensions.dll" On="install" />
+        <RemoveFile Id="RemoveLegacyZstd" Name="ZstdSharp.dll" On="install" />
+        <RegistryValue Root="HKCU"
+                       Key="Software\LoipvRemote"
+                       Name="LegacyPayloadCleanup"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <ComponentGroup Id="ShortcutComponents">
+      <Component Id="DesktopShortcutComponent"
+                 Directory="DesktopFolder"
+                 Guid="F78E5A16-A2F7-4BD9-9250-CBF3016CCCDA">
+        <Shortcut Id="DesktopShortcut"
+                  Name="LoipvRemote"
+                  Target="[#MainExecutableFile]"
+                  WorkingDirectory="INSTALLFOLDER"
+                  Icon="AppIcon.ico" />
+        <RegistryValue Root="HKCU"
+                       Key="Software\LoipvRemote"
+                       Name="DesktopShortcut"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes" />
+      </Component>
+      <Component Id="StartMenuShortcutComponent"
+                 Directory="ApplicationProgramsFolder"
+                 Guid="193B9E14-F40E-44F1-8514-BED253BCBF75">
+        <Shortcut Id="StartMenuShortcut"
+                  Name="LoipvRemote"
+                  Target="[#MainExecutableFile]"
+                  WorkingDirectory="INSTALLFOLDER"
+                  Icon="AppIcon.ico" />
+        <RemoveFolder Id="ApplicationProgramsFolder" On="uninstall" />
+        <RegistryValue Root="HKCU"
+                       Key="Software\LoipvRemote"
+                       Name="StartMenuShortcut"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <Feature Id="MainFeature" Title="LoipvRemote" Level="1" AllowAdvertise="no">
+      <ComponentGroupRef Id="ApplicationPayload" />
+      <ComponentGroupRef Id="ShortcutComponents" />
+    </Feature>
+
+    <Icon Id="AppIcon.ico" SourceFile="Resources\AppIcon.ico" />
+    <Property Id="ARPPRODUCTICON" Value="AppIcon.ico" />
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="Launch LoipvRemote now" />
+    <Property Id="WixShellExecTarget" Value="[#MainExecutableFile]" />
+    <CustomAction Id="LaunchApplication"
+                  BinaryRef="Wix4UtilCA_$(sys.BUILDARCHSHORT)"
+                  DllEntry="WixShellExec"
+                  Execute="immediate"
+                  Impersonate="yes"
+                  Return="ignore" />
+
+    <ui:WixUI Id="WixUI_InstallDir" InstallDirectory="INSTALLFOLDER" />
+    <UI>
+      <Publish Dialog="ExitDialog"
+               Control="Finish"
+               Event="DoAction"
+               Value="LaunchApplication"
+               Condition="WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 AND NOT Installed" />
+    </UI>
+    <WixVariable Id="WixUILicenseRtf" Value="Resources\License.rtf" />
+    <WixVariable Id="WixUIDialogBmp" Value="Resources\Installer_Side.png" />
+    <WixVariable Id="WixUIBannerBmp" Value="Resources\Installer_Header.png" />
+  </Package>
+</Wix>

@@ -1,0 +1,305 @@
+<Window
+    x:Class="LoipvRemote.WinUI.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:LoipvRemote.WinUI"
+    Title="LoipvRemote">
+
+    <Grid x:Name="RootGrid" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="32" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Grid x:Name="AppTitleBar" Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="275" MinWidth="275" />
+                <ColumnDefinition Width="*" MinWidth="340" />
+                <ColumnDefinition x:Name="RightTitleBarInsetColumn" Width="0" />
+            </Grid.ColumnDefinitions>
+
+            <Grid x:Name="AppTitleBarDragRegion" Grid.ColumnSpan="3" />
+            <StackPanel x:Name="TitleBarActions" Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
+            <StackPanel.Resources>
+                <SolidColorBrush x:Key="TitleBarActionButtonNormalBrush" Color="Transparent" />
+                <SolidColorBrush x:Key="TitleBarActionButtonPointerOverBrush" Color="#14000000" />
+                <SolidColorBrush x:Key="TitleBarActionButtonPressedBrush" Color="#24000000" />
+                <Style x:Key="TitleBarActionButtonStyle" TargetType="Button">
+                    <Setter Property="Background" Value="{StaticResource TitleBarActionButtonNormalBrush}" />
+                    <Setter Property="BorderBrush" Value="Transparent" />
+                    <Setter Property="BorderThickness" Value="0" />
+                    <Setter Property="CornerRadius" Value="4" />
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="Button">
+                                <ContentPresenter x:Name="ContentPresenter"
+                                                  Padding="{TemplateBinding Padding}"
+                                                  HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                  VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                  Background="{TemplateBinding Background}"
+                                                  BorderBrush="{TemplateBinding BorderBrush}"
+                                                  BorderThickness="{TemplateBinding BorderThickness}"
+                                                  CornerRadius="{TemplateBinding CornerRadius}"
+                                                  Content="{TemplateBinding Content}"
+                                                  ContentTemplate="{TemplateBinding ContentTemplate}" />
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </StackPanel.Resources>
+
+                <Image x:Name="AppTitleBarIcon" Source="ms-appx:///LoipvRemote.ico" Width="16" Height="16" Margin="8,0,12,0" VerticalAlignment="Center" IsHitTestVisible="False" />
+                <Button Style="{StaticResource TitleBarActionButtonStyle}" Height="32" Padding="10,0" VerticalAlignment="Center" Click="NewConnectionButton_Click"
+                        PointerEntered="TitleBarActionButton_PointerEntered" PointerExited="TitleBarActionButton_PointerExited"
+                        PointerPressed="TitleBarActionButton_PointerPressed" PointerReleased="TitleBarActionButton_PointerReleased"
+                        PointerCanceled="TitleBarActionButton_PointerExited" PointerCaptureLost="TitleBarActionButton_PointerExited">
+                    <Button.Content>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <SymbolIcon Symbol="Add" />
+                            <TextBlock Text="New connection" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button.Content>
+                </Button>
+                <Button Style="{StaticResource TitleBarActionButtonStyle}" Width="40" Height="32" Padding="0" VerticalAlignment="Center"
+                        PointerEntered="TitleBarActionButton_PointerEntered" PointerExited="TitleBarActionButton_PointerExited"
+                        PointerPressed="TitleBarActionButton_PointerPressed" PointerReleased="TitleBarActionButton_PointerReleased"
+                        PointerCanceled="TitleBarActionButton_PointerExited" PointerCaptureLost="TitleBarActionButton_PointerExited">
+                    <Button.Content>
+                        <SymbolIcon Symbol="More" />
+                    </Button.Content>
+                    <Button.Flyout>
+                        <MenuFlyout Placement="BottomEdgeAlignedRight">
+                            <MenuFlyoutItem Text="Quick connect" Click="QuickConnectButton_Click">
+                                <MenuFlyoutItem.Icon><SymbolIcon Symbol="Link" /></MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <MenuFlyoutItem Text="New folder" Click="NewFolderButton_Click">
+                                <MenuFlyoutItem.Icon><SymbolIcon Symbol="Folder" /></MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <MenuFlyoutItem Text="Import XML" Click="ImportConnectionsButton_Click">
+                                <MenuFlyoutItem.Icon><SymbolIcon Symbol="Import" /></MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <MenuFlyoutItem Text="Export XML" Click="ExportConnectionsButton_Click">
+                                <MenuFlyoutItem.Icon><SymbolIcon Symbol="Save" /></MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <MenuFlyoutItem Text="Close all sessions" Click="CloseAllSessionsButton_Click">
+                                <MenuFlyoutItem.Icon><SymbolIcon Symbol="Cancel" /></MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <MenuFlyoutItem Text="Config" Click="ConfigNavigationButton_Click">
+                                <MenuFlyoutItem.Icon><SymbolIcon Symbol="Setting" /></MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                        </MenuFlyout>
+                    </Button.Flyout>
+                </Button>
+            </StackPanel>
+
+            <Grid x:Name="SessionTabsHost" Grid.Column="1" VerticalAlignment="Stretch">
+                <TabView x:Name="Sessions"
+                         Margin="0"
+                         Padding="0"
+                         CanReorderTabs="True"
+                         CanDragTabs="True"
+                         IsAddTabButtonVisible="False"
+                         SelectionChanged="Sessions_SelectionChanged"
+                         TabCloseRequested="Sessions_TabCloseRequested" />
+            </Grid>
+        </Grid>
+
+        <Border x:Name="TitleBarBottomBorder"
+                Grid.Row="0"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="0,0,0,1"
+                IsHitTestVisible="False" />
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="275" MinWidth="275" />
+                <ColumnDefinition Width="*" MinWidth="340" />
+            </Grid.ColumnDefinitions>
+
+            <Grid Grid.Column="0" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,1,0">
+                <TreeView x:Name="ConnectionTree"
+                          SelectionMode="Single"
+                          CanDragItems="True"
+                          CanReorderItems="True"
+                          AllowDrop="True"
+                          DragItemsStarting="ConnectionTree_DragItemsStarting"
+                          DragItemsCompleted="ConnectionTree_DragItemsCompleted"
+                          DragOver="ConnectionTree_DragOver"
+                          Expanding="ConnectionTree_Expanding"
+                          Collapsed="ConnectionTree_Collapsed"
+                          SelectionChanged="ConnectionTree_SelectionChanged"
+                          PointerPressed="ConnectionTree_PointerPressed"
+                          Tapped="ConnectionTree_Tapped"
+                          RightTapped="ConnectionTree_RightTapped">
+                    <TreeView.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Height="20" VerticalAlignment="Center">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="14" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Path Data="{Binding Content.IconGeometry}"
+                                      Fill="{Binding Content.IconForeground}"
+                                      Width="{Binding Content.IconSize}"
+                                      Height="{Binding Content.IconSize}"
+                                      Stretch="Uniform"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center">
+                                    <Path.RenderTransform>
+                                        <TranslateTransform Y="{Binding Content.IconVerticalOffset}" />
+                                    </Path.RenderTransform>
+                                </Path>
+                                <TextBlock Grid.Column="1"
+                                           Margin="6,0,0,0"
+                                           Text="{Binding Content.DisplayName}"
+                                           VerticalAlignment="Center" />
+                            </Grid>
+                        </DataTemplate>
+                    </TreeView.ItemTemplate>
+                    <TreeView.ItemContainerStyle>
+                        <Style TargetType="TreeViewItem">
+                            <Setter Property="Padding" Value="0" />
+                        </Style>
+                    </TreeView.ItemContainerStyle>
+                </TreeView>
+
+            </Grid>
+
+            <Grid Grid.Column="1">
+            <Grid x:Name="SessionSurface">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="38" />
+                </Grid.RowDefinitions>
+
+                <Grid x:Name="NativeSessionViewport" Grid.Row="0" />
+                <Border x:Name="ResourceMonitorBar"
+                        Grid.Row="1"
+                        Visibility="Collapsed"
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="0,1,0,0"
+                        Padding="8,5">
+                    <ScrollViewer HorizontalScrollMode="Enabled" HorizontalScrollBarVisibility="Auto" VerticalScrollMode="Disabled" VerticalScrollBarVisibility="Hidden">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Border x:Name="ResourceMonitorCpuChip" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="3" Padding="8,3"><StackPanel Orientation="Horizontal" Spacing="5"><TextBlock x:Name="ResourceMonitorCpuLabel" Text="CPU" /><TextBlock x:Name="ResourceMonitorCpu" FontWeight="SemiBold" Text="--" /></StackPanel></Border>
+                            <Border x:Name="ResourceMonitorMemoryChip"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="3"
+                                    Padding="8,3"
+                                    PointerEntered="ResourceMonitorDetailChip_PointerEntered"
+                                    PointerExited="ResourceMonitorDetailChip_PointerExited">
+                                <ToolTipService.ToolTip>
+                                    <ToolTip x:Name="ResourceMonitorMemoryToolTip"
+                                             Placement="Top"
+                                             Closed="ResourceMonitorDetailToolTip_Closed">
+                                        <TextBlock x:Name="ResourceMonitorMemoryDetails" TextWrapping="Wrap" MaxWidth="420" />
+                                    </ToolTip>
+                                </ToolTipService.ToolTip>
+                                <StackPanel Orientation="Horizontal" Spacing="5"><TextBlock x:Name="ResourceMonitorMemoryLabel" Text="RAM" /><TextBlock x:Name="ResourceMonitorMemory" FontWeight="SemiBold" Text="--" /></StackPanel>
+                            </Border>
+                            <Border x:Name="ResourceMonitorDiskChip"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="3"
+                                    Padding="8,3"
+                                    PointerEntered="ResourceMonitorDetailChip_PointerEntered"
+                                    PointerExited="ResourceMonitorDetailChip_PointerExited">
+                                <ToolTipService.ToolTip>
+                                    <ToolTip x:Name="ResourceMonitorDiskToolTip"
+                                             Placement="Top"
+                                             Closed="ResourceMonitorDetailToolTip_Closed">
+                                        <TextBlock x:Name="ResourceMonitorDiskDetails" TextWrapping="Wrap" MaxWidth="420" />
+                                    </ToolTip>
+                                </ToolTipService.ToolTip>
+                                <StackPanel Orientation="Horizontal" Spacing="5"><TextBlock x:Name="ResourceMonitorDiskLabel" Text="Disk" /><TextBlock x:Name="ResourceMonitorDisk" FontWeight="SemiBold" Text="--" /></StackPanel>
+                            </Border>
+                            <Border x:Name="ResourceMonitorReceiveChip" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="3" Padding="8,3"><StackPanel Orientation="Horizontal" Spacing="5"><TextBlock Text="In" /><TextBlock x:Name="ResourceMonitorReceive" FontWeight="SemiBold" Text="--" /></StackPanel></Border>
+                            <Border x:Name="ResourceMonitorTransmitChip" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="3" Padding="8,3"><StackPanel Orientation="Horizontal" Spacing="5"><TextBlock Text="Out" /><TextBlock x:Name="ResourceMonitorTransmit" FontWeight="SemiBold" Text="--" /></StackPanel></Border>
+                            <Border x:Name="ResourceMonitorUptimeChip" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="3" Padding="8,3"><StackPanel Orientation="Horizontal" Spacing="5"><TextBlock Text="Uptime" /><TextBlock x:Name="ResourceMonitorUptime" FontWeight="SemiBold" Text="--" /></StackPanel></Border>
+                            <Button x:Name="SshWorkingDirectoryButton"
+                                    Visibility="Collapsed"
+                                    Click="SshWorkingDirectoryButton_Click"
+                                    HorizontalAlignment="Left"
+                                    HorizontalContentAlignment="Left"
+                                    Background="Transparent"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="3"
+                                    Padding="8,3">
+                                <StackPanel Orientation="Horizontal"
+                                            HorizontalAlignment="Left"
+                                            Spacing="4">
+                                    <FontIcon Glyph="&#xE8F7;"
+                                              FontSize="14"
+                                              AutomationProperties.Name="File transfer" />
+                                    <TextBlock Text=":" />
+                                    <TextBlock x:Name="SshWorkingDirectoryText"
+                                               FontWeight="SemiBold"
+                                               Text="Unavailable" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Border>
+
+                <ContentControl x:Name="ManagedSessionContent"
+                                Grid.Row="0"
+                                HorizontalContentAlignment="Stretch"
+                                VerticalContentAlignment="Stretch"
+                                Visibility="Collapsed" />
+                <StackPanel x:Name="WelcomeContent" Grid.Row="0" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
+                    <TextBlock Text="Loipv Remote" Style="{ThemeResource TitleTextBlockStyle}" HorizontalAlignment="Center" />
+                    <TextBlock Text="Select a connection to start a remote session." HorizontalAlignment="Center" />
+                    <TextBlock x:Name="ConnectionStatus" HorizontalAlignment="Center" Opacity="0.7" />
+                    <Button x:Name="RestorePreviousTabsButton"
+                            Visibility="Collapsed"
+                            HorizontalAlignment="Center"
+                            Click="RestorePreviousTabsButton_Click">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <SymbolIcon Symbol="Refresh" />
+                            <TextBlock Text="Restore previous tabs" />
+                        </StackPanel>
+                    </Button>
+                    <TextBlock x:Name="WelcomeVersionText" HorizontalAlignment="Center" Opacity="0.55" FontSize="12" />
+                </StackPanel>
+                <ScrollViewer x:Name="ConfigContent" Grid.Row="0" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="640">
+                    <StackPanel Spacing="12" Padding="32">
+                        <TextBlock Text="Configuration" Style="{ThemeResource TitleTextBlockStyle}" />
+                        <ComboBox x:Name="ThemeBox" Header="Theme" SelectionChanged="ThemeBox_SelectionChanged" />
+                        <TextBlock Text="Connection storage" Style="{ThemeResource SubtitleTextBlockStyle}" />
+                        <TextBlock Text="The selected storage location is protected for the current Windows user. Changing storage only opens the selected store; migrate only when you intend to overwrite it." TextWrapping="Wrap" />
+                        <ComboBox x:Name="StoreKindBox" Header="Storage backend" />
+                        <TextBox x:Name="StoreLocationBox" Header="File path or connection string" TextWrapping="Wrap" AcceptsReturn="True" MinHeight="72" />
+                        <ToggleSwitch x:Name="StoreReadOnlyToggle" Header="Read-only store" />
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button Content="Open selected store" Click="OpenStoreButton_Click" />
+                            <Button Content="Migrate current connections" Click="MigrateStoreButton_Click" />
+                        </StackPanel>
+                        <TextBlock x:Name="StoreConfigurationStatus" TextWrapping="Wrap" Opacity="0.8" />
+                        <TextBlock Text="Shared credentials" Style="{ThemeResource SubtitleTextBlockStyle}" Margin="0,16,0,0" />
+                        <TextBlock Text="Credential passwords are protected for the current Windows user with DPAPI and are not written to XML or SQL Server." TextWrapping="Wrap" />
+                        <ListView x:Name="SharedCredentialList" MinHeight="96" SelectionMode="Single" DisplayMemberPath="DisplayName" />
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button Content="Add shared credential" Click="AddSharedCredentialButton_Click" />
+                            <Button Content="Edit selected" Click="EditSharedCredentialButton_Click" />
+                            <Button Content="Delete selected" Click="DeleteSharedCredentialButton_Click" />
+                        </StackPanel>
+                        <TextBlock x:Name="CredentialConfigurationStatus" TextWrapping="Wrap" Opacity="0.8" />
+                    </StackPanel>
+                </ScrollViewer>
+                <StackPanel x:Name="SessionContent" Grid.Row="0" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
+                    <TextBlock x:Name="SessionTitle" Style="{ThemeResource TitleTextBlockStyle}" HorizontalAlignment="Center" />
+                    <TextBlock x:Name="SessionStatus" HorizontalAlignment="Center" />
+                    <Button x:Name="ConnectSessionButton" Content="Connect" Click="ConnectSessionButton_Click" />
+                </StackPanel>
+                <StackPanel x:Name="SessionLoadingContent" Grid.Row="0" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
+                    <ProgressRing IsActive="True" Width="32" Height="32" />
+                    <TextBlock Text="Connecting..." HorizontalAlignment="Center" />
+                </StackPanel>
+            </Grid>
+        </Grid>
+    </Grid>
+    </Grid>
+</Window>

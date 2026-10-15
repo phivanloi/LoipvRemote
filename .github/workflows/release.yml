@@ -1,0 +1,229 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  validate-source:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@v7
+
+      - name: Set up .NET SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - name: Restore solution
+        run: dotnet restore LoipvRemote.slnx
+
+      - name: Restore installer dependencies for audit
+        run: dotnet restore LoipvRemoteInstaller/Installer/Installer.wixproj
+
+      - name: Audit NuGet vulnerabilities
+        shell: pwsh
+        run: |
+          $rawReport = @(& dotnet list LoipvRemote.slnx package --vulnerable --include-transitive --format json 2>&1)
+          if ($LASTEXITCODE -ne 0) {
+            $rawReport | ForEach-Object { Write-Host $_ }
+            throw "Unable to complete the NuGet vulnerability audit (exit code $LASTEXITCODE)."
+          }
+          $report = ($rawReport -join [Environment]::NewLine) | ConvertFrom-Json
+          $vulnerable = @($report.projects | ForEach-Object {
+            $_.frameworks | ForEach-Object {
+              $_.topLevelPackages
+              $_.transitivePackages
+            }
+          } | Where-Object { $_.vulnerabilities -and $_.vulnerabilities.Count -gt 0 })
+          if ($vulnerable.Count -gt 0) {
+            Write-Host "Detected $($vulnerable.Count) vulnerable NuGet package(s):"
+            $vulnerable | ConvertTo-Json -Depth 8 | Write-Host
+            throw 'NuGet vulnerability detected.'
+          }
+
+      - name: Build solution
+        run: dotnet build LoipvRemote.slnx -c Release -p:Platform=x64 --no-restore --nologo
+
+      - name: Run tests
+        run: >
+          dotnet test LoipvRemote.WinUI.Tests/LoipvRemote.WinUI.Tests.csproj
+          -c Release
+          -p:Platform=x64
+          --no-build
+          --no-restore
+          --logger "console;verbosity=minimal"
+
+      - name: Test terminal display scaling
+        run: node --test eng/tests/terminal-display-scaling.test.js
+
+      - name: Verify refactor boundaries
+        shell: pwsh
+        run: |
+          git diff --check
+          $removedLegacyPaths = @('LoipvRemote.Desktop', 'ObjectListView', 'LoipvRemoteTests')
+          foreach ($legacyPath in $removedLegacyPaths) {
+            $legacyFiles = @(Get-ChildItem -LiteralPath $legacyPath -Recurse -Force -File -ErrorAction SilentlyContinue |
+              Where-Object { $_.FullName -notmatch '[\\/](bin|obj)[\\/]' })
+            if ($legacyFiles.Count -gt 0) {
+              throw "Removed WinForms legacy path was restored: $legacyPath"
+            }
+          }
+          [xml]$project = Get-Content 'LoipvRemote.WinUI/LoipvRemote.WinUI.csproj'
+          $version = @($project.Project.PropertyGroup | ForEach-Object Version | Where-Object { $_ })[0]
+          if ([string]::IsNullOrWhiteSpace($version) -or $version -notmatch '^\d+\.\d+\.\d+\.\d+$') {
+            throw "Version must be numeric four-part SemVer-compatible value; got '$version'."
+          }
+          if ($version -match '[+ ]') {
+            throw "Version must not contain source/build metadata: '$version'."
+          }
+          $includeSourceRevision = @($project.Project.PropertyGroup | ForEach-Object IncludeSourceRevisionInInformationalVersion | Where-Object { $_ })[0]
+          if ($includeSourceRevision -ne 'false') {
+            throw 'InformationalVersion must not append a source revision.'
+          }
+          $application = Get-Item 'LoipvRemote.WinUI/bin/x64/Release/net10.0-windows10.0.26100.0/LoipvRemote.exe'
+          if ($application.VersionInfo.ProductVersion -ne $version) {
+            throw "Built executable ProductVersion must equal '$version'; got '$($application.VersionInfo.ProductVersion)'."
+          }
+          $legacy = @(git grep -n -E '\b(ProtocolVNC|PuttyBase|HTTPBase|XmlConnectionsLoader|SqlConnectionsLoader)\b' -- LoipvRemote.Application LoipvRemote.Domain LoipvRemote.Infrastructure.Persistence LoipvRemote.Infrastructure.Windows LoipvRemote.Protocols.Abstractions LoipvRemote.Protocols.Putty LoipvRemote.Protocols.Rdp LoipvRemote.Protocols.Vnc LoipvRemote.WinUI)
+          if ($LASTEXITCODE -eq 0 -and $legacy) {
+            $legacy | Write-Host
+            throw 'Legacy protocol/persistence implementation marker detected.'
+          }
+          if (Test-Path '.github/workflows/Build_mR-NB.yml') {
+            throw 'Obsolete NB/mRemote release workflow must remain removed.'
+          }
+          $todo = @(git grep -n -I -E '\bTODO\b|NotImplementedException|#if false' -- LoipvRemote.Application LoipvRemote.Domain LoipvRemote.Infrastructure.Persistence LoipvRemote.Infrastructure.Windows LoipvRemote.Protocols.Abstractions LoipvRemote.Protocols.Putty LoipvRemote.Protocols.Rdp LoipvRemote.Protocols.Vnc LoipvRemote.WinUI ':(exclude)LoipvRemote.WinUI/TerminalAssets/vendor/**')
+          if ($todo.Count -gt 0) {
+            $todo | Write-Host
+            throw 'Dead-code marker detected.'
+          }
+          $removedModules = @(git grep -n -E 'LoipvRemote\.(Connectors|Protocols\.Browser|Protocols\.ExternalApps)|ConnectionDefinitionStoreKind\.(Sqlite|MySql|Odbc)' -- LoipvRemote.slnx Directory.Build.props LoipvRemote.WinUI LoipvRemote.Application LoipvRemote.Domain LoipvRemote.Infrastructure.Persistence LoipvRemote.Infrastructure.Windows LoipvRemote.Protocols.Abstractions LoipvRemote.Protocols.Putty LoipvRemote.Protocols.Rdp LoipvRemote.Protocols.Vnc)
+          if ($removedModules.Count -gt 0) {
+            $removedModules | Write-Host
+            throw 'Removed module or persistence backend was referenced.'
+          }
+          $removedProductScope = @(git grep -n -I -i -E '\b(ExternalApplication|AnyDesk|PortScan|Connector|Favorites|SystemTray|ActiveDirectory|WSL)\b|ProtocolKind\.(Browser|PowerShell)|\b(Browser|PowerShell)Connection\b' -- LoipvRemote.Application LoipvRemote.Domain LoipvRemote.Infrastructure.Persistence LoipvRemote.Infrastructure.Windows LoipvRemote.Protocols.Abstractions LoipvRemote.Protocols.Putty LoipvRemote.Protocols.Rdp LoipvRemote.Protocols.Vnc LoipvRemote.WinUI)
+          if ($removedProductScope.Count -gt 0) {
+            $removedProductScope | Write-Host
+            throw 'A removed product feature was reintroduced.'
+          }
+          # git grep returns 1 when no match is found. At this point that means
+          # every boundary scan passed; end the PowerShell step successfully.
+          exit 0
+
+  build-installer:
+    needs: validate-source
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: windows-latest
+            platform: x64
+          - runner: windows-11-arm
+            platform: arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@v7
+
+      - name: Set up .NET SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - name: Restore solution dependencies
+        run: dotnet restore LoipvRemote.slnx
+
+      - name: Restore installer dependencies
+        run: dotnet restore LoipvRemoteInstaller/Installer/Installer.wixproj
+
+      - name: Build installer
+        run: >
+          dotnet build LoipvRemoteInstaller/Installer/Installer.wixproj
+          -c Release
+          -p:Platform=${{ matrix.platform }}
+          --no-restore
+          --nologo
+
+      - name: Verify installer artifact
+        shell: pwsh
+        run: |
+          $msi = Get-ChildItem "LoipvRemoteInstaller\Installer\bin\${{ matrix.platform }}\Release" -Filter '*.msi' | Select-Object -First 1
+          if ($null -eq $msi -or $msi.Length -eq 0) {
+            throw 'Release build did not produce a non-empty MSI artifact.'
+          }
+          Write-Host "Verified $($msi.FullName) ($($msi.Length) bytes)."
+
+      - name: Smoke test installer
+        shell: pwsh
+        env:
+          CI: true
+        run: |
+          $msi = Get-ChildItem "LoipvRemoteInstaller\Installer\bin\${{ matrix.platform }}\Release" -Filter '*.msi' | Select-Object -First 1
+          $installDirectory = Join-Path $env:RUNNER_TEMP "LoipvRemote-${{ matrix.platform }}-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+          & .\LoipvRemoteInstaller\Installer\SmokeTest-Installer.ps1 `
+            -MsiPath $msi.FullName `
+            -InstallDirectory $installDirectory `
+            -LogDirectory $env:RUNNER_TEMP
+
+      - name: Package portable application
+        shell: pwsh
+        run: |
+          $payload = "LoipvRemoteInstaller\Installer\obj\${{ matrix.platform }}\Release\payload"
+          $application = Join-Path $payload 'LoipvRemote.exe'
+          $resourceIndex = Join-Path $payload 'LoipvRemote.pri'
+          if (-not (Test-Path -LiteralPath $application) -or -not (Test-Path -LiteralPath $resourceIndex)) {
+            throw 'Portable payload must contain LoipvRemote.exe and LoipvRemote.pri.'
+          }
+          $portable = "LoipvRemoteInstaller\Installer\bin\${{ matrix.platform }}\Release\LoipvRemote-Portable-${{ matrix.platform }}.zip"
+          Compress-Archive -Path (Join-Path $payload '*') -DestinationPath $portable -CompressionLevel Optimal -Force
+          $archive = Get-Item -LiteralPath $portable
+          if ($archive.Length -eq 0) {
+            throw 'Portable package is empty.'
+          }
+          Write-Host "Verified $($archive.FullName) ($($archive.Length) bytes)."
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: loipvremote-installer-${{ matrix.platform }}
+          path: |
+            LoipvRemoteInstaller/Installer/bin/${{ matrix.platform }}/Release/*.msi
+            LoipvRemoteInstaller/Installer/bin/${{ matrix.platform }}/Release/*.zip
+          if-no-files-found: error
+
+  publish-release:
+    needs: build-installer
+    runs-on: windows-latest
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@v7
+
+      - name: Download installer artifacts
+        uses: actions/download-artifact@v7
+        with:
+          pattern: loipvremote-installer-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $installers = @(Get-ChildItem -LiteralPath release-assets -Filter '*.msi' -File)
+          $portablePackages = @(Get-ChildItem -LiteralPath release-assets -Filter '*.zip' -File)
+          if ($installers.Count -ne 2 -or $portablePackages.Count -ne 2) {
+            throw "Expected two MSI and two portable ZIP artifacts; found $($installers.Count) MSI and $($portablePackages.Count) ZIP files."
+          }
+          $assets = @($installers + $portablePackages | Sort-Object Name | ForEach-Object FullName)
+          gh release create $env:GITHUB_REF_NAME @assets --verify-tag --generate-notes --title $env:GITHUB_REF_NAME

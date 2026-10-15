@@ -176,9 +176,8 @@ public abstract class RelationalConnectionDefinitionStore : IConnectionDefinitio
         if (version != 3)
             throw new InvalidDataException($"Relational connection database uses schema version {version}; expected {SchemaVersion}.");
 
-        // Version 4 removes the unused external-application contract. Existing
-        // SQL Server rows retain their generic columns, but the runtime reads
-        // only SSH/RDP/VNC fields and marks the schema as the current model.
+        // Version 4 removes the unused external-application contract. The runtime
+        // reads only SSH/RDP/VNC fields and marks the schema as current.
         command.CommandText = "UPDATE connection_schema_version SET version = @version WHERE id = 1";
         AddParameter(command, "@version", SchemaVersion);
         await command.ExecuteNonQueryAsync(cancellationToken);

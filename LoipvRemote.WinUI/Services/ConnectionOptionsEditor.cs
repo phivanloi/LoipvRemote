@@ -1,5 +1,5 @@
-using LoipvRemote.Domain.Connections;
 using LoipvRemote.Application.Credentials;
+using LoipvRemote.Domain.Connections;
 
 namespace LoipvRemote.WinUI.Services;
 
@@ -73,6 +73,36 @@ public sealed class ConnectionOptionsEditor(IStringSecretStore secretStore)
         return values.Count == 0 && inherited.Count == 0
             ? null
             : new ConnectionNodeOptions(values, inherited.ToArray());
+    }
+
+    /// <summary>Re-protects connection-scoped secrets when a definition receives a new identity.</summary>
+    public ConnectionNodeOptions? ReprotectSecrets(
+        ConnectionDefinition source,
+        Guid targetConnectionId)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        if (targetConnectionId == Guid.Empty)
+            throw new ArgumentException("A connection ID is required.", nameof(targetConnectionId));
+        if (source.Options is null)
+            return null;
+
+        Dictionary<string, string> values = new(source.Options.Values, StringComparer.Ordinal);
+        foreach ((string key, string protectedValue) in source.Options.Values
+                     .Where(pair => pair.Key.StartsWith(ProtectedSecretPrefix, StringComparison.OrdinalIgnoreCase)))
+        {
+            string propertyName = key[ProtectedSecretPrefix.Length..];
+            if (string.IsNullOrWhiteSpace(propertyName))
+                throw new InvalidDataException("A protected connection option has no property name.");
+
+            string plaintext = _secretStore.Unprotect(
+                protectedValue,
+                ConnectionSecretPurposes.ForConnectionOption(source.Id.ToString("D"), propertyName));
+            values[key] = _secretStore.Protect(
+                plaintext,
+                ConnectionSecretPurposes.ForConnectionOption(targetConnectionId.ToString("D"), propertyName));
+        }
+
+        return new ConnectionNodeOptions(values, source.Options.InheritedProperties.ToArray());
     }
 
     private static Dictionary<string, string> Parse(string serializedOptions)

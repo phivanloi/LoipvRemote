@@ -6,6 +6,9 @@
     <Platform Name="arm64" />
     <Platform Name="x64" />
   </Configurations>
+  <Folder Name="/items/">
+    <File Path="AGENTS.md" />
+  </Folder>
   <Project Path="LoipvRemote.Application/LoipvRemote.Application.csproj">
     <BuildType Solution="Release Self-Contained|*" Project="Release" />
   </Project>

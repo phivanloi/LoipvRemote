@@ -18,8 +18,8 @@ public sealed class ConnectionStoreSettingsRepositoryTests
         {
             var repository = new ConnectionStoreSettingsRepository(new ReversibleSecretStore(), settingsFile);
             var expected = new ConnectionStoreSettings(
-                ConnectionDefinitionStoreKind.SqlServer,
-                "Server=database.example;User Id=remote;Password=not-in-json;",
+                ConnectionDefinitionStoreKind.PostgreSql,
+                "Host=database.example;Username=remote;Password=not-in-json;Database=connections;",
                 IsReadOnly: true);
 
             await repository.SaveAsync(expected);

@@ -279,7 +279,7 @@
                         </StackPanel>
                         <TextBlock x:Name="StoreConfigurationStatus" TextWrapping="Wrap" Opacity="0.8" />
                         <TextBlock Text="Shared credentials" Style="{ThemeResource SubtitleTextBlockStyle}" Margin="0,16,0,0" />
-                        <TextBlock Text="Credential passwords are protected for the current Windows user with DPAPI and are not written to XML or SQL Server." TextWrapping="Wrap" />
+                        <TextBlock Text="Credential passwords are protected for the current Windows user with DPAPI and are not written to XML or PostgreSQL." TextWrapping="Wrap" />
                         <ListView x:Name="SharedCredentialList" MinHeight="96" SelectionMode="Single" DisplayMemberPath="DisplayName" />
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <Button Content="Add shared credential" Click="AddSharedCredentialButton_Click" />

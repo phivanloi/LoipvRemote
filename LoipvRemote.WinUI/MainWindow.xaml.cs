@@ -486,7 +486,7 @@ public sealed partial class MainWindow : Window, IDisposable
             await LoadConnectionTreeAsync();
             ConnectionStatus.Text = "Connection saved.";
         }
-        catch (Exception exception) when (exception is ArgumentException or InvalidDataException or IOException)
+        catch (Exception exception) when (exception is ArgumentException or InvalidDataException or IOException or InvalidOperationException or CryptographicException or FormatException)
         {
             ConnectionStatus.Text = $"Connection was not saved: {exception.Message}";
         }
@@ -1854,8 +1854,8 @@ public sealed partial class MainWindow : Window, IDisposable
         try
         {
             ConnectionTreeDefinition updated = _selectedConnection is { } connection
-                ? ConnectionTreeEditor.DuplicateConnection(_connectionCatalog.Tree, connection.Id)
-                : ConnectionTreeEditor.DuplicateFolder(_connectionCatalog.Tree, _selectedFolder!.Id);
+                ? ConnectionTreeEditor.DuplicateConnection(_connectionCatalog.Tree, connection.Id, CloneConnectionOptions)
+                : ConnectionTreeEditor.DuplicateFolder(_connectionCatalog.Tree, _selectedFolder!.Id, CloneConnectionOptions);
             await _connectionCatalog.SaveAsync(updated);
             await LoadConnectionTreeAsync();
             ConnectionStatus.Text = _selectedConnection is not null ? "Connection duplicated." : "Folder subtree duplicated.";
@@ -1865,6 +1865,9 @@ public sealed partial class MainWindow : Window, IDisposable
             ConnectionStatus.Text = $"Selection was not duplicated: {exception.Message}";
         }
     }
+
+    private ConnectionNodeOptions? CloneConnectionOptions(ConnectionDefinition source, Guid targetConnectionId) =>
+        _connectionOptionsEditor.ReprotectSecrets(source, targetConnectionId);
 
     private async void DeleteSelectedNodeButton_Click(object sender, RoutedEventArgs args)
     {

@@ -1,4 +1,4 @@
-using LoipvRemote.Infrastructure.Persistence.SqlServer;
+using LoipvRemote.Infrastructure.Persistence.PostgreSql;
 using LoipvRemote.Infrastructure.Persistence.Xml;
 using LoipvRemote.Application.Configuration;
 
@@ -15,7 +15,7 @@ public sealed class ConnectionDefinitionStoreFactory : IConnectionDefinitionStor
         return options.Kind switch
         {
             ConnectionDefinitionStoreKind.Xml => new XmlConnectionDefinitionStore(options.Location),
-            ConnectionDefinitionStoreKind.SqlServer => new SqlServerConnectionDefinitionStore(options.Location),
+            ConnectionDefinitionStoreKind.PostgreSql => new PostgreSqlConnectionDefinitionStore(options.Location),
             _ => throw new ArgumentOutOfRangeException(nameof(options), options.Kind, "Unsupported connection definition store.")
         };
     }

@@ -9,7 +9,7 @@ public interface IConnectionDefinitionStoreFactory
 public enum ConnectionDefinitionStoreKind
 {
     Xml,
-    SqlServer
+    PostgreSql
 }
 
 /// <summary>Non-secret store selection and location supplied by application configuration.</summary>

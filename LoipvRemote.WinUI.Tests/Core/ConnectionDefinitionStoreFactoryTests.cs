@@ -1,5 +1,5 @@
 using LoipvRemote.Infrastructure.Persistence;
-using LoipvRemote.Infrastructure.Persistence.SqlServer;
+using LoipvRemote.Infrastructure.Persistence.PostgreSql;
 using LoipvRemote.Infrastructure.Persistence.Xml;
 using LoipvRemote.Application.Configuration;
 using NUnit.Framework;
@@ -9,7 +9,7 @@ namespace LoipvRemote.WinUI.Tests.Core;
 public sealed class ConnectionDefinitionStoreFactoryTests
 {
     [TestCase(ConnectionDefinitionStoreKind.Xml, typeof(XmlConnectionDefinitionStore))]
-    [TestCase(ConnectionDefinitionStoreKind.SqlServer, typeof(SqlServerConnectionDefinitionStore))]
+    [TestCase(ConnectionDefinitionStoreKind.PostgreSql, typeof(PostgreSqlConnectionDefinitionStore))]
     public void CreatesTheRequestedBackend(ConnectionDefinitionStoreKind kind, Type expectedType)
     {
         IConnectionDefinitionStore store = new ConnectionDefinitionStoreFactory()

@@ -248,23 +248,31 @@ public static class ConnectionTreeEditor
         return updated;
     }
 
-    public static ConnectionTreeDefinition DuplicateConnection(ConnectionTreeDefinition tree, Guid connectionId)
+    public static ConnectionTreeDefinition DuplicateConnection(
+        ConnectionTreeDefinition tree,
+        Guid connectionId,
+        Func<ConnectionDefinition, Guid, ConnectionNodeOptions?>? cloneOptions = null)
     {
         ArgumentNullException.ThrowIfNull(tree);
         ConnectionDefinition source = tree.Connections.SingleOrDefault(connection => connection.Id == connectionId)
             ?? throw new ArgumentException("The connection no longer exists in the current tree.", nameof(connectionId));
+        Guid copiedId = Guid.NewGuid();
         ConnectionDefinition copy = source with
         {
-            Id = Guid.NewGuid(),
+            Id = copiedId,
             Name = $"{source.Name} (Copy)",
-            SortOrder = NextConnectionSortOrder(tree, source.ParentFolderId)
+            SortOrder = NextConnectionSortOrder(tree, source.ParentFolderId),
+            Options = CloneOptions(source, copiedId, cloneOptions)
         };
         var updated = tree with { Connections = tree.Connections.Append(copy).ToArray() };
         updated.Validate();
         return updated;
     }
 
-    public static ConnectionTreeDefinition DuplicateFolder(ConnectionTreeDefinition tree, Guid folderId)
+    public static ConnectionTreeDefinition DuplicateFolder(
+        ConnectionTreeDefinition tree,
+        Guid folderId,
+        Func<ConnectionDefinition, Guid, ConnectionNodeOptions?>? cloneOptions = null)
     {
         ArgumentNullException.ThrowIfNull(tree);
         ConnectionFolderDefinition source = tree.Folders.SingleOrDefault(folder => folder.Id == folderId)
@@ -276,10 +284,15 @@ public static class ConnectionTreeEditor
 
         ConnectionDefinition[] copiedConnections = tree.Connections
             .Where(connection => connection.ParentFolderId is { } parent && copiedFolderIds.ContainsKey(parent))
-            .Select(connection => connection with
+            .Select(connection =>
             {
-                Id = Guid.NewGuid(),
-                ParentFolderId = copiedFolderIds[connection.ParentFolderId!.Value]
+                Guid copiedId = Guid.NewGuid();
+                return connection with
+                {
+                    Id = copiedId,
+                    ParentFolderId = copiedFolderIds[connection.ParentFolderId!.Value],
+                    Options = CloneOptions(connection, copiedId, cloneOptions)
+                };
             })
             .ToArray();
         var updated = tree with
@@ -447,6 +460,19 @@ public static class ConnectionTreeEditor
                 IReadOnlyCollection<ConnectionDefinition> connections => connections.Max(connection => connection.SortOrder) + 1,
                 _ => throw new ArgumentException("Unsupported connection tree node collection.", nameof(nodes))
             };
+    }
+
+    private static ConnectionNodeOptions? CloneOptions(
+        ConnectionDefinition source,
+        Guid targetId,
+        Func<ConnectionDefinition, Guid, ConnectionNodeOptions?>? optionsCloner)
+    {
+        bool containsProtectedSecrets = source.Options?.Values.Keys.Any(key =>
+            key.StartsWith("$dpapi-secret:", StringComparison.OrdinalIgnoreCase)) == true;
+        if (optionsCloner is null && containsProtectedSecrets)
+            throw new InvalidOperationException("Connection secrets must be re-protected when duplicating a connection.");
+
+        return optionsCloner is null ? source.Options : optionsCloner(source, targetId);
     }
 }
 

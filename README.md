@@ -23,7 +23,7 @@
 
 ## Cài đặt
 
-1. Mở trang [GitHub Releases](../../releases).
+1. Mở trang [GitHub Releases](https://github.com/phivanloi/LoipvRemote/releases).
 2. Tải một trong hai file cài đặt:
    - `LoipvRemote-Installer-x64.msi` cho máy Intel/AMD.
    - `LoipvRemote-Installer-arm64.msi` cho máy Windows on ARM.
@@ -103,7 +103,7 @@ Dữ liệu connection lưu cục bộ trong ứng dụng được bảo vệ th
 
 ## Build từ mã nguồn
 
-Cần cài .NET SDK theo phiên bản ghi trong [global.json](global.json). WiX sẽ được khôi phục tự động qua project installer.
+Cần cài .NET SDK `10.0.401` để build nhất quán với CI. WiX sẽ được khôi phục tự động qua project installer.
 
 ```powershell
 dotnet restore LoipvRemote.slnx

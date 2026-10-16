@@ -7,6 +7,7 @@
     <Platform Name="x64" />
   </Configurations>
   <Folder Name="/items/">
+    <File Path=".editorconfig" />
     <File Path="AGENTS.md" />
   </Folder>
   <Project Path="LoipvRemote.Application/LoipvRemote.Application.csproj">

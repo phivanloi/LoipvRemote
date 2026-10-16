@@ -31,10 +31,10 @@ jobs:
           dotnet-version: "10.0.401"
 
       - name: Restore solution dependencies
-        run: dotnet restore LoipvRemote.slnx
+        run: dotnet restore LoipvRemote.slnx -p:Platform=${{ matrix.platform }}
 
       - name: Restore installer dependencies
-        run: dotnet restore LoipvRemoteInstaller/Installer/Installer.wixproj
+        run: dotnet restore LoipvRemoteInstaller/Installer/Installer.wixproj -p:Platform=${{ matrix.platform }}
 
       - name: Build installer
         run: dotnet build LoipvRemoteInstaller/Installer/Installer.wixproj -c Release -p:Platform=${{ matrix.platform }} --no-restore --nologo

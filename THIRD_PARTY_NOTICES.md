@@ -6,7 +6,7 @@ artifacts. Their licenses apply to those components only.
 ## PowerShell
 
 - Project: https://github.com/PowerShell/PowerShell
-- Version: 7.6.4
+- Version: 7.6.7
 - License: MIT
 - License text: `Runtime/PowerShell/LICENSE.txt` in each published application
   payload.

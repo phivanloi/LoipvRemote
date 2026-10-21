@@ -25,15 +25,15 @@ function Get-Sha256Hex {
     }
 }
 
-$version = '7.6.4'
+$version = '7.6.7'
 $assets = @{
     x64 = @{
         FileName = "PowerShell-$version-win-x64.zip"
-        Sha256 = '80832551c52809301e6071c8bac977beb5a2f1ec953eb4db9f94deb953333793'
+        Sha256 = 'd2f952ebdbf24386cb8923553aa58e41a846db35a6155ea04c58142a4b16dbb7'
     }
     arm64 = @{
         FileName = "PowerShell-$version-win-arm64.zip"
-        Sha256 = '774e541334ae2b2b9f14b96a0808e8905f19a103aefc790ec5d5be2a63ae9314'
+        Sha256 = '119bd9221254ef3637523cb1990797618f5fd68848b57de40f12b561d743149e'
     }
 }
 

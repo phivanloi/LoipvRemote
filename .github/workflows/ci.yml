@@ -28,7 +28,7 @@ jobs:
       - name: Set up .NET SDK
         uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: "10.0.401"
+          dotnet-version: "10.0.402"
 
       - name: Restore solution dependencies
         run: dotnet restore LoipvRemote.slnx -p:Platform=${{ matrix.platform }}

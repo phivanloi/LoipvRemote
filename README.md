@@ -103,7 +103,7 @@ Dữ liệu connection lưu cục bộ trong ứng dụng được bảo vệ th
 
 ## Build từ mã nguồn
 
-Cần cài .NET SDK `10.0.401` để build nhất quán với CI. WiX sẽ được khôi phục tự động qua project installer.
+Cần cài .NET SDK `10.0.402` để build nhất quán với CI. WiX sẽ được khôi phục tự động qua project installer.
 
 ```powershell
 dotnet restore LoipvRemote.slnx

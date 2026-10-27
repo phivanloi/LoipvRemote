@@ -21,3 +21,7 @@ Chỉ phát hành khi người dùng yêu cầu rõ; push `main` không phải y
 - Mọi commit cần release phải được commit và push thành công lên nhánh `main` trước.
 - Chỉ sau khi `main` đã chứa commit cần release mới thực hiện quy trình release và push theo workflow đã commit.
 - Không phát hành trực tiếp từ thay đổi chưa có trên `main`.
+
+## Solution
+
+- Chỉ cập nhật `.slnx` khi thay đổi project hoặc solution item cần dùng ngoài project; không sao chép cây source/test hay thêm lại file project đã quản lý. Giữ nguyên project, build/platform mapping và source; bỏ folder rỗng, artifact benchmark/test, log, cache/generated/vendor. File gốc cần hiển thị đặt trong `/items/`; đối chiếu project trước/sau và build bằng toolchain hiện hữu.

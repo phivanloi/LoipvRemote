@@ -422,17 +422,11 @@ public sealed partial class MainWindow : Window, IDisposable
         var portBox = new NumberBox { Header = "Port", Value = 22, SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Compact };
         var protocolBox = new ComboBox { Header = "Protocol", ItemsSource = Enum.GetValues<ProtocolKind>() };
         var usernameBox = new TextBox { Header = "Username" };
-        var optionsBox = new TextBox
-        {
-            Header = "Advanced options (Name=Value per line)",
-            PlaceholderText = "SmartSize=true",
-            AcceptsReturn = true,
-            TextWrapping = TextWrapping.Wrap,
-            MinHeight = 72
-        };
-        var passwordBox = new PasswordBox { Header = "Password (stored with DPAPI)" };
+        var passwordBox = new PasswordBox { Header = "Password" };
         ComboBox credentialBox = await CreateCredentialBoxAsync(CredentialReference.None);
         protocolBox.SelectedItem = ProtocolKind.Ssh2;
+        var protocolFields = new ConnectionProtocolFields(this);
+        protocolFields.Bind(protocolBox, portBox);
         TextBlock validationText = CreateDialogValidationText();
         var dialog = new ContentDialog
         {
@@ -443,8 +437,9 @@ public sealed partial class MainWindow : Window, IDisposable
             DefaultButton = ContentDialogButton.Primary,
             Content = new StackPanel
             {
-                Spacing = 12,
-                Children = { validationText, nameBox, hostBox, portBox, protocolBox, usernameBox, credentialBox, optionsBox, passwordBox }
+                MinWidth = 400,
+                Spacing = 10,
+                Children = { validationText, CreateConnectionFieldRow(nameBox, protocolBox), CreateConnectionFieldRow(hostBox, portBox), usernameBox, passwordBox, credentialBox, protocolFields.View }
             }
         };
 
@@ -477,9 +472,9 @@ public sealed partial class MainWindow : Window, IDisposable
         try
         {
             Guid connectionId = Guid.NewGuid();
-            ConnectionNodeOptions? options = _connectionOptionsEditor.Build(
+            ConnectionNodeOptions? options = _connectionOptionsEditor.BuildFromFields(
                 connectionId,
-                optionsBox.Text,
+                protocolFields.ReadOptions(protocol),
                 passwordBox.Password,
                 clearStoredPassword: false);
             options = ConnectionOptionsEditor.WithOptionValue(options, "Username", usernameBox.Text);
@@ -503,6 +498,19 @@ public sealed partial class MainWindow : Window, IDisposable
         {
             ConnectionStatus.Text = $"Connection was not saved: {exception.Message}";
         }
+    }
+
+    private static Grid CreateConnectionFieldRow(Control primary, Control secondary)
+    {
+        var row = new Grid { ColumnSpacing = 12 };
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(110) });
+        primary.HorizontalAlignment = HorizontalAlignment.Stretch;
+        secondary.HorizontalAlignment = HorizontalAlignment.Stretch;
+        Grid.SetColumn(secondary, 1);
+        row.Children.Add(primary);
+        row.Children.Add(secondary);
+        return row;
     }
 
     private async void QuickConnectButton_Click(object sender, RoutedEventArgs args)
@@ -570,7 +578,7 @@ public sealed partial class MainWindow : Window, IDisposable
                 LoipvRemote.Domain.Credentials.CredentialReference.LocalDpapi(credential.Id),
                 string.IsNullOrWhiteSpace(credential.UserName) ? credential.Name : $"{credential.Name} ({credential.UserName})",
                 credential.UserName)));
-        var box = new ComboBox { Header = "Shared credential (current-user DPAPI)", ItemsSource = choices, DisplayMemberPath = nameof(CredentialChoice.Name) };
+        var box = new ComboBox { Header = "Shared credential (optional)", ItemsSource = choices, DisplayMemberPath = nameof(CredentialChoice.Name) };
         box.SelectedItem = choices.FirstOrDefault(choice => choice.Reference == selected) ?? choices[0];
         return box;
     }
@@ -743,17 +751,12 @@ public sealed partial class MainWindow : Window, IDisposable
             Header = "Username",
             Text = connection.Options?.Values.TryGetValue("Username", out string? username) == true ? username : string.Empty
         };
-        var optionsBox = new TextBox
-        {
-            Header = "Advanced options (Name=Value per line)",
-            Text = ConnectionOptionsEditor.Format(connection.Options, "Username"),
-            AcceptsReturn = true,
-            TextWrapping = TextWrapping.Wrap,
-            MinHeight = 72
-        };
-        var passwordBox = new PasswordBox { Header = "Password (stored with DPAPI)" };
+        var passwordBox = new PasswordBox { Header = "Password", PlaceholderText = "Leave blank to keep the saved password" };
         var clearPasswordBox = new CheckBox { Content = "Clear stored password" };
         ComboBox credentialBox = await CreateCredentialBoxAsync(connection.Credential);
+        var protocolFields = new ConnectionProtocolFields(this, connection.Options,
+            _connectionCatalog.FindResolvedConnection(connection.Id)?.Options);
+        protocolFields.Bind(protocolBox, portBox);
         TextBlock validationText = CreateDialogValidationText();
         var dialog = new ContentDialog
         {
@@ -762,7 +765,12 @@ public sealed partial class MainWindow : Window, IDisposable
             PrimaryButtonText = "Save",
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary,
-            Content = new StackPanel { Spacing = 12, Children = { validationText, nameBox, hostBox, portBox, protocolBox, usernameBox, credentialBox, optionsBox, passwordBox, clearPasswordBox } }
+            Content = new StackPanel
+            {
+                MinWidth = 400,
+                Spacing = 10,
+                Children = { validationText, CreateConnectionFieldRow(nameBox, protocolBox), CreateConnectionFieldRow(hostBox, portBox), usernameBox, passwordBox, clearPasswordBox, credentialBox, protocolFields.View }
+            }
         };
         KeepDialogOpenWhenInvalid(
             dialog,
@@ -790,12 +798,11 @@ public sealed partial class MainWindow : Window, IDisposable
 
         try
         {
-            ConnectionNodeOptions? options = _connectionOptionsEditor.Build(
+            ConnectionNodeOptions? options = _connectionOptionsEditor.BuildFromFields(
                 connection.Id,
-                optionsBox.Text,
+                protocolFields.ReadOptions(protocol),
                 passwordBox.Password,
-                clearPasswordBox.IsChecked == true,
-                connection.Options);
+                clearPasswordBox.IsChecked == true);
             options = ConnectionOptionsEditor.WithOptionValue(options, "Username", usernameBox.Text);
             CredentialChoice credentialChoice = SelectedCredentialChoice(credentialBox);
             options = ApplyCredentialUserName(options, credentialChoice);

@@ -14,6 +14,26 @@ public sealed class ConnectionOptionsEditor(IStringSecretStore secretStore)
     private const string ProtectedSecretPrefix = "$dpapi-secret:";
     private readonly IStringSecretStore _secretStore = secretStore ?? throw new ArgumentNullException(nameof(secretStore));
 
+    /// <summary>Lưu các input có cấu trúc, chỉ thay đổi password khi người dùng yêu cầu.</summary>
+    internal ConnectionNodeOptions? BuildFromFields(
+        Guid connectionId, ConnectionNodeOptions? options, string? password, bool clearStoredPassword)
+    {
+        if (connectionId == Guid.Empty)
+            throw new ArgumentException("A connection id is required.", nameof(connectionId));
+        var values = options is null ? new Dictionary<string, string>(StringComparer.Ordinal) : new(options.Values, StringComparer.Ordinal);
+        var inherited = options?.InheritedProperties.ToList() ?? [];
+        if (clearStoredPassword || !string.IsNullOrEmpty(password))
+        {
+            var name = ProtectedSecretPrefix + "Password";
+            inherited.RemoveAll(property => property is "Password" || property == name);
+            values[name] = string.IsNullOrEmpty(password) ? string.Empty : _secretStore.Protect(password,
+                ConnectionSecretPurposes.ForConnectionOption(connectionId.ToString("D"), "Password"));
+        }
+        var result = values.Count == 0 && inherited.Count == 0 ? null : new ConnectionNodeOptions(values, inherited.ToArray());
+        result?.Validate();
+        return result;
+    }
+
     /// <summary>Tạo kết nối tạm và bảo vệ password theo định danh của session.</summary>
     internal ConnectionDefinition CreateQuickConnection(string host, int port, ProtocolKind protocol, string username, string? password)
     {

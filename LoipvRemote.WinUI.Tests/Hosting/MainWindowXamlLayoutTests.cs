@@ -174,7 +174,7 @@ public sealed class MainWindowXamlLayoutTests
         int waitForClose = code.IndexOf("await menuClosed.Task;", contextMenuItemFactory, StringComparison.Ordinal);
         int invokeCommand = code.IndexOf("click(sender, args);", contextMenuItemFactory, StringComparison.Ordinal);
         int editor = code.IndexOf("private async void EditSelectedNodeButton_Click", StringComparison.Ordinal);
-        int passwordBox = code.IndexOf("var passwordBox = new PasswordBox { Header = \"Password (stored with DPAPI)\"", editor, StringComparison.Ordinal);
+        int passwordBox = code.IndexOf("var passwordBox = new PasswordBox { Header = \"Password\"", editor, StringComparison.Ordinal);
 
         Assert.Multiple(() =>
         {
@@ -187,7 +187,8 @@ public sealed class MainWindowXamlLayoutTests
             Assert.That(invokeCommand, Is.GreaterThan(waitForClose));
             Assert.That(passwordBox, Is.GreaterThan(editor));
             Assert.That(code, Does.Contain("Header = \"Username\""));
-            Assert.That(code, Does.Contain("ConnectionOptionsEditor.Format(connection.Options, \"Username\")"));
+            Assert.That(code, Does.Not.Contain("Advanced options (Name=Value per line)"));
+            Assert.That(code, Does.Contain("protocolFields.ReadOptions(protocol)"));
             Assert.That(code, Does.Contain("ConnectionOptionsEditor.WithOptionValue(options, \"Username\", usernameBox.Text)"));
         });
     }

@@ -1,13 +1,46 @@
 using LoipvRemote.Application.Credentials;
 using LoipvRemote.Domain.Connections;
+using LoipvRemote.Domain.Credentials;
 using LoipvRemote.Infrastructure.Windows.Dpapi;
 using LoipvRemote.WinUI.Services;
+using LoipvRemote.WinUI.ViewModels;
 using NUnit.Framework;
 
 namespace LoipvRemote.WinUI.Tests.Services;
 
 public sealed class ConnectionOptionsEditorTests
 {
+    [TestCase(false)]
+    [TestCase(true)]
+    public void DuplicatedConnectionsCanDecryptTheirPasswordsWithTheirOwnIdentity(bool duplicateFolder)
+    {
+        var secrets = new DpapiStringSecretStore(new WindowsDpapiSecretProtector());
+        var editor = new ConnectionOptionsEditor(secrets);
+        var folderId = Guid.NewGuid();
+        var connectionId = Guid.NewGuid();
+        var source = new ConnectionDefinition(connectionId, "Test RDP", "localhost", 3389, ProtocolKind.Rdp,
+            CredentialReference.None, ParentFolderId: folderId,
+            Options: editor.Build(connectionId, "Username=test-user", "test-only", false));
+        var tree = new ConnectionTreeDefinition([new(folderId, "Test folder")], [source]);
+
+        var copiedTree = duplicateFolder
+            ? ConnectionTreeEditor.DuplicateFolder(tree, folderId, editor.ReprotectSecrets)
+            : ConnectionTreeEditor.DuplicateConnection(tree, connectionId, editor.ReprotectSecrets);
+        var copy = copiedTree.Connections.Single(connection => connection.Id != connectionId);
+        var protectedPassword = copy.Options!.Values["$dpapi-secret:Password"];
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(secrets.Unprotect(protectedPassword,
+                ConnectionSecretPurposes.ForConnectionOption(copy.Id.ToString("D"), "Password")), Is.EqualTo("test-only"));
+            Assert.That(secrets.Unprotect(source.Options!.Values["$dpapi-secret:Password"],
+                ConnectionSecretPurposes.ForConnectionOption(connectionId.ToString("D"), "Password")), Is.EqualTo("test-only"));
+            Assert.That(copy.Options.Values["Username"], Is.EqualTo("test-user"));
+            Assert.Throws<System.Security.Cryptography.CryptographicException>(() => secrets.Unprotect(
+                protectedPassword, ConnectionSecretPurposes.ForConnectionOption(connectionId.ToString("D"), "Password")));
+        });
+    }
+
     [Test]
     public void QuickConnectionPasswordCanBeDecryptedWithTheReturnedSessionIdentity()
     {

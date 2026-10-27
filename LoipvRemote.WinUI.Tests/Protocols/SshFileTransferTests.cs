@@ -167,6 +167,69 @@ public sealed class SshFileTransferTests
         });
     }
 
+    [TestCase(false, false)]
+    [TestCase(false, true)]
+    [TestCase(true, false)]
+    [TestCase(true, true)]
+    public async Task FailedDownloadPreservesDestinationAndRemovesPartialFile(bool existing, bool cancelled)
+    {
+        string directory = Path.Combine(Path.GetTempPath(), "LoipvRemote.Tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        string path = Path.Combine(directory, "download.txt");
+        try
+        {
+            if (existing)
+                await File.WriteAllTextAsync(path, "original");
+            using var cancellation = new CancellationTokenSource();
+            async Task DownloadAsync(Stream stream, CancellationToken token)
+            {
+                await stream.WriteAsync(new byte[] { 1, 2, 3 }, token);
+                if (cancelled)
+                {
+                    cancellation.Cancel();
+                    return;
+                }
+
+                throw new IOException("Connection lost during download");
+            }
+
+            if (cancelled)
+                Assert.ThrowsAsync<OperationCanceledException>(() => SshNetFileTransferSession.SaveDownloadAsync(path, DownloadAsync, cancellation.Token));
+            else
+                Assert.ThrowsAsync<IOException>(() => SshNetFileTransferSession.SaveDownloadAsync(path, DownloadAsync, cancellation.Token));
+            Assert.That(Directory.GetFiles(directory), Has.Length.EqualTo(existing ? 1 : 0));
+            if (existing)
+                Assert.That(await File.ReadAllTextAsync(path), Is.EqualTo("original"));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task CompletedDownloadPublishesAllBytesAndRemovesTemporaryFile(bool existing)
+    {
+        string directory = Path.Combine(Path.GetTempPath(), "LoipvRemote.Tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        string path = Path.Combine(directory, "download.txt");
+        try
+        {
+            if (existing)
+                await File.WriteAllTextAsync(path, "original");
+            byte[] payload = [1, 2, 3, 4];
+            await SshNetFileTransferSession.SaveDownloadAsync(path,
+                async (stream, token) => await stream.WriteAsync(payload, token), CancellationToken.None);
+            Assert.That(await File.ReadAllBytesAsync(path), Is.EqualTo(payload));
+            Assert.That(Directory.GetFiles(directory), Has.Length.EqualTo(1));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
     private sealed class InlineProgress<T>(Action<T> report) : IProgress<T>
     {
         public void Report(T value) => report(value);

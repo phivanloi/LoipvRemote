@@ -5,6 +5,30 @@ namespace LoipvRemote.WinUI.Tests.Services;
 
 public sealed class ConnectionTreeViewStateRepositoryTests
 {
+    [TestCase("{broken")]
+    [TestCase("[\"invalid-guid\"]")]
+    [TestCase("42")]
+    public async Task CorruptExpansionStateDoesNotPreventLoadingConnections(string json)
+    {
+        string directory = Path.Combine(Path.GetTempPath(), "LoipvRemote.WinUI.Tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        string stateFile = Path.Combine(directory, "tree-state.json");
+        try
+        {
+            await File.WriteAllTextAsync(stateFile, json);
+            using var repository = new ConnectionTreeViewStateRepository(stateFile);
+            Assert.That(await repository.LoadExpandedFolderIdsAsync(), Is.Empty);
+            Assert.That(await File.ReadAllTextAsync(stateFile), Is.EqualTo(json));
+            var folder = Guid.NewGuid();
+            await repository.SaveExpandedFolderIdsAsync(new HashSet<Guid> { folder });
+            Assert.That(await repository.LoadExpandedFolderIdsAsync(), Is.EquivalentTo([folder]));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
     [Test]
     public async Task RapidExpansionChangesPersistWithoutTemporaryFileCollisions()
     {

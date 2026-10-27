@@ -163,7 +163,10 @@ public sealed class SshFileTransferSessionFactory(Func<ConnectionDefinition, str
             definition.Host,
             definition.Port,
             username,
-            _passwordResolver(definition));
+            _passwordResolver(definition))
+        {
+            PrivateKeyPath = definition.Options?.Values.GetValueOrDefault("PrivateKeyPath") ?? string.Empty
+        };
         return new SshNetFileTransferSession(connection);
     }
 }
@@ -221,8 +224,8 @@ internal sealed class SshNetFileTransferSession : ISshFileTransferSession
         CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        if (string.IsNullOrWhiteSpace(_connection.Username) || string.IsNullOrEmpty(_connection.Password))
-            throw new InvalidOperationException("SFTP requires a direct SSH username and password.");
+        if (!_connection.HasAuthentication)
+            throw new InvalidOperationException("SFTP requires an SSH username and a password or private key.");
 
         if (_client?.IsConnected != true)
         {
@@ -309,20 +312,43 @@ internal sealed class SshNetFileTransferSession : ISshFileTransferSession
     {
         using SftpClient client = await CreateConnectedClientAsync(cancellationToken).ConfigureAwait(false);
         long totalBytes = (await client.GetAttributesAsync(remotePath, cancellationToken).ConfigureAwait(false)).Size;
-        await using FileStream destination = new(localPath, FileMode.Create, FileAccess.Write, FileShare.None, 64 * 1024, useAsync: true);
-        await using var trackedDestination = new TransferProgressStream(destination, totalBytes, progress, trackReads: false);
-        await client.DownloadFileAsync(remotePath, trackedDestination, cancellationToken).ConfigureAwait(false);
+        await SaveDownloadAsync(localPath, async (destination, token) =>
+        {
+            await using var trackedDestination = new TransferProgressStream(destination, totalBytes, progress, trackReads: false);
+            await client.DownloadFileAsync(remotePath, trackedDestination, token).ConfigureAwait(false);
+        }, cancellationToken).ConfigureAwait(false);
         progress?.Report(new FileTransferProgress(totalBytes, totalBytes));
+    }
+
+    internal static async Task SaveDownloadAsync(
+        string localPath,
+        Func<Stream, CancellationToken, Task> download,
+        CancellationToken cancellationToken)
+    {
+        string destinationPath = Path.GetFullPath(localPath);
+        string temporaryPath = Path.Combine(
+            Path.GetDirectoryName(destinationPath)!, $".{Guid.NewGuid():N}.download");
+        try
+        {
+            await using (FileStream destination = new(temporaryPath, FileMode.CreateNew, FileAccess.Write, FileShare.None, 64 * 1024, useAsync: true))
+            {
+                await download(destination, cancellationToken).ConfigureAwait(false);
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+            File.Move(temporaryPath, destinationPath, overwrite: true);
+        }
+        finally
+        {
+            File.Delete(temporaryPath);
+        }
     }
 
     private async Task<SftpClient> CreateConnectedClientAsync(CancellationToken cancellationToken)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        var connectionInfo = new ConnectionInfo(
-            _connection.Host,
-            _connection.Port,
-            _connection.Username,
-            new PasswordAuthenticationMethod(_connection.Username, _connection.Password));
+        using PrivateKeyFile? privateKey = _connection.OpenPrivateKey();
+        ConnectionInfo connectionInfo = _connection.CreateConnectionInfo(privateKey);
         PuttyHostKeyTrustStore.PreferCachedHostKeyAlgorithms(connectionInfo, _connection.Host, _connection.Port);
         var client = new SftpClient(connectionInfo);
         bool hostKeyRejected = false;
@@ -347,6 +373,11 @@ internal sealed class SshNetFileTransferSession : ISshFileTransferSession
             if (hostKeyRejected)
                 throw new InvalidOperationException("The SSH host key has not been trusted in PuTTY.");
             throw;
+        }
+        finally
+        {
+            foreach (AuthenticationMethod authentication in connectionInfo.AuthenticationMethods)
+                authentication.Dispose();
         }
     }
 

@@ -6,6 +6,29 @@ namespace LoipvRemote.WinUI.Tests.Protocols;
 
 public sealed class SshResourceMonitoringTests
 {
+    [TestCase("", "", false)]
+    [TestCase("e2e", "", false)]
+    [TestCase("e2e", "fixture-key.ppk", true)]
+    [TestCase("", "fixture-key.ppk", false)]
+    public void KeyAuthenticationRequiresAUsername(string username, string keyPath, bool expected)
+    {
+        var connection = new SshResourceMonitorConnection("127.0.0.1", 22220, username, null) { PrivateKeyPath = keyPath };
+        Assert.That(connection.HasAuthentication, Is.EqualTo(expected));
+    }
+
+    [Test]
+    public void RsaKeyAuthenticationTriesSha2BeforeLegacySha1()
+    {
+        using var rsa = System.Security.Cryptography.RSA.Create(2048);
+        using var stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(rsa.ExportRSAPrivateKeyPem()));
+        using var key = new Renci.SshNet.PrivateKeyFile(stream);
+        var connection = new SshResourceMonitorConnection("127.0.0.1", 22220, "e2e", null);
+        var info = connection.CreateConnectionInfo(key);
+        using var authentication = (Renci.SshNet.PrivateKeyAuthenticationMethod)info.AuthenticationMethods.Single();
+        Assert.That(authentication.KeyFiles.Single().HostKeyAlgorithms.Select(algorithm => algorithm.Name),
+            Is.EqualTo((string[])["rsa-sha2-512", "rsa-sha2-256", "ssh-rsa"]));
+    }
+
     [Test]
     public void LinuxResourceSampleParserIgnoresTerminalNoiseAndParsesAllMetrics()
     {

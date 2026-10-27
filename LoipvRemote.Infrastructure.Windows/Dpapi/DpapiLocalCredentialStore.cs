@@ -1,11 +1,11 @@
 using System.Text.Json;
-using LoipvRemote.Domain.Credentials;
 using LoipvRemote.Application.Credentials;
+using LoipvRemote.Domain.Credentials;
 
 namespace LoipvRemote.Infrastructure.Windows.Dpapi;
 
 /// <summary>Persists named credential metadata plus DPAPI-protected secrets for the current user.</summary>
-public sealed class DpapiLocalCredentialStore : ILocalCredentialStore
+public sealed class DpapiLocalCredentialStore : ILocalCredentialStore, IDisposable
 {
     private const string PasswordPurposePrefix = "LoipvRemote.LocalCredential.Password:";
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -16,6 +16,7 @@ public sealed class DpapiLocalCredentialStore : ILocalCredentialStore
     private readonly IStringSecretStore _secretStore;
     private readonly string _filePath;
     private readonly object _gate = new();
+    private readonly SemaphoreSlim _saveGate = new(1, 1);
     private List<PersistedCredential>? _credentials;
 
     public DpapiLocalCredentialStore(IStringSecretStore secretStore)
@@ -40,24 +41,44 @@ public sealed class DpapiLocalCredentialStore : ILocalCredentialStore
         ArgumentNullException.ThrowIfNull(credential);
         credential.Validate();
         ArgumentException.ThrowIfNullOrEmpty(password);
-        List<PersistedCredential> credentials = await GetCredentialsAsync(cancellationToken).ConfigureAwait(false);
-        string protectedPassword = _secretStore.Protect(password, PasswordPurpose(credential.Id));
-        var persisted = new PersistedCredential(credential.Id, credential.Name.Trim(), credential.UserName.Trim(), protectedPassword);
-        int index = credentials.FindIndex(item => item.Id == credential.Id);
-        if (index >= 0)
-            credentials[index] = persisted;
-        else
-            credentials.Add(persisted);
-        await PersistAsync(credentials, cancellationToken).ConfigureAwait(false);
+        await _saveGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            var credentials = new List<PersistedCredential>(await GetCredentialsAsync(cancellationToken).ConfigureAwait(false));
+            string protectedPassword = _secretStore.Protect(password, PasswordPurpose(credential.Id));
+            var persisted = new PersistedCredential(credential.Id, credential.Name.Trim(), credential.UserName.Trim(), protectedPassword);
+            int index = credentials.FindIndex(item => item.Id == credential.Id);
+            if (index >= 0)
+                credentials[index] = persisted;
+            else
+                credentials.Add(persisted);
+            await PersistAsync(credentials, cancellationToken).ConfigureAwait(false);
+            lock (_gate)
+                _credentials = credentials;
+        }
+        finally
+        {
+            _saveGate.Release();
+        }
     }
 
     public async Task DeleteAsync(Guid credentialId, CancellationToken cancellationToken = default)
     {
         if (credentialId == Guid.Empty)
             throw new ArgumentException("Credential ID is required.", nameof(credentialId));
-        List<PersistedCredential> credentials = await GetCredentialsAsync(cancellationToken).ConfigureAwait(false);
-        credentials.RemoveAll(item => item.Id == credentialId);
-        await PersistAsync(credentials, cancellationToken).ConfigureAwait(false);
+        await _saveGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            var credentials = new List<PersistedCredential>(await GetCredentialsAsync(cancellationToken).ConfigureAwait(false));
+            credentials.RemoveAll(item => item.Id == credentialId);
+            await PersistAsync(credentials, cancellationToken).ConfigureAwait(false);
+            lock (_gate)
+                _credentials = credentials;
+        }
+        finally
+        {
+            _saveGate.Release();
+        }
     }
 
     public string? ResolvePassword(CredentialReference reference)
@@ -112,6 +133,13 @@ public sealed class DpapiLocalCredentialStore : ILocalCredentialStore
             if (File.Exists(temporaryPath))
                 File.Delete(temporaryPath);
         }
+    }
+
+    /// <summary>Giải phóng bộ đồng bộ ghi credential.</summary>
+    public void Dispose()
+    {
+        _saveGate.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     private static string PasswordPurpose(Guid credentialId) => PasswordPurposePrefix + credentialId.ToString("D");

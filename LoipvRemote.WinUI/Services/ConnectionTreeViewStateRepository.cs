@@ -19,10 +19,18 @@ public sealed class ConnectionTreeViewStateRepository : IDisposable
     {
         if (!File.Exists(_filePath))
             return new HashSet<Guid>();
-        await using FileStream stream = File.OpenRead(_filePath);
-        Guid[] ids = await JsonSerializer.DeserializeAsync<Guid[]>(stream, cancellationToken: cancellationToken).ConfigureAwait(false)
-            ?? [];
-        return ids.Where(id => id != Guid.Empty).ToHashSet();
+        try
+        {
+            await using FileStream stream = File.OpenRead(_filePath);
+            Guid[] ids = await JsonSerializer.DeserializeAsync<Guid[]>(stream, cancellationToken: cancellationToken).ConfigureAwait(false)
+                ?? [];
+            return ids.Where(id => id != Guid.Empty).ToHashSet();
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or JsonException)
+        {
+            // Trạng thái mở rộng chỉ hỗ trợ hiển thị; lỗi ở đây không được che cây connection.
+            return new HashSet<Guid>();
+        }
     }
 
     public async Task SaveExpandedFolderIdsAsync(IReadOnlySet<Guid> folderIds, CancellationToken cancellationToken = default)

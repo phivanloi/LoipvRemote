@@ -190,6 +190,33 @@ public sealed class SshResourceMonitor : IRemoteResourceMonitor
 
 public sealed record SshResourceMonitorConnection(string Host, int Port, string Username, string? Password)
 {
+    /// <summary>Đường dẫn private key của phiên SSH, để trống khi dùng mật khẩu.</summary>
+    public string PrivateKeyPath { get; init; } = string.Empty;
+
+    internal bool HasAuthentication => !string.IsNullOrWhiteSpace(Username) &&
+        (!string.IsNullOrEmpty(Password) || !string.IsNullOrWhiteSpace(PrivateKeyPath));
+
+    internal PrivateKeyFile? OpenPrivateKey() => string.IsNullOrWhiteSpace(PrivateKeyPath)
+        ? null
+        : new PrivateKeyFile(Environment.ExpandEnvironmentVariables(PrivateKeyPath), Password);
+
+    internal ConnectionInfo CreateConnectionInfo(PrivateKeyFile? privateKey)
+    {
+        var authentication = new List<AuthenticationMethod>();
+        if (privateKey is not null)
+            authentication.Add(new PrivateKeyAuthenticationMethod(Username, new PreferredPrivateKeySource(privateKey)));
+        if (!string.IsNullOrEmpty(Password))
+            authentication.Add(new PasswordAuthenticationMethod(Username, Password));
+        return new ConnectionInfo(Host, Port, Username, authentication.ToArray());
+    }
+
+    private sealed class PreferredPrivateKeySource(PrivateKeyFile privateKey) : IPrivateKeySource
+    {
+        // SSH.NET thử ssh-rsa trước SHA-2; một số server đóng kết nối ngay khi gặp SHA-1.
+        public IReadOnlyCollection<Renci.SshNet.Security.HostAlgorithm> HostKeyAlgorithms { get; } =
+            privateKey.HostKeyAlgorithms.OrderBy(algorithm => algorithm.Name == "ssh-rsa").ToArray();
+    }
+
     public void Validate()
     {
         if (string.IsNullOrWhiteSpace(Host))
@@ -215,7 +242,10 @@ public sealed class SshResourceMonitorFactory(Func<ConnectionDefinition, string?
             definition.Host,
             definition.Port,
             username,
-            _passwordResolver(definition));
+            _passwordResolver(definition))
+        {
+            PrivateKeyPath = definition.Options?.Values.GetValueOrDefault("PrivateKeyPath") ?? string.Empty
+        };
         return new SshResourceMonitor(new SshNetLinuxResourceCollector(connection));
     }
 }
@@ -239,7 +269,7 @@ internal sealed class SshNetLinuxResourceCollector : ILinuxResourceCollector
 
     public async Task<LinuxResourceSample> CollectAsync(CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(_connection.Username) || string.IsNullOrEmpty(_connection.Password))
+        if (!_connection.HasAuthentication)
             throw new SshResourceMonitorAuthenticationException();
 
         SshClient client = GetOrConnectClient(cancellationToken);
@@ -271,11 +301,8 @@ internal sealed class SshNetLinuxResourceCollector : ILinuxResourceCollector
                 return _client;
 
             DisconnectClient();
-            var connectionInfo = new Renci.SshNet.ConnectionInfo(
-                _connection.Host,
-                _connection.Port,
-                _connection.Username,
-                new PasswordAuthenticationMethod(_connection.Username, _connection.Password));
+            using PrivateKeyFile? privateKey = _connection.OpenPrivateKey();
+            ConnectionInfo connectionInfo = _connection.CreateConnectionInfo(privateKey);
             PuttyHostKeyTrustStore.PreferCachedHostKeyAlgorithms(connectionInfo, _connection.Host, _connection.Port);
             var client = new SshClient(connectionInfo);
             bool hostKeyRejected = false;
@@ -299,6 +326,11 @@ internal sealed class SshNetLinuxResourceCollector : ILinuxResourceCollector
                 if (hostKeyRejected)
                     throw new SshResourceMonitorHostKeyException();
                 throw;
+            }
+            finally
+            {
+                foreach (AuthenticationMethod authentication in connectionInfo.AuthenticationMethods)
+                    authentication.Dispose();
             }
 
             _client = client;

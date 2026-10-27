@@ -4,12 +4,53 @@ using LoipvRemote.Domain.Protocols;
 using LoipvRemote.Protocols.Abstractions;
 using LoipvRemote.WinUI.Hosting;
 using LoipvRemote.WinUI.Sessions;
+using NSubstitute;
 using NUnit.Framework;
 
 namespace LoipvRemote.WinUI.Tests.Sessions;
 
 public sealed class RemoteSessionWorkspaceTests
 {
+    [Test]
+    public async Task ReconnectDisposesTheOldTransportAndMonitorBeforeCreatingAFreshSession()
+    {
+        var events = new List<string>();
+        var original = new EmbeddedTestSession(events);
+        var replacement = new EmbeddedTestSession(events);
+        var oldMonitor = Substitute.For<IRemoteResourceMonitor>();
+        var factory = Substitute.For<IWinUIProtocolSessionFactory>();
+        factory.Create(Arg.Any<ConnectionDefinition>()).Returns(original, replacement);
+        factory.CreateResourceMonitor(Arg.Any<ConnectionDefinition>()).Returns(oldMonitor, (IRemoteResourceMonitor?)null);
+        var workspace = new RemoteSessionWorkspace(factory);
+        var tab = workspace.Open(CreateConnection(ProtocolKind.Ssh2));
+        var surface = new TestSurface(events);
+        await workspace.ConnectAsync(tab, surface);
+
+        await workspace.PrepareReconnectAsync(tab, CancellationToken.None);
+        Assert.That(original.CloseCalled && original.DisposeAsyncCalled, Is.True);
+        oldMonitor.Received(1).Dispose();
+        Assert.That(tab.State, Is.EqualTo(RemoteSessionTabState.Faulted));
+        await workspace.ConnectAsync(tab, surface);
+        Assert.That(tab.Session, Is.SameAs(replacement));
+        Assert.That(tab.State, Is.EqualTo(RemoteSessionTabState.Connected));
+        await workspace.CloseAsync(tab);
+    }
+
+    [Test]
+    public async Task ClosingTheTabCancelsItsRecoveryAndPreventsRevivingIt()
+    {
+        var workspace = new RemoteSessionWorkspace(new TestFactory(new EmbeddedTestSession([])));
+        var tab = workspace.Open(CreateConnection(ProtocolKind.Ssh2));
+        using var cancellation = new CancellationTokenSource();
+        var token = cancellation.Token;
+        tab.BeginReconnect(cancellation);
+        await workspace.CloseAsync(tab);
+        Assert.That(token.IsCancellationRequested, Is.True);
+        Assert.CatchAsync<OperationCanceledException>(() => workspace.PrepareReconnectAsync(tab, token));
+        Assert.That(tab.State, Is.EqualTo(RemoteSessionTabState.Closed));
+        tab.EndReconnect();
+    }
+
     [Test]
     public async Task ConnectAsyncAttachesActiveXSessionBeforeInitialization()
     {

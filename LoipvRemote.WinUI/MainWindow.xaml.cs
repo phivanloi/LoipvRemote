@@ -2340,6 +2340,8 @@ public sealed partial class MainWindow : Window, IDisposable
     private void Sessions_SelectionChanged(object sender, SelectionChangedEventArgs args)
     {
         UpdateSessionTabHeaderSelection();
+        foreach (var recoveringTab in _sessionTabs.Values.Where(tab => tab.IsReconnecting && !IsSelectedSession(tab)))
+            recoveringTab.CancelPendingConnection();
 
         if (Sessions.SelectedItem is TabViewItem tab && _sessionTabs.TryGetValue(tab, out RemoteSessionTab? sessionTab))
         {
@@ -2363,8 +2365,9 @@ public sealed partial class MainWindow : Window, IDisposable
         await ConnectSessionAsync(sessionTab);
     }
 
-    private async Task ConnectSessionAsync(RemoteSessionTab sessionTab)
+    private async Task ConnectSessionAsync(RemoteSessionTab sessionTab, bool propagateFailure = false, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         if (_embeddedSessionSurface is null ||
             sessionTab.State is RemoteSessionTabState.Connecting or RemoteSessionTabState.Connected)
         {
@@ -2372,7 +2375,7 @@ public sealed partial class MainWindow : Window, IDisposable
         }
 
         ConnectSessionButton.IsEnabled = false;
-        SessionStatus.Text = "Connecting...";
+        SessionStatus.Text = propagateFailure ? "Reconnecting SSH..." : "Connecting...";
         RemoteSessionWorkspace.Deactivate(_embeddedSessionSurface);
         SessionContent.Visibility = Visibility.Collapsed;
         SessionLoadingContent.Visibility = Visibility.Visible;
@@ -2385,7 +2388,7 @@ public sealed partial class MainWindow : Window, IDisposable
             if (sessionTab.Connection.Protocol == ProtocolKind.Rdp)
                 await Task.Yield();
 
-            await _sessionWorkspace.ConnectAsync(sessionTab, _embeddedSessionSurface);
+            await _sessionWorkspace.ConnectAsync(sessionTab, _embeddedSessionSurface, cancellationToken);
             SubscribeResourceMonitor(sessionTab);
             _connectedConnectionIds.Add(sessionTab.Connection.Id);
             if (_connectionCatalog.IsLoaded)
@@ -2402,6 +2405,8 @@ public sealed partial class MainWindow : Window, IDisposable
                 ShowSession(sessionTab);
                 SessionStatus.Text = SessionPresentationPolicy.FormatConnectionFailure(exception.Message);
             }
+            if (propagateFailure)
+                throw;
         }
         finally
         {
@@ -2632,12 +2637,59 @@ public sealed partial class MainWindow : Window, IDisposable
         ResourceMonitorDiskToolTip.IsOpen = false;
     }
 
-    private void SshWorkingDirectoryTimerOnTick(object? sender, object args)
+    private async void SshWorkingDirectoryTimerOnTick(object? sender, object args)
     {
         if (Sessions.SelectedItem is TabViewItem selectedTab &&
             _sessionTabs.TryGetValue(selectedTab, out RemoteSessionTab? sessionTab))
         {
             UpdateSshWorkingDirectory(sessionTab);
+            if (!sessionTab.IsReconnecting &&
+                sessionTab.Session is PuttyProtocolSession putty &&
+                putty.TryConsumeNetworkReconnectRequest())
+            {
+                await ReconnectSshSessionAsync(sessionTab);
+            }
+        }
+    }
+
+    private async Task ReconnectSshSessionAsync(RemoteSessionTab tab)
+    {
+        using var cancellation = new CancellationTokenSource();
+        var cancellationToken = cancellation.Token;
+        tab.BeginReconnect(cancellation);
+        try
+        {
+            _connectedConnectionIds.Remove(tab.Connection.Id);
+            await _sessionWorkspace.PrepareReconnectAsync(tab, cancellationToken);
+            await SshReconnectRetry.RunAsync(async token =>
+            {
+                if (_disposed || !IsSelectedSession(tab) || !_sessionTabs.ContainsValue(tab))
+                    throw new OperationCanceledException(token);
+                try
+                {
+                    await ConnectSessionAsync(tab, propagateFailure: true, cancellationToken: token);
+                }
+                finally
+                {
+                    if (IsSelectedSession(tab))
+                        ConnectSessionButton.IsEnabled = false;
+                }
+            }, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            // Closing the tab/window or selecting another tab cancels recovery.
+        }
+        catch (Exception exception)
+        {
+            if (IsSelectedSession(tab))
+                SessionStatus.Text = $"SSH reconnect failed: {exception.Message} Click Connect to retry.";
+        }
+        finally
+        {
+            tab.EndReconnect();
+            if (IsSelectedSession(tab))
+                ConnectSessionButton.IsEnabled = tab.State is not RemoteSessionTabState.Connected and not RemoteSessionTabState.Connecting;
         }
     }
 

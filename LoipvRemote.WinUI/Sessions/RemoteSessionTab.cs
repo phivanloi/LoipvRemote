@@ -6,6 +6,22 @@ namespace LoipvRemote.WinUI.Sessions;
 public sealed class RemoteSessionTab(ConnectionDefinition connection)
 {
     private CancellationTokenSource? _connectionCancellation;
+    private CancellationTokenSource? _reconnectCancellation;
+
+    /// <summary>Phiên đang trong quá trình khôi phục kết nối SSH.</summary>
+    internal bool IsReconnecting => _reconnectCancellation is not null;
+
+    internal void BeginReconnect(CancellationTokenSource cancellation)
+    {
+        // The reconnect operation owns/disposes this source. The tab borrows
+        // it only so closing/switching can cancel both backoff and TCP probing.
+        _reconnectCancellation = cancellation;
+    }
+
+    internal void EndReconnect()
+    {
+        _reconnectCancellation = null;
+    }
 
     public ConnectionDefinition Connection { get; } = connection ?? throw new ArgumentNullException(nameof(connection));
     public IProtocolSession? Session { get; private set; }
@@ -24,7 +40,11 @@ public sealed class RemoteSessionTab(ConnectionDefinition connection)
         return _connectionCancellation.Token;
     }
 
-    internal void CancelPendingConnection() => _connectionCancellation?.Cancel();
+    internal void CancelPendingConnection()
+    {
+        _connectionCancellation?.Cancel();
+        _reconnectCancellation?.Cancel();
+    }
 
     internal void MarkConnected(IProtocolSession session)
     {
@@ -56,6 +76,7 @@ public sealed class RemoteSessionTab(ConnectionDefinition connection)
     {
         CancelPendingConnection();
         ClearConnectionCancellation();
+        EndReconnect();
         Session = null;
         ResourceMonitor?.Dispose();
         ResourceMonitor = null;

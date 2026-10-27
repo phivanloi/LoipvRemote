@@ -138,6 +138,29 @@ public sealed class RemoteSessionWorkspace(IWinUIProtocolSessionFactory protocol
 
     public static void Deactivate(IEmbeddedSessionSurface? surface) => surface?.SetVisible(false);
 
+    /// <summary>Đóng transport lỗi và monitoring trước khi tạo phiên mới với credential mới giải mã.</summary>
+    internal async Task PrepareReconnectAsync(RemoteSessionTab tab, CancellationToken cancellationToken)
+    {
+        await tab.LifecycleGate.WaitAsync(cancellationToken);
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (tab.State == RemoteSessionTabState.Closed ||
+                !_tabs.TryGetValue(tab.Connection.Id, out var registered) || !ReferenceEquals(registered, tab))
+                throw new OperationCanceledException(cancellationToken);
+            tab.SetResourceMonitor(null);
+            if (tab.Session is { } session)
+            {
+                await DisposeSessionAsync(session, cancellationToken);
+                tab.MarkFaulted(session);
+            }
+        }
+        finally
+        {
+            tab.LifecycleGate.Release();
+        }
+    }
+
     public async Task CloseAsync(RemoteSessionTab tab, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(tab);

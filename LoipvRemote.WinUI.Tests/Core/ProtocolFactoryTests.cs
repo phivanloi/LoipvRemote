@@ -17,6 +17,58 @@ namespace LoipvRemote.WinUI.Tests.Core;
 
 public sealed class ProtocolFactoryTests
 {
+    [Test]
+    public async Task NetworkAcknowledgementIsConsumedOnceAndIgnoredAfterClosingTheTab()
+    {
+        Action? acknowledge = null;
+        var monitor = Substitute.For<IDisposable>();
+        using var session = new PuttyProtocolSession(
+            new RecordingPuttyProcessHost(), Substitute.For<IEmbeddedWindowOperations>(),
+            new PuttyConnectionOptions("putty.exe", new PuttyLaunchOptions { Hostname = "localhost", Port = 22 }),
+            new NoopPuttyEndpointProbe(), (_, callback) =>
+            {
+                acknowledge = callback;
+                return monitor;
+            });
+        await session.InitializeAsync();
+        await session.ConnectAsync();
+        Assert.That(session.TryConsumeNetworkReconnectRequest(), Is.False);
+        acknowledge!();
+        Assert.That(session.TryConsumeNetworkReconnectRequest(), Is.True);
+        Assert.That(session.TryConsumeNetworkReconnectRequest(), Is.False);
+        await session.CloseAsync();
+        monitor.Received(1).Dispose();
+        acknowledge();
+        Assert.That(session.TryConsumeNetworkReconnectRequest(), Is.False);
+    }
+
+    [Test]
+    public async Task ReplacementSshSessionUsesAFreshPasswordPipeWithoutExposingThePassword()
+    {
+        var hosts = new Queue<RecordingPuttyProcessHost>([new(), new()]);
+        var first = hosts.Peek();
+        var pipes = 0;
+        var factory = new PuttyProtocolFactory(() => hosts.Dequeue(), () => Substitute.For<IEmbeddedWindowOperations>(),
+            executableLocator: () => "putty.exe", passwordResolver: _ => "test-only",
+            passwordPipeFactory: (_, _) => "test-pipe-" + ++pipes,
+            endpointProbeFactory: () => new NoopPuttyEndpointProbe());
+        var definition = new ConnectionDefinition(Guid.NewGuid(), "Test SSH", "localhost", 22, ProtocolKind.Ssh2, CredentialReference.None);
+        using var original = factory.Create(definition);
+        await original.InitializeAsync();
+        await original.ConnectAsync();
+        await original.CloseAsync();
+        var second = hosts.Peek();
+        using var replacement = factory.Create(definition);
+        await replacement.InitializeAsync();
+        await replacement.ConnectAsync();
+        Assert.Multiple(() =>
+        {
+            Assert.That(pipes, Is.EqualTo(2));
+            Assert.That(first.StartOptions!.Arguments, Does.Contain("test-pipe-1").And.Not.Contain("test-only"));
+            Assert.That(second.StartOptions!.Arguments, Does.Contain("test-pipe-2").And.Not.Contain("test-only"));
+        });
+    }
+
     [TestCase(12, 96, 12)]
     [TestCase(12, 144, 12)]
     [TestCase(12, 192, 12)]

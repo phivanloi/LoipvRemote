@@ -42,7 +42,8 @@ public sealed class WinUIProtocolSessionFactory : IWinUIProtocolSessionFactory
             () => new PuttyProcessSession(WindowsJobObjectProcessTracker.AddProcess),
             () => new WindowsEmbeddedWindowOperations(),
             passwordResolver: definition => secretResolver.Resolve(definition, "Password"),
-            passwordPipeFactory: WindowsSecretPipeServer.StartPassword);
+            passwordPipeFactory: WindowsSecretPipeServer.StartPassword,
+            networkErrorMonitorFactory: WindowsPuttyNetworkErrorMonitor.TryCreate);
         _sshResourceMonitorFactory = new SshResourceMonitorFactory(
             definition => secretResolver.Resolve(definition, "Password"));
         _rdpResourceMonitorFactory = new RdpResourceMonitorFactory(

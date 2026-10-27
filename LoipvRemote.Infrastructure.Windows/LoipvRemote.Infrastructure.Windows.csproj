@@ -11,6 +11,7 @@
     <ProjectReference Include="..\LoipvRemote.Protocols.Putty\LoipvRemote.Protocols.Putty.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="LoipvRemote.WinUI.Tests" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" />
   </ItemGroup>
   <ItemGroup>

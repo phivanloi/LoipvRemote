@@ -12,6 +12,10 @@ public sealed class PuttyProtocolSession : IProtocolSession, IEmbeddedWindow, IE
     private readonly IEmbeddedWindowOperations _windowOperations;
     private readonly PuttyConnectionOptions _options;
     private readonly IPuttyEndpointProbe _endpointProbe;
+    private readonly Func<int, Action, IDisposable?>? _networkErrorMonitorFactory;
+    private IDisposable? _networkErrorMonitor;
+    private int _networkErrorAcknowledged;
+    private bool _networkRecoveryStopped;
     // Process.MainWindowHandle becomes zero as soon as Windows re-parents a
     // top-level PuTTY window.  Keep the HWND captured before SetParent so the
     // rest of the session can still remove chrome, size and focus that window.
@@ -28,12 +32,14 @@ public sealed class PuttyProtocolSession : IProtocolSession, IEmbeddedWindow, IE
         IPuttyProcessHost process,
         IEmbeddedWindowOperations windowOperations,
         PuttyConnectionOptions options,
-        IPuttyEndpointProbe endpointProbe)
+        IPuttyEndpointProbe endpointProbe,
+        Func<int, Action, IDisposable?>? networkErrorMonitorFactory = null)
     {
         _process = process ?? throw new ArgumentNullException(nameof(process));
         _windowOperations = windowOperations ?? throw new ArgumentNullException(nameof(windowOperations));
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _endpointProbe = endpointProbe ?? throw new ArgumentNullException(nameof(endpointProbe));
+        _networkErrorMonitorFactory = networkErrorMonitorFactory;
         _options.Validate();
     }
 
@@ -45,6 +51,10 @@ public sealed class PuttyProtocolSession : IProtocolSession, IEmbeddedWindow, IE
         ProtocolCapabilities.InputForwarding;
     public bool IsAvailable => State == ProtocolSessionState.Connected && _process.IsRunning;
     public bool IsFocusBlocked => HasBlockingTopLevelDialog();
+
+    /// <summary>Nhận một yêu cầu kết nối lại sau khi người dùng đóng thông báo lỗi mạng.</summary>
+    public bool TryConsumeNetworkReconnectRequest() =>
+        Interlocked.Exchange(ref _networkErrorAcknowledged, 0) != 0;
     public nint WindowHandle
     {
         get
@@ -154,6 +164,12 @@ public sealed class PuttyProtocolSession : IProtocolSession, IEmbeddedWindow, IE
             SshWorkingDirectorySessionLog.DeleteIfOwned(launchOptions.SessionLogPath);
         }
         State = started ? ProtocolSessionState.Connected : ProtocolSessionState.Faulted;
+        if (started && _process.IsRunning)
+            _networkErrorMonitor = _networkErrorMonitorFactory?.Invoke(_process.ProcessId, () =>
+            {
+                if (!_disposed && !_networkRecoveryStopped)
+                    Interlocked.Exchange(ref _networkErrorAcknowledged, 1);
+            });
         return started;
     }
 
@@ -432,6 +448,10 @@ public sealed class PuttyProtocolSession : IProtocolSession, IEmbeddedWindow, IE
 
     private void CloseCore()
     {
+        _networkRecoveryStopped = true;
+        _networkErrorMonitor?.Dispose();
+        _networkErrorMonitor = null;
+        Interlocked.Exchange(ref _networkErrorAcknowledged, 0);
         if (State == ProtocolSessionState.Closed)
             return;
 

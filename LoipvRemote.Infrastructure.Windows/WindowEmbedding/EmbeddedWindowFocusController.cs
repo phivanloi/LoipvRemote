@@ -51,7 +51,7 @@ public sealed class EmbeddedWindowFocusController
 
             if (ownerThreadId == embeddedThreadId)
             {
-                if (_getThreadFocusWindow(embeddedThreadId) == embeddedWindowHandle)
+                if (HasDurableEmbeddedFocus(ownerWindowHandle, embeddedWindowHandle, embeddedThreadId))
                     return true;
                 if (!BringOwnerToForeground(ownerWindowHandle))
                     return false;
@@ -98,7 +98,15 @@ public sealed class EmbeddedWindowFocusController
         uint embeddedThreadId)
     {
         IntPtr foregroundWindow = _getForegroundWindow();
-        return (foregroundWindow == ownerWindowHandle || foregroundWindow == embeddedWindowHandle) &&
+        if (foregroundWindow == IntPtr.Zero)
+            return false;
+
+        var foregroundThreadId = _getWindowThreadProcessId(foregroundWindow, out _);
+        var ownerThreadId = _getWindowThreadProcessId(ownerWindowHandle, out _);
+        // PuTTY nằm trong popup native do WinUI sở hữu. Khi quay lại app,
+        // foreground có thể là popup này thay vì HWND chính hoặc HWND PuTTY.
+        return (foregroundThreadId == ownerThreadId || foregroundThreadId == embeddedThreadId) &&
+            _getThreadFocusWindow(foregroundThreadId) == embeddedWindowHandle &&
             _getThreadFocusWindow(embeddedThreadId) == embeddedWindowHandle;
     }
 

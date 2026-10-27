@@ -10,9 +10,9 @@ internal static class ConnectionDialogValidation
             return "Enter a connection name.";
         if (string.IsNullOrWhiteSpace(host))
             return "Enter a host name or IP address.";
-        if (protocol is null)
+        if (protocol is null || !Enum.IsDefined(protocol.Value))
             return "Select a supported protocol.";
-        if (double.IsNaN(port) || port is < 1 or > 65535)
+        if (!double.IsFinite(port) || port is < 1 or > 65535 || port != Math.Truncate(port))
             return "Enter a port between 1 and 65535.";
 
         return null;
@@ -22,9 +22,9 @@ internal static class ConnectionDialogValidation
     {
         if (string.IsNullOrWhiteSpace(host))
             return "Enter a host name or IP address.";
-        if (protocol is null)
+        if (protocol is null || !Enum.IsDefined(protocol.Value))
             return "Select a supported protocol.";
-        if (double.IsNaN(port) || port is < 1 or > 65535)
+        if (!double.IsFinite(port) || port is < 1 or > 65535 || port != Math.Truncate(port))
             return "Enter a port between 1 and 65535.";
 
         return null;

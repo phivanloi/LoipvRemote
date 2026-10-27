@@ -1,5 +1,6 @@
-using LoipvRemote.Domain.Connections;
 using LoipvRemote.Application.Credentials;
+using LoipvRemote.Domain.Connections;
+using LoipvRemote.Infrastructure.Windows.Dpapi;
 using LoipvRemote.WinUI.Services;
 using NUnit.Framework;
 
@@ -7,6 +8,19 @@ namespace LoipvRemote.WinUI.Tests.Services;
 
 public sealed class ConnectionOptionsEditorTests
 {
+    [Test]
+    public void QuickConnectionPasswordCanBeDecryptedWithTheReturnedSessionIdentity()
+    {
+        var secrets = new DpapiStringSecretStore(new WindowsDpapiSecretProtector());
+        var editor = new ConnectionOptionsEditor(secrets);
+
+        var connection = editor.CreateQuickConnection("127.0.0.1", 22220, ProtocolKind.Ssh2, "e2e", "test-only");
+        var protectedPassword = connection.Options!.Values["$dpapi-secret:Password"];
+
+        Assert.That(secrets.Unprotect(protectedPassword,
+            ConnectionSecretPurposes.ForConnectionOption(connection.Id.ToString("D"), "Password")), Is.EqualTo("test-only"));
+    }
+
     [Test]
     public void BuildPersistsPasswordAsAConnectionScopedProtectedOption()
     {

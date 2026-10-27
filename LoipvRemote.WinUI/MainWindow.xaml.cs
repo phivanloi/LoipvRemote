@@ -1,28 +1,28 @@
+using System.Security.Cryptography;
+using LoipvRemote.Application.Configuration;
+using LoipvRemote.Application.Credentials;
+using LoipvRemote.Application.Sessions;
+using LoipvRemote.Domain.Connections;
+using LoipvRemote.Domain.Credentials;
+using LoipvRemote.Infrastructure.Persistence.Xml;
+using LoipvRemote.Infrastructure.Windows.WindowEmbedding;
+using LoipvRemote.Protocols.Abstractions;
+using LoipvRemote.Protocols.Putty;
+using LoipvRemote.WinUI.Hosting;
+using LoipvRemote.WinUI.Services;
+using LoipvRemote.WinUI.Sessions;
+using LoipvRemote.WinUI.ViewModels;
+using Microsoft.UI.Text;
+using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
-using Microsoft.UI.Windowing;
-using Microsoft.UI.Text;
-using System.Security.Cryptography;
-using LoipvRemote.WinUI.Services;
-using LoipvRemote.WinUI.ViewModels;
-using LoipvRemote.WinUI.Hosting;
-using LoipvRemote.WinUI.Sessions;
-using LoipvRemote.Domain.Connections;
-using LoipvRemote.Domain.Credentials;
-using LoipvRemote.Infrastructure.Persistence.Xml;
-using LoipvRemote.Infrastructure.Windows.WindowEmbedding;
-using LoipvRemote.Application.Configuration;
-using LoipvRemote.Application.Credentials;
-using LoipvRemote.Application.Sessions;
-using LoipvRemote.Protocols.Abstractions;
-using LoipvRemote.Protocols.Putty;
-using WinRT.Interop;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage.Pickers;
+using WinRT.Interop;
 
 namespace LoipvRemote.WinUI;
 
@@ -402,8 +402,21 @@ public sealed partial class MainWindow : Window, IDisposable
                 $"xaml-overlay-occlusion-recovered type={exception.GetType().Name} hresult=0x{exception.HResult:X8}"));
     }
 
+    private bool CanEditConnectionStore()
+    {
+        if (_connectionCatalog.IsLoaded && !_connectionCatalog.Settings.IsReadOnly)
+            return true;
+
+        ConnectionStatus.Text = _connectionCatalog.IsLoaded
+            ? "The selected connection store is read-only."
+            : "Open a writable connection store in Config before editing.";
+        return false;
+    }
     private async void NewConnectionButton_Click(object sender, RoutedEventArgs args)
     {
+        if (!CanEditConnectionStore())
+            return;
+
         var nameBox = new TextBox { Header = "Name", PlaceholderText = "Production server" };
         var hostBox = new TextBox { Header = "Host", PlaceholderText = "host.example.com" };
         var portBox = new NumberBox { Header = "Port", Value = 22, SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Compact };
@@ -531,14 +544,12 @@ public sealed partial class MainWindow : Window, IDisposable
             return;
         }
 
-        Guid connectionId = Guid.NewGuid();
-        string optionsText = string.IsNullOrWhiteSpace(usernameBox.Text) ? string.Empty : $"Username={usernameBox.Text.Trim()}";
-        ConnectionNodeOptions? options = _connectionOptionsEditor.Build(connectionId, optionsText, passwordBox.Password, clearStoredPassword: false);
-        ConnectionDefinition definition = QuickConnectionDefinitionFactory.Create(
+        ConnectionDefinition definition = _connectionOptionsEditor.CreateQuickConnection(
             hostBox.Text,
             (int)portBox.Value,
             protocol,
-            options);
+            usernameBox.Text,
+            passwordBox.Password);
         RemoteSessionTab tab = _sessionWorkspace.Open(definition);
         TabViewItem tabItem = CreateSessionTabItem(tab);
         _sessionTabs.Add(tabItem, tab);
@@ -603,6 +614,9 @@ public sealed partial class MainWindow : Window, IDisposable
 
     private async void NewFolderButton_Click(object sender, RoutedEventArgs args)
     {
+        if (!CanEditConnectionStore())
+            return;
+
         var nameBox = new TextBox { Header = "Folder name", PlaceholderText = "Production" };
         TextBlock validationText = CreateDialogValidationText();
         var dialog = new ContentDialog
@@ -629,7 +643,7 @@ public sealed partial class MainWindow : Window, IDisposable
             await LoadConnectionTreeAsync();
             ConnectionStatus.Text = "Folder saved.";
         }
-        catch (Exception exception) when (exception is ArgumentException or InvalidDataException or IOException)
+        catch (Exception exception) when (exception is ArgumentException or InvalidDataException or IOException or UnauthorizedAccessException or InvalidOperationException or CryptographicException or FormatException)
         {
             ConnectionStatus.Text = $"Folder was not saved: {exception.Message}";
         }
@@ -637,6 +651,9 @@ public sealed partial class MainWindow : Window, IDisposable
 
     private async void ImportConnectionsButton_Click(object sender, RoutedEventArgs args)
     {
+        if (!CanEditConnectionStore())
+            return;
+
         var picker = new FileOpenPicker();
         picker.FileTypeFilter.Add(".xml");
         InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(this));
@@ -702,6 +719,9 @@ public sealed partial class MainWindow : Window, IDisposable
 
     private async void EditSelectedNodeButton_Click(object sender, RoutedEventArgs args)
     {
+        if (!CanEditConnectionStore())
+            return;
+
         if (_selectedFolder is not null)
         {
             await EditFolderAsync(_selectedFolder);
@@ -794,7 +814,7 @@ public sealed partial class MainWindow : Window, IDisposable
             await LoadConnectionTreeAsync();
             ConnectionStatus.Text = "Connection saved. Existing session tabs were closed.";
         }
-        catch (Exception exception) when (exception is ArgumentException or InvalidDataException or IOException)
+        catch (Exception exception) when (exception is ArgumentException or InvalidDataException or IOException or UnauthorizedAccessException or InvalidOperationException or CryptographicException or FormatException)
         {
             ConnectionStatus.Text = $"Connection was not saved: {exception.Message}";
         }
@@ -847,7 +867,7 @@ public sealed partial class MainWindow : Window, IDisposable
             await LoadConnectionTreeAsync();
             ConnectionStatus.Text = "Folder saved. Its options apply to descendant connections unless overridden.";
         }
-        catch (Exception exception) when (exception is ArgumentException or InvalidDataException or IOException)
+        catch (Exception exception) when (exception is ArgumentException or InvalidDataException or IOException or UnauthorizedAccessException or InvalidOperationException or CryptographicException or FormatException)
         {
             ConnectionStatus.Text = $"Folder was not saved: {exception.Message}";
         }
@@ -916,16 +936,6 @@ public sealed partial class MainWindow : Window, IDisposable
         _hotKeyDeactivationCancellation = null;
         SetSessionHotKeysEnabled(true);
 
-        // A click on Minimize/Maximize/Close first reactivates the WinUI
-        // owner while PuTTY still owns the foreign input queue. Restoring SSH
-        // focus in this activation pass steals the mouse-up and makes the
-        // caption action require repeated clicks.
-        if (IsEmbeddedFocusRestoreSuppressed())
-        {
-            _windowWasDeactivated = false;
-            return;
-        }
-
         // Window.Activated can be raised more than once while the native
         // child processes a focus message. Restore focus only for a real
         // return from another application, never for an already-active app.
@@ -933,17 +943,23 @@ public sealed partial class MainWindow : Window, IDisposable
             return;
 
         _windowWasDeactivated = false;
-        _embeddedSessionSurface?.RestoreFocusAfterTransition();
+        if (_xamlPopupDepth == 0 && !IsEmbeddedFocusRestoreSuppressed())
+            _embeddedSessionSurface?.RestoreFocusAfterTransition();
         QueueSessionFocusAfterWindowActivation();
     }
 
     private void QueueSessionFocusAfterWindowActivation()
     {
-        // WinUI may move focus back to its XAML root after the Activated
-        // callback returns. Queue one more restore for the next UI turn so
-        // the embedded terminal owns keyboard focus before the user types.
-        _ = DispatcherQueue.TryEnqueue(() =>
+        // Chờ thao tác caption hoàn tất rồi khôi phục focus khi quay lại app.
+        // Dialog hoặc lần click mới vào shell phải giữ quyền nhận bàn phím.
+        _ = DispatcherQueue.TryEnqueue(async () =>
         {
+            var remaining = Volatile.Read(ref _embeddedFocusRestoreSuppressedUntil) - Environment.TickCount64;
+            if (remaining > 0)
+                await Task.Delay(TimeSpan.FromMilliseconds(remaining));
+            if (_disposed || _windowMinimized || _xamlPopupDepth > 0 || IsEmbeddedFocusRestoreSuppressed())
+                return;
+
             _embeddedSessionSurface?.RestoreFocusAfterTransition();
         });
     }
@@ -1216,8 +1232,9 @@ public sealed partial class MainWindow : Window, IDisposable
         WelcomeContent.Visibility = Visibility.Collapsed;
         ConfigContent.Visibility = Visibility.Visible;
         SessionContent.Visibility = Visibility.Collapsed;
-        if (_connectionCatalog.IsLoaded)
-            BindStoreSettings(_connectionCatalog.Settings);
+        BindStoreSettings(_connectionCatalog.IsLoaded
+            ? _connectionCatalog.Settings
+            : ConnectionStoreSettings.CreateDefault());
         _ = RefreshSharedCredentialsAsync();
     }
 
@@ -1259,7 +1276,7 @@ public sealed partial class MainWindow : Window, IDisposable
             ConnectionStatus.Text = result.Message;
             _selectedConnection = null;
         }
-        catch (Exception exception) when (exception is ArgumentException or InvalidDataException or IOException or UnauthorizedAccessException or InvalidOperationException)
+        catch (Exception exception) when (exception is ArgumentException or InvalidDataException or IOException or UnauthorizedAccessException or InvalidOperationException or System.Xml.XmlException or System.Data.Common.DbException)
         {
             StoreConfigurationStatus.Text = $"Storage change failed: {exception.Message}";
         }
@@ -1288,7 +1305,7 @@ public sealed partial class MainWindow : Window, IDisposable
             await _connectionCatalog.ChangeStoreAsync(_connectionCatalog.Settings with { Theme = theme }, migrateCurrentTree: false);
             StoreConfigurationStatus.Text = $"Theme set to {theme}.";
         }
-        catch (Exception exception) when (exception is ArgumentException or IOException or UnauthorizedAccessException)
+        catch (Exception exception) when (exception is ArgumentException or IOException or UnauthorizedAccessException or InvalidDataException or System.Xml.XmlException or System.Data.Common.DbException)
         {
             StoreConfigurationStatus.Text = $"Theme could not be saved: {exception.Message}";
         }
@@ -1417,7 +1434,7 @@ public sealed partial class MainWindow : Window, IDisposable
             await RefreshSharedCredentialsAsync();
             CredentialConfigurationStatus.Text = "Shared credential deleted.";
         }
-        catch (Exception exception) when (exception is ArgumentException or IOException or UnauthorizedAccessException)
+        catch (Exception exception) when (exception is ArgumentException or IOException or UnauthorizedAccessException or InvalidDataException or System.Xml.XmlException or System.Data.Common.DbException)
         {
             CredentialConfigurationStatus.Text = $"Credential was not deleted: {exception.Message}";
         }
@@ -1642,7 +1659,7 @@ public sealed partial class MainWindow : Window, IDisposable
             await LoadConnectionTreeAsync();
             ConnectionStatus.Text = "Selection moved and saved.";
         }
-        catch (Exception exception) when (exception is ArgumentException or InvalidDataException or IOException)
+        catch (Exception exception) when (exception is ArgumentException or InvalidDataException or IOException or UnauthorizedAccessException or InvalidOperationException or CryptographicException or FormatException)
         {
             ConnectionStatus.Text = $"Selection was not moved: {exception.Message}";
         }
@@ -1845,6 +1862,9 @@ public sealed partial class MainWindow : Window, IDisposable
 
     private async void DuplicateSelectedNodeButton_Click(object sender, RoutedEventArgs args)
     {
+        if (!CanEditConnectionStore())
+            return;
+
         if (_selectedConnection is null && _selectedFolder is null)
         {
             ConnectionStatus.Text = "Select a folder or connection before duplicating it.";
@@ -1860,7 +1880,7 @@ public sealed partial class MainWindow : Window, IDisposable
             await LoadConnectionTreeAsync();
             ConnectionStatus.Text = _selectedConnection is not null ? "Connection duplicated." : "Folder subtree duplicated.";
         }
-        catch (Exception exception) when (exception is ArgumentException or InvalidDataException or IOException)
+        catch (Exception exception) when (exception is ArgumentException or InvalidDataException or IOException or UnauthorizedAccessException or InvalidOperationException or CryptographicException or FormatException)
         {
             ConnectionStatus.Text = $"Selection was not duplicated: {exception.Message}";
         }
@@ -1871,6 +1891,9 @@ public sealed partial class MainWindow : Window, IDisposable
 
     private async void DeleteSelectedNodeButton_Click(object sender, RoutedEventArgs args)
     {
+        if (!CanEditConnectionStore())
+            return;
+
         if (_selectedTreeItem is null)
         {
             ConnectionStatus.Text = "Select a folder or connection before deleting it.";
@@ -1911,7 +1934,7 @@ public sealed partial class MainWindow : Window, IDisposable
             await LoadConnectionTreeAsync();
             ConnectionStatus.Text = "Selection deleted.";
         }
-        catch (Exception exception) when (exception is ArgumentException or InvalidDataException or IOException)
+        catch (Exception exception) when (exception is ArgumentException or InvalidDataException or IOException or UnauthorizedAccessException or InvalidOperationException or CryptographicException or FormatException)
         {
             ConnectionStatus.Text = $"Selection was not deleted: {exception.Message}";
         }
@@ -2091,6 +2114,9 @@ public sealed partial class MainWindow : Window, IDisposable
 
     private async void RenameSelectedFolderButton_Click(object sender, RoutedEventArgs args)
     {
+        if (!CanEditConnectionStore())
+            return;
+
         if (_selectedFolder is null)
         {
             ConnectionStatus.Text = "Select a folder before renaming it.";
@@ -2136,7 +2162,7 @@ public sealed partial class MainWindow : Window, IDisposable
             await LoadConnectionTreeAsync();
             ConnectionStatus.Text = "Folder renamed.";
         }
-        catch (Exception exception) when (exception is ArgumentException or InvalidDataException or IOException)
+        catch (Exception exception) when (exception is ArgumentException or InvalidDataException or IOException or UnauthorizedAccessException or InvalidOperationException or CryptographicException or FormatException)
         {
             ConnectionStatus.Text = $"Folder was not renamed: {exception.Message}";
         }
@@ -2144,6 +2170,9 @@ public sealed partial class MainWindow : Window, IDisposable
 
     private async void MoveSelectedNodeButton_Click(object sender, RoutedEventArgs args)
     {
+        if (!CanEditConnectionStore())
+            return;
+
         if (_selectedTreeItem is null)
         {
             ConnectionStatus.Text = "Select a folder or connection before moving it.";
@@ -2183,7 +2212,7 @@ public sealed partial class MainWindow : Window, IDisposable
             await LoadConnectionTreeAsync();
             ConnectionStatus.Text = "Selection moved.";
         }
-        catch (Exception exception) when (exception is ArgumentException or InvalidDataException or IOException)
+        catch (Exception exception) when (exception is ArgumentException or InvalidDataException or IOException or UnauthorizedAccessException or InvalidOperationException or CryptographicException or FormatException)
         {
             ConnectionStatus.Text = $"Selection was not moved: {exception.Message}";
         }

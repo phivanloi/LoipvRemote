@@ -1,4 +1,5 @@
 using LoipvRemote.Application.Credentials;
+using LoipvRemote.Application.Sessions;
 using LoipvRemote.Domain.Connections;
 
 namespace LoipvRemote.WinUI.Services;
@@ -12,6 +13,14 @@ public sealed class ConnectionOptionsEditor(IStringSecretStore secretStore)
 {
     private const string ProtectedSecretPrefix = "$dpapi-secret:";
     private readonly IStringSecretStore _secretStore = secretStore ?? throw new ArgumentNullException(nameof(secretStore));
+
+    /// <summary>Tạo kết nối tạm và bảo vệ password theo định danh của session.</summary>
+    internal ConnectionDefinition CreateQuickConnection(string host, int port, ProtocolKind protocol, string username, string? password)
+    {
+        var connection = QuickConnectionDefinitionFactory.Create(host, port, protocol);
+        var options = Build(connection.Id, string.Empty, password, clearStoredPassword: false);
+        return connection with { Options = WithOptionValue(options, "Username", username) };
+    }
 
     public ConnectionNodeOptions? Build(
         Guid connectionId,

@@ -5,6 +5,31 @@ namespace LoipvRemote.WinUI.Tests.Hosting;
 
 public sealed class EmbeddedWindowFocusControllerTests
 {
+    [TestCase(true, true)]
+    [TestCase(false, false)]
+    public void OwnedPopupCountsAsForegroundOnlyWhenItRoutesKeyboardInputToTheSshChild(
+        bool keyboardOnSsh,
+        bool expected)
+    {
+        var owner = (IntPtr)10;
+        var embedded = (IntPtr)20;
+        var popup = (IntPtr)30;
+        var controller = new EmbeddedWindowFocusController(
+            (IntPtr window, out uint processId) =>
+            {
+                processId = window == embedded ? 2u : 1u;
+                return window == embedded ? 200u : 100u;
+            },
+            (_, _, _) => true,
+            _ => embedded,
+            () => embedded,
+            () => popup,
+            _ => true,
+            thread => thread == 200 || keyboardOnSsh ? embedded : owner);
+
+        Assert.That(controller.TryFocus(owner, embedded), Is.EqualTo(expected));
+    }
+
     [Test]
     public void IsDescendantWindowWalksCrossProcessParentChain()
     {

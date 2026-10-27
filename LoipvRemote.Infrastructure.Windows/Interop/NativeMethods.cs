@@ -236,6 +236,7 @@ namespace LoipvRemote.Infrastructure.Windows.Interop
             public int flags;
         }
 
+        [StructLayout(LayoutKind.Sequential)]
         public struct WINDOWPLACEMENT
         {
             public uint length;
@@ -246,18 +247,28 @@ namespace LoipvRemote.Infrastructure.Windows.Interop
             public RECT rcNormalPosition;
         }
 
+        /// <summary>Tọa độ Win32 dùng LONG 32-bit trên cả Windows x64 và ARM64.</summary>
+        [StructLayout(LayoutKind.Sequential)]
         public struct POINT
         {
-            public long x;
-            public long y;
+            /// <summary>Tọa độ ngang.</summary>
+            public int x;
+            /// <summary>Tọa độ dọc.</summary>
+            public int y;
         }
 
+        /// <summary>Hình chữ nhật Win32 có kích thước cố định 16 byte.</summary>
+        [StructLayout(LayoutKind.Sequential)]
         public struct RECT
         {
-            public long left;
-            public long top;
-            public long right;
-            public long bottom;
+            /// <summary>Cạnh trái.</summary>
+            public int left;
+            /// <summary>Cạnh trên.</summary>
+            public int top;
+            /// <summary>Cạnh phải.</summary>
+            public int right;
+            /// <summary>Cạnh dưới.</summary>
+            public int bottom;
         }
 
         #endregion

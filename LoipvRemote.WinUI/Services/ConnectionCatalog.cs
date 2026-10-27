@@ -1,5 +1,5 @@
-using LoipvRemote.Domain.Connections;
 using LoipvRemote.Application.Configuration;
+using LoipvRemote.Domain.Connections;
 
 namespace LoipvRemote.WinUI.Services;
 
@@ -22,21 +22,16 @@ public sealed class ConnectionCatalog
 
     public async Task<ConnectionCatalogLoadResult> LoadAsync(CancellationToken cancellationToken = default)
     {
-        _settings = await _settingsRepository.LoadAsync(cancellationToken).ConfigureAwait(false);
-        if (_settings.Kind == ConnectionDefinitionStoreKind.Xml && !File.Exists(_settings.Location))
-        {
-            SetTree(ConnectionTreeDefinition.Empty);
-            return new ConnectionCatalogLoadResult(_tree, _connections, "No connection file has been created yet.");
-        }
-
-        ConnectionTreeDefinition tree = await _storeConfiguration.LoadAsync(_settings.ToOptions(), cancellationToken)
-            .ConfigureAwait(false);
-
+        var settings = await _settingsRepository.LoadAsync(cancellationToken).ConfigureAwait(false);
+        var tree = await LoadTreeAsync(settings, cancellationToken).ConfigureAwait(false);
+        _settings = settings;
         SetTree(tree);
         return new ConnectionCatalogLoadResult(
             _tree,
             _connections,
-            $"{tree.Connections.Count} connections loaded from {_settings.Kind}.");
+            settings.Kind == ConnectionDefinitionStoreKind.Xml && !File.Exists(settings.Location)
+                ? "No connection file has been created yet."
+                : $"{tree.Connections.Count} connections loaded from {settings.Kind}.");
     }
 
     public ConnectionDefinition? FindConnection(Guid id) =>
@@ -83,12 +78,17 @@ public sealed class ConnectionCatalog
             await _storeConfiguration.SaveAsync(settings.ToOptions(), _tree, cancellationToken).ConfigureAwait(false);
         }
 
+        var tree = await LoadTreeAsync(settings, cancellationToken).ConfigureAwait(false);
         await _settingsRepository.SaveAsync(settings, cancellationToken).ConfigureAwait(false);
         _settings = settings;
-        ConnectionTreeDefinition tree = await _storeConfiguration.LoadAsync(settings.ToOptions(), cancellationToken).ConfigureAwait(false);
         SetTree(tree);
         return new ConnectionCatalogLoadResult(_tree, _connections, $"{tree.Connections.Count} connections loaded from {settings.Kind}.");
     }
+
+    private Task<ConnectionTreeDefinition> LoadTreeAsync(ConnectionStoreSettings settings, CancellationToken cancellationToken) =>
+        settings.Kind == ConnectionDefinitionStoreKind.Xml && !File.Exists(settings.Location)
+            ? Task.FromResult(ConnectionTreeDefinition.Empty)
+            : _storeConfiguration.LoadAsync(settings.ToOptions(), cancellationToken);
 
     private void SetTree(ConnectionTreeDefinition tree)
     {

@@ -1,10 +1,10 @@
-using LoipvRemote.Infrastructure.Windows.WindowEmbedding;
+using System.Runtime.InteropServices;
 using LoipvRemote.Domain.Protocols;
+using LoipvRemote.Infrastructure.Windows.WindowEmbedding;
 using LoipvRemote.Protocols.Abstractions;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
-using System.Runtime.InteropServices;
 using Windows.Foundation;
 using WinRT.Interop;
 
@@ -318,7 +318,7 @@ public sealed class Win32EmbeddedSessionSurface : IEmbeddedSessionSurface, IDisp
 
     private bool TryFocusSession(IEmbeddedWindow? targetSession)
     {
-        if (_disposed || !_isVisible || targetSession is null ||
+        if (_disposed || !_isVisible || targetSession is null || !HasForegroundOwnership() ||
             !ReferenceEquals(_session, targetSession))
         {
             return false;
@@ -350,6 +350,19 @@ public sealed class Win32EmbeddedSessionSurface : IEmbeddedSessionSurface, IDisp
         EmbeddingDiagnostics.Write(
             $"session-focus-attempt session={targetSession.GetType().Name} focused={focused} child={FormatHandle(targetSession.WindowHandle)}");
         return focused;
+    }
+
+    private bool HasForegroundOwnership()
+    {
+        var window = GetForegroundWindow();
+        for (var depth = 0; window != IntPtr.Zero && depth < 64; depth++)
+        {
+            if (window == _ownerWindowHandle)
+                return true;
+            window = GetParent(window);
+        }
+
+        return false;
     }
 
     private async ValueTask<bool> DispatchFocusAttemptAsync(
@@ -636,6 +649,9 @@ public sealed class Win32EmbeddedSessionSurface : IEmbeddedSessionSurface, IDisp
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern IntPtr GetParent(IntPtr windowHandle);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern bool IsWindowVisible(IntPtr windowHandle);

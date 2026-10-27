@@ -1,9 +1,9 @@
+using LoipvRemote.Application.Configuration;
+using LoipvRemote.Application.Credentials;
 using LoipvRemote.Domain.Connections;
 using LoipvRemote.Domain.Credentials;
 using LoipvRemote.Infrastructure.Persistence;
 using LoipvRemote.Infrastructure.Persistence.Xml;
-using LoipvRemote.Application.Configuration;
-using LoipvRemote.Application.Credentials;
 using LoipvRemote.WinUI.Services;
 using LoipvRemote.WinUI.ViewModels;
 using NUnit.Framework;
@@ -12,6 +12,92 @@ namespace LoipvRemote.WinUI.Tests.Services;
 
 public sealed class ConnectionCatalogTests
 {
+    [Test]
+    public async Task FailedStoreChangePreservesTheCurrentTreeAndPersistedSelection()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "LoipvRemote.WinUI.Tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var sourceFile = Path.Combine(directory, "source.xml");
+            var targetFile = Path.Combine(directory, "broken.xml");
+            var settingsFile = Path.Combine(directory, "settings.json");
+            await new XmlConnectionDefinitionStore(sourceFile).SaveAsync(new([], [
+                new ConnectionDefinition(Guid.NewGuid(), "Existing", "localhost", 22, ProtocolKind.Ssh2, CredentialReference.None)]));
+            await File.WriteAllTextAsync(targetFile, "<connections><broken>");
+            var catalog = CreateCatalog(settingsFile, sourceFile);
+            await catalog.LoadAsync();
+            var originalTree = catalog.Tree;
+            var originalSettings = catalog.Settings;
+
+            Assert.ThrowsAsync<System.Xml.XmlException>(async () => await catalog.ChangeStoreAsync(
+                new(ConnectionDefinitionStoreKind.Xml, targetFile), migrateCurrentTree: false));
+
+            var persisted = await new ConnectionStoreSettingsRepository(new ReversibleSecretStore(), settingsFile).LoadAsync();
+            Assert.Multiple(() =>
+            {
+                Assert.That(catalog.Tree, Is.SameAs(originalTree));
+                Assert.That(catalog.Settings, Is.EqualTo(originalSettings));
+                Assert.That(persisted, Is.EqualTo(originalSettings));
+            });
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Test]
+    public async Task OpenMissingXmlSelectsAnEmptyStoreWithoutOverwritingThePreviousFile()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "LoipvRemote.WinUI.Tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var sourceFile = Path.Combine(directory, "source.xml");
+            var targetFile = Path.Combine(directory, "new.xml");
+            await new XmlConnectionDefinitionStore(sourceFile).SaveAsync(ConnectionTreeDefinition.Empty);
+            var catalog = CreateCatalog(Path.Combine(directory, "settings.json"), sourceFile);
+            await catalog.LoadAsync();
+
+            var result = await catalog.ChangeStoreAsync(new(ConnectionDefinitionStoreKind.Xml, targetFile), false);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.Tree.Connections, Is.Empty);
+                Assert.That(catalog.Settings.Location, Is.EqualTo(targetFile));
+                Assert.That(File.Exists(targetFile), Is.False);
+                Assert.That(File.Exists(sourceFile), Is.True);
+            });
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Test]
+    public async Task FailedInitialLoadDoesNotExposeAnEmptyWritableCatalog()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "LoipvRemote.WinUI.Tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var sourceFile = Path.Combine(directory, "broken.xml");
+            await File.WriteAllTextAsync(sourceFile, "<connections><broken>");
+            var catalog = CreateCatalog(Path.Combine(directory, "settings.json"), sourceFile);
+
+            Assert.ThrowsAsync<System.Xml.XmlException>(async () => await catalog.LoadAsync());
+            Assert.That(catalog.IsLoaded, Is.False);
+            Assert.ThrowsAsync<InvalidOperationException>(async () => await catalog.SaveAsync(ConnectionTreeDefinition.Empty));
+            Assert.That(await File.ReadAllTextAsync(sourceFile), Is.EqualTo("<connections><broken>"));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
     [Test]
     public async Task LoadAsyncReturnsAnEmptyTreeWhenTheSelectedXmlFileDoesNotExist()
     {

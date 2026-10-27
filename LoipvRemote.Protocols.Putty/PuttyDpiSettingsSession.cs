@@ -5,8 +5,8 @@ using System.Runtime.Versioning;
 namespace LoipvRemote.Protocols.Putty;
 
 /// <summary>
-/// Creates a one-use PuTTY saved session whose terminal font is normalized for
-/// the DPI of the WinUI native host. User saved sessions are never modified.
+/// Tạo cấu hình PuTTY dùng một lần với font phù hợp DPI và keepalive mặc định.
+/// Không sửa cấu hình PuTTY đã lưu của người dùng.
 /// </summary>
 public sealed class PuttyDpiSettingsSession : IDisposable
 {
@@ -31,7 +31,7 @@ public sealed class PuttyDpiSettingsSession : IDisposable
 
         uint dpi = GetDpiForWindow(hostWindowHandle);
         if (dpi == 0)
-            return null;
+            dpi = 96;
 
         string sourceName = string.IsNullOrWhiteSpace(sourceSessionName) ? "Default Settings" : sourceSessionName;
         string sessionName = $"LoipvRemote DPI {Guid.NewGuid():N}";
@@ -42,6 +42,7 @@ public sealed class PuttyDpiSettingsSession : IDisposable
             using RegistryKey? source = sessions.OpenSubKey(EscapeSessionName(sourceName), writable: false);
             using RegistryKey target = sessions.CreateSubKey(registrySessionName, writable: true);
             CopyValues(source, target);
+            ApplyDefaultKeepalive(target, sourceSessionName);
 
             int sourceFontHeight = source?.GetValue("FontHeight") is int fontHeight && fontHeight > 0
                 ? fontHeight
@@ -65,6 +66,25 @@ public sealed class PuttyDpiSettingsSession : IDisposable
         if (OperatingSystem.IsWindows())
             TryDelete(_registrySessionName);
         GC.SuppressFinalize(this);
+    }
+
+    [SupportedOSPlatform("windows")]
+    internal static void ApplyDefaultKeepalive(RegistryKey target, string sourceSessionName)
+    {
+        // Imported connections can explicitly name PuTTY's default profile.
+        // A genuinely custom saved session owns its keepalive policy, even 0.
+        if (!string.IsNullOrWhiteSpace(sourceSessionName) &&
+            !string.Equals(sourceSessionName, "Default Settings", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        // PuTTY stores the interval as minutes plus seconds. Preserve an
+        // existing non-zero interval; only replace its disabled default.
+        if (target.GetValue("PingInterval") is int minutes && minutes > 0 ||
+            target.GetValue("PingIntervalSecs") is int seconds && seconds > 0)
+            return;
+
+        target.SetValue("PingInterval", 0, RegistryValueKind.DWord);
+        target.SetValue("PingIntervalSecs", 30, RegistryValueKind.DWord);
     }
 
     [SupportedOSPlatform("windows")]

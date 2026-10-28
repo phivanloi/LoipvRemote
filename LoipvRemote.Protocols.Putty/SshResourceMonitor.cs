@@ -63,7 +63,8 @@ public sealed class SshResourceMonitor : IRemoteResourceMonitor
 
             _isActive = true;
             _cancellation = new CancellationTokenSource();
-            _ = Task.Run(() => RunAsync(_cancellation.Token));
+            var token = _cancellation.Token;
+            _ = Task.Run(() => RunAsync(token));
         }
     }
 
@@ -303,6 +304,7 @@ internal sealed class SshNetLinuxResourceCollector : ILinuxResourceCollector
             DisconnectClient();
             using PrivateKeyFile? privateKey = _connection.OpenPrivateKey();
             ConnectionInfo connectionInfo = _connection.CreateConnectionInfo(privateKey);
+            connectionInfo.Timeout = TimeSpan.FromSeconds(5);
             PuttyHostKeyTrustStore.PreferCachedHostKeyAlgorithms(connectionInfo, _connection.Host, _connection.Port);
             var client = new SshClient(connectionInfo);
             bool hostKeyRejected = false;

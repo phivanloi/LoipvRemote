@@ -18,6 +18,37 @@ namespace LoipvRemote.WinUI.Tests.Core;
 public sealed class ProtocolFactoryTests
 {
     [Test]
+    public async Task ClosingSshYieldsWhileStoppingTheChildProcessAndRemovesTheHookBeforeWaiting()
+    {
+        using var release = new ManualResetEventSlim();
+        var process = Substitute.For<IPuttyProcessHost>();
+        process.IsRunning.Returns(true);
+        process.ProcessId.Returns(1);
+        process.Start(Arg.Any<PuttyProcessStartOptions>(), Arg.Any<EventHandler>()).Returns(true);
+        process.When(host => host.StopProcess()).Do(_ => release.Wait(TimeSpan.FromSeconds(2)));
+        var hookThread = 0;
+        var monitor = Substitute.For<IDisposable>();
+        monitor.When(item => item.Dispose()).Do(_ => hookThread = Environment.CurrentManagedThreadId);
+        using var session = new PuttyProtocolSession(process, Substitute.For<IEmbeddedWindowOperations>(),
+            new("putty.exe", new() { Hostname = "localhost", Port = 22 }), new NoopPuttyEndpointProbe(), (_, _) => monitor);
+        await session.InitializeAsync();
+        await session.ConnectAsync();
+        var callingThread = Environment.CurrentManagedThreadId;
+        var elapsed = System.Diagnostics.Stopwatch.StartNew();
+        var closing = session.CloseAsync().AsTask();
+        try
+        {
+            Assert.That(elapsed.Elapsed, Is.LessThan(TimeSpan.FromMilliseconds(500)));
+            Assert.That(hookThread, Is.EqualTo(callingThread));
+        }
+        finally
+        {
+            release.Set();
+            await closing.WaitAsync(TimeSpan.FromSeconds(3));
+        }
+    }
+
+    [Test]
     public async Task NetworkAcknowledgementIsConsumedOnceAndIgnoredAfterClosingTheTab()
     {
         Action? acknowledge = null;

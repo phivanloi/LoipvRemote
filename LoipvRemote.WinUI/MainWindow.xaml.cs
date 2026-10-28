@@ -50,7 +50,7 @@ public sealed partial class MainWindow : Window, IDisposable
     private Win32EmbeddedSessionSurface? _embeddedSessionSurface;
     private readonly Dictionary<TreeViewNode, ConnectionTreeItem> _connectionNodes = [];
     private readonly Dictionary<TabViewItem, RemoteSessionTab> _sessionTabs = [];
-    private readonly HashSet<RemoteSessionTab> _subscribedResourceMonitorTabs = [];
+    private readonly Dictionary<RemoteSessionTab, IRemoteResourceMonitor> _subscribedResourceMonitorTabs = [];
     private readonly HashSet<FrameworkElement> _hoveredResourceMonitorDetailChips = [];
     private readonly HashSet<Guid> _connectedConnectionIds = [];
     private readonly HashSet<Guid> _pendingRestoredConnectionIds = [];
@@ -1105,6 +1105,7 @@ public sealed partial class MainWindow : Window, IDisposable
         _disposed = true;
         _sshWorkingDirectoryTimer.Stop();
         _sshWorkingDirectoryTimer.Tick -= SshWorkingDirectoryTimerOnTick;
+        _subscribedResourceMonitorTabs.Clear();
         _embeddedSessionSurface?.Dispose();
         _embeddedSessionSurface = null;
         AppWindow.Changed -= AppWindowOnChanged;
@@ -2275,6 +2276,7 @@ public sealed partial class MainWindow : Window, IDisposable
         {
             if (!_sessionTabs.Remove(tab, out RemoteSessionTab? sessionTab))
                 return;
+            _subscribedResourceMonitorTabs.Remove(sessionTab);
 
             bool closingSelectedTab = ReferenceEquals(sender.SelectedItem, tab);
             TabViewItem[] sessionTabsBeforeClose = sender.TabItems
@@ -2323,6 +2325,7 @@ public sealed partial class MainWindow : Window, IDisposable
             foreach (TabViewItem tab in _sessionTabs.Keys.ToArray())
                 Sessions.TabItems.Remove(tab);
             _sessionTabs.Clear();
+            _subscribedResourceMonitorTabs.Clear();
             _pendingRestoredConnectionIds.Clear();
             QueueTitleBarInteractiveRegionUpdate();
             _connectedConnectionIds.Clear();
@@ -2516,8 +2519,11 @@ public sealed partial class MainWindow : Window, IDisposable
     private void SubscribeResourceMonitor(RemoteSessionTab tab)
     {
         IRemoteResourceMonitor? monitor = tab.ResourceMonitor;
-        if (monitor is null || !_subscribedResourceMonitorTabs.Add(tab))
+        if (monitor is null ||
+            _subscribedResourceMonitorTabs.TryGetValue(tab, out var subscribed) && ReferenceEquals(subscribed, monitor))
             return;
+
+        _subscribedResourceMonitorTabs[tab] = monitor;
 
         monitor.SnapshotUpdated += _ => QueueResourceMonitorUpdate(tab);
         monitor.StatusChanged += _ => QueueResourceMonitorUpdate(tab);
@@ -2659,6 +2665,14 @@ public sealed partial class MainWindow : Window, IDisposable
         tab.BeginReconnect(cancellation);
         try
         {
+            if (IsSelectedSession(tab))
+            {
+                RemoteSessionWorkspace.Deactivate(_embeddedSessionSurface);
+                SessionContent.Visibility = Visibility.Collapsed;
+                SessionLoadingContent.Visibility = Visibility.Visible;
+                SessionStatus.Text = "Closing disconnected SSH session...";
+                ConnectSessionButton.IsEnabled = false;
+            }
             _connectedConnectionIds.Remove(tab.Connection.Id);
             await _sessionWorkspace.PrepareReconnectAsync(tab, cancellationToken);
             await SshReconnectRetry.RunAsync(async token =>
@@ -2689,7 +2703,11 @@ public sealed partial class MainWindow : Window, IDisposable
         {
             tab.EndReconnect();
             if (IsSelectedSession(tab))
+            {
+                SessionLoadingContent.Visibility = Visibility.Collapsed;
+                SessionContent.Visibility = tab.State == RemoteSessionTabState.Connected ? Visibility.Collapsed : Visibility.Visible;
                 ConnectSessionButton.IsEnabled = tab.State is not RemoteSessionTabState.Connected and not RemoteSessionTabState.Connecting;
+            }
         }
     }
 

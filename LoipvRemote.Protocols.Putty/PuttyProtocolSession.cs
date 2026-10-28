@@ -201,11 +201,7 @@ public sealed class PuttyProtocolSession : IProtocolSession, IEmbeddedWindow, IE
     }
 
     public ValueTask DisconnectAsync(CancellationToken cancellationToken = default)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        CloseCore();
-        return ValueTask.CompletedTask;
-    }
+        => CloseAsync(cancellationToken);
 
     public void Focus()
         => Focus(IntPtr.Zero);
@@ -446,17 +442,27 @@ public sealed class PuttyProtocolSession : IProtocolSession, IEmbeddedWindow, IE
             _windowOperations.ShowSettingsDialog(windowHandle, 0x50);
     }
 
-    private void CloseCore()
+    private void StopNetworkRecovery()
     {
         _networkRecoveryStopped = true;
         _networkErrorMonitor?.Dispose();
         _networkErrorMonitor = null;
         Interlocked.Exchange(ref _networkErrorAcknowledged, 0);
+    }
+
+    private void CloseCore()
+    {
+        StopNetworkRecovery();
         if (State == ProtocolSessionState.Closed)
             return;
 
         State = ProtocolSessionState.Closing;
         _process.StopProcess();
+        CompleteClose();
+    }
+
+    private void CompleteClose()
+    {
         _embeddedWindowHandle = IntPtr.Zero;
         _attachedParentWindowHandle = IntPtr.Zero;
         _attachedWindowHandle = IntPtr.Zero;
@@ -468,11 +474,17 @@ public sealed class PuttyProtocolSession : IProtocolSession, IEmbeddedWindow, IE
         State = ProtocolSessionState.Closed;
     }
 
-    public ValueTask CloseAsync(CancellationToken cancellationToken = default)
+    public async ValueTask CloseAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        CloseCore();
-        return ValueTask.CompletedTask;
+        // Unhook on the UI/owner thread before yielding. Process shutdown can
+        // wait for network/native cleanup and must not occupy that thread.
+        StopNetworkRecovery();
+        if (State == ProtocolSessionState.Closed)
+            return;
+        State = ProtocolSessionState.Closing;
+        await Task.Run(_process.StopProcess, CancellationToken.None).ConfigureAwait(false);
+        CompleteClose();
     }
 
     public void Dispose()
@@ -485,11 +497,14 @@ public sealed class PuttyProtocolSession : IProtocolSession, IEmbeddedWindow, IE
         _disposed = true;
     }
 
-    public ValueTask DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
-        Dispose();
+        if (_disposed)
+            return;
+        await CloseAsync().ConfigureAwait(false);
+        _process.Dispose();
+        _disposed = true;
         GC.SuppressFinalize(this);
-        return ValueTask.CompletedTask;
     }
 
     private void ProcessExited(object? sender, EventArgs e)

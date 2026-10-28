@@ -4,13 +4,71 @@ using LoipvRemote.Domain.Protocols;
 using LoipvRemote.Protocols.Abstractions;
 using LoipvRemote.WinUI.Hosting;
 using LoipvRemote.WinUI.Sessions;
+using LoipvRemote.Protocols.Putty;
 using NSubstitute;
 using NUnit.Framework;
+using System.Diagnostics;
+using System.Net;
+using System.Net.Sockets;
 
 namespace LoipvRemote.WinUI.Tests.Sessions;
 
 public sealed class RemoteSessionWorkspaceTests
 {
+    [Test]
+    public async Task ClosingStillStopsTheTransportWhenMonitoringCleanupFails()
+    {
+        var original = new EmbeddedTestSession([]);
+        var monitor = Substitute.For<IRemoteResourceMonitor>();
+        monitor.When(item => item.Dispose()).Do(_ => throw new IOException("Test cleanup failure"));
+        var workspace = new RemoteSessionWorkspace(new TestFactory(original, monitor));
+        var tab = workspace.Open(CreateConnection(ProtocolKind.Ssh2));
+        await workspace.ConnectAsync(tab, new TestSurface([]));
+        Assert.ThrowsAsync<IOException>(() => workspace.CloseAsync(tab));
+        Assert.Multiple(() =>
+        {
+            Assert.That(original.CloseCalled && original.DisposeAsyncCalled, Is.True);
+            Assert.That(tab.ResourceMonitor, Is.Null);
+            Assert.That(tab.State, Is.EqualTo(RemoteSessionTabState.Closed));
+        });
+    }
+
+    [Test]
+    public async Task ReconnectRemainsResponsiveWhileTheSshMonitorWaitsForARebootedServer()
+    {
+        using var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        using var collector = new SshNetLinuxResourceCollector(new("127.0.0.1", port, "test-user", "test-only"));
+        var monitor = new SshResourceMonitor(collector);
+        var workspace = new RemoteSessionWorkspace(new TestFactory(new EmbeddedTestSession([]), monitor));
+        var tab = workspace.Open(CreateConnection(ProtocolKind.Ssh2));
+        await workspace.ConnectAsync(tab, new TestSurface([]));
+        using var peer = await listener.AcceptTcpClientAsync().WaitAsync(TimeSpan.FromSeconds(3));
+        // Accept TCP but withhold the SSH greeting, as a server still starting
+        // after reboot can do. Release it even if the old synchronous code hangs.
+        var release = Task.Run(async () =>
+        {
+            await Task.Delay(1500);
+            peer.Dispose();
+        });
+        var elapsed = Stopwatch.StartNew();
+        var reconnect = workspace.PrepareReconnectAsync(tab, CancellationToken.None);
+        try
+        {
+            Assert.That(elapsed.Elapsed, Is.LessThan(TimeSpan.FromMilliseconds(500)),
+                "Network teardown must yield instead of blocking the calling UI thread.");
+            Assert.That(tab.ResourceMonitor, Is.Null);
+        }
+        finally
+        {
+            peer.Dispose();
+            await release;
+            await reconnect.WaitAsync(TimeSpan.FromSeconds(5));
+            await workspace.CloseAsync(tab);
+        }
+    }
+
     [Test]
     public async Task ReconnectDisposesTheOldTransportAndMonitorBeforeCreatingAFreshSession()
     {

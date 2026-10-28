@@ -9,6 +9,24 @@ namespace LoipvRemote.WinUI.Tests.Hosting;
 [Apartment(ApartmentState.STA)]
 public sealed class PuttyNetworkErrorMonitorTests
 {
+    [Test]
+    public void BackgroundDisposalDispatchesUnhookToTheOriginalThreadBeforeReleasingTheCallback()
+    {
+        Action? remove = null;
+        using var monitor = WindowsPuttyNetworkErrorMonitor.TryCreate(Environment.ProcessId, () => { }, action =>
+        {
+            remove = action;
+            return true;
+        });
+        Assert.That(monitor, Is.Not.Null);
+        Task.Run(monitor!.Dispose).GetAwaiter().GetResult();
+        Assert.That((object?)remove, Is.Not.Null);
+        Assert.That(monitor.IsCallbackRooted, Is.True);
+        remove!();
+        Assert.That(monitor.IsCallbackRooted, Is.False);
+        monitor.Dispose();
+    }
+
     [TestCase("Network error: Software caused connection abort", true)]
     [TestCase("Network error: Connection reset by peer", true)]
     [TestCase("Network error: Connection timed out", true)]

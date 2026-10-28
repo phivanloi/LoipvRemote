@@ -43,7 +43,8 @@ public sealed class WinUIProtocolSessionFactory : IWinUIProtocolSessionFactory
             () => new WindowsEmbeddedWindowOperations(),
             passwordResolver: definition => secretResolver.Resolve(definition, "Password"),
             passwordPipeFactory: WindowsSecretPipeServer.StartPassword,
-            networkErrorMonitorFactory: WindowsPuttyNetworkErrorMonitor.TryCreate);
+            networkErrorMonitorFactory: (processId, acknowledged) => WindowsPuttyNetworkErrorMonitor.TryCreate(
+                processId, acknowledged, action => _dispatcher.TryEnqueue(() => action())));
         _sshResourceMonitorFactory = new SshResourceMonitorFactory(
             definition => secretResolver.Resolve(definition, "Password"));
         _rdpResourceMonitorFactory = new RdpResourceMonitorFactory(

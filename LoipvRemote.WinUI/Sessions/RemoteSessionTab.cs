@@ -62,6 +62,14 @@ public sealed class RemoteSessionTab(ConnectionDefinition connection)
         ResourceMonitor = resourceMonitor;
     }
 
+    /// <summary>Tách monitoring khỏi UI trước khi dọn kết nối mạng trên worker.</summary>
+    internal IRemoteResourceMonitor? DetachResourceMonitor()
+    {
+        var monitor = ResourceMonitor;
+        ResourceMonitor = null;
+        return monitor;
+    }
+
     internal void SetResourceMonitoringActive(bool isActive) => ResourceMonitor?.SetIsActive(isActive);
 
     internal void MarkFaulted(IProtocolSession session)

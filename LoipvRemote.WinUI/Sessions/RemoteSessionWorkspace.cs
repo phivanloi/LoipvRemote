@@ -27,7 +27,7 @@ public sealed class RemoteSessionWorkspace(IWinUIProtocolSessionFactory protocol
     {
         ArgumentNullException.ThrowIfNull(tab);
         ArgumentNullException.ThrowIfNull(surface);
-        await tab.LifecycleGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        await tab.LifecycleGate.WaitAsync(cancellationToken);
         try
         {
             if (tab.State == RemoteSessionTabState.Connected)
@@ -95,11 +95,7 @@ public sealed class RemoteSessionWorkspace(IWinUIProtocolSessionFactory protocol
         }
         catch
         {
-            if (tab.Session is { } session)
-            {
-                await DisposeSessionAsync(session, CancellationToken.None);
-                tab.MarkFaulted(session);
-            }
+            await DisposeTabResourcesAsync(tab, CancellationToken.None);
             throw;
         }
         finally
@@ -148,12 +144,7 @@ public sealed class RemoteSessionWorkspace(IWinUIProtocolSessionFactory protocol
             if (tab.State == RemoteSessionTabState.Closed ||
                 !_tabs.TryGetValue(tab.Connection.Id, out var registered) || !ReferenceEquals(registered, tab))
                 throw new OperationCanceledException(cancellationToken);
-            tab.SetResourceMonitor(null);
-            if (tab.Session is { } session)
-            {
-                await DisposeSessionAsync(session, cancellationToken);
-                tab.MarkFaulted(session);
-            }
+            await DisposeTabResourcesAsync(tab, cancellationToken);
         }
         finally
         {
@@ -165,12 +156,11 @@ public sealed class RemoteSessionWorkspace(IWinUIProtocolSessionFactory protocol
     {
         ArgumentNullException.ThrowIfNull(tab);
         tab.CancelPendingConnection();
-        await tab.LifecycleGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        await tab.LifecycleGate.WaitAsync(cancellationToken);
         _tabs.Remove(tab.Connection.Id);
         try
         {
-            if (tab.Session is { } session)
-                await DisposeSessionAsync(session, cancellationToken);
+            await DisposeTabResourcesAsync(tab, cancellationToken);
         }
         finally
         {
@@ -200,6 +190,35 @@ public sealed class RemoteSessionWorkspace(IWinUIProtocolSessionFactory protocol
 
         if (failures is { Count: > 0 })
             throw new AggregateException("One or more protocol sessions did not close cleanly.", failures);
+    }
+
+    private static async Task DisposeTabResourcesAsync(RemoteSessionTab tab, CancellationToken cancellationToken)
+    {
+        var monitor = tab.DetachResourceMonitor();
+        try
+        {
+            if (monitor is not null)
+            {
+                monitor.StopMonitoring();
+                // A collector can retain its network lock after server reboot.
+                // Cleanup must finish before replacement, without blocking UI.
+                await Task.Run(monitor.Dispose, CancellationToken.None);
+            }
+        }
+        finally
+        {
+            if (tab.Session is { } session)
+            {
+                try
+                {
+                    await DisposeSessionAsync(session, cancellationToken);
+                }
+                finally
+                {
+                    tab.MarkFaulted(session);
+                }
+            }
+        }
     }
 
     private static async Task DisposeSessionAsync(IProtocolSession session, CancellationToken cancellationToken = default)
